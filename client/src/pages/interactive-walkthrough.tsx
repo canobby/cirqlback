@@ -31,8 +31,8 @@ interface WalkthroughStep {
 
 const walkthroughData = {
   customer: {
-    title: "Customer Experience Walkthrough",
-    description: "Learn how to tap Cirql tags, explore the map, and earn rewards",
+    title: "Complete Customer Experience Walkthrough",
+    description: "Master Cirql taps, discover AI-powered businesses, join team challenges, explore AR adventures, and activate viral growth mechanics",
     icon: <Users className="h-6 w-6" />,
     duration: "5 minutes",
     steps: [
@@ -56,10 +56,10 @@ const walkthroughData = {
       },
       {
         id: "step-3",
-        title: "Receive Your Reward",
-        description: "Instantly get discounts, loyalty points, or special offers",
-        action: "Your reward will appear automatically in your browser",
-        tip: "Save the reward to your phone or email for easy access during purchase",
+        title: "Unlock AI-Enhanced Rewards & Partnerships",
+        description: "Receive predictive rewards, cross-business benefits, AR treasure hunt clues, and team challenge points",
+        action: "Your personalized rewards appear instantly with AI-powered customization and partnership offers",
+        tip: "Activate exponential referral multipliers to earn even more through viral friend invitations",
         interactive: false
       },
       {

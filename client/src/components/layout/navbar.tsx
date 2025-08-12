@@ -130,6 +130,42 @@ export default function Navbar() {
                   Partnerships
                 </Button>
               </Link>
+              <Link href="/team-challenges">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/team-challenges") 
+                      ? "text-blue-600 bg-blue-50 border border-blue-200" 
+                      : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                  }`}
+                >
+                  Teams
+                </Button>
+              </Link>
+              <Link href="/ar-treasure-hunts">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/ar-treasure-hunts") 
+                      ? "text-purple-600 bg-purple-50 border border-purple-200" 
+                      : "text-muted-foreground hover:text-purple-600 hover:bg-purple-50"
+                  }`}
+                >
+                  AR Hunts
+                </Button>
+              </Link>
+              <Link href="/viral-campaigns">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/viral-campaigns") 
+                      ? "text-pink-600 bg-pink-50 border border-pink-200" 
+                      : "text-muted-foreground hover:text-pink-600 hover:bg-pink-50"
+                  }`}
+                >
+                  Viral
+                </Button>
+              </Link>
               <Link href="/how-it-works">
                 <Button 
                   variant="ghost" 

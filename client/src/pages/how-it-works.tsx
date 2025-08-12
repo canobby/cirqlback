@@ -67,8 +67,47 @@ export default function HowItWorksPage() {
     },
     {
       icon: <Sparkles className="h-6 w-6 text-orange-500" />,
-      title: "Complete Tesla-Level Integration",
-      description: "Most comprehensive local business platform available: AI analytics, cross-business networks, AR treasure hunts, team challenges, viral campaigns, complete websites, and predictive optimization - no competitor can replicate this ecosystem"
+      title: "Tesla-Level Unified Platform",
+      description: "The most comprehensive local business ecosystem available: AI-powered customer intelligence, cross-business partnership networks, AR treasure hunt adventures, multi-tier team challenges, exponential viral growth mechanics, complete website platforms, and predictive business optimization - a unified system no competitor can replicate piece by piece"
+    }
+  ];
+
+  const advancedFeatures = [
+    {
+      category: "AI-Powered Intelligence",
+      features: [
+        "Customer Health Scoring & Churn Prediction",
+        "Dynamic Pricing Optimization with Weather Impact",
+        "Market Intelligence & Competition Analysis",
+        "Predictive Customer Retention Strategies"
+      ]
+    },
+    {
+      category: "Cross-Business Network",
+      features: [
+        "AI-Powered Partnership Discovery Engine",
+        "Cross-Promotion Management & Revenue Sharing",
+        "Shared Rewards Programs Across Locations",
+        "Partnership Performance Analytics"
+      ]
+    },
+    {
+      category: "Team & Social Gaming",
+      features: [
+        "Multi-Tier Team System (Casual to Corporate)",
+        "City-Wide AR Treasure Hunts with GPS Integration",
+        "Team vs Team Battles & Live Competitions",
+        "Corporate Team Building Challenges"
+      ]
+    },
+    {
+      category: "Viral Growth Engine",
+      features: [
+        "Exponential Friend Referral Multipliers",
+        "Real-Time Social Proof Automation",
+        "Cross-Platform Sharing Integration",
+        "Community-Driven Viral Campaigns"
+      ]
     }
   ];
 
@@ -165,6 +204,47 @@ export default function HowItWorksPage() {
                 <CardContent>
                   <p className="text-gray-600 mb-3">{step.description}</p>
                   <p className="text-sm text-gray-500">{step.details}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Advanced Features Showcase */}
+      <section className="py-20 px-4 bg-gradient-to-br from-purple-50 to-pink-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Advanced Platform Features
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Explore the comprehensive features that make Cirqlback the most advanced local business platform available - 
+              the Tesla of local marketing ecosystems with unified AI intelligence, cross-business networks, AR adventures, 
+              team challenges, and viral growth mechanics.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {advancedFeatures.map((category, index) => (
+              <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-white">
+                      <Sparkles className="h-6 w-6" />
+                    </div>
+                    <CardTitle className="text-xl text-purple-800">{category.category}</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {category.features.map((feature, featureIndex) => (
+                      <div key={featureIndex} className="flex items-start gap-3">
+                        <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mt-2 flex-shrink-0"></div>
+                        <p className="text-gray-700 leading-relaxed">{feature}</p>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             ))}

@@ -55,7 +55,7 @@ export default function Home() {
       <section className="mb-12" data-tour="customer-section">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold gradient-text mb-4">Advanced Customer Intelligence & Engagement</h2>
-          <p className="text-xl text-muted-foreground">AI-powered customer health scoring, predictive retention, cross-business partnerships, AR adventures, team competitions, and exponential viral growth mechanics</p>
+          <p className="text-xl text-muted-foreground">AI-powered customer health scoring, predictive churn prevention, cross-business partnership networks, AR treasure hunt adventures, multi-tier team challenges, and exponential viral growth mechanics with complete website platforms</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
