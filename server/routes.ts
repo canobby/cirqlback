@@ -207,34 +207,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Analytics routes
   app.get("/api/analytics", async (req, res) => {
     try {
-      const businessId = req.query.businessId as string;
-      if (!businessId) {
-        return res.status(400).json({ error: "Business ID required" });
-      }
+      const timeRange = req.query.range as string || "7d";
+      const businessId = req.query.business as string;
       
-      // Get basic analytics data
-      const taps = await storage.getTaps(businessId);
-      const campaigns = await storage.getCampaigns(businessId);
+      // Mock analytics data - replace with real calculations
+      const analytics = {
+        totalTaps: Math.floor(Math.random() * 10000) + 1000,
+        totalRevenue: Math.floor(Math.random() * 50000) + 5000,
+        activeCustomers: Math.floor(Math.random() * 5000) + 500,
+        conversionRate: Math.floor(Math.random() * 25) + 5,
+        topCampaigns: [],
+        recentActivity: [
+          { action: "New customer tap at Coffee Corner", timestamp: "2 minutes ago", value: "+50 pts" },
+          { action: "Campaign 'Free Coffee Friday' completed", timestamp: "5 minutes ago", value: "$25" },
+          { action: "Referral bonus earned", timestamp: "8 minutes ago", value: "+$5" }
+        ],
+        hourlyData: Array.from({ length: 24 }, () => Math.random() * 100),
+        locationData: [],
+        customerInsights: {}
+      };
       
-      // Calculate analytics
-      const totalTaps = taps.length;
-      const uniqueCustomers = new Set(taps.map(tap => tap.customerEmail)).size;
-      const recentTaps = taps.slice(0, 10);
-      
-      const campaignPerformance = campaigns.map(campaign => ({
-        name: campaign.name,
-        taps: taps.filter(tap => tap.campaignId === campaign.id).length,
-        redemptions: campaign.currentRedemptions || 0,
-      }));
-
-      res.json({
-        totalTaps,
-        uniqueCustomers,
-        recentTaps,
-        campaignPerformance,
-      });
+      res.json(analytics);
     } catch (error) {
+      console.error("Analytics fetch error:", error);
       res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  // Community routes
+  app.get("/api/leaderboard", async (req, res) => {
+    try {
+      // Mock leaderboard data
+      const leaderboard = [
+        { id: 1, name: "Sarah Chen", tier: "Platinum", location: "Downtown", points: 15420, avatar: null },
+        { id: 2, name: "Mike Johnson", tier: "Gold", location: "Uptown", points: 12350, avatar: null },
+        { id: 3, name: "Emily Davis", tier: "Gold", location: "Midtown", points: 11200, avatar: null },
+        { id: 4, name: "Alex Kim", tier: "Silver", location: "West Side", points: 9800, avatar: null },
+        { id: 5, name: "Jessica Liu", tier: "Silver", location: "East End", points: 8900, avatar: null }
+      ];
+      res.json(leaderboard);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get("/api/challenges", async (req, res) => {
+    try {
+      // Mock challenges data
+      const challenges = [
+        {
+          id: 1,
+          title: "Coffee Trail Explorer",
+          description: "Visit 5 different coffee shops this week",
+          difficulty: "Easy",
+          progress: 60,
+          timeLeft: "3 days",
+          participants: 234,
+          reward: 500,
+          joined: false
+        },
+        {
+          id: 2,
+          title: "Local Foodie Challenge",
+          description: "Try 10 different restaurants this month",
+          difficulty: "Medium",
+          progress: 30,
+          timeLeft: "12 days",
+          participants: 156,
+          reward: 1000,
+          joined: true
+        }
+      ];
+      res.json(challenges);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch challenges" });
+    }
+  });
+
+  app.get("/api/social-feed", async (req, res) => {
+    try {
+      // Mock social feed data
+      const feed = [
+        {
+          id: 1,
+          author: { name: "Sarah Chen", tier: "Platinum", avatar: null },
+          content: "Just discovered an amazing new bakery downtown! The Cirql tap reward was perfect timing ✨",
+          timeAgo: "2 hours ago",
+          likes: 24,
+          comments: 5
+        },
+        {
+          id: 2,
+          author: { name: "Mike Johnson", tier: "Gold", avatar: null },
+          content: "Completed the Coffee Trail challenge! Thanks to everyone who recommended great spots 🚀",
+          timeAgo: "5 hours ago",
+          likes: 18,
+          comments: 3
+        }
+      ];
+      res.json(feed);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch social feed" });
+    }
+  });
+
+  app.get("/api/user-stats", async (req, res) => {
+    try {
+      // Mock user stats
+      const stats = {
+        rank: 42,
+        totalPoints: 7850,
+        tier: "Silver",
+        challengesCompleted: 8,
+        referralCode: "CIRQL2025",
+        earnedThisMonth: 1200
+      };
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user stats" });
     }
   });
 
