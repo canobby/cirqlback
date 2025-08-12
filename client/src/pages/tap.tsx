@@ -107,7 +107,7 @@ export default function TapPage() {
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
             <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading NFC tag information...</p>
+            <p className="text-muted-foreground">Loading Cirql tag information...</p>
           </CardContent>
         </Card>
       </div>
@@ -258,7 +258,7 @@ export default function TapPage() {
 
         {/* Tag Location Info */}
         <div className="text-center text-sm text-muted-foreground">
-          📍 Tag Location: {tagInfo.tag?.location || "Main Counter"}
+          📍 Cirql Tag Location: {tagInfo.tag?.location || "Main Counter"}
         </div>
       </div>
     </div>

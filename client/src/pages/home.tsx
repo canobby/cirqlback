@@ -19,21 +19,21 @@ export default function Home() {
               />
               <div className="text-3xl font-bold">Cirqlback</div>
             </div>
-            <h1 className="text-4xl font-bold mb-4">NFC-Powered Local Marketing</h1>
+            <h1 className="text-4xl font-bold mb-4">Cirql-Powered Local Marketing</h1>
             <p className="text-xl opacity-90 mb-6">
-              Connect customers with local businesses through seamless tap-to-reward experiences
+              Connect customers with local businesses through seamless Cirql tap-to-reward experiences
             </p>
             <div className="flex flex-wrap gap-4">
               <Link href="/tap">
                 <Button variant="secondary" size="lg" className="bg-white text-primary hover:bg-gray-50">
                   <Smartphone className="mr-2 h-5 w-5" />
-                  Try NFC Tap Demo
+                  Try Cirql Tap Demo
                 </Button>
               </Link>
-              <Link href="/merchant">
+              <Link href="/how-it-works">
                 <Button size="lg" className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-200">
                   <Store className="mr-2 h-5 w-5" />
-                  Merchant Dashboard
+                  How It Works
                 </Button>
               </Link>
             </div>
@@ -61,8 +61,8 @@ export default function Home() {
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0 w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold">1</div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Tap NFC Tag</h3>
-                  <p className="text-muted-foreground">Customer taps the Cirqlback NFC tag at participating businesses</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Tap Cirql Tag</h3>
+                  <p className="text-muted-foreground">Customer taps the Cirqlback tag at participating businesses</p>
                 </div>
               </div>
               <div className="flex items-start space-x-4">

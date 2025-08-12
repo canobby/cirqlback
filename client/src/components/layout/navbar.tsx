@@ -79,6 +79,18 @@ export default function Navbar() {
                   Analytics
                 </Button>
               </Link>
+              <Link href="/how-it-works">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/how-it-works") 
+                      ? "text-secondary bg-secondary/10 border border-secondary/20" 
+                      : "text-muted-foreground hover:text-secondary hover:bg-secondary/5"
+                  }`}
+                >
+                  How It Works
+                </Button>
+              </Link>
             </div>
           </div>
           

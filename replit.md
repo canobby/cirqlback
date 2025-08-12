@@ -8,6 +8,7 @@ Cirqlback is an NFC-powered local marketing and loyalty platform for small busin
 
 Preferred communication style: Simple, everyday language.
 Logo: Official Cirqlback logo (modern circular gradient with arrow design featuring orange, green, blue, purple, and pink gradient flow) locked in and implemented throughout platform with transparency.
+Terminology: Uses "Cirql tags" instead of "NFC tags" and "Cirql tap" instead of "NFC tap" for user-friendly, non-technical language.
 Color Palette: Comprehensive design system based on new logo gradient colors - purple (hsl(260 95% 55%)), pink (hsl(320 100% 60%)), orange (hsl(30 100% 55%)), blue (hsl(200 100% 55%)), and green (hsl(120 70% 45%)) - implemented across all UI components, cards, buttons, and brand elements.
 
 ## System Architecture
@@ -33,8 +34,9 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 
 ### Key Features
 - **Campaign Management**: Merchants can create discount, loyalty, and reward campaigns
-- **NFC Tag Writing**: Interface for assigning campaigns to physical NFC tags
-- **Customer Tap Interface**: Mobile-optimized experience for claiming rewards
+- **Cirql Tag Management**: Interface for assigning campaigns to physical Cirql tags (user-friendly term for NFC)
+- **Customer Cirql Tap Interface**: Mobile-optimized experience for claiming rewards via "Cirql tap"
+- **How It Works Page**: Comprehensive educational page with diagrams and explanations for business growth
 - **Advanced Analytics Dashboard**: Real-time metrics, AI-powered insights, and performance tracking
 - **Community Hub**: Gamified challenges, leaderboards, social feeds, and group rewards
 - **Premium Referral System**: $5 per friend + 5% lifetime earnings with viral growth mechanics
