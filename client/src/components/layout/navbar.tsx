@@ -118,6 +118,18 @@ export default function Navbar() {
                   Account
                 </Button>
               </Link>
+              <Link href="/marketing">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/marketing") 
+                      ? "text-orange-600 bg-orange-50 border border-orange-200" 
+                      : "text-muted-foreground hover:text-orange-600 hover:bg-orange-50"
+                  }`}
+                >
+                  Marketing
+                </Button>
+              </Link>
               <Link href="/how-it-works">
                 <Button 
                   variant="ghost" 

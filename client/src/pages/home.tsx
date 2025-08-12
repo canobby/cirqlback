@@ -21,7 +21,7 @@ export default function Home() {
             </div>
             <h1 className="text-4xl font-bold mb-4">Revolutionary Local Marketing Platform</h1>
             <p className="text-xl opacity-90 mb-6">
-              Transform local shopping with Cirql tags, AR gaming, team challenges, and complete business websites - all in one unified platform
+              Transform local shopping with Cirql tags, real-world discovery maps, team challenges, and complete business websites - all in one unified platform
             </p>
             <div className="flex flex-wrap gap-4">
               <Link href="/tap">
@@ -52,7 +52,7 @@ export default function Home() {
       <section className="mb-12">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold gradient-text mb-4">Complete Customer Experience</h2>
-          <p className="text-xl text-muted-foreground">Cirql taps unlock rewards, AR games, team challenges, and exclusive business content</p>
+          <p className="text-xl text-muted-foreground">Cirql taps unlock rewards, local discovery maps, team challenges, and exclusive business content</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -75,8 +75,8 @@ export default function Home() {
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0 w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white font-bold">3</div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">AR Gaming & Teams</h3>
-                  <p className="text-muted-foreground">Join AR adventures, build your avatar, compete in team battles with massive prizes</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Map Discovery & Teams</h3>
+                  <p className="text-muted-foreground">Explore local businesses on the map, build your avatar, compete in team challenges with massive prizes</p>
                 </div>
               </div>
             </div>
@@ -180,7 +180,7 @@ export default function Home() {
             />
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold text-foreground mb-2">Joe's Coffee Shop</h3>
-              <p className="text-muted-foreground mb-4">Complete platform: Cirql campaigns, hosted website, AR games, and analytics</p>
+              <p className="text-muted-foreground mb-4">Complete platform: Cirql campaigns, hosted website, discovery maps, and analytics</p>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">1,247 total taps</span>
                 <span className="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium">Active</span>
@@ -226,7 +226,7 @@ export default function Home() {
       <section className="text-center py-16">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-4xl font-bold gradient-text mb-6">Ready to Launch Your Complete Business Platform?</h2>
-          <p className="text-xl text-muted-foreground mb-8">Get Cirql tags, professional website, AR gaming, team challenges, and marketing suite - all integrated seamlessly</p>
+          <p className="text-xl text-muted-foreground mb-8">Get Cirql tags, professional website, discovery maps, team challenges, and marketing suite - all integrated seamlessly</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/merchant">
               <Button size="lg" className="bg-primary text-white hover:bg-primary/90">
