@@ -1,659 +1,654 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Share2, TrendingUp, Users, Zap, Gift, Copy, MessageCircle, Heart, Plus, BarChart3, Crown } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-
-interface ViralCampaign {
-  id: string;
-  businessId: string;
-  businessName: string;
-  title: string;
-  description: string;
-  campaignType: 'friend_referral' | 'social_share' | 'group_visit' | 'challenge_completion';
-  viralMechanic: 'exponential_rewards' | 'friend_multipliers' | 'group_discounts' | 'fomo_triggers';
-  baseReward: number;
-  viralMultiplier: number;
-  maxReward: number;
-  participantCount: number;
-  shareCount: number;
-  conversionRate: number;
-  totalRevenue: number;
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
-  userProgress?: {
-    participated: boolean;
-    friendsReferred: number;
-    rewardEarned: number;
-    sharesMade: number;
-  };
-}
-
-interface SocialProofEvent {
-  id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  businessId: string;
-  businessName: string;
-  eventType: 'visit' | 'review' | 'share' | 'recommend' | 'check_in';
-  visibility: 'public' | 'friends' | 'private';
-  message: string;
-  viewCount: number;
-  interactionCount: number;
-  createdAt: string;
-}
-
-interface FriendConnection {
-  id: string;
-  friendId: string;
-  friendName: string;
-  friendAvatar: string;
-  status: 'pending' | 'accepted' | 'blocked';
-  sharedVisits: number;
-  mutualRewards: number;
-  connectedAt: string;
-}
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import {
+  Zap,
+  TrendingUp,
+  Share2,
+  Users,
+  Target,
+  Star,
+  Clock,
+  Gift,
+  Award,
+  Sparkles,
+  Crown,
+  Heart,
+  MessageCircle,
+  Instagram,
+  Facebook,
+  Twitter,
+  Linkedin,
+  Copy,
+  QrCode,
+  MapPin,
+  Calendar,
+  BarChart3,
+  Eye,
+  UserPlus,
+  Rocket,
+  Flame,
+  Megaphone,
+  ChevronRight,
+  Plus,
+  Search,
+  Filter,
+  Repeat,
+  ArrowUp,
+  Globe
+} from "lucide-react";
 
 export default function ViralCampaigns() {
-  const [newCampaignOpen, setNewCampaignOpen] = useState(false);
-  const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [selectedCampaign, setSelectedCampaign] = useState<ViralCampaign | null>(null);
-  const [newCampaign, setNewCampaign] = useState({
-    title: "",
-    description: "",
-    campaignType: "",
-    viralMechanic: "",
-    baseReward: 0,
-    viralMultiplier: 1.5,
-    maxReward: 0
-  });
+  const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
+  const [campaignFilter, setCampaignFilter] = useState("active");
+  const [templateType, setTemplateType] = useState("all");
 
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const { data: viralCampaigns = [], isLoading: loadingCampaigns } = useQuery({
-    queryKey: ["/api/viral-campaigns"],
-  });
-
-  const { data: socialProof = [], isLoading: loadingSocial } = useQuery({
-    queryKey: ["/api/social-proof"],
-  });
-
-  const { data: friendNetwork = [], isLoading: loadingFriends } = useQuery({
-    queryKey: ["/api/friends"],
-  });
-
-  const { data: viralStats = {}, isLoading: loadingStats } = useQuery({
-    queryKey: ["/api/viral-stats"],
-  });
-
-  const createCampaignMutation = useMutation({
-    mutationFn: async (campaignData: any) => {
-      await apiRequest("POST", "/api/viral-campaigns", campaignData);
+  // Mock data for viral campaigns
+  const activeCampaigns = [
+    {
+      id: 1,
+      title: "Coffee Lover's Challenge",
+      description: "Share your coffee moments and invite friends to join the caffeine adventure",
+      type: "Social Sharing",
+      status: "Active",
+      reach: 12450,
+      engagement: 8.7,
+      referrals: 347,
+      revenue: "$4,250",
+      viralCoefficient: 2.3,
+      growth: 185,
+      timeLeft: "5 days",
+      participants: 1247,
+      businesses: ["Brew & Bite", "Coffee Corner", "Morning Rush"],
+      socialPlatforms: ["Instagram", "Facebook", "TikTok"],
+      reward: "Free Coffee for a Month + VIP Status"
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/viral-campaigns"] });
-      setNewCampaignOpen(false);
-      setNewCampaign({
-        title: "",
-        description: "",
-        campaignType: "",
-        viralMechanic: "",
-        baseReward: 0,
-        viralMultiplier: 1.5,
-        maxReward: 0
-      });
-      toast({
-        title: "Campaign Created",
-        description: "Your viral campaign is now live!",
-      });
+    {
+      id: 2,
+      title: "Flash Mob Friday",
+      description: "Synchronized city-wide check-ins creating massive FOMO and social buzz",
+      type: "FOMO Event",
+      status: "Scheduled",
+      reach: 28500,
+      engagement: 12.4,
+      referrals: 892,
+      revenue: "$8,750",
+      viralCoefficient: 3.8,
+      growth: 340,
+      timeLeft: "2 days",
+      participants: 2847,
+      businesses: ["Multiple Locations"],
+      socialPlatforms: ["Instagram", "TikTok", "Twitter"],
+      reward: "Exclusive Flash Mob Badge + Premium Rewards"
     },
-  });
-
-  const participateMutation = useMutation({
-    mutationFn: async (campaignId: string) => {
-      await apiRequest("POST", `/api/viral-campaigns/${campaignId}/participate`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/viral-campaigns"] });
-      toast({
-        title: "Joined Campaign",
-        description: "Start sharing to earn rewards!",
-      });
-    },
-  });
-
-  const shareCampaignMutation = useMutation({
-    mutationFn: async ({ campaignId, platform }: { campaignId: string; platform: string }) => {
-      await apiRequest("POST", `/api/viral-campaigns/${campaignId}/share`, { platform });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/viral-campaigns"] });
-      toast({
-        title: "Shared Successfully",
-        description: "Your share has been tracked and rewards updated!",
-      });
-    },
-  });
-
-  const addFriendMutation = useMutation({
-    mutationFn: async (friendId: string) => {
-      await apiRequest("POST", "/api/friends/add", { friendId });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/friends"] });
-      toast({
-        title: "Friend Request Sent",
-        description: "Your friend will be notified of your request!",
-      });
-    },
-  });
-
-  const getCampaignTypeIcon = (type: string) => {
-    switch (type) {
-      case 'friend_referral': return <Users className="w-4 h-4" />;
-      case 'social_share': return <Share2 className="w-4 h-4" />;
-      case 'group_visit': return <Users className="w-4 h-4" />;
-      case 'challenge_completion': return <TrendingUp className="w-4 h-4" />;
-      default: return <Share2 className="w-4 h-4" />;
+    {
+      id: 3,
+      title: "Local Foodie Influencer",
+      description: "Turn customers into micro-influencers with exponential sharing rewards",
+      type: "Influencer Network",
+      status: "Active",
+      reach: 18900,
+      engagement: 15.2,
+      referrals: 567,
+      revenue: "$6,890",
+      viralCoefficient: 4.1,
+      growth: 275,
+      timeLeft: "1 week",
+      participants: 1892,
+      businesses: ["Bistro 21", "Farm Table", "Sunset Grill"],
+      socialPlatforms: ["Instagram", "YouTube", "TikTok"],
+      reward: "Influencer Status + Revenue Sharing"
     }
-  };
+  ];
 
-  const getViralMechanicColor = (mechanic: string) => {
-    switch (mechanic) {
-      case 'exponential_rewards': return 'bg-purple-500';
-      case 'friend_multipliers': return 'bg-blue-500';
-      case 'group_discounts': return 'bg-green-500';
-      case 'fomo_triggers': return 'bg-red-500';
-      default: return 'bg-gray-500';
+  const campaignTemplates = [
+    {
+      name: "Friend Referral Multiplier",
+      description: "Exponential rewards that grow with each successful referral",
+      viralPotential: 5.2,
+      setup: "30 minutes",
+      mechanics: ["Friend invitation", "Exponential rewards", "Social proof", "FOMO triggers"],
+      expectedROI: "450%",
+      type: "Referral"
+    },
+    {
+      name: "Social Proof Automation",
+      description: "Real-time customer activity feeds that drive FOMO and engagement",
+      viralPotential: 4.8,
+      setup: "45 minutes",
+      mechanics: ["Live activity feed", "Social validation", "Peer pressure", "Instant gratification"],
+      expectedROI: "380%",
+      type: "Social Proof"
+    },
+    {
+      name: "Cross-Platform Sharing",
+      description: "Integrated social media campaigns with conversion tracking",
+      viralPotential: 4.2,
+      setup: "1 hour",
+      mechanics: ["Multi-platform posting", "Hashtag campaigns", "User-generated content", "Viral challenges"],
+      expectedROI: "320%",
+      type: "Social Media"
+    },
+    {
+      name: "Community-Driven Marketing",
+      description: "User-generated content campaigns with viral mechanics built-in",
+      viralPotential: 4.6,
+      setup: "2 hours",
+      mechanics: ["Content creation contests", "Peer voting", "Community rewards", "Viral distribution"],
+      expectedROI: "420%",
+      type: "Community"
     }
+  ];
+
+  const viralMetrics = {
+    totalReach: 89750,
+    viralCoefficient: 3.2,
+    socialShares: 15420,
+    newCustomers: 2847,
+    revenueGenerated: 28450,
+    engagementRate: 12.8,
+    conversionRate: 8.7,
+    averageOrderValue: 24.50
   };
 
-  const calculatePotentialReward = (campaign: ViralCampaign, referrals: number) => {
-    const multipliedReward = campaign.baseReward * Math.pow(campaign.viralMultiplier, referrals);
-    return Math.min(multipliedReward, campaign.maxReward);
-  };
+  const socialPlatforms = [
+    { name: "Instagram", icon: Instagram, reach: 34500, engagement: 14.2, color: "bg-pink-500" },
+    { name: "TikTok", icon: Share2, reach: 28900, engagement: 18.7, color: "bg-black" },
+    { name: "Facebook", icon: Facebook, reach: 21200, engagement: 9.8, color: "bg-blue-600" },
+    { name: "Twitter", icon: Twitter, reach: 15800, engagement: 11.3, color: "bg-blue-400" },
+    { name: "YouTube", icon: Share2, reach: 12400, engagement: 16.5, color: "bg-red-600" }
+  ];
 
-  const shareUrl = selectedCampaign 
-    ? `${window.location.origin}/viral/${selectedCampaign.id}?ref=${btoa('user-id')}`
-    : '';
+  const viralMechanics = [
+    {
+      title: "Exponential Referral System",
+      description: "Rewards multiply with each successful friend invitation",
+      icon: <UserPlus className="h-6 w-6" />,
+      impact: "5x growth rate",
+      implementation: "Friend codes, bonus escalation, social validation"
+    },
+    {
+      title: "Real-Time Social Proof",
+      description: "Live customer activity feeds create FOMO and urgency",
+      icon: <Eye className="h-6 w-6" />,
+      impact: "3x conversion rate",
+      implementation: "Activity streams, live counters, social notifications"
+    },
+    {
+      title: "Cross-Platform Integration",
+      description: "Seamless sharing across all major social media platforms",
+      icon: <Globe className="h-6 w-6" />,
+      impact: "8x reach amplification",
+      implementation: "Auto-posting, hashtag optimization, viral content templates"
+    },
+    {
+      title: "Community Challenge Engine",
+      description: "User-generated viral challenges with peer competition",
+      icon: <Zap className="h-6 w-6" />,
+      impact: "10x engagement boost",
+      implementation: "Challenge creation tools, voting systems, viral distribution"
+    }
+  ];
 
-  if (loadingCampaigns || loadingSocial || loadingFriends || loadingStats) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-        </div>
-      </div>
-    );
-  }
+  const upcomingCampaigns = [
+    {
+      id: 1,
+      title: "Valentine's Day Love Local",
+      date: "Feb 14, 2025",
+      type: "Seasonal",
+      expectedReach: 50000,
+      businesses: 45,
+      description: "Couples challenge promoting local date night experiences"
+    },
+    {
+      id: 2,
+      title: "Spring Break Discovery",
+      date: "Mar 15, 2025",
+      type: "Youth Focused",
+      expectedReach: 35000,
+      businesses: 28,
+      description: "Student-focused viral campaign for spring activities"
+    }
+  ];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <TrendingUp className="w-8 h-8 text-pink-600" />
-          <div>
-            <h1 className="text-3xl font-bold">Viral Growth Hub</h1>
-            <p className="text-muted-foreground">Social campaigns that grow exponentially through friend networks</p>
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 text-white">
+              <Rocket className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                Viral Growth Engine
+              </h1>
+              <p className="text-gray-600 text-lg mt-1">
+                Exponential viral growth mechanics, social proof automation, and community-driven marketing campaigns
+              </p>
+            </div>
+          </div>
+
+          {/* Viral Metrics Overview */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+            <Card className="bg-gradient-to-r from-pink-500 to-pink-600 text-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-pink-100">Total Reach</p>
+                    <p className="text-3xl font-bold">{viralMetrics.totalReach.toLocaleString()}</p>
+                    <p className="text-sm text-pink-100">+340% growth</p>
+                  </div>
+                  <Eye className="h-12 w-12 text-pink-100" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-100">Viral Coefficient</p>
+                    <p className="text-3xl font-bold">{viralMetrics.viralCoefficient}x</p>
+                    <p className="text-sm text-purple-100">Each user brings 3.2 others</p>
+                  </div>
+                  <Repeat className="h-12 w-12 text-purple-100" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-100">Social Shares</p>
+                    <p className="text-3xl font-bold">{viralMetrics.socialShares.toLocaleString()}</p>
+                    <p className="text-sm text-blue-100">+890% increase</p>
+                  </div>
+                  <Share2 className="h-12 w-12 text-blue-100" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-100">Revenue Generated</p>
+                    <p className="text-3xl font-bold">${viralMetrics.revenueGenerated.toLocaleString()}</p>
+                    <p className="text-sm text-green-100">+560% ROI</p>
+                  </div>
+                  <TrendingUp className="h-12 w-12 text-green-100" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-        
-        <Dialog open={newCampaignOpen} onOpenChange={setNewCampaignOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Campaign
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create Viral Campaign</DialogTitle>
-              <DialogDescription>
-                Design a campaign that grows through social sharing
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="title">Campaign Title</Label>
-                <Input
-                  value={newCampaign.title}
-                  onChange={(e) => setNewCampaign({...newCampaign, title: e.target.value})}
-                  placeholder="Enter campaign title"
-                />
-              </div>
 
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  value={newCampaign.description}
-                  onChange={(e) => setNewCampaign({...newCampaign, description: e.target.value})}
-                  placeholder="Describe your viral campaign..."
-                />
-              </div>
+        {/* Viral Campaign Tabs */}
+        <Tabs defaultValue="active-campaigns" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto">
+            <TabsTrigger value="active-campaigns" className="flex items-center gap-2">
+              <Flame className="h-4 w-4" />
+              Active Campaigns
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Viral Templates
+            </TabsTrigger>
+            <TabsTrigger value="social-platforms" className="flex items-center gap-2">
+              <Share2 className="h-4 w-4" />
+              Social Platforms
+            </TabsTrigger>
+            <TabsTrigger value="viral-mechanics" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Viral Mechanics
+            </TabsTrigger>
+            <TabsTrigger value="upcoming" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Upcoming Events
+            </TabsTrigger>
+          </TabsList>
 
-              <div>
-                <Label htmlFor="type">Campaign Type</Label>
-                <Select 
-                  value={newCampaign.campaignType} 
-                  onValueChange={(value) => setNewCampaign({...newCampaign, campaignType: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select campaign type" />
+          {/* Active Campaigns */}
+          <TabsContent value="active-campaigns" className="space-y-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-4">
+                <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Filter campaigns" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="friend_referral">Friend Referral</SelectItem>
-                    <SelectItem value="social_share">Social Share</SelectItem>
-                    <SelectItem value="group_visit">Group Visit</SelectItem>
-                    <SelectItem value="challenge_completion">Challenge Completion</SelectItem>
+                    <SelectItem value="active">Active Campaigns</SelectItem>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="high-performing">High Performing</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              <div>
-                <Label htmlFor="mechanic">Viral Mechanic</Label>
-                <Select 
-                  value={newCampaign.viralMechanic} 
-                  onValueChange={(value) => setNewCampaign({...newCampaign, viralMechanic: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select viral mechanic" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="exponential_rewards">Exponential Rewards</SelectItem>
-                    <SelectItem value="friend_multipliers">Friend Multipliers</SelectItem>
-                    <SelectItem value="group_discounts">Group Discounts</SelectItem>
-                    <SelectItem value="fomo_triggers">FOMO Triggers</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label htmlFor="baseReward">Base Reward ($)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={newCampaign.baseReward}
-                    onChange={(e) => setNewCampaign({...newCampaign, baseReward: parseFloat(e.target.value)})}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="maxReward">Max Reward ($)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={newCampaign.maxReward}
-                    onChange={(e) => setNewCampaign({...newCampaign, maxReward: parseFloat(e.target.value)})}
-                  />
-                </div>
-              </div>
-
-              <Button 
-                onClick={() => createCampaignMutation.mutate(newCampaign)}
-                disabled={createCampaignMutation.isPending}
-                className="w-full"
-              >
-                Launch Campaign
+              <Button className="bg-gradient-to-r from-pink-500 to-purple-500 text-white">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Viral Campaign
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
 
-      <Tabs defaultValue="campaigns" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="campaigns">Active Campaigns</TabsTrigger>
-          <TabsTrigger value="social-feed">Social Feed</TabsTrigger>
-          <TabsTrigger value="friends">Friend Network</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="campaigns" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {(viralCampaigns as ViralCampaign[]).map((campaign) => (
-              <Card key={campaign.id} className="relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-pink-400 to-purple-600 opacity-10 rounded-bl-full" />
-                
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    {getCampaignTypeIcon(campaign.campaignType)}
-                    {campaign.title}
-                  </CardTitle>
-                  <Badge className={getViralMechanicColor(campaign.viralMechanic)}>
-                    {campaign.viralMechanic.replace('_', ' ').toUpperCase()}
-                  </Badge>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">{campaign.description}</p>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="space-y-6">
+              {activeCampaigns.map((campaign) => (
+                <Card key={campaign.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
                       <div>
-                        <span className="text-muted-foreground">Participants:</span>
-                        <div className="font-medium">{campaign.participantCount}</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Shares:</span>
-                        <div className="font-medium">{campaign.shareCount}</div>
-                      </div>
-                    </div>
-
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Conversion Rate:</span>
-                      <div className="font-medium">{(campaign.conversionRate * 100).toFixed(1)}%</div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">Reward Structure:</div>
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <div>Base: ${campaign.baseReward}</div>
-                        <div>Multiplier: {campaign.viralMultiplier}x per referral</div>
-                        <div>Max: ${campaign.maxReward}</div>
-                      </div>
-                    </div>
-
-                    {campaign.userProgress ? (
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium">Your Progress:</div>
-                        <div className="text-xs space-y-1">
-                          <div>Friends Referred: {campaign.userProgress.friendsReferred}</div>
-                          <div>Reward Earned: ${campaign.userProgress.rewardEarned}</div>
-                          <div>Potential Next: ${calculatePotentialReward(campaign, campaign.userProgress.friendsReferred + 1)}</div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <CardTitle className="text-xl">{campaign.title}</CardTitle>
+                          <Badge variant={campaign.status === "Active" ? "default" : "secondary"}
+                                 className={campaign.status === "Active" ? "bg-green-500" : ""}>
+                            {campaign.status}
+                          </Badge>
                         </div>
-                        <Button 
-                          size="sm" 
-                          className="w-full"
-                          onClick={() => {
-                            setSelectedCampaign(campaign);
-                            setShareModalOpen(true);
-                          }}
-                        >
-                          <Share2 className="w-4 h-4 mr-2" />
-                          Share & Earn More
+                        <p className="text-gray-600">{campaign.description}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-purple-600">{campaign.viralCoefficient}x</div>
+                        <p className="text-sm text-gray-500">Viral Coefficient</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+                      <div className="text-center p-4 bg-pink-50 rounded-lg">
+                        <Eye className="h-6 w-6 text-pink-500 mx-auto mb-2" />
+                        <p className="text-2xl font-bold text-pink-600">{campaign.reach.toLocaleString()}</p>
+                        <p className="text-sm text-gray-500">Total Reach</p>
+                      </div>
+                      <div className="text-center p-4 bg-purple-50 rounded-lg">
+                        <UserPlus className="h-6 w-6 text-purple-500 mx-auto mb-2" />
+                        <p className="text-2xl font-bold text-purple-600">{campaign.referrals}</p>
+                        <p className="text-sm text-gray-500">Referrals</p>
+                      </div>
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <BarChart3 className="h-6 w-6 text-blue-500 mx-auto mb-2" />
+                        <p className="text-2xl font-bold text-blue-600">{campaign.engagement}%</p>
+                        <p className="text-sm text-gray-500">Engagement</p>
+                      </div>
+                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <TrendingUp className="h-6 w-6 text-green-500 mx-auto mb-2" />
+                        <p className="text-2xl font-bold text-green-600">{campaign.revenue}</p>
+                        <p className="text-sm text-gray-500">Revenue</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between text-sm mb-2">
+                          <span>Viral Growth Progress</span>
+                          <span>+{campaign.growth}% this week</span>
+                        </div>
+                        <Progress value={Math.min(campaign.growth, 100)} className="h-3" />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm">{campaign.participants.toLocaleString()} participants</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm">{campaign.timeLeft} remaining</span>
+                          </div>
+                        </div>
+                        <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-500 text-white">
+                          View Details
+                          <ChevronRight className="ml-1 h-4 w-4" />
                         </Button>
                       </div>
-                    ) : (
-                      <Button 
-                        size="sm" 
-                        className="w-full"
-                        onClick={() => participateMutation.mutate(campaign.id)}
-                        disabled={participateMutation.isPending}
-                      >
-                        <Zap className="w-4 h-4 mr-2" />
-                        Join Campaign
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
 
-        <TabsContent value="social-feed" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="w-5 h-5" />
-                Local Social Activity
-              </CardTitle>
-              <CardDescription>See what your friends and community are up to</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {(socialProof as SocialProofEvent[]).map((event) => (
-                  <div key={event.id} className="flex items-start gap-3 p-3 rounded-lg border">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-purple-600 flex items-center justify-center text-white text-sm">
-                      {event.userName[0]}
-                    </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="font-medium">{event.userName}</span>
-                        <span className="text-muted-foreground">
-                          {event.eventType === 'visit' && 'visited'}
-                          {event.eventType === 'review' && 'reviewed'}
-                          {event.eventType === 'share' && 'shared'}
-                          {event.eventType === 'recommend' && 'recommended'}
-                          {event.eventType === 'check_in' && 'checked in at'}
-                        </span>
-                        <span className="font-medium text-blue-600">{event.businessName}</span>
+          {/* Viral Templates */}
+          <TabsContent value="templates" className="space-y-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Proven Viral Campaign Templates</h2>
+                <p className="text-gray-600">Ready-to-use campaigns with exponential growth mechanics built-in</p>
+              </div>
+              <Select value={templateType} onValueChange={setTemplateType}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Templates</SelectItem>
+                  <SelectItem value="referral">Referral</SelectItem>
+                  <SelectItem value="social-proof">Social Proof</SelectItem>
+                  <SelectItem value="social-media">Social Media</SelectItem>
+                  <SelectItem value="community">Community</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {campaignTemplates.map((template, index) => (
+                <Card key={index} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{template.name}</CardTitle>
+                        <p className="text-gray-600 mt-1">{template.description}</p>
                       </div>
-                      {event.message && (
-                        <p className="text-sm text-muted-foreground mt-1">{event.message}</p>
-                      )}
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                        <span>{event.viewCount} views</span>
-                        <span>{event.interactionCount} interactions</span>
-                        <span>{new Date(event.createdAt).toLocaleDateString()}</span>
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                        {template.viralPotential}x Viral
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm font-medium">Expected ROI</p>
+                          <p className="text-lg font-bold text-green-600">{template.expectedROI}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Setup Time</p>
+                          <p className="text-lg font-bold text-blue-600">{template.setup}</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-medium mb-2">Viral Mechanics</p>
+                        <div className="flex flex-wrap gap-2">
+                          {template.mechanics.map((mechanic, i) => (
+                            <Badge key={i} variant="secondary" className="text-xs">
+                              {mechanic}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Button className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white">
+                        Use Template
+                        <Sparkles className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Social Platforms */}
+          <TabsContent value="social-platforms" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {socialPlatforms.map((platform, index) => (
+                <Card key={index} className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-3 rounded-lg ${platform.color} text-white`}>
+                          <platform.icon className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg">{platform.name}</h3>
+                          <p className="text-sm text-gray-500">Social Platform</p>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                        <Heart className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                        <MessageCircle className="w-4 h-4" />
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center p-3 bg-gray-50 rounded-lg">
+                          <p className="text-2xl font-bold text-blue-600">{platform.reach.toLocaleString()}</p>
+                          <p className="text-sm text-gray-500">Reach</p>
+                        </div>
+                        <div className="text-center p-3 bg-gray-50 rounded-lg">
+                          <p className="text-2xl font-bold text-green-600">{platform.engagement}%</p>
+                          <p className="text-sm text-gray-500">Engagement</p>
+                        </div>
+                      </div>
+
+                      <Button className="w-full" variant="outline">
+                        Connect Platform
+                        <ChevronRight className="ml-2 h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Viral Mechanics */}
+          <TabsContent value="viral-mechanics" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-gray-900">Exponential Growth Mechanics</h2>
+                {viralMechanics.map((mechanic, index) => (
+                  <Card key={index} className="border-l-4 border-l-purple-500">
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 rounded-lg bg-purple-100 text-purple-600">
+                          {mechanic.icon}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg mb-2">{mechanic.title}</h3>
+                          <p className="text-gray-600 mb-3">{mechanic.description}</p>
+                          <div className="flex items-center gap-4">
+                            <Badge className="bg-green-100 text-green-700">{mechanic.impact}</Badge>
+                            <p className="text-sm text-gray-500">{mechanic.implementation}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="friends" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {(friendNetwork as FriendConnection[]).map((friend) => (
-              <Card key={friend.id}>
-                <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-green-400 to-blue-600 flex items-center justify-center text-white">
-                      {friend.friendName[0]}
-                    </div>
-                    <div>
-                      <div className="font-medium">{friend.friendName}</div>
-                      <div className="text-xs text-muted-foreground">
-                        Connected {new Date(friend.connectedAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
-                  {friend.status === 'accepted' && <Crown className="w-4 h-4 text-yellow-500" />}
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Shared Visits:</span>
-                        <div className="font-medium">{friend.sharedVisits}</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Mutual Rewards:</span>
-                        <div className="font-medium">{friend.mutualRewards}</div>
-                      </div>
-                    </div>
-
-                    <Badge variant={friend.status === 'accepted' ? 'default' : 'secondary'}>
-                      {friend.status.toUpperCase()}
-                    </Badge>
-
-                    <Button size="sm" className="w-full">
-                      <Gift className="w-4 h-4 mr-2" />
-                      Invite to Campaign
+              <div className="space-y-6">
+                <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+                  <CardContent className="p-8 text-center">
+                    <Rocket className="h-16 w-16 text-purple-500 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold mb-4">Viral Growth Calculator</h3>
+                    <p className="text-gray-600 mb-6">
+                      Calculate your potential viral reach and revenue growth with our advanced modeling tools.
+                    </p>
+                    <Button className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                      Launch Calculator
+                      <ArrowUp className="ml-2 h-4 w-4" />
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
+                  </CardContent>
+                </Card>
 
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Shares</CardTitle>
-                <Share2 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{viralStats.totalShares || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  +{viralStats.sharesGrowth || 0}% from last month
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Viral Coefficient</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{viralStats.viralCoefficient || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  Average referrals per user
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Campaign ROI</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{viralStats.campaignROI || 0}%</div>
-                <p className="text-xs text-muted-foreground">
-                  Return on investment
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Participants</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{viralStats.activeParticipants || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  Currently engaged users
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Viral Growth Trends</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <BarChart3 className="w-12 h-12 mx-auto mb-4" />
-                  <p>Viral analytics dashboard coming soon</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Share Modal */}
-      <Dialog open={shareModalOpen} onOpenChange={setShareModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Share Campaign</DialogTitle>
-            <DialogDescription>
-              Share with friends to earn exponential rewards
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedCampaign && (
-            <div className="space-y-4">
-              <div className="text-center p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border">
-                <div className="text-2xl font-bold text-purple-600">
-                  ${calculatePotentialReward(selectedCampaign, (selectedCampaign.userProgress?.friendsReferred || 0) + 1)}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Potential reward for next referral
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="shareUrl">Share URL</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    readOnly 
-                    value={shareUrl}
-                    className="text-sm"
-                  />
-                  <Button 
-                    size="sm" 
-                    onClick={() => {
-                      navigator.clipboard.writeText(shareUrl);
-                      toast({ title: "Copied to clipboard!" });
-                    }}
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Button 
-                  onClick={() => shareCampaignMutation.mutate({ 
-                    campaignId: selectedCampaign.id, 
-                    platform: 'facebook' 
-                  })}
-                >
-                  Facebook
-                </Button>
-                <Button 
-                  onClick={() => shareCampaignMutation.mutate({ 
-                    campaignId: selectedCampaign.id, 
-                    platform: 'twitter' 
-                  })}
-                >
-                  Twitter
-                </Button>
-                <Button 
-                  onClick={() => shareCampaignMutation.mutate({ 
-                    campaignId: selectedCampaign.id, 
-                    platform: 'instagram' 
-                  })}
-                >
-                  Instagram
-                </Button>
-                <Button 
-                  onClick={() => shareCampaignMutation.mutate({ 
-                    campaignId: selectedCampaign.id, 
-                    platform: 'whatsapp' 
-                  })}
-                >
-                  WhatsApp
-                </Button>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Viral Performance Metrics
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between">
+                        <span>Average Viral Coefficient</span>
+                        <span className="font-semibold">3.2x</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Share Rate</span>
+                        <span className="font-semibold">24.8%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Conversion from Shares</span>
+                        <span className="font-semibold">8.7%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Average Campaign ROI</span>
+                        <span className="font-semibold text-green-600">420%</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </TabsContent>
+
+          {/* Upcoming Events */}
+          <TabsContent value="upcoming" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {upcomingCampaigns.map((campaign) => (
+                <Card key={campaign.id} className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-xl text-blue-800">{campaign.title}</CardTitle>
+                        <p className="text-gray-600 mt-1">{campaign.description}</p>
+                      </div>
+                      <Badge className="bg-blue-500 text-white">{campaign.type}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-blue-500" />
+                          <div>
+                            <p className="text-sm font-medium">{campaign.date}</p>
+                            <p className="text-sm text-gray-500">Launch Date</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Eye className="h-4 w-4 text-blue-500" />
+                          <div>
+                            <p className="text-sm font-medium">{campaign.expectedReach.toLocaleString()}</p>
+                            <p className="text-sm text-gray-500">Expected Reach</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-blue-500" />
+                          <span className="text-sm">{campaign.businesses} participating businesses</span>
+                        </div>
+                        <Button size="sm" className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                          Join Campaign
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
