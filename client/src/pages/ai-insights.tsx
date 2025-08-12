@@ -32,7 +32,8 @@ import {
   Activity,
   Shield,
   Sparkles,
-  Loader2
+  Loader2,
+  Lightbulb
 } from "lucide-react";
 
 export default function AIInsights() {
@@ -291,7 +292,7 @@ export default function AIInsights() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid gap-4">
-                      {aiInsights?.insights?.map((insight: any, index: number) => (
+                      {aiInsights?.map((insight: any, index: number) => (
                         <div key={index} className="p-4 rounded-lg border bg-gradient-to-r from-purple-50 to-pink-50">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -316,7 +317,7 @@ export default function AIInsights() {
                 </Card>
 
                 {/* Predictive Analytics */}
-                {predictiveData?.analytics && (
+                {predictiveData && (
                   <div className="grid md:grid-cols-2 gap-6">
                     <Card>
                       <CardHeader>
@@ -329,21 +330,21 @@ export default function AIInsights() {
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
                             <span>Current Retention Rate</span>
-                            <span className="font-bold">{predictiveData.analytics.customerRetention?.current}%</span>
+                            <span className="font-bold">{predictiveData.customerRetention?.current}%</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Predicted Next Quarter</span>
-                            <span className="font-bold text-blue-600">{predictiveData.analytics.customerRetention?.predicted}%</span>
+                            <span className="font-bold text-blue-600">{predictiveData.customerRetention?.predicted}%</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge variant={predictiveData.analytics.customerRetention?.trend === 'increasing' ? 'default' : 'destructive'}>
-                              {predictiveData.analytics.customerRetention?.trend}
+                            <Badge variant={predictiveData.customerRetention?.trend === 'increasing' ? 'default' : 'destructive'}>
+                              {predictiveData.customerRetention?.trend}
                             </Badge>
                           </div>
                           <div className="pt-2">
                             <p className="text-sm text-gray-600 mb-2">Key Factors:</p>
                             <ul className="text-sm text-gray-700 space-y-1">
-                              {predictiveData.analytics.customerRetention?.factors?.map((factor: string, idx: number) => (
+                              {predictiveData.customerRetention?.factors?.map((factor: string, idx: number) => (
                                 <li key={idx} className="flex items-center gap-2">
                                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                                   {factor}
@@ -366,16 +367,16 @@ export default function AIInsights() {
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
                             <span>Next Quarter Growth</span>
-                            <span className="font-bold text-green-600">{predictiveData.analytics.revenueGrowth?.nextQuarter}%</span>
+                            <span className="font-bold text-green-600">{predictiveData.revenueGrowth?.nextQuarter}%</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Confidence Level</span>
-                            <span className="font-bold">{predictiveData.analytics.revenueGrowth?.confidence}%</span>
+                            <span className="font-bold">{predictiveData.revenueGrowth?.confidence}%</span>
                           </div>
                           <div className="pt-2">
                             <p className="text-sm text-gray-600 mb-2">Key Drivers:</p>
                             <ul className="text-sm text-gray-700 space-y-1">
-                              {predictiveData.analytics.revenueGrowth?.keyDrivers?.map((driver: string, idx: number) => (
+                              {predictiveData.revenueGrowth?.keyDrivers?.map((driver: string, idx: number) => (
                                 <li key={idx} className="flex items-center gap-2">
                                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                                   {driver}
@@ -390,7 +391,7 @@ export default function AIInsights() {
                 )}
 
                 {/* Customer Behavior Analysis */}
-                {customerAnalysis?.analysis && (
+                {customerAnalysis && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -400,7 +401,7 @@ export default function AIInsights() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-6">
-                        {customerAnalysis.analysis.segments?.map((segment: any, index: number) => (
+                        {customerAnalysis.segments?.map((segment: any, index: number) => (
                           <div key={index} className="p-4 rounded-lg border">
                             <h4 className="font-semibold text-lg mb-2">{segment.name} Segment</h4>
                             <div className="grid md:grid-cols-2 gap-4">

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,12 +21,15 @@ import {
   Award,
   Eye,
   RefreshCw,
-  Brain
+  Brain,
+  Lightbulb,
+  Loader2
 } from "lucide-react";
 
 export default function PredictiveAnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState("7d");
   const [selectedBusiness, setSelectedBusiness] = useState("all");
+  const [showAIInsights, setShowAIInsights] = useState(false);
 
   // Real-time analytics data
   const { data: analytics, isLoading } = useQuery({
@@ -45,6 +49,50 @@ export default function PredictiveAnalyticsDashboard() {
       if (!response.ok) throw new Error('Failed to fetch businesses');
       return response.json();
     },
+  });
+
+  // AI Predictive Analytics
+  const { data: aiAnalytics, isLoading: aiLoading, refetch: refetchAI } = useQuery({
+    queryKey: ['/api/ai/predictive-analytics', timeRange, selectedBusiness],
+    queryFn: async () => {
+      const historicalData = {
+        timeRange,
+        businessId: selectedBusiness,
+        metrics: analytics || defaultAnalytics,
+        customerBehavior: {
+          averageVisits: 2.3,
+          retentionRate: 0.68,
+          seasonalTrends: ["summer_peak", "weekend_boost"],
+          preferredTimes: ["10am-12pm", "3pm-5pm"]
+        },
+        campaignPerformance: {
+          activeCount: 5,
+          averageROI: 2.4,
+          topPerforming: ["coffee_loyalty", "weekend_special"]
+        }
+      };
+      return await apiRequest("POST", "/api/ai/predictive-analytics", historicalData);
+    },
+    enabled: !!analytics && showAIInsights
+  });
+
+  // AI Insights Generation Mutation
+  const generateInsightsMutation = useMutation({
+    mutationFn: async () => {
+      const insightData = {
+        businessType: "coffee_shop",
+        currentPerformance: analytics || defaultAnalytics,
+        timeframe: timeRange,
+        goals: ["increase_retention", "boost_revenue", "optimize_operations"],
+        challenges: ["seasonal_fluctuations", "weekend_traffic"],
+        marketConditions: "competitive_local_market"
+      };
+      return await apiRequest("POST", "/api/ai/predictive-analytics", insightData);
+    },
+    onSuccess: () => {
+      setShowAIInsights(true);
+      refetchAI();
+    }
   });
 
   if (isLoading) {
@@ -213,6 +261,126 @@ export default function PredictiveAnalyticsDashboard() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            {/* AI-Powered Predictive Insights */}
+            <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center text-purple-800">
+                    <Brain className="h-6 w-6 mr-2" />
+                    AI Predictive Insights
+                  </CardTitle>
+                  <Button 
+                    onClick={() => generateInsightsMutation.mutate()}
+                    disabled={generateInsightsMutation.isPending}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    {generateInsightsMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="h-4 w-4 mr-2" />
+                        Generate AI Insights
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {aiLoading && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-purple-500 mr-2" />
+                    <span className="text-purple-600">AI analyzing your business data...</span>
+                  </div>
+                )}
+                
+                {aiAnalytics?.analytics && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Predictions */}
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-purple-800 flex items-center">
+                          <TrendingUp className="h-4 w-4 mr-2" />
+                          Predictions
+                        </h4>
+                        {aiAnalytics.analytics.predictions?.map((prediction: any, index: number) => (
+                          <div key={index} className="p-3 bg-white rounded-lg border">
+                            <p className="font-medium text-gray-800">{prediction.title}</p>
+                            <p className="text-sm text-gray-600 mt-1">{prediction.description}</p>
+                            <div className="flex items-center mt-2">
+                              <Badge 
+                                variant="outline" 
+                                className={prediction.confidence >= 0.8 ? "text-green-600" : 
+                                           prediction.confidence >= 0.6 ? "text-yellow-600" : "text-gray-600"}
+                              >
+                                {Math.round(prediction.confidence * 100)}% confidence
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Recommendations */}
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-purple-800 flex items-center">
+                          <Lightbulb className="h-4 w-4 mr-2" />
+                          AI Recommendations
+                        </h4>
+                        {aiAnalytics.analytics.recommendations?.map((rec: any, index: number) => (
+                          <div key={index} className="p-3 bg-white rounded-lg border">
+                            <p className="font-medium text-gray-800">{rec.title}</p>
+                            <p className="text-sm text-gray-600 mt-1">{rec.description}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <Badge 
+                                variant="outline" 
+                                className={rec.priority === "high" ? "text-red-600" : 
+                                           rec.priority === "medium" ? "text-yellow-600" : "text-green-600"}
+                              >
+                                {rec.priority} priority
+                              </Badge>
+                              {rec.expectedImpact && (
+                                <span className="text-xs text-green-600 font-medium">
+                                  +{rec.expectedImpact} impact
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Key Insights */}
+                    {aiAnalytics.analytics.keyInsights && (
+                      <div className="mt-6 p-4 bg-purple-100 rounded-lg">
+                        <h4 className="font-semibold text-purple-800 mb-3 flex items-center">
+                          <Eye className="h-4 w-4 mr-2" />
+                          Key Business Insights
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {aiAnalytics.analytics.keyInsights.map((insight: any, index: number) => (
+                            <div key={index} className="flex items-start space-x-3">
+                              <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                              <p className="text-sm text-purple-700">{insight}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!showAIInsights && !aiLoading && (
+                  <div className="text-center py-8">
+                    <Brain className="h-12 w-12 mx-auto text-purple-300 mb-3" />
+                    <p className="text-purple-600 mb-4">Get AI-powered predictions and business insights</p>
+                    <p className="text-sm text-gray-600">Our AI will analyze your data to provide personalized recommendations for growth</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Real-time Activity */}
               <Card>

@@ -983,6 +983,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Admin Insights endpoint
+  app.post("/api/ai/admin-insights", async (req, res) => {
+    try {
+      const openaiService = new OpenAIService();
+      const platformData = req.body;
+      
+      const insights = await openaiService.generateAdminInsights(platformData);
+      res.json({ insights });
+    } catch (error) {
+      console.error("AI admin insights error:", error);
+      res.status(500).json({ error: "Failed to generate admin insights" });
+    }
+  });
+
   // Settings API routes
   app.get("/api/settings", async (req, res) => {
     try {

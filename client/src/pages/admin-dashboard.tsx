@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +35,9 @@ import {
   Crown,
   Star,
   Gift,
-  Sparkles
+  Sparkles,
+  Brain,
+  Loader2
 } from "lucide-react";
 
 interface AdminStats {
@@ -68,6 +72,52 @@ interface CampaignTemplateAdmin {
 }
 
 export default function AdminDashboard() {
+  const { toast } = useToast();
+  
+  // AI Platform Insights Query
+  const { data: aiPlatformInsights, isLoading: aiLoading, refetch: refetchAI } = useQuery({
+    queryKey: ['/api/ai/admin-insights'],
+    queryFn: async () => {
+      const platformData = {
+        totalUsers: 2847,
+        activeBusinesses: 456,
+        totalRevenue: 127850,
+        campaignsActive: 234,
+        monthlyGrowth: 18.5,
+        churnRate: 4.2,
+        platformMetrics: {
+          avgSessionTime: 34.2,
+          userRetention: 0.73,
+          conversionRate: 0.08,
+          supportTickets: 42
+        },
+        timeframe: "last_30_days"
+      };
+      return await apiRequest("POST", "/api/ai/admin-insights", platformData);
+    }
+  });
+
+  // AI Insights Generation
+  const generatePlatformInsights = useMutation({
+    mutationFn: async () => {
+      const insightData = {
+        platformHealth: "excellent",
+        userEngagement: "high",
+        revenueGrowth: "strong",
+        challengeAreas: ["user_onboarding", "feature_adoption"],
+        opportunities: ["enterprise_expansion", "international_markets"]
+      };
+      return await apiRequest("POST", "/api/ai/admin-insights", insightData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "AI Insights Generated",
+        description: "Platform analysis complete with actionable recommendations"
+      });
+      refetchAI();
+    }
+  });
+
   const [adminStats] = useState<AdminStats>({
     totalUsers: 2847,
     activeBusinesses: 456,
@@ -152,8 +202,6 @@ export default function AdminDashboard() {
     rewards: '',
     estimatedROI: ''
   });
-
-  const { toast } = useToast();
 
   const updateUserStatus = (userId: string, newStatus: string) => {
     setPlatformUsers(users => 
@@ -589,6 +637,126 @@ export default function AdminDashboard() {
 
           {/* Analytics & Reports */}
           <TabsContent value="analytics" className="space-y-6">
+            {/* AI Platform Insights */}
+            <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center text-blue-800">
+                    <Brain className="h-6 w-6 mr-2" />
+                    AI Platform Intelligence
+                  </CardTitle>
+                  <Button 
+                    onClick={() => generatePlatformInsights.mutate()}
+                    disabled={generatePlatformInsights.isPending}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {generatePlatformInsights.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="h-4 w-4 mr-2" />
+                        Generate Insights
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {aiLoading && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-500 mr-2" />
+                    <span className="text-blue-600">AI analyzing platform data...</span>
+                  </div>
+                )}
+                
+                {aiPlatformInsights?.insights && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Platform Health Score */}
+                      <div className="p-4 bg-white rounded-lg border">
+                        <h4 className="font-semibold text-blue-800 mb-3">Platform Health Score</h4>
+                        <div className="flex items-center space-x-4">
+                          <div className="text-3xl font-bold text-green-600">
+                            {aiPlatformInsights.insights.healthScore || "95"}%
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <p>Excellent performance across all metrics</p>
+                            <p className="text-green-600">↗ +3% from last month</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Growth Predictions */}
+                      <div className="p-4 bg-white rounded-lg border">
+                        <h4 className="font-semibold text-blue-800 mb-3">AI Predictions</h4>
+                        {aiPlatformInsights.insights.predictions?.map((prediction: any, index: number) => (
+                          <div key={index} className="mb-2">
+                            <p className="text-sm font-medium">{prediction.title}</p>
+                            <p className="text-xs text-gray-600">{prediction.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Strategic Recommendations */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-blue-800">Strategic Recommendations</h4>
+                        {aiPlatformInsights.insights.recommendations?.map((rec: any, index: number) => (
+                          <div key={index} className="p-3 bg-white rounded-lg border-l-4 border-blue-500">
+                            <p className="font-medium text-gray-800">{rec.title}</p>
+                            <p className="text-sm text-gray-600 mt-1">{rec.description}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <Badge 
+                                variant="outline"
+                                className={rec.priority === "high" ? "text-red-600" : 
+                                           rec.priority === "medium" ? "text-yellow-600" : "text-green-600"}
+                              >
+                                {rec.priority} priority
+                              </Badge>
+                              <span className="text-xs text-green-600 font-medium">
+                                {rec.impact}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-blue-800">Risk Analysis</h4>
+                        {aiPlatformInsights.insights.risks?.map((risk: any, index: number) => (
+                          <div key={index} className="p-3 bg-white rounded-lg border-l-4 border-orange-500">
+                            <p className="font-medium text-gray-800">{risk.title}</p>
+                            <p className="text-sm text-gray-600 mt-1">{risk.description}</p>
+                            <div className="flex items-center mt-2">
+                              <Badge 
+                                variant="outline"
+                                className={risk.severity === "high" ? "text-red-600" : 
+                                           risk.severity === "medium" ? "text-yellow-600" : "text-blue-600"}
+                              >
+                                {risk.severity} risk
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!aiPlatformInsights && !aiLoading && (
+                  <div className="text-center py-8">
+                    <Brain className="h-12 w-12 mx-auto text-blue-300 mb-3" />
+                    <p className="text-blue-600 mb-4">Generate AI-powered platform insights</p>
+                    <p className="text-sm text-gray-600">Advanced analytics and strategic recommendations for platform optimization</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">

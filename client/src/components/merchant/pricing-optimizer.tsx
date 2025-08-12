@@ -1,11 +1,85 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, DollarSign, Target, Zap, Brain, ChartBar } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { TrendingUp, DollarSign, Target, Zap, Brain, ChartBar, Loader2, RefreshCw } from "lucide-react";
 
 export default function PricingOptimizer() {
-  const recommendations = [
+  const { toast } = useToast();
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // AI-powered pricing recommendations query
+  const { data: aiRecommendations, isLoading, refetch } = useQuery({
+    queryKey: ['/api/ai/pricing-optimization'],
+    queryFn: async () => {
+      const businessData = {
+        businessType: "coffee_shop",
+        location: "downtown",
+        currentPricing: {
+          "Regular Coffee": 3.50,
+          "Specialty Drinks": 5.25,
+          "Food Items": 8.50,
+          "Loyalty Discounts": "10%"
+        },
+        salesData: {
+          dailyVolume: 150,
+          peakHours: ["7am-9am", "12pm-2pm", "4pm-6pm"],
+          seasonalTrends: ["summer_boost", "holiday_surge"],
+          customerRetention: 0.68
+        },
+        marketConditions: {
+          competition: "high",
+          economicClimate: "moderate",
+          demographics: "working_professionals"
+        },
+        goals: ["increase_revenue", "maintain_volume", "boost_loyalty"]
+      };
+      return await apiRequest("POST", "/api/ai/pricing-optimization", businessData);
+    }
+  });
+
+  // AI analysis mutation for real-time optimization
+  const analyzeCurrentPricing = useMutation({
+    mutationFn: async () => {
+      setIsAnalyzing(true);
+      const analysisData = {
+        currentMetrics: {
+          averageTransaction: 12.50,
+          dailyRevenue: 1875,
+          customerCount: 150,
+          repeatCustomerRate: 0.42
+        },
+        timeframe: "last_30_days",
+        objectives: ["maximize_profit", "increase_volume", "enhance_loyalty"],
+        constraints: ["maintain_quality", "competitive_position"]
+      };
+      const result = await apiRequest("POST", "/api/ai/pricing-optimization", analysisData);
+      setIsAnalyzing(false);
+      return result;
+    },
+    onSuccess: () => {
+      toast({
+        title: "AI Analysis Complete",
+        description: "New pricing recommendations generated based on current data"
+      });
+      refetch();
+    },
+    onError: () => {
+      setIsAnalyzing(false);
+      toast({
+        title: "Analysis Failed",
+        description: "Unable to generate pricing recommendations. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Fallback mock data for display
+  const mockRecommendations = [
     {
       campaign: "Free Coffee Friday",
       currentPrice: "$0.00",
@@ -34,6 +108,9 @@ export default function PricingOptimizer() {
       strategy: "Market Premium"
     }
   ];
+
+  // Use AI recommendations if available, otherwise fallback to mock data
+  const recommendations = aiRecommendations?.recommendations || mockRecommendations;
 
   const strategies = [
     {
@@ -69,10 +146,29 @@ export default function PricingOptimizer() {
     <div className="space-y-6">
       <Card className="card-hover glow-effect">
         <CardHeader>
-          <CardTitle className="flex items-center gradient-text">
-            <Brain className="mr-2 h-6 w-6" />
-            AI Pricing Optimization
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gradient-text">
+              <Brain className="mr-2 h-6 w-6" />
+              AI Pricing Optimization
+            </CardTitle>
+            <Button 
+              onClick={() => analyzeCurrentPricing.mutate()}
+              disabled={isLoading || analyzeCurrentPricing.isPending}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {isLoading || analyzeCurrentPricing.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Analyze Pricing
+                </>
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-3 gap-6 mb-6">
