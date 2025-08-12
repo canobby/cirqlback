@@ -3,8 +3,12 @@ import { createServer, type Server } from "http";
 import { registerARGameRoutes } from "./ar-game-routes";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import { db } from "./db";
+import { adminUsers, adminCommunications, adminTrainingProgress } from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
 import { insertBusinessSchema, insertCampaignSchema, insertNfcTagSchema, insertTapSchema, insertRewardSchema, insertTapTrailSchema, insertReferralSchema, insertSubscriptionPlanSchema, insertUserSubscriptionSchema, insertApiUsageSchema } from "@shared/schema";
 import { z } from "zod";
+import crypto from "crypto";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -3095,43 +3099,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/admin/users", async (req, res) => {
     try {
-      // Mock admin users data - replace with actual database query
-      const adminUsers = [
-        {
-          id: "admin_1",
-          user: { email: "admin@cirqlback.com" },
-          adminLevel: "master",
-          permissions: ["*"],
-          trainingStatus: "completed",
-          certificationLevel: "expert",
-          specializations: ["user_management", "technical_support"],
-          isActive: true,
-          lastActiveAt: new Date().toISOString(),
-        }
-      ];
+      // Query actual admin users from database
+      const adminInvites = await db.select().from(adminUsers);
+      
+      const adminUsers = adminInvites.map(invite => ({
+        id: invite.id,
+        user: {
+          email: invite.email,
+          name: invite.inviteeName || "Unnamed Admin"
+        },
+        adminLevel: invite.adminLevel,
+        permissions: invite.permissions || [],
+        trainingStatus: invite.trainingStatus || "not_started",
+        certificationLevel: invite.certificationLevel || "none",
+        specializations: invite.specializations || [],
+        isActive: invite.status === "accepted",
+        lastActiveAt: invite.lastActiveAt || invite.createdAt,
+        invitedAt: invite.createdAt,
+        status: invite.isActive ? "accepted" : "inactive"
+      }));
       
       res.json(adminUsers);
     } catch (error) {
+      console.error("Error fetching admin users:", error);
       res.status(500).json({ error: "Failed to fetch admin users" });
     }
   });
 
   app.get("/api/admin/invitations/pending", async (req, res) => {
     try {
-      // Mock pending invitations - replace with actual database query
-      const pendingInvitations: any[] = [];
+      // Query actual pending invitations from database
+      const pendingInvitations = await db.select()
+        .from(adminUsers)
+        .where(eq(adminUsers.isActive, false));
+      
       res.json(pendingInvitations);
     } catch (error) {
+      console.error("Error fetching pending invitations:", error);
       res.status(500).json({ error: "Failed to fetch pending invitations" });
     }
   });
 
   app.get("/api/admin/communications", async (req, res) => {
     try {
-      // Mock communications data - replace with actual database query
-      const communications: any[] = [];
+      // Query actual communications from database
+      const communications = await db.select()
+        .from(adminCommunications)
+        .orderBy(desc(adminCommunications.createdAt));
+      
       res.json(communications);
     } catch (error) {
+      console.error("Error fetching communications:", error);
       res.status(500).json({ error: "Failed to fetch communications" });
     }
   });
@@ -3140,19 +3158,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { recipientType, recipientId, subject, content, priority, requiresAcknowledgment } = req.body;
       
-      // Mock communication sending - implement actual logic
-      const communication = {
+      // Insert communication into database
+      const [communication] = await db.insert(adminCommunications).values({
         id: crypto.randomUUID(),
+        senderId: "current_admin", // TODO: Get from authenticated session
+        recipientType,
+        recipientId,
         subject,
         content,
-        priority,
-        requiresAcknowledgment,
+        priority: priority || "normal",
+        requiresAcknowledgment: requiresAcknowledgment || false,
         createdAt: new Date(),
         isRead: false
-      };
+      }).returning();
 
       res.json({ success: true, communicationId: communication.id });
     } catch (error) {
+      console.error("Error sending communication:", error);
       res.status(500).json({ error: "Failed to send communication" });
     }
   });
