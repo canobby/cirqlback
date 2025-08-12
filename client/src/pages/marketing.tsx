@@ -40,11 +40,53 @@ import {
   Star,
   Gift,
   Megaphone,
-  PieChart
+  PieChart,
+  Edit,
+  Menu,
+  Image,
+  Link,
+  ExternalLink,
+  Save,
+  Palette
 } from "lucide-react";
 
 export default function Marketing() {
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
+  const [websiteForm, setWebsiteForm] = useState({
+    websiteEnabled: false,
+    websiteSlug: "",
+    websiteTheme: "modern",
+    websiteContent: {
+      businessName: "",
+      tagline: "",
+      aboutText: "",
+      contactInfo: "",
+      specialOffers: ""
+    },
+    websiteMenu: {
+      categories: [],
+      items: []
+    },
+    websiteServices: {
+      services: []
+    },
+    websiteHours: {
+      monday: { open: "9:00", close: "17:00", closed: false },
+      tuesday: { open: "9:00", close: "17:00", closed: false },
+      wednesday: { open: "9:00", close: "17:00", closed: false },
+      thursday: { open: "9:00", close: "17:00", closed: false },
+      friday: { open: "9:00", close: "17:00", closed: false },
+      saturday: { open: "10:00", close: "16:00", closed: false },
+      sunday: { open: "", close: "", closed: true }
+    },
+    websiteSocialLinks: {
+      facebook: "",
+      instagram: "",
+      twitter: "",
+      linkedin: "",
+      tiktok: ""
+    }
+  });
   const [campaignForm, setCampaignForm] = useState({
     name: "",
     type: "email",
@@ -215,14 +257,336 @@ export default function Marketing() {
         </div>
 
         {/* Main Marketing Tabs */}
-        <Tabs defaultValue="campaigns" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+        <Tabs defaultValue="website" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="website">Website Builder</TabsTrigger>
             <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
             <TabsTrigger value="audiences">Audiences</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
             <TabsTrigger value="automation">Automation</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
+
+          {/* Website Builder Tab */}
+          <TabsContent value="website" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Globe className="h-5 w-5 mr-2 text-blue-600" />
+                    Website Builder & Hosting
+                  </CardTitle>
+                  <p className="text-sm text-gray-600">
+                    Create a professional one-page website for your business. No technical skills required!
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-blue-800 mb-2">💰 Save Money on Website Costs</h4>
+                    <p className="text-sm text-blue-700 mb-3">
+                      Many small businesses spend $500-2000+ on website development. Our hosted solution includes:
+                    </p>
+                    <ul className="text-xs text-blue-700 space-y-1">
+                      <li>✓ Professional website design & hosting</li>
+                      <li>✓ Menu, services, hours, and contact info</li>
+                      <li>✓ Social media integration</li>
+                      <li>✓ Mobile-responsive design</li>
+                      <li>✓ SEO optimization for local search</li>
+                      <li>✓ Integration with your Cirql campaigns</li>
+                    </ul>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        checked={websiteForm.websiteEnabled}
+                        onCheckedChange={(checked) => 
+                          setWebsiteForm(prev => ({ ...prev, websiteEnabled: checked }))
+                        }
+                      />
+                      <Label>Enable Website Hosting</Label>
+                    </div>
+                    <Badge variant={websiteForm.websiteEnabled ? "default" : "secondary"}>
+                      {websiteForm.websiteEnabled ? "Active" : "Disabled"}
+                    </Badge>
+                  </div>
+
+                  {websiteForm.websiteEnabled && (
+                    <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <Label htmlFor="websiteSlug">Website URL</Label>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="text-sm text-gray-500">cirqlback.com/</span>
+                          <Input
+                            id="websiteSlug"
+                            value={websiteForm.websiteSlug}
+                            onChange={(e) => setWebsiteForm(prev => ({ 
+                              ...prev, 
+                              websiteSlug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') 
+                            }))}
+                            placeholder="your-business-name"
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="websiteTheme">Website Theme</Label>
+                        <Select value={websiteForm.websiteTheme} onValueChange={(value) => 
+                          setWebsiteForm(prev => ({ ...prev, websiteTheme: value }))
+                        }>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="modern">Modern & Clean</SelectItem>
+                            <SelectItem value="classic">Classic Business</SelectItem>
+                            <SelectItem value="creative">Creative & Artistic</SelectItem>
+                            <SelectItem value="restaurant">Restaurant Focused</SelectItem>
+                            <SelectItem value="fitness">Fitness & Health</SelectItem>
+                            <SelectItem value="retail">Retail & Shopping</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-4 w-4 mr-2" />
+                          Preview
+                        </Button>
+                        <Button size="sm">
+                          <Save className="h-4 w-4 mr-2" />
+                          Save Settings
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Edit className="h-5 w-5 mr-2 text-green-600" />
+                    Content Management
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="businessName">Business Name</Label>
+                    <Input
+                      id="businessName"
+                      value={websiteForm.websiteContent.businessName}
+                      onChange={(e) => setWebsiteForm(prev => ({
+                        ...prev,
+                        websiteContent: { ...prev.websiteContent, businessName: e.target.value }
+                      }))}
+                      placeholder="Your Business Name"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="tagline">Tagline</Label>
+                    <Input
+                      id="tagline"
+                      value={websiteForm.websiteContent.tagline}
+                      onChange={(e) => setWebsiteForm(prev => ({
+                        ...prev,
+                        websiteContent: { ...prev.websiteContent, tagline: e.target.value }
+                      }))}
+                      placeholder="A catchy tagline for your business"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="aboutText">About Your Business</Label>
+                    <Textarea
+                      id="aboutText"
+                      value={websiteForm.websiteContent.aboutText}
+                      onChange={(e) => setWebsiteForm(prev => ({
+                        ...prev,
+                        websiteContent: { ...prev.websiteContent, aboutText: e.target.value }
+                      }))}
+                      placeholder="Tell customers about your business, what makes you special..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="specialOffers">Special Offers</Label>
+                    <Textarea
+                      id="specialOffers"
+                      value={websiteForm.websiteContent.specialOffers}
+                      onChange={(e) => setWebsiteForm(prev => ({
+                        ...prev,
+                        websiteContent: { ...prev.websiteContent, specialOffers: e.target.value }
+                      }))}
+                      placeholder="Current promotions, deals, or special announcements..."
+                      rows={2}
+                    />
+                  </div>
+
+                  <Button className="w-full">
+                    <Save className="h-4 w-4 mr-2" />
+                    Update Content
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-3">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Menu className="h-5 w-5 mr-2 text-orange-600" />
+                    Menu & Services
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="text-sm text-gray-600">
+                    Add your menu items, services, or products that customers can discover.
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Service Categories</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {["Food & Drinks", "Services", "Products", "Classes"].map(category => (
+                        <Badge key={category} variant="outline" className="cursor-pointer hover:bg-gray-100">
+                          {category}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button variant="outline" className="w-full">
+                    <Menu className="h-4 w-4 mr-2" />
+                    Manage Menu
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Clock className="h-5 w-5 mr-2 text-purple-600" />
+                    Business Hours
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {Object.entries(websiteForm.websiteHours).map(([day, hours]) => (
+                    <div key={day} className="flex items-center justify-between text-sm">
+                      <span className="font-medium capitalize">{day}</span>
+                      <div className="flex items-center space-x-1">
+                        {hours.closed ? (
+                          <span className="text-gray-500">Closed</span>
+                        ) : (
+                          <span>{hours.open} - {hours.close}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <Button variant="outline" className="w-full">
+                    <Clock className="h-4 w-4 mr-2" />
+                    Edit Hours
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Link className="h-5 w-5 mr-2 text-pink-600" />
+                    Social Media Links
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Facebook URL"
+                      value={websiteForm.websiteSocialLinks.facebook}
+                      onChange={(e) => setWebsiteForm(prev => ({
+                        ...prev,
+                        websiteSocialLinks: { ...prev.websiteSocialLinks, facebook: e.target.value }
+                      }))}
+                    />
+                    <Input
+                      placeholder="Instagram URL"
+                      value={websiteForm.websiteSocialLinks.instagram}
+                      onChange={(e) => setWebsiteForm(prev => ({
+                        ...prev,
+                        websiteSocialLinks: { ...prev.websiteSocialLinks, instagram: e.target.value }
+                      }))}
+                    />
+                    <Input
+                      placeholder="Twitter URL"
+                      value={websiteForm.websiteSocialLinks.twitter}
+                      onChange={(e) => setWebsiteForm(prev => ({
+                        ...prev,
+                        websiteSocialLinks: { ...prev.websiteSocialLinks, twitter: e.target.value }
+                      }))}
+                    />
+                  </div>
+
+                  <Button variant="outline" className="w-full">
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Links
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Smartphone className="h-5 w-5 mr-2 text-blue-600" />
+                  Website Performance & Integration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">0</div>
+                    <div className="text-sm text-green-700">Total Views</div>
+                  </div>
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">0</div>
+                    <div className="text-sm text-blue-700">Cirql Taps from Site</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">0</div>
+                    <div className="text-sm text-purple-700">Contact Clicks</div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-green-800 mb-2">🎯 Cirql Integration Benefits</h4>
+                  <ul className="text-sm text-green-700 space-y-1">
+                    <li>✓ Website visitors can instantly find your Cirql campaigns</li>
+                    <li>✓ QR codes on your site link directly to rewards</li>
+                    <li>✓ Customer data from website visits enhances Cirql targeting</li>
+                    <li>✓ Website promotes your participation in local tap trails</li>
+                    <li>✓ Social sharing drives both website and Cirql engagement</li>
+                  </ul>
+                </div>
+
+                <div className="flex space-x-3">
+                  <Button className="flex-1">
+                    <Globe className="h-4 w-4 mr-2" />
+                    Publish Website
+                  </Button>
+                  <Button variant="outline">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View Live Site
+                  </Button>
+                  <Button variant="outline">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Campaigns Tab */}
           <TabsContent value="campaigns" className="space-y-6">

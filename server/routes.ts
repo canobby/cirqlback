@@ -2181,6 +2181,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Business Website Builder & Hosting
+  app.get("/api/business/website/:businessId", async (req, res) => {
+    try {
+      const { businessId } = req.params;
+      const website = {
+        id: businessId,
+        websiteEnabled: true,
+        websiteSlug: "sample-business",
+        websiteTheme: "modern",
+        websiteContent: {
+          businessName: "Sample Local Business",
+          tagline: "Serving the community with excellence",
+          aboutText: "We're a local business passionate about providing quality service to our community. Visit us and discover what makes us special!",
+          contactInfo: "123 Main St, Your City | (555) 123-4567",
+          specialOffers: "New customer discount: 10% off your first visit!"
+        },
+        websiteMenu: {
+          categories: ["Popular Items", "Specialties", "Beverages"],
+          items: [
+            { category: "Popular Items", name: "Signature Dish", price: "$12.99", description: "Our most popular item" },
+            { category: "Beverages", name: "Fresh Coffee", price: "$3.50", description: "Locally roasted coffee" }
+          ]
+        },
+        websiteServices: {
+          services: [
+            { name: "Quality Service", description: "Professional and friendly service" },
+            { name: "Local Focus", description: "Supporting the local community" }
+          ]
+        },
+        websiteHours: {
+          monday: { open: "9:00", close: "17:00", closed: false },
+          tuesday: { open: "9:00", close: "17:00", closed: false },
+          wednesday: { open: "9:00", close: "17:00", closed: false },
+          thursday: { open: "9:00", close: "17:00", closed: false },
+          friday: { open: "9:00", close: "17:00", closed: false },
+          saturday: { open: "10:00", close: "16:00", closed: false },
+          sunday: { open: "", close: "", closed: true }
+        },
+        websiteSocialLinks: {
+          facebook: "https://facebook.com/samplebusiness",
+          instagram: "https://instagram.com/samplebusiness",
+          twitter: "https://twitter.com/samplebusiness"
+        },
+        websitePublished: true,
+        websiteViews: 245
+      };
+      res.json(website);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch website data" });
+    }
+  });
+
+  app.put("/api/business/website/:businessId", async (req, res) => {
+    try {
+      const { businessId } = req.params;
+      const websiteData = req.body;
+      
+      // Here you would update the business website data in the database
+      const updatedWebsite = {
+        ...websiteData,
+        websiteLastUpdated: new Date(),
+        id: businessId
+      };
+      
+      res.json({ success: true, website: updatedWebsite });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update website" });
+    }
+  });
+
+  app.post("/api/business/website/:businessId/publish", async (req, res) => {
+    try {
+      const { businessId } = req.params;
+      
+      // Here you would publish the website and make it live
+      const publishedWebsite = {
+        businessId,
+        websitePublished: true,
+        publishedAt: new Date(),
+        websiteUrl: `https://cirqlback.com/biz/${businessId}`,
+        seoOptimized: true,
+        mobileResponsive: true
+      };
+      
+      res.json({ success: true, website: publishedWebsite });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to publish website" });
+    }
+  });
+
+  // Public business website serving
+  app.get("/biz/:businessSlug", async (req, res) => {
+    try {
+      const { businessSlug } = req.params;
+      
+      // This would serve the actual business website
+      // For now, we return a sample HTML template
+      const businessWebsite = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Sample Local Business - Serving the community with excellence</title>
+          <meta name="description" content="Local business passionate about providing quality service to our community.">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; }
+            .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+            .header { text-align: center; padding: 40px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+            .content { padding: 40px 0; }
+            .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+            .card { background: #f8f9fa; padding: 20px; border-radius: 8px; }
+            .cirql-banner { background: linear-gradient(135deg, #ff6b6b, #4ecdc4); color: white; text-align: center; padding: 20px; margin: 20px 0; border-radius: 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Sample Local Business</h1>
+            <p>Serving the community with excellence</p>
+          </div>
+          <div class="container">
+            <div class="cirql-banner">
+              <h3>🎯 Tap to Earn Rewards!</h3>
+              <p>Look for our Cirql tags in-store to unlock exclusive deals and join local treasure hunts!</p>
+            </div>
+            <div class="content">
+              <div class="grid">
+                <div class="card">
+                  <h3>About Us</h3>
+                  <p>We're a local business passionate about providing quality service to our community. Visit us and discover what makes us special!</p>
+                </div>
+                <div class="card">
+                  <h3>Hours</h3>
+                  <p>Mon-Fri: 9:00 AM - 5:00 PM<br>
+                     Sat: 10:00 AM - 4:00 PM<br>
+                     Sun: Closed</p>
+                </div>
+                <div class="card">
+                  <h3>Special Offers</h3>
+                  <p>New customer discount: 10% off your first visit!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      res.setHeader('Content-Type', 'text/html');
+      res.send(businessWebsite);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load business website" });
+    }
+  });
+
   // Register AR Game routes
   registerARGameRoutes(app);
 
