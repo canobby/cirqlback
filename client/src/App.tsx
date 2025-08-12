@@ -40,6 +40,8 @@ import ARExperience from "@/pages/ar-experience";
 import BusinessSettings from "@/pages/business-settings";
 import CampaignBuilder from "@/pages/campaign-builder";
 import AdminDashboard from "@/pages/admin-dashboard";
+import AdminInvitations from "@/pages/admin-invitations";
+import AdminTrainingCenter from "@/pages/admin-training-center";
 
 function Router() {
   const [location] = useLocation();
@@ -85,6 +87,8 @@ function Router() {
           <Route path="/business-settings" component={BusinessSettings} />
           <Route path="/campaign-builder" component={CampaignBuilder} />
           <Route path="/admin-dashboard" component={AdminDashboard} />
+          <Route path="/admin-invitations" component={AdminInvitations} />
+          <Route path="/admin-training-center" component={AdminTrainingCenter} />
           <Route component={NotFound} />
         </Switch>
       </main>

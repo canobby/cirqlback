@@ -571,9 +571,105 @@ export const adminUsers = pgTable("admin_users", {
   userId: varchar("user_id").references(() => users.id).notNull(),
   adminLevel: varchar("admin_level").notNull(), // 'master', 'platform', 'support'
   permissions: jsonb("permissions").notNull(), // Array of permission strings
+  // Invitation System
+  invitedBy: varchar("invited_by").references(() => users.id),
+  inviteToken: varchar("invite_token").unique(),
+  inviteExpiresAt: timestamp("invite_expires_at"),
+  inviteAcceptedAt: timestamp("invite_accepted_at"),
+  invitationEmail: varchar("invitation_email"),
+  // Training and Certification System
+  trainingStatus: varchar("training_status").default("pending"), // pending, in_progress, completed, failed
+  trainingCompletedAt: timestamp("training_completed_at"),
+  certificationLevel: varchar("certification_level").default("basic"), // basic, intermediate, advanced, expert
+  knowledgeChecklistProgress: jsonb("knowledge_checklist_progress").default(sql`'{}'`),
+  practicalTestScore: integer("practical_test_score"), // 0-100
+  // Communication Preferences
+  communicationPreferences: jsonb("communication_preferences").default(sql`'{
+    "email_notifications": true,
+    "system_alerts": true,
+    "training_updates": true,
+    "platform_announcements": true
+  }'`),
+  specializations: text("specializations").array().default(sql`'{}'`), // user_management, campaign_oversight, technical_support
+  emergencyContact: jsonb("emergency_contact").default(sql`'{}'`),
   createdAt: timestamp("created_at").defaultNow(),
   lastLoginAt: timestamp("last_login_at"),
+  lastActiveAt: timestamp("last_active_at"),
   isActive: boolean("is_active").default(true),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Admin Training Modules table
+export const adminTrainingModules = pgTable("admin_training_modules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  moduleType: varchar("module_type").notNull(), // knowledge, practical, assessment
+  category: varchar("category").notNull(), // platform_overview, user_management, campaign_management, technical_support
+  requiredLevel: varchar("required_level").default("basic"), // basic, intermediate, advanced, expert
+  content: jsonb("content").notNull(), // lesson content, questions, practical tasks
+  passingScore: integer("passing_score").default(80), // minimum score to pass
+  timeEstimate: integer("time_estimate"), // estimated completion time in minutes
+  prerequisites: text("prerequisites").array().default(sql`'{}'`), // required module IDs
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Admin Training Progress table
+export const adminTrainingProgress = pgTable("admin_training_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminUserId: varchar("admin_user_id").references(() => adminUsers.id).notNull(),
+  moduleId: varchar("module_id").references(() => adminTrainingModules.id).notNull(),
+  status: varchar("status").default("not_started"), // not_started, in_progress, completed, failed
+  score: integer("score"), // for assessments
+  timeSpent: integer("time_spent"), // minutes
+  completedAt: timestamp("completed_at"),
+  attempts: integer("attempts").default(0),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  answers: jsonb("answers"), // for assessments and practical tests
+  feedback: text("feedback"), // instructor or system feedback
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Admin Communications table
+export const adminCommunications = pgTable("admin_communications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  senderId: varchar("sender_id").references(() => adminUsers.id),
+  recipientId: varchar("recipient_id").references(() => adminUsers.id),
+  recipientRole: varchar("recipient_role"), // for broadcasting to all admins of specific role
+  recipientLevel: varchar("recipient_level"), // for broadcasting to specific certification levels
+  type: varchar("type").notNull(), // announcement, training_update, system_alert, personal_message, emergency
+  priority: varchar("priority").default("normal"), // low, normal, high, urgent, emergency
+  subject: varchar("subject").notNull(),
+  content: text("content").notNull(),
+  metadata: jsonb("metadata").default(sql`'{}'`), // attachments, links, action buttons
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  requiresAcknowledgment: boolean("requires_acknowledgment").default(false),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  actionRequired: varchar("action_required"), // complete_training, update_settings, review_policy
+  actionCompletedAt: timestamp("action_completed_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Admin Knowledge Checklist Items
+export const adminKnowledgeItems = pgTable("admin_knowledge_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  category: varchar("category").notNull(), // platform_overview, user_management, campaign_oversight, etc.
+  subcategory: varchar("subcategory"),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  importance: varchar("importance").default("medium"), // low, medium, high, critical
+  requiredFor: text("required_for").array().default(sql`'{}'`), // certification levels that require this
+  verificationMethod: varchar("verification_method"), // quiz, practical, observation
+  resourceLinks: jsonb("resource_links").default(sql`'{}'`),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const platformSettings = pgTable("platform_settings", {

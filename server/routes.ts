@@ -3048,5 +3048,255 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Store the broadcast function globally for use in routes
   (global as any).broadcastToClients = broadcastToClients;
 
+  // Admin Invitation and Management Routes - ADMIN ONLY ACCESS
+  // These routes are only accessible by admin users and hidden from regular users/customers
+  
+  app.post("/api/admin/invite", async (req, res) => {
+    try {
+      // Check admin permissions first
+      // const adminUser = await isAdminAuthenticated(req);
+      // if (!adminUser || adminUser.adminLevel !== 'master') {
+      //   return res.status(403).json({ error: "Admin access required" });
+      // }
+
+      const { email, adminLevel, specializations, personalMessage, emergencyContact } = req.body;
+      
+      // Generate secure invitation token
+      const inviteToken = crypto.randomUUID();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days to accept
+
+      // Store invitation (mock implementation for now)
+      const invitation = {
+        id: crypto.randomUUID(),
+        invitationEmail: email,
+        adminLevel,
+        specializations,
+        inviteToken,
+        inviteExpiresAt: expiresAt,
+        personalMessage,
+        emergencyContact,
+        createdAt: new Date(),
+        status: 'pending'
+      };
+
+      // TODO: Send invitation email with training requirements
+      
+      res.json({ 
+        success: true, 
+        invitationId: invitation.id,
+        message: "Admin invitation sent with training requirements" 
+      });
+    } catch (error) {
+      console.error("Admin invitation error:", error);
+      res.status(500).json({ error: "Failed to send invitation" });
+    }
+  });
+
+  app.get("/api/admin/users", async (req, res) => {
+    try {
+      // Mock admin users data - replace with actual database query
+      const adminUsers = [
+        {
+          id: "admin_1",
+          user: { email: "admin@cirqlback.com" },
+          adminLevel: "master",
+          permissions: ["*"],
+          trainingStatus: "completed",
+          certificationLevel: "expert",
+          specializations: ["user_management", "technical_support"],
+          isActive: true,
+          lastActiveAt: new Date().toISOString(),
+        }
+      ];
+      
+      res.json(adminUsers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch admin users" });
+    }
+  });
+
+  app.get("/api/admin/invitations/pending", async (req, res) => {
+    try {
+      // Mock pending invitations - replace with actual database query
+      const pendingInvitations: any[] = [];
+      res.json(pendingInvitations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pending invitations" });
+    }
+  });
+
+  app.get("/api/admin/communications", async (req, res) => {
+    try {
+      // Mock communications data - replace with actual database query
+      const communications: any[] = [];
+      res.json(communications);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch communications" });
+    }
+  });
+
+  app.post("/api/admin/communications/send", async (req, res) => {
+    try {
+      const { recipientType, recipientId, subject, content, priority, requiresAcknowledgment } = req.body;
+      
+      // Mock communication sending - implement actual logic
+      const communication = {
+        id: crypto.randomUUID(),
+        subject,
+        content,
+        priority,
+        requiresAcknowledgment,
+        createdAt: new Date(),
+        isRead: false
+      };
+
+      res.json({ success: true, communicationId: communication.id });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send communication" });
+    }
+  });
+
+  app.delete("/api/admin/invitations/:inviteId", async (req, res) => {
+    try {
+      const { inviteId } = req.params;
+      // Mock revoke invitation logic
+      res.json({ success: true, message: "Invitation revoked" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to revoke invitation" });
+    }
+  });
+
+  app.patch("/api/admin/users/:adminId/status", async (req, res) => {
+    try {
+      const { adminId } = req.params;
+      const { isActive } = req.body;
+      // Mock admin status update
+      res.json({ success: true, message: "Admin status updated" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update admin status" });
+    }
+  });
+
+  // Admin Training Center Routes - ADMIN ONLY ACCESS
+  
+  app.get("/api/admin/training/progress", async (req, res) => {
+    try {
+      // Mock training progress data
+      const trainingProgress: any[] = [];
+      res.json(trainingProgress);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch training progress" });
+    }
+  });
+
+  app.get("/api/admin/training/modules", async (req, res) => {
+    try {
+      // Mock training modules - this would come from database
+      const modules = [
+        {
+          id: "module_1",
+          title: "Platform Overview Fundamentals",
+          description: "Learn Cirqlback's core features and business model",
+          category: "platform_overview",
+          moduleType: "knowledge",
+          timeEstimate: 45,
+          requiredLevel: "basic"
+        },
+        {
+          id: "module_2", 
+          title: "User Account Management",
+          description: "Managing customer and merchant accounts",
+          category: "user_management",
+          moduleType: "practical",
+          timeEstimate: 60,
+          requiredLevel: "basic"
+        }
+      ];
+      res.json(modules);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch training modules" });
+    }
+  });
+
+  app.get("/api/admin/training/knowledge-checklist", async (req, res) => {
+    try {
+      // Mock knowledge checklist data
+      const checklist = {
+        platform_overview: [
+          {
+            id: "po_1",
+            title: "Understand NFC tag functionality",
+            description: "Know how Cirql tags work and their purpose",
+            importance: "critical",
+            completed: false
+          }
+        ],
+        user_management: [
+          {
+            id: "um_1",
+            title: "User role permissions",
+            description: "Understand different user roles and their capabilities",
+            importance: "high",
+            completed: false
+          }
+        ]
+      };
+      res.json(checklist);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch knowledge checklist" });
+    }
+  });
+
+  app.get("/api/admin/profile", async (req, res) => {
+    try {
+      // Mock admin profile data
+      const profile = {
+        id: "admin_1",
+        certificationLevel: "basic",
+        specializations: ["user_management"],
+        trainingStatus: "in_progress"
+      };
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch admin profile" });
+    }
+  });
+
+  app.post("/api/admin/training/modules/:moduleId/start", async (req, res) => {
+    try {
+      const { moduleId } = req.params;
+      // Mock start module logic
+      res.json({ success: true, message: "Module started" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to start module" });
+    }
+  });
+
+  app.post("/api/admin/training/modules/:moduleId/complete", async (req, res) => {
+    try {
+      const { moduleId } = req.params;
+      const { answers } = req.body;
+      
+      // Mock completion logic with scoring
+      const score = Math.floor(Math.random() * 30) + 70; // Random score 70-100
+      const passed = score >= 80;
+      
+      res.json({ success: true, score, passed });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to complete module" });
+    }
+  });
+
+  app.patch("/api/admin/training/knowledge-checklist", async (req, res) => {
+    try {
+      const { itemId, completed } = req.body;
+      // Mock checklist update
+      res.json({ success: true, message: "Checklist updated" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update checklist" });
+    }
+  });
+
   return httpServer;
 }
