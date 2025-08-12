@@ -4013,5 +4013,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Profile Setup Endpoints
+  app.post("/api/profile/setup", async (req, res) => {
+    try {
+      const profileData = req.body;
+      
+      // Store profile data (using memory storage for now)
+      const profile = {
+        id: Math.random().toString(36).substr(2, 9),
+        ...profileData,
+        createdAt: new Date().toISOString(),
+        setupComplete: true
+      };
+      
+      // In a real app, you'd save this to database
+      console.log("Profile setup completed:", profile);
+      
+      res.json({ success: true, profile });
+    } catch (error) {
+      console.error("Profile setup error:", error);
+      res.status(500).json({ error: "Failed to save profile" });
+    }
+  });
+
+  app.get("/api/profile", (req, res) => {
+    // Return mock profile for now
+    res.json({
+      id: "user-123",
+      firstName: "John",
+      lastName: "Doe", 
+      contactName: "John",
+      email: "john@example.com",
+      businessName: "Demo Business",
+      businessTitle: "Owner",
+      setupComplete: false
+    });
+  });
+
   return httpServer;
 }

@@ -94,6 +94,30 @@ export default function Navbar() {
                   Account
                 </Button>
               </Link>
+              <Link href="/test-system">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/test-system") 
+                      ? "text-blue-600 bg-blue-50 border border-blue-200" 
+                      : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                  }`}
+                >
+                  Testing
+                </Button>
+              </Link>
+              <Link href="/admin-dashboard">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/admin-dashboard") 
+                      ? "text-red-600 bg-red-50 border border-red-200" 
+                      : "text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                  }`}
+                >
+                  Admin
+                </Button>
+              </Link>
             </div>
           </div>
           
@@ -258,6 +282,32 @@ export default function Navbar() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Account Settings
+                </Button>
+              </Link>
+              <Link href="/test-system">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/test-system") 
+                      ? "text-blue-600 bg-blue-50" 
+                      : "text-gray-700 hover:text-blue-600"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Test System
+                </Button>
+              </Link>
+              <Link href="/admin-dashboard">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/admin-dashboard") 
+                      ? "text-red-600 bg-red-50" 
+                      : "text-gray-700 hover:text-red-600"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Admin Dashboard
                 </Button>
               </Link>
               <Link href="/how-it-works">

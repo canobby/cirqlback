@@ -44,6 +44,7 @@ import AdminInvitations from "@/pages/admin-invitations";
 import AdminTrainingCenter from "@/pages/admin-training-center";
 import TestSystem from "@/pages/test-system";
 import CommunicationPage from "@/pages/communication";
+import ProfileSetup from "@/pages/profile-setup";
 
 function Router() {
   const [location] = useLocation();
@@ -93,6 +94,7 @@ function Router() {
           <Route path="/admin-training-center" component={AdminTrainingCenter} />
           <Route path="/test-system" component={TestSystem} />
           <Route path="/communication" component={CommunicationPage} />
+          <Route path="/profile-setup" component={ProfileSetup} />
           <Route component={NotFound} />
         </Switch>
       </main>

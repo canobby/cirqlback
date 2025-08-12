@@ -130,6 +130,12 @@ export default function PlatformMenu() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
+          <Link href="/profile-setup" className="flex items-center gap-2 w-full">
+            <UserCircle className="h-4 w-4" />
+            Profile Setup
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
           <Link href="/profile" className="flex items-center gap-2 w-full">
             <UserCircle className="h-4 w-4" />
             Customer Profile
@@ -145,6 +151,21 @@ export default function PlatformMenu() {
           <Link href="/checkout" className="flex items-center gap-2 w-full">
             <CreditCard className="h-4 w-4" />
             Subscription Checkout
+          </Link>
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>🔧 Development & Testing</DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <Link href="/test-system" className="flex items-center gap-2 w-full">
+            <Settings className="h-4 w-4" />
+            Test System
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/admin-dashboard" className="flex items-center gap-2 w-full">
+            <Settings className="h-4 w-4" />
+            Admin Dashboard
           </Link>
         </DropdownMenuItem>
         
