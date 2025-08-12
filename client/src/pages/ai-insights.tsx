@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import {
   Brain,
@@ -28,13 +31,117 @@ import {
   ArrowDown,
   Activity,
   Shield,
-  Sparkles
+  Sparkles,
+  Loader2
 } from "lucide-react";
 
 export default function AIInsights() {
   const [selectedBusiness, setSelectedBusiness] = useState("all");
   const [timeRange, setTimeRange] = useState("30d");
   const [refreshing, setRefreshing] = useState(false);
+  const { toast } = useToast();
+
+  // Real AI business insights
+  const { data: aiInsights, isLoading: insightsLoading, refetch: refetchInsights } = useQuery({
+    queryKey: ['/api/ai/business-insights', selectedBusiness, timeRange],
+    queryFn: async () => {
+      const businessData = {
+        type: "Coffee Shop",
+        revenue: 25000,
+        customers: 847,
+        campaigns: 7,
+        location: "Downtown District"
+      };
+      return await apiRequest("POST", "/api/ai/business-insights", businessData);
+    }
+  });
+
+  // Real AI pricing optimization
+  const { data: pricingData, isLoading: pricingLoading } = useQuery({
+    queryKey: ['/api/ai/pricing-optimization', selectedBusiness],
+    queryFn: async () => {
+      const pricingInput = {
+        businessType: "Coffee Shop",
+        currentPrices: [
+          { item: "Coffee", price: 4.50, volume: 200 },
+          { item: "Lunch Special", price: 12.99, volume: 85 },
+          { item: "Happy Hour", price: 6.00, volume: 120 },
+          { item: "Weekend Brunch", price: 18.00, volume: 45 }
+        ],
+        location: "Downtown District"
+      };
+      return await apiRequest("POST", "/api/ai/pricing-optimization", pricingInput);
+    }
+  });
+
+  // Real AI predictive analytics
+  const { data: predictiveData, isLoading: predictiveLoading } = useQuery({
+    queryKey: ['/api/ai/predictive-analytics', timeRange],
+    queryFn: async () => {
+      const historicalData = {
+        businessType: "Coffee Shop",
+        monthlyRevenue: [22000, 24000, 23500, 25000, 26500, 25800],
+        customerCount: [780, 820, 810, 847, 890, 875],
+        campaignPerformance: [
+          { name: "Morning Rush", roi: 3.2, engagement: 78 },
+          { name: "Loyalty Program", roi: 4.1, engagement: 85 },
+          { name: "Social Media", roi: 2.8, engagement: 65 }
+        ],
+        seasonality: "Spring"
+      };
+      return await apiRequest("POST", "/api/ai/predictive-analytics", historicalData);
+    }
+  });
+
+  // Real AI customer behavior analysis
+  const { data: customerAnalysis, isLoading: customerLoading } = useQuery({
+    queryKey: ['/api/ai/customer-behavior', timeRange],
+    queryFn: async () => {
+      const customerData = {
+        segments: [
+          { name: "High Value", size: 245, avgSpend: 25.50, frequency: 4.2 },
+          { name: "Regular", size: 892, avgSpend: 12.75, frequency: 2.1 },
+          { name: "Occasional", size: 456, avgSpend: 8.25, frequency: 0.8 }
+        ],
+        behaviors: [
+          { action: "Coffee Purchase", frequency: 340, timeOfDay: "morning" },
+          { action: "Lunch Order", frequency: 120, timeOfDay: "noon" },
+          { action: "Social Check-in", frequency: 85, timeOfDay: "afternoon" }
+        ],
+        preferences: [
+          { category: "Payment", preference: "contactless", strength: 78 },
+          { category: "Rewards", preference: "instant", strength: 92 },
+          { category: "Communication", preference: "app", strength: 65 }
+        ]
+      };
+      return await apiRequest("POST", "/api/ai/customer-behavior", customerData);
+    }
+  });
+
+  // Refresh all AI insights
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      await Promise.all([
+        refetchInsights(),
+        // Add other refetch calls as needed
+      ]);
+    },
+    onSuccess: () => {
+      toast({
+        title: "AI Insights Updated",
+        description: "All insights have been refreshed with latest data.",
+      });
+      setRefreshing(false);
+    },
+    onError: () => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to refresh AI insights. Please try again.",
+        variant: "destructive",
+      });
+      setRefreshing(false);
+    }
+  });
 
   // Mock data for AI insights
   const customerHealthData = [
@@ -73,7 +180,7 @@ export default function AIInsights() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 2000);
+    refreshMutation.mutate();
   };
 
   return (
@@ -135,9 +242,13 @@ export default function AIInsights() {
         </div>
 
         {/* AI Insights Tabs */}
-        <Tabs defaultValue="health-scoring" className="space-y-6">
+        <Tabs defaultValue="ai-insights" className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="grid grid-cols-5 min-w-max lg:w-full">
+            <TabsList className="grid grid-cols-6 min-w-max lg:w-full">
+              <TabsTrigger value="ai-insights" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Brain className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">AI Insights</span>
+              </TabsTrigger>
               <TabsTrigger value="health-scoring" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
                 <Activity className="h-3 w-3 lg:h-4 lg:w-4" />
                 <span className="hidden sm:inline">Health</span>
@@ -160,6 +271,171 @@ export default function AIInsights() {
               </TabsTrigger>
             </TabsList>
           </div>
+
+          {/* Real AI Insights Tab */}
+          <TabsContent value="ai-insights" className="space-y-6">
+            {insightsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                <span className="ml-2 text-lg">AI analyzing your business data...</span>
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {/* Business Insights */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="h-5 w-5 text-purple-500" />
+                      AI Business Insights
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4">
+                      {aiInsights?.insights?.map((insight: any, index: number) => (
+                        <div key={index} className="p-4 rounded-lg border bg-gradient-to-r from-purple-50 to-pink-50">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant={insight.priority === 'high' ? 'destructive' : insight.priority === 'medium' ? 'default' : 'secondary'}>
+                                  {insight.priority} priority
+                                </Badge>
+                                <Badge variant="outline">{insight.category}</Badge>
+                                {insight.actionable && <Badge className="bg-green-100 text-green-700">Actionable</Badge>}
+                              </div>
+                              <p className="text-gray-700">{insight.insight}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )) || (
+                        <div className="text-center py-6 text-gray-500">
+                          No AI insights available. Click refresh to generate new insights.
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Predictive Analytics */}
+                {predictiveData?.analytics && (
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <TrendingUp className="h-5 w-5 text-blue-500" />
+                          Customer Retention Prediction
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <span>Current Retention Rate</span>
+                            <span className="font-bold">{predictiveData.analytics.customerRetention?.current}%</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Predicted Next Quarter</span>
+                            <span className="font-bold text-blue-600">{predictiveData.analytics.customerRetention?.predicted}%</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={predictiveData.analytics.customerRetention?.trend === 'increasing' ? 'default' : 'destructive'}>
+                              {predictiveData.analytics.customerRetention?.trend}
+                            </Badge>
+                          </div>
+                          <div className="pt-2">
+                            <p className="text-sm text-gray-600 mb-2">Key Factors:</p>
+                            <ul className="text-sm text-gray-700 space-y-1">
+                              {predictiveData.analytics.customerRetention?.factors?.map((factor: string, idx: number) => (
+                                <li key={idx} className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                  {factor}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <DollarSign className="h-5 w-5 text-green-500" />
+                          Revenue Growth Forecast
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <span>Next Quarter Growth</span>
+                            <span className="font-bold text-green-600">{predictiveData.analytics.revenueGrowth?.nextQuarter}%</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Confidence Level</span>
+                            <span className="font-bold">{predictiveData.analytics.revenueGrowth?.confidence}%</span>
+                          </div>
+                          <div className="pt-2">
+                            <p className="text-sm text-gray-600 mb-2">Key Drivers:</p>
+                            <ul className="text-sm text-gray-700 space-y-1">
+                              {predictiveData.analytics.revenueGrowth?.keyDrivers?.map((driver: string, idx: number) => (
+                                <li key={idx} className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                  {driver}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* Customer Behavior Analysis */}
+                {customerAnalysis?.analysis && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-orange-500" />
+                        Customer Behavior Insights
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        {customerAnalysis.analysis.segments?.map((segment: any, index: number) => (
+                          <div key={index} className="p-4 rounded-lg border">
+                            <h4 className="font-semibold text-lg mb-2">{segment.name} Segment</h4>
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-sm text-gray-600 mb-2">Key Insights:</p>
+                                <ul className="text-sm space-y-1">
+                                  {segment.insights?.map((insight: string, idx: number) => (
+                                    <li key={idx} className="flex items-start gap-2">
+                                      <Lightbulb className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                                      {insight}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-600 mb-2">Recommendations:</p>
+                                <ul className="text-sm space-y-1">
+                                  {segment.recommendations?.map((rec: string, idx: number) => (
+                                    <li key={idx} className="flex items-start gap-2">
+                                      <Target className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                                      {rec}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+          </TabsContent>
 
           {/* Customer Health Scoring */}
           <TabsContent value="health-scoring" className="space-y-6">

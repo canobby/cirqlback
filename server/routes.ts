@@ -9,6 +9,7 @@ import { eq, desc } from "drizzle-orm";
 import { insertBusinessSchema, insertCampaignSchema, insertNfcTagSchema, insertTapSchema, insertRewardSchema, insertTapTrailSchema, insertReferralSchema, insertSubscriptionPlanSchema, insertUserSubscriptionSchema, insertApiUsageSchema } from "@shared/schema";
 import { z } from "zod";
 import crypto from "crypto";
+import { openaiService } from "./openai-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -3711,6 +3712,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, message: "Checklist updated" });
     } catch (error) {
       res.status(500).json({ error: "Failed to update checklist" });
+    }
+  });
+
+  // AI-powered endpoints using OpenAI
+  app.post("/api/ai/business-insights", async (req, res) => {
+    try {
+      const businessData = req.body;
+      const insights = await openaiService.generateBusinessInsights(businessData);
+      res.json({ insights });
+    } catch (error) {
+      console.error("Error generating business insights:", error);
+      res.status(500).json({ error: "Failed to generate business insights" });
+    }
+  });
+
+  app.post("/api/ai/campaign-suggestions", async (req, res) => {
+    try {
+      const businessContext = req.body;
+      const suggestion = await openaiService.generateCampaignSuggestion(businessContext);
+      res.json({ suggestion });
+    } catch (error) {
+      console.error("Error generating campaign suggestion:", error);
+      res.status(500).json({ error: "Failed to generate campaign suggestion" });
+    }
+  });
+
+  app.post("/api/ai/pricing-optimization", async (req, res) => {
+    try {
+      const pricingData = req.body;
+      const optimizations = await openaiService.analyzePricing(pricingData);
+      res.json({ optimizations });
+    } catch (error) {
+      console.error("Error analyzing pricing:", error);
+      res.status(500).json({ error: "Failed to analyze pricing" });
+    }
+  });
+
+  app.post("/api/ai/predictive-analytics", async (req, res) => {
+    try {
+      const historicalData = req.body;
+      const analytics = await openaiService.generatePredictiveAnalytics(historicalData);
+      res.json({ analytics });
+    } catch (error) {
+      console.error("Error generating predictive analytics:", error);
+      res.status(500).json({ error: "Failed to generate predictive analytics" });
+    }
+  });
+
+  app.post("/api/ai/customer-behavior", async (req, res) => {
+    try {
+      const customerData = req.body;
+      const analysis = await openaiService.analyzeCustomerBehavior(customerData);
+      res.json({ analysis });
+    } catch (error) {
+      console.error("Error analyzing customer behavior:", error);
+      res.status(500).json({ error: "Failed to analyze customer behavior" });
     }
   });
 

@@ -37,6 +37,7 @@ import {
   Plus,
   Minus
 } from "lucide-react";
+import { GuidedTour } from "@/components/interactive/guided-tour";
 
 interface Business {
   id: string;
@@ -326,7 +327,7 @@ export default function InteractiveDiscoveryMap() {
               </div>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="outline">
+                  <Button variant="outline" data-tour="privacy-settings">
                     <Settings className="h-4 w-4 mr-2" />
                     Privacy Settings
                   </Button>
@@ -457,7 +458,7 @@ export default function InteractiveDiscoveryMap() {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                    <div className="p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200" data-tour="partnership-mode">
                       <div className="flex items-center space-x-2">
                         <Switch
                           id="partnership-mode"
@@ -473,7 +474,7 @@ export default function InteractiveDiscoveryMap() {
                       </div>
                     </div>
                     
-                    <div className="p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
+                    <div className="p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200" data-tour="zoom-control">
                       <Label className="text-sm font-medium">Map Zoom Level</Label>
                       <div className="flex items-center space-x-2 mt-2">
                         <span className="text-xs text-gray-500">Local</span>
@@ -673,7 +674,7 @@ export default function InteractiveDiscoveryMap() {
           {/* Side Panel */}
           <div className="space-y-6">
             {/* Nearby Businesses */}
-            <Card>
+            <Card data-tour="business-list">
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <MapPin className="h-5 w-5 mr-2 text-blue-500" />
@@ -719,7 +720,7 @@ export default function InteractiveDiscoveryMap() {
             </Card>
 
             {/* Visible Customers */}
-            <Card>
+            <Card data-tour="customer-list">
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Users className="h-5 w-5 mr-2 text-green-500" />
@@ -960,6 +961,54 @@ export default function InteractiveDiscoveryMap() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Map Guided Tour */}
+      <GuidedTour
+        tourId="map-tour"
+        autoStart={false}
+        steps={[
+          {
+            id: "privacy-controls",
+            target: "[data-tour='privacy-settings']",
+            title: "Privacy & Visibility",
+            description: "Control what information you share with other customers and businesses",
+            tip: "You have complete control over your visibility and personal information sharing",
+            position: "bottom"
+          },
+          {
+            id: "zoom-controls",
+            target: "[data-tour='zoom-control']",
+            title: "Dynamic Discovery",
+            description: "Adjust zoom level to discover businesses from local to global",
+            tip: "Level 1-3: Very Local, 4-6: Regional, 7-10: All merchants worldwide",
+            position: "top"
+          },
+          {
+            id: "partnership-mode",
+            target: "[data-tour='partnership-mode']",
+            title: "Global Network",
+            description: "Enable partnership mode to connect with businesses anywhere for cross-campaigns",
+            tip: "Participate in rewards and campaigns regardless of geographic location",
+            position: "top"
+          },
+          {
+            id: "business-discovery",
+            target: "[data-tour='business-list']",
+            title: "Business Directory",
+            description: "Browse participating businesses with real-time information and offers",
+            tip: "Click any business to see details, contact info, and current promotions",
+            position: "left"
+          },
+          {
+            id: "customer-connections",
+            target: "[data-tour='customer-list']",
+            title: "Community Connections",
+            description: "Connect with other reward customers who choose to be visible",
+            tip: "Respect privacy settings - only customers who opt-in will appear here",
+            position: "left"
+          }
+        ]}
+      />
     </div>
   );
 }

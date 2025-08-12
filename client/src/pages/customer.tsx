@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Gift, Users, MapPin, Share2, Star, Target, Zap } from "lucide-react";
 import EnhancedRewards from "@/components/customer/enhanced-rewards";
 import LoyaltyIntegration from "@/components/customer/loyalty-integration";
+import { GuidedTour } from "@/components/interactive/guided-tour";
 
 export default function Customer() {
   const [customerEmail, setCustomerEmail] = useState("");
@@ -77,10 +78,15 @@ export default function Customer() {
             </div>
 
             <TabsContent value="rewards" className="space-y-6">
-              <LoyaltyIntegration />
+              <div data-tour="enhanced-rewards">
+                <LoyaltyIntegration />
+              </div>
+              <div data-tour="loyalty-integration">
+                <EnhancedRewards />
+              </div>
             </TabsContent>
 
-            <TabsContent value="progress" className="space-y-6">
+            <TabsContent value="progress" className="space-y-6" data-tour="team-challenges">
               <Card className="bg-gradient-to-br from-orange-500 to-red-500 text-white">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -133,7 +139,7 @@ export default function Customer() {
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card data-tour="ar-experiences">
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Zap className="h-5 w-5 mr-2 text-purple-600" />
@@ -220,6 +226,54 @@ export default function Customer() {
           </div>
         )}
       </div>
+
+      {/* Customer Guided Tour */}
+      <GuidedTour
+        tourId="customer-tour"
+        autoStart={false}
+        steps={[
+          {
+            id: "email-input",
+            target: "#customer-email",
+            title: "Access Your Rewards",
+            description: "Enter your email to view your personalized reward dashboard",
+            tip: "Your rewards and progress are automatically saved across all participating businesses",
+            position: "bottom"
+          },
+          {
+            id: "enhanced-rewards",
+            target: "[data-tour='enhanced-rewards']",
+            title: "Smart Reward System",
+            description: "AI-powered rewards that adapt to your preferences and shopping habits",
+            tip: "The more you engage, the better your personalized offers become",
+            position: "top"
+          },
+          {
+            id: "team-challenges",
+            target: "[data-tour='team-challenges']",
+            title: "Community Challenges",
+            description: "Join teams and complete multi-business challenges for bonus rewards",
+            tip: "Team up with friends to multiply your reward earnings",
+            position: "top"
+          },
+          {
+            id: "ar-experiences",
+            target: "[data-tour='ar-experiences']",
+            title: "AR Discovery",
+            description: "Unlock augmented reality treasure hunts and interactive experiences",
+            tip: "Use your phone's camera to discover hidden rewards in participating locations",
+            position: "top"
+          },
+          {
+            id: "loyalty-integration",
+            target: "[data-tour='loyalty-integration']",
+            title: "Cross-Business Loyalty",
+            description: "Your loyalty points work across all partner businesses in the network",
+            tip: "Earn points at one business and redeem them at another",
+            position: "top"
+          }
+        ]}
+      />
     </div>
   );
 }

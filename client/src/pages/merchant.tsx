@@ -15,6 +15,7 @@ import NFCStatusIndicator from "@/components/nfc/nfc-status-indicator";
 import { Store, Users, Share2, TrendingUp, Coffee, BookOpen, UtensilsCrossed, DollarSign, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PlatformSync from "@/components/global/platform-sync";
+import { GuidedTour } from "@/components/interactive/guided-tour";
 
 export default function Merchant() {
   const [selectedBusiness] = useState("business-1"); // Simulate selected business
@@ -99,15 +100,15 @@ export default function Merchant() {
       <Tabs defaultValue="campaigns" className="space-y-6">
         <div className="overflow-x-auto">
           <TabsList className="grid grid-cols-9 min-w-max lg:w-full">
-            <TabsTrigger value="campaigns" className="px-2 text-xs lg:px-3 lg:text-sm">Campaigns</TabsTrigger>
-            <TabsTrigger value="nfc-wizard" className="px-2 text-xs lg:px-3 lg:text-sm">Cirql Wizard</TabsTrigger>
+            <TabsTrigger value="campaigns" className="px-2 text-xs lg:px-3 lg:text-sm" data-tour="campaigns-tab">Campaigns</TabsTrigger>
+            <TabsTrigger value="nfc-wizard" className="px-2 text-xs lg:px-3 lg:text-sm" data-tour="nfc-tab">Cirql Wizard</TabsTrigger>
             <TabsTrigger value="nfc-manager" className="px-2 text-xs lg:px-3 lg:text-sm">Tag Manager</TabsTrigger>
             <TabsTrigger value="nfc-guide" className="px-2 text-xs lg:px-3 lg:text-sm">Deployment</TabsTrigger>
             <TabsTrigger value="nfc-analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Tag Analytics</TabsTrigger>
             <TabsTrigger value="pricing" className="px-2 text-xs lg:px-3 lg:text-sm">AI Pricing</TabsTrigger>
             <TabsTrigger value="viral" className="px-2 text-xs lg:px-3 lg:text-sm">Viral Marketing</TabsTrigger>
-            <TabsTrigger value="marketing" className="px-2 text-xs lg:px-3 lg:text-sm">Marketing</TabsTrigger>
-            <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Analytics</TabsTrigger>
+            <TabsTrigger value="marketing" className="px-2 text-xs lg:px-3 lg:text-sm" data-tour="marketing-tab">Marketing</TabsTrigger>
+            <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm" data-tour="analytics-tab">Analytics</TabsTrigger>
           </TabsList>
         </div>
 
@@ -399,6 +400,62 @@ export default function Merchant() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Merchant Guided Tour */}
+      <GuidedTour
+        tourId="merchant-tour"
+        autoStart={false}
+        steps={[
+          {
+            id: "business-header",
+            target: ".card-hover.glow-effect",
+            title: "Business Overview",
+            description: "Your business profile with real-time status and membership tier",
+            tip: "Monitor your business performance and activity status here",
+            position: "bottom"
+          },
+          {
+            id: "stats-overview",
+            target: ".grid.grid-cols-1.md\\:grid-cols-4",
+            title: "Performance Metrics",
+            description: "Track customer taps, engagement, and conversion rates",
+            tip: "These metrics update in real-time as customers interact with your business",
+            position: "bottom"
+          },
+          {
+            id: "nfc-management",
+            target: "[data-tour='nfc-tab']",
+            title: "Cirql Tag Management",
+            description: "Create, write, and manage your Cirql tags for customer touchpoints",
+            tip: "Use the NFC wizard to set up tags at tables, counters, and promotional areas",
+            position: "top"
+          },
+          {
+            id: "campaign-management",
+            target: "[data-tour='campaigns-tab']",
+            title: "Campaign Center",
+            description: "Design and launch marketing campaigns with reward automation",
+            tip: "Create cross-business partnerships to expand your customer reach",
+            position: "top"
+          },
+          {
+            id: "analytics-insights",
+            target: "[data-tour='analytics-tab']",
+            title: "Business Intelligence",
+            description: "AI-powered insights and predictive customer analytics",
+            tip: "Use these insights to optimize pricing and predict customer behavior",
+            position: "top"
+          },
+          {
+            id: "marketing-suite",
+            target: "[data-tour='marketing-tab']",
+            title: "Marketing Automation",
+            description: "Automated social media, email, and SMS marketing campaigns",
+            tip: "Your campaigns run automatically based on customer behavior patterns",
+            position: "top"
+          }
+        ]}
+      />
     </main>
   );
 }

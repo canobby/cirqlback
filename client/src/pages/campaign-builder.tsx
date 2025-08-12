@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,8 +33,12 @@ import {
   Share2,
   Plus,
   X,
-  Check
+  Check,
+  Brain,
+  Loader2,
+  Lightbulb
 } from "lucide-react";
+import { GuidedTour } from "@/components/interactive/guided-tour";
 
 interface CampaignTemplate {
   id: string;
@@ -255,6 +261,62 @@ export default function CampaignBuilder() {
   const [showAIBuilder, setShowAIBuilder] = useState(false);
   const { toast } = useToast();
 
+  // AI Campaign Suggestions Query
+  const { data: aiSuggestions, isLoading: suggestionsLoading, refetch: refetchSuggestions } = useQuery({
+    queryKey: ['/api/ai/campaign-suggestions', campaignData.businessCategory],
+    queryFn: async () => {
+      if (!campaignData.businessCategory) return null;
+      const campaignDataForAI = {
+        businessType: campaignData.businessCategory,
+        currentCampaigns: campaignTemplates.slice(0, 3),
+        budget: 1000,
+        goals: ["increase_loyalty", "attract_new_customers", "boost_revenue"],
+        location: "Downtown District",
+        seasonality: "spring"
+      };
+      return await apiRequest("POST", "/api/ai/campaign-suggestions", campaignDataForAI);
+    },
+    enabled: !!campaignData.businessCategory
+  });
+
+  // AI Campaign Generation Mutation
+  const generateCampaignMutation = useMutation({
+    mutationFn: async (prompt?: string) => {
+      const generationData = {
+        businessType: campaignData.businessCategory || "general",
+        prompt: prompt || "Generate a creative campaign idea",
+        existingCampaigns: campaignTemplates.slice(0, 3),
+        budget: 1000,
+        targetAudience: campaignData.targetAudience || "local customers",
+        goals: ["engagement", "loyalty", "growth"]
+      };
+      return await apiRequest("POST", "/api/ai/campaign-suggestions", generationData);
+    },
+    onSuccess: (data) => {
+      if (data?.suggestions?.length > 0) {
+        const aiCampaign = data.suggestions[0];
+        setAiSuggestion(aiCampaign.name + ": " + aiCampaign.description);
+        setShowAIBuilder(true);
+        setCampaignData({
+          ...campaignData,
+          name: aiCampaign.name || "AI-Generated Campaign",
+          description: aiCampaign.description || "",
+        });
+        toast({
+          title: "AI Campaign Generated",
+          description: "Your campaign has been created with AI suggestions.",
+        });
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate AI campaign. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleTemplateSelect = (template: CampaignTemplate) => {
     setSelectedTemplate(template);
     setCampaignData({
@@ -267,17 +329,7 @@ export default function CampaignBuilder() {
   };
 
   const generateAISuggestion = () => {
-    const suggestions = [
-      "Create a 'Coffee & Code' campaign targeting remote workers with coding bootcamp partnerships",
-      "Design a 'Healthy Habit Stack' combining gym, smoothie bar, and wellness clinic visits",
-      "Build a 'Date Night Discovery' trail featuring restaurant, entertainment, and dessert spots",
-      "Launch a 'Small Business Saturday' network campaign with 10+ local businesses",
-      "Develop a 'Seasonal Wellness Journey' with spa, yoga studio, and organic market collaboration"
-    ];
-    
-    const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
-    setAiSuggestion(randomSuggestion);
-    setShowAIBuilder(true);
+    generateCampaignMutation.mutate();
   };
 
   const addPartnerBusiness = (business: {id: string, name: string, category: string}) => {
@@ -338,7 +390,7 @@ export default function CampaignBuilder() {
           </div>
 
           {/* Template Selection */}
-          <TabsContent value="templates" className="space-y-6">
+          <TabsContent value="templates" className="space-y-6" data-tour="template-selection">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Pre-Made Campaign Templates</h2>
               <Badge variant="outline" className="bg-purple-50 text-purple-700">
@@ -346,7 +398,7 @@ export default function CampaignBuilder() {
               </Badge>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-tour="template-cards">
               {getSeasonalTemplates().map((template) => {
                 const IconComponent = template.icon;
                 return (
@@ -453,10 +505,10 @@ export default function CampaignBuilder() {
           </TabsContent>
 
           {/* AI Builder */}
-          <TabsContent value="ai-builder" className="space-y-6">
+          <TabsContent value="ai-builder" className="space-y-6" data-tour="ai-builder">
             <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto">
-                <Sparkles className="h-8 w-8 text-white" />
+              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto">
+                <Brain className="h-8 w-8 text-white" />
               </div>
               <h2 className="text-2xl font-semibold">AI Campaign Builder</h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
@@ -465,32 +517,134 @@ export default function CampaignBuilder() {
               
               <Button 
                 onClick={generateAISuggestion}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                disabled={generateCampaignMutation.isPending}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
                 size="lg"
               >
-                <Sparkles className="h-5 w-5 mr-2" />
-                Generate AI Campaign Idea
+                {generateCampaignMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    AI Generating...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="h-5 w-5 mr-2" />
+                    Generate AI Campaign Idea
+                  </>
+                )}
               </Button>
             </div>
 
-            {showAIBuilder && (
-              <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+            {/* Real AI Suggestions Display */}
+            {aiSuggestions?.suggestions && aiSuggestions.suggestions.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-xl text-center text-purple-800">AI Campaign Suggestions</h3>
+                <div className="grid gap-6">
+                  {aiSuggestions.suggestions.map((suggestion: any, index: number) => (
+                    <Card key={index} className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span className="text-purple-800">{suggestion.name}</span>
+                          <div className="flex gap-2">
+                            <Badge variant="outline" className="text-green-600">
+                              ROI: {suggestion.expectedROI || "25-40%"}
+                            </Badge>
+                            <Badge variant="outline" className="text-purple-600">
+                              {suggestion.duration || "30 days"}
+                            </Badge>
+                          </div>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-gray-700 mb-4">{suggestion.description}</p>
+                        {suggestion.keyFeatures && (
+                          <div className="mb-4">
+                            <p className="text-sm font-medium text-gray-600 mb-2">Key Features:</p>
+                            <ul className="text-sm text-gray-700 space-y-1">
+                              {suggestion.keyFeatures.map((feature: string, idx: number) => (
+                                <li key={idx} className="flex items-center gap-2">
+                                  <Lightbulb className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                                  {feature}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <div className="flex gap-3">
+                          <Button 
+                            onClick={() => {
+                              setCampaignData(prev => ({
+                                ...prev,
+                                name: suggestion.name || 'AI Campaign',
+                                description: suggestion.description || "",
+                              }));
+                              toast({
+                                title: "AI Campaign Applied",
+                                description: "Your campaign has been updated with the AI suggestion."
+                              });
+                            }}
+                            className="bg-green-500 hover:bg-green-600"
+                          >
+                            <Check className="mr-2 h-4 w-4" />
+                            Use This Campaign
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => generateCampaignMutation.mutate(suggestion.name)}
+                            disabled={generateCampaignMutation.isPending}
+                          >
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Enhance This Idea
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {suggestionsLoading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-500 mr-3" />
+                <span className="text-lg text-purple-600">AI analyzing your business for campaign suggestions...</span>
+              </div>
+            )}
+
+            {showAIBuilder && aiSuggestion && (
+              <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <Zap className="h-5 w-5 mr-2 text-blue-600" />
-                    AI Suggestion
+                    <Brain className="h-5 w-5 mr-2 text-purple-600" />
+                    Latest AI Suggestion
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-700 mb-4">{aiSuggestion}</p>
                   <div className="flex space-x-2">
                     <Button 
-                      onClick={() => setCampaignData({...campaignData, description: aiSuggestion})}
-                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={() => {
+                        const parts = aiSuggestion.split(':');
+                        setCampaignData({
+                          ...campaignData, 
+                          name: parts[0]?.trim() || 'AI Campaign',
+                          description: parts[1]?.trim() || aiSuggestion
+                        });
+                        toast({
+                          title: "AI Campaign Applied",
+                          description: "Your campaign has been updated with the AI suggestion."
+                        });
+                      }}
+                      className="bg-green-500 hover:bg-green-600"
                     >
+                      <Check className="mr-2 h-4 w-4" />
                       Use This Idea
                     </Button>
-                    <Button variant="outline" onClick={generateAISuggestion}>
+                    <Button 
+                      variant="outline" 
+                      onClick={generateAISuggestion}
+                      disabled={generateCampaignMutation.isPending}
+                    >
                       Generate Another
                     </Button>
                   </div>
@@ -500,7 +654,7 @@ export default function CampaignBuilder() {
           </TabsContent>
 
           {/* Custom Builder */}
-          <TabsContent value="custom" className="space-y-6">
+          <TabsContent value="custom" className="space-y-6" data-tour="custom-builder">
             <Card>
               <CardHeader>
                 <CardTitle>Custom Campaign Details</CardTitle>
@@ -600,7 +754,7 @@ export default function CampaignBuilder() {
           </TabsContent>
 
           {/* Collaboration Management */}
-          <TabsContent value="collaboration" className="space-y-6">
+          <TabsContent value="collaboration" className="space-y-6" data-tour="collaboration-hub">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Campaign Partners</h2>
               <Badge variant="outline">
@@ -609,7 +763,7 @@ export default function CampaignBuilder() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-              <Card>
+              <Card data-tour="partner-search">
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Plus className="h-5 w-5 mr-2" />
@@ -715,6 +869,54 @@ export default function CampaignBuilder() {
           </Button>
         </div>
       </div>
+
+      {/* Campaign Builder Guided Tour */}
+      <GuidedTour
+        tourId="campaign-builder-tour"
+        autoStart={false}
+        steps={[
+          {
+            id: "template-selection",
+            target: "[data-tour='template-grid']",
+            title: "Campaign Templates",
+            description: "Choose from pre-designed campaign templates for different business types and goals",
+            tip: "Templates include rewards structure, duration, and partnership opportunities",
+            position: "bottom"
+          },
+          {
+            id: "campaign-details",
+            target: "[data-tour='campaign-details']",
+            title: "Campaign Configuration",
+            description: "Customize your campaign name, description, dates, and reward structure",
+            tip: "Clear descriptions help customers understand how to participate and earn rewards",
+            position: "top"
+          },
+          {
+            id: "partnership-setup",
+            target: "[data-tour='partnership-setup']",
+            title: "Cross-Business Partnerships",
+            description: "Invite other businesses to collaborate and expand your customer reach",
+            tip: "Partner campaigns can dramatically increase participation and customer discovery",
+            position: "top"
+          },
+          {
+            id: "reward-configuration",
+            target: "[data-tour='rewards-config']",
+            title: "Reward Structure",
+            description: "Define point values, discount percentages, and special offers",
+            tip: "Balance attractive rewards with sustainable business margins",
+            position: "top"
+          },
+          {
+            id: "launch-campaign",
+            target: "[data-tour='create-button']",
+            title: "Campaign Launch",
+            description: "Review and launch your campaign to start attracting customers",
+            tip: "Once launched, customers can immediately start participating and earning rewards",
+            position: "top"
+          }
+        ]}
+      />
     </div>
   );
 }
