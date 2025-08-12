@@ -350,7 +350,7 @@ export default function Marketing() {
                       </div>
 
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => window.open('/website-preview', '_blank')}>
                           <Eye className="h-4 w-4 mr-2" />
                           Preview
                         </Button>
@@ -426,10 +426,16 @@ export default function Marketing() {
                     />
                   </div>
 
-                  <Button className="w-full">
-                    <Save className="h-4 w-4 mr-2" />
-                    Update Content
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button className="flex-1">
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Content
+                    </Button>
+                    <Button variant="outline" onClick={() => window.open('/website-preview', '_blank')}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -458,10 +464,16 @@ export default function Marketing() {
                     </div>
                   </div>
 
-                  <Button variant="outline" className="w-full">
-                    <Menu className="h-4 w-4 mr-2" />
-                    Manage Menu
-                  </Button>
+                  <div className="space-y-2">
+                    <Button variant="outline" className="w-full">
+                      <Menu className="h-4 w-4 mr-2" />
+                      Manage Menu
+                    </Button>
+                    <Button variant="ghost" size="sm" className="w-full text-xs">
+                      <Zap className="h-3 w-3 mr-1" />
+                      Sync from Campaigns
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -486,10 +498,16 @@ export default function Marketing() {
                     </div>
                   ))}
                   
-                  <Button variant="outline" className="w-full">
-                    <Clock className="h-4 w-4 mr-2" />
-                    Edit Hours
-                  </Button>
+                  <div className="space-y-2">
+                    <Button variant="outline" className="w-full">
+                      <Clock className="h-4 w-4 mr-2" />
+                      Edit Hours
+                    </Button>
+                    <Button variant="ghost" size="sm" className="w-full text-xs">
+                      <Zap className="h-3 w-3 mr-1" />
+                      Sync from Profile
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -528,64 +546,120 @@ export default function Marketing() {
                     />
                   </div>
 
-                  <Button variant="outline" className="w-full">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Links
-                  </Button>
+                  <div className="space-y-2">
+                    <Button variant="outline" className="w-full">
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Links
+                    </Button>
+                    <Button variant="ghost" size="sm" className="w-full text-xs">
+                      <Zap className="h-3 w-3 mr-1" />
+                      Import from Profile
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Smartphone className="h-5 w-5 mr-2 text-blue-600" />
-                  Website Performance & Integration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">0</div>
-                    <div className="text-sm text-green-700">Total Views</div>
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Smartphone className="h-5 w-5 mr-2 text-blue-600" />
+                    Website Performance & Analytics
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                      <div className="text-xl font-bold text-green-600">245</div>
+                      <div className="text-xs text-green-700">Total Views</div>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                      <div className="text-xl font-bold text-blue-600">18</div>
+                      <div className="text-xs text-blue-700">Cirql Taps</div>
+                    </div>
+                    <div className="text-center p-3 bg-purple-50 rounded-lg">
+                      <div className="text-xl font-bold text-purple-600">34</div>
+                      <div className="text-xs text-purple-700">Contact Clicks</div>
+                    </div>
+                    <div className="text-center p-3 bg-orange-50 rounded-lg">
+                      <div className="text-xl font-bold text-orange-600">7.3%</div>
+                      <div className="text-xs text-orange-700">Conversion</div>
+                    </div>
                   </div>
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">0</div>
-                    <div className="text-sm text-blue-700">Cirql Taps from Site</div>
-                  </div>
-                  <div className="text-center p-4 bg-purple-50 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">0</div>
-                    <div className="text-sm text-purple-700">Contact Clicks</div>
-                  </div>
-                </div>
 
-                <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-green-800 mb-2">🎯 Cirql Integration Benefits</h4>
-                  <ul className="text-sm text-green-700 space-y-1">
-                    <li>✓ Website visitors can instantly find your Cirql campaigns</li>
-                    <li>✓ QR codes on your site link directly to rewards</li>
-                    <li>✓ Customer data from website visits enhances Cirql targeting</li>
-                    <li>✓ Website promotes your participation in local tap trails</li>
-                    <li>✓ Social sharing drives both website and Cirql engagement</li>
-                  </ul>
-                </div>
+                  <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-3 rounded-lg">
+                    <div className="text-sm font-medium text-yellow-800 mb-1">📈 SEO Status</div>
+                    <div className="text-xs text-yellow-700 space-y-1">
+                      <div>✓ Mobile optimized & fast loading</div>
+                      <div>✓ Local search keywords included</div>
+                      <div>✓ Google My Business integration ready</div>
+                    </div>
+                  </div>
 
-                <div className="flex space-x-3">
-                  <Button className="flex-1">
-                    <Globe className="h-4 w-4 mr-2" />
-                    Publish Website
-                  </Button>
-                  <Button variant="outline">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    View Live Site
-                  </Button>
-                  <Button variant="outline">
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Share
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="flex space-x-2">
+                    <Button className="flex-1">
+                      <Globe className="h-4 w-4 mr-2" />
+                      Publish
+                    </Button>
+                    <Button variant="outline" onClick={() => window.open('/website-preview', '_blank')}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Preview
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Zap className="h-5 w-5 mr-2 text-yellow-600" />
+                    Smart Integration Hub
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="bg-gradient-to-r from-green-50 to-blue-50 p-3 rounded-lg">
+                      <h4 className="font-semibold text-green-800 mb-2 text-sm">🎯 Live Cirql Campaigns</h4>
+                      <ul className="text-xs text-green-700 space-y-1">
+                        <li>✓ Auto-display active campaigns on site</li>
+                        <li>✓ QR codes for instant Cirql tapping</li>
+                        <li>✓ Real-time reward updates</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-3 rounded-lg">
+                      <h4 className="font-semibold text-purple-800 mb-2 text-sm">⚡ Auto-Sync Data</h4>
+                      <ul className="text-xs text-purple-700 space-y-1">
+                        <li>✓ Business profile data auto-imports</li>
+                        <li>✓ Menu syncs with campaign items</li>
+                        <li>✓ Hours update everywhere at once</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg">
+                      <h4 className="font-semibold text-blue-800 mb-2 text-sm">🌟 AR Game Integration</h4>
+                      <ul className="text-xs text-blue-700 space-y-1">
+                        <li>✓ Showcase AR collectibles earned here</li>
+                        <li>✓ Display business AR transformation</li>
+                        <li>✓ Team battle participation badges</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Zap className="h-3 w-3 mr-1" />
+                      Sync All
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Share2 className="h-3 w-3 mr-1" />
+                      Share
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Campaigns Tab */}

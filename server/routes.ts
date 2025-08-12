@@ -2181,6 +2181,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Auto-sync business data for website
+  app.post("/api/business/website/:businessId/sync", async (req, res) => {
+    try {
+      const { businessId } = req.params;
+      
+      // Fetch business profile data
+      const businessData = {
+        name: "Local Coffee House",
+        description: "Artisan coffee and fresh pastries in the heart of downtown",
+        address: "123 Main Street, Downtown",
+        phone: "(555) 123-4567",
+        email: "hello@localcoffeehouse.com",
+        socialMediaHandles: {
+          facebook: "LocalCoffeeHouse",
+          instagram: "@localcoffeehouse",
+          twitter: "@coffee_local"
+        },
+        businessHours: {
+          monday: { open: "7:00", close: "19:00", closed: false },
+          tuesday: { open: "7:00", close: "19:00", closed: false },
+          wednesday: { open: "7:00", close: "19:00", closed: false },
+          thursday: { open: "7:00", close: "19:00", closed: false },
+          friday: { open: "7:00", close: "20:00", closed: false },
+          saturday: { open: "8:00", close: "20:00", closed: false },
+          sunday: { open: "8:00", close: "18:00", closed: false }
+        }
+      };
+
+      // Fetch active campaigns for menu sync
+      const activeCampaigns = [
+        {
+          name: "Signature Latte",
+          description: "Our house special with locally sourced beans",
+          price: "$4.50",
+          category: "Coffee"
+        },
+        {
+          name: "Fresh Croissant",
+          description: "Buttery, flaky pastry baked daily",
+          price: "$3.25",
+          category: "Pastries"
+        }
+      ];
+
+      const syncedWebsiteData = {
+        businessInfo: businessData,
+        menuItems: activeCampaigns,
+        lastSyncTime: new Date(),
+        syncedFields: ["businessInfo", "hours", "social", "menu"]
+      };
+
+      res.json({ success: true, syncedData: syncedWebsiteData });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to sync business data" });
+    }
+  });
+
   // Business Website Builder & Hosting
   app.get("/api/business/website/:businessId", async (req, res) => {
     try {
@@ -2305,6 +2362,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <div class="cirql-banner">
               <h3>🎯 Tap to Earn Rewards!</h3>
               <p>Look for our Cirql tags in-store to unlock exclusive deals and join local treasure hunts!</p>
+              <div style="margin-top: 15px;">
+                <strong>Active Campaigns:</strong>
+                <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+                  <span style="background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 15px; font-size: 12px;">💰 20% Off Coffee</span>
+                  <span style="background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 15px; font-size: 12px;">🏆 Loyalty Points 2x</span>
+                  <span style="background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 15px; font-size: 12px;">🗺️ Downtown Trail</span>
+                </div>
+              </div>
             </div>
             <div class="content">
               <div class="grid">

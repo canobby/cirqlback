@@ -21,6 +21,7 @@ import Checkout from "@/pages/checkout";
 import AvatarCreator from "@/pages/avatar-creator";
 import CustomerProfile from "@/pages/customer-profile";
 import ARGameHub from "@/pages/ar-game-hub";
+import BusinessWebsitePreview from "@/pages/business-website-preview";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -45,6 +46,7 @@ function Router() {
           <Route path="/avatar" component={AvatarCreator} />
           <Route path="/profile" component={CustomerProfile} />
           <Route path="/ar-hub" component={ARGameHub} />
+          <Route path="/website-preview" component={BusinessWebsitePreview} />
           <Route component={NotFound} />
         </Switch>
       </main>
