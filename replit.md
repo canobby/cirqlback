@@ -11,6 +11,21 @@ Terminology: Uses "Cirql tags" instead of "NFC tags" and "Cirql tap" instead of 
 Color Palette: Comprehensive design system based on new logo gradient colors - purple (hsl(260 95% 55%)), pink (hsl(320 100% 60%)), orange (hsl(30 100% 55%)), blue (hsl(200 100% 55%)), and green (hsl(120 70% 45%)) - implemented across all UI components, cards, buttons, and brand elements.
 
 ## Recent Changes (August 12, 2025)
+- **MAJOR: Implemented comprehensive 6-month trial system with tier selection discount**
+  * Added trial expiration tracking (starterExpiresAt field) for new Starter users
+  * Built trial banner component with countdown warnings at 30, 14, 7, and 1 day before expiration
+  * Created comprehensive trial discount page allowing tier selection with 50% savings
+  * Added backend API endpoints for trial management and discount activation
+  * Enhanced user schema with trial discount tracking fields
+  * Users can now select Professional ($39→$19.50), Business ($79→$39.50), or Enterprise ($149→$74.50) during trial
+- **NEW: Created comprehensive admin beta testing framework**
+  * Developed 3-week structured testing program with daily and weekly deliverables
+  * Built systematic bug reporting framework with severity levels and templates
+  * Created specific test scenarios covering all major platform workflows
+  * Established communication protocols and success metrics for beta testing
+  * Designed user experience validation methods and performance benchmarks
+
+## Recent Changes (August 12, 2025) - Previous
 - Fixed AR Gaming Hub routing issue: Added missing route `/ar-game-hub` to App.tsx router
 - Added AR Experience routes: `/ar-experience/:id` and `/ar/:tapId` for AR functionality  
 - Added Business Settings route: `/business-settings` for merchant configuration
