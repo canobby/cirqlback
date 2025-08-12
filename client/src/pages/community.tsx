@@ -33,6 +33,7 @@ import {
   Sparkles
 } from "lucide-react";
 import ARIntegrationPanel from "@/components/global/ar-integration-panel";
+import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 
 export default function Community() {
   const [activeChallenge, setActiveChallenge] = useState<string | null>(null);
@@ -139,10 +140,17 @@ export default function Community() {
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Community Hub
-              </h1>
-              <p className="text-gray-600 mt-1">Connect, compete, and earn rewards together</p>
+              <div className="flex items-center mb-2">
+                <img 
+                  src={cirqlbackLogo} 
+                  alt="Cirqlback" 
+                  className="h-6 w-auto mr-3 logo-transparent"
+                />
+                <h1 className="text-3xl font-bold gradient-text">
+                  Cirqlback Community
+                </h1>
+              </div>
+              <p className="text-gray-600 mt-1">Connect through AR games, team challenges, loyalty rewards, and local business discovery</p>
             </div>
           </div>
         </div>

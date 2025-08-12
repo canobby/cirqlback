@@ -19,9 +19,9 @@ export default function Home() {
               />
               <div className="text-3xl font-bold">Cirqlback</div>
             </div>
-            <h1 className="text-4xl font-bold mb-4">Cirql-Powered Local Marketing</h1>
+            <h1 className="text-4xl font-bold mb-4">Revolutionary Local Marketing Platform</h1>
             <p className="text-xl opacity-90 mb-6">
-              Connect customers with local businesses through seamless Cirql tap-to-reward experiences
+              Transform local shopping with Cirql tags, AR gaming, team challenges, and complete business websites - all in one unified platform
             </p>
             <div className="flex flex-wrap gap-4">
               <Link href="/tap">
@@ -51,8 +51,8 @@ export default function Home() {
       {/* Customer Experience Section */}
       <section className="mb-12">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold gradient-text mb-4">Customer Experience</h2>
-          <p className="text-xl text-muted-foreground">Simple tap-to-reward system that keeps customers coming back</p>
+          <h2 className="text-3xl font-bold gradient-text mb-4">Complete Customer Experience</h2>
+          <p className="text-xl text-muted-foreground">Cirql taps unlock rewards, AR games, team challenges, and exclusive business content</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -75,8 +75,8 @@ export default function Home() {
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0 w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white font-bold">3</div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Build Tap Trails</h3>
-                  <p className="text-muted-foreground">Visit multiple partner businesses to unlock bonus rewards</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">AR Gaming & Teams</h3>
+                  <p className="text-muted-foreground">Join AR adventures, build your avatar, compete in team battles with massive prizes</p>
                 </div>
               </div>
             </div>
@@ -167,8 +167,8 @@ export default function Home() {
       {/* Business Showcase */}
       <section className="mb-12">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold gradient-text mb-4">Join Local Businesses</h2>
-          <p className="text-xl text-muted-foreground">See how Cirqlback transforms customer engagement</p>
+          <h2 className="text-3xl font-bold gradient-text mb-4">Complete Business Solutions</h2>
+          <p className="text-xl text-muted-foreground">From Cirql campaigns to full websites - everything your business needs to thrive</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
@@ -180,7 +180,7 @@ export default function Home() {
             />
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold text-foreground mb-2">Joe's Coffee Shop</h3>
-              <p className="text-muted-foreground mb-4">Increased customer retention by 40% with loyalty tap campaigns</p>
+              <p className="text-muted-foreground mb-4">Complete platform: Cirql campaigns, hosted website, AR games, and analytics</p>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">1,247 total taps</span>
                 <span className="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium">Active</span>
@@ -196,7 +196,7 @@ export default function Home() {
             />
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold text-foreground mb-2">Downtown Books</h3>
-              <p className="text-muted-foreground mb-4">Connected with local coffee shops through tap trails</p>
+              <p className="text-muted-foreground mb-4">Unified platform with website hosting, team challenges, and community features</p>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">892 total taps</span>
                 <span className="bg-secondary/10 text-secondary px-2 py-1 rounded-full text-xs font-medium">Active</span>
@@ -212,7 +212,7 @@ export default function Home() {
             />
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold text-foreground mb-2">Mama's Bistro</h3>
-              <p className="text-muted-foreground mb-4">Boosted referrals by 60% with tap-to-share campaigns</p>
+              <p className="text-muted-foreground mb-4">Comprehensive solution: website builder, Cirql integration, marketing suite</p>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">1,543 total taps</span>
                 <span className="bg-accent/10 text-accent px-2 py-1 rounded-full text-xs font-medium">Active</span>
@@ -225,8 +225,8 @@ export default function Home() {
       {/* Call to Action */}
       <section className="text-center py-16">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-4xl font-bold gradient-text mb-6">Ready to Transform Your Local Business?</h2>
-          <p className="text-xl text-muted-foreground mb-8">Join the Cirqlback community and start building stronger customer relationships today</p>
+          <h2 className="text-4xl font-bold gradient-text mb-6">Ready to Launch Your Complete Business Platform?</h2>
+          <p className="text-xl text-muted-foreground mb-8">Get Cirql tags, professional website, AR gaming, team challenges, and marketing suite - all integrated seamlessly</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/merchant">
               <Button size="lg" className="bg-primary text-white hover:bg-primary/90">
@@ -239,7 +239,7 @@ export default function Home() {
               Schedule Demo
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground mt-4">No credit card required • 5 free NFC tags included</p>
+          <p className="text-sm text-muted-foreground mt-4">Complete platform setup • Professional website included • Cirql tags starter pack</p>
         </div>
       </section>
     </main>

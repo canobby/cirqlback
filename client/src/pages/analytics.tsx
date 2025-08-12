@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 import { 
   TrendingUp, 
   Users, 
@@ -88,10 +89,17 @@ export default function Analytics() {
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Analytics Dashboard
-              </h1>
-              <p className="text-gray-600 mt-1">Real-time insights and performance metrics</p>
+              <div className="flex items-center mb-2">
+                <img 
+                  src={cirqlbackLogo} 
+                  alt="Cirqlback" 
+                  className="h-6 w-auto mr-3 logo-transparent"
+                />
+                <h1 className="text-3xl font-bold gradient-text">
+                  Platform Analytics
+                </h1>
+              </div>
+              <p className="text-gray-600 mt-1">Comprehensive insights across Cirql taps, websites, AR gaming, and team activities</p>
             </div>
             <div className="flex items-center space-x-4">
               <Select value={selectedBusiness} onValueChange={setSelectedBusiness}>

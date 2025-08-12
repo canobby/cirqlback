@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 import { 
   Gamepad2, 
   Trophy, 
@@ -140,12 +141,20 @@ export default function ARGameHub() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-          AR Game Hub
-        </h1>
-        <p className="text-gray-600 text-lg">
-          Immerse yourself in augmented reality experiences that transform local businesses into game worlds
+      <div className="mb-8 text-center">
+        <div className="flex items-center justify-center mb-4">
+          <img 
+            src={cirqlbackLogo} 
+            alt="Cirqlback" 
+            className="h-8 w-auto mr-4 logo-transparent"
+          />
+          <h1 className="text-4xl font-bold gradient-text">
+            Cirqlback AR Hub
+          </h1>
+        </div>
+        <p className="text-gray-600 text-lg max-w-3xl mx-auto">
+          Transform every Cirql tap into an immersive AR adventure. Build your avatar, join team battles, 
+          collect rare items, and turn local businesses into interactive game worlds - all connected to your loyalty progress.
         </p>
       </div>
 

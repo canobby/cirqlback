@@ -2,7 +2,7 @@
 
 ## Overview
 
-Cirqlback is an NFC-powered local marketing and loyalty platform for small businesses. The platform connects customers with local businesses through seamless tap-to-reward experiences, enabling merchants to create campaigns, track customer engagement, and build community partnerships. The system uses NFC tags (called "Bugs") placed in businesses that customers can tap to unlock rewards, build loyalty, and participate in "Tap Trails" that encourage multi-store shopping.
+Cirqlback is a comprehensive NFC-powered local marketing and loyalty platform that unifies business websites, AR gaming, team challenges, and customer rewards into one seamless experience. The platform connects customers with local businesses through Cirql tag taps that unlock rewards, immersive AR adventures, team competitions, and access to complete business digital presence - from hosted websites to marketing suites and analytics dashboards.
 
 ## User Preferences
 
@@ -52,14 +52,14 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **Family Plans & Corporate Challenges**: Family group rewards (up to 10 members), corporate employee challenges, and workplace team building through local business discovery
 - **Mega Flash Events**: City-wide flash mobs requiring 500+ simultaneous users, massive rewards, and real-time community engagement
 - **Inclusive Business Support**: Subtle integration supporting minority groups, LGBTQ+, women-owned businesses through optional business descriptors and AI-powered challenge grouping - equal treatment while enabling community connection
-- **Enhanced Marketing Intelligence**: Comprehensive business profiling with target demographics, peak hours, customer capacity, unique selling points, marketing goals, social media presence, and budget tracking for sophisticated AI-powered matching
+- **Platform-Wide Analytics Integration**: Comprehensive analytics dashboard tracking Cirql taps, website visits, AR engagement, team participation, and cross-platform user journeys. Real-time insights with sophisticated AI-powered business profiling including target demographics, peak hours, customer capacity, unique selling points, marketing goals, and unified performance metrics across all platform features
 - **Customer Profile System**: Detailed customer preferences including interests, shopping habits, dietary restrictions, spending patterns, and favorite business types for personalized experience delivery
 - **How It Works Page**: Comprehensive educational page with diagrams and explanations for business growth
 - **Advanced Analytics Dashboard**: Real-time metrics, AI-powered insights, and performance tracking
 - **Community Hub**: Gamified challenges, leaderboards, social feeds, and group rewards
 - **Comprehensive Marketing Suite**: Integrated email campaigns, social media automation, SMS marketing, customer segmentation, and multi-platform advertising with Mailchimp, Instagram, Facebook, Google Ads, and Twilio integrations
-- **Business Website Hosting**: Complete one-page website builder with customizable themes, menu management, business hours, social media integration, and SEO optimization - helping businesses save $500-2000+ on website development costs. Features auto-sync with business profiles, live Cirql campaign integration, AR game showcases, and real-time preview functionality
-- **Global Search Functionality**: Unified search across businesses, campaigns, customers, locations, AR experiences, and analytics with keyboard shortcuts and intelligent filtering
+- **Complete Business Website Platform**: Comprehensive website builder with professional themes, menu management, business hours, social media integration, QR code generation, and SEO optimization. Features live preview, auto-sync with business profiles, integrated Cirql campaigns, AR game showcases, and complete content management - saving businesses $500-2000+ on website development costs while providing unified platform integration
+- **Unified Platform Integration**: Complete cross-platform synchronization with real-time notifications, unified search across all features (businesses, campaigns, customers, AR experiences, analytics), platform-wide sync status monitoring, and seamless transitions between customer rewards, AR gaming, business websites, and analytics dashboards
 - **Settings Management**: Comprehensive user preferences including notifications, privacy controls, integrations, and security settings
 - **Visibility Rewards Referral System**: Milestone-based rewards including featured map placement, priority placement, newsletter spotlight, custom tap trails, and champion badges
 - **Loyalty Points System**: Tiered membership (Bronze/Silver/Gold/Platinum) with escalating benefits

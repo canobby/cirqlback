@@ -25,50 +25,50 @@ export default function HowItWorksPage() {
   const steps = [
     {
       icon: <Smartphone className="h-8 w-8" />,
-      title: "Find a Cirql Tag",
-      description: "Look for our distinctive Cirql tags at participating businesses",
-      details: "Cirql tags are placed at checkout counters, tables, and key locations in partner businesses"
+      title: "Discover Cirql-Enabled Businesses",
+      description: "Find businesses with Cirql tags, hosted websites, and AR experiences",
+      details: "Each business has a complete digital presence: Cirql tags, professional websites, and interactive AR games"
     },
     {
       icon: <Zap className="h-8 w-8" />,
-      title: "Tap to Connect",
-      description: "Simply tap your phone on the Cirql tag - no app download required",
-      details: "Works with any NFC-enabled smartphone. Just tap and go!"
+      title: "Tap to Access Everything",
+      description: "One tap unlocks rewards, AR games, team challenges, and business content",
+      details: "Instantly access the business website, join AR adventures, earn loyalty points, and connect with the community"
     },
     {
       icon: <Gift className="h-8 w-8" />,
-      title: "Instant Rewards",
-      description: "Unlock discounts, earn points, and collect exclusive offers",
-      details: "Get immediate rewards plus points that add up to bigger benefits"
+      title: "Complete Gaming Experience",
+      description: "Earn rewards, build your avatar, collect items, and join team battles",
+      details: "Every tap advances your AR character, unlocks collectibles, and contributes to team challenges with massive prizes"
     },
     {
       icon: <Crown className="h-8 w-8" />,
-      title: "Level Up",
-      description: "Advance through Bronze, Silver, Gold, and Platinum tiers",
-      details: "Higher tiers unlock better rewards, exclusive perks, and VIP treatment"
+      title: "Build Your Legacy",
+      description: "Advance through loyalty tiers while building your AR avatar and team ranking",
+      details: "Unlock exclusive business content, AR abilities, team leadership roles, and platform-wide recognition"
     }
   ];
 
   const businessBenefits = [
     {
       icon: <TrendingUp className="h-6 w-6 text-green-500" />,
-      title: "Increase Revenue",
-      description: "Drive repeat visits and higher spending with targeted rewards"
+      title: "Complete Digital Presence",
+      description: "Get Cirql campaigns, professional website, AR integration, and marketing suite"
     },
     {
       icon: <Users className="h-6 w-6 text-blue-500" />,
-      title: "Build Community",
-      description: "Create loyal customers who become brand ambassadors"
+      title: "Unified Customer Experience",
+      description: "Connect loyalty rewards, AR gaming, team challenges, and website content seamlessly"
     },
     {
       icon: <Target className="h-6 w-6 text-purple-500" />,
-      title: "Smart Analytics",
-      description: "Track customer behavior and optimize your marketing"
+      title: "Real-Time Platform Analytics",
+      description: "Monitor Cirql taps, website visits, AR engagement, and team participation across all features"
     },
     {
       icon: <Sparkles className="h-6 w-6 text-orange-500" />,
-      title: "Easy Setup",
-      description: "Get started in minutes with our simple tag placement"
+      title: "All-in-One Platform",
+      description: "Everything integrated: website builder, Cirql tags, AR games, marketing tools, and analytics"
     }
   ];
 
@@ -142,8 +142,8 @@ export default function HowItWorksPage() {
               Simple as 1-2-3-4
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Getting started with Cirqlback is incredibly easy. No apps to download, 
-              no accounts to create - just tap and earn.
+              Experience the complete Cirqlback platform: instant rewards, AR gaming, team challenges, 
+              business websites, and community features - all connected through simple Cirql taps.
             </p>
           </div>
 
@@ -177,11 +177,11 @@ export default function HowItWorksPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Loyalty That Pays Off
+              Complete Rewards System
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Advance through our tier system and unlock increasingly valuable rewards.
-              The more you engage, the more you earn.
+              Advance through loyalty tiers while building your AR avatar, joining team battles, 
+              and unlocking exclusive business content across the entire platform.
             </p>
           </div>
 
