@@ -98,8 +98,8 @@ export default function Checkout() {
   
   // Example checkout data (would come from props/query params in real app)
   const checkoutData = {
-    amount: 29.99,
-    description: "Premium Cirql Tags Package - 10 NFC tags with setup support"
+    amount: 39.00,
+    description: "Professional Plan - Monthly subscription with unlimited campaigns"
   };
 
   useEffect(() => {

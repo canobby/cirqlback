@@ -559,21 +559,26 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 mb-4">Manage subscription tiers, pricing, and custom billing</p>
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-4">
                   <div className="p-4 border rounded-lg">
-                    <h3 className="font-semibold text-green-600">Free Tier</h3>
+                    <h3 className="font-semibold text-green-600">Starter</h3>
                     <p className="text-2xl font-bold">$0/month</p>
                     <p className="text-sm text-gray-600">1,234 users</p>
                   </div>
                   <div className="p-4 border rounded-lg">
-                    <h3 className="font-semibold text-blue-600">Basic Tier</h3>
-                    <p className="text-2xl font-bold">$29/month</p>
+                    <h3 className="font-semibold text-blue-600">Professional</h3>
+                    <p className="text-2xl font-bold">$39/month</p>
                     <p className="text-sm text-gray-600">567 users</p>
                   </div>
                   <div className="p-4 border rounded-lg">
-                    <h3 className="font-semibold text-purple-600">Premium Tier</h3>
-                    <p className="text-2xl font-bold">$99/month</p>
+                    <h3 className="font-semibold text-purple-600">Business</h3>
+                    <p className="text-2xl font-bold">$79/month</p>
                     <p className="text-sm text-gray-600">234 users</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <h3 className="font-semibold text-orange-600">Enterprise</h3>
+                    <p className="text-2xl font-bold">$149/month</p>
+                    <p className="text-sm text-gray-600">89 users</p>
                   </div>
                 </div>
               </CardContent>

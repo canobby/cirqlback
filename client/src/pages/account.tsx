@@ -106,7 +106,10 @@ export default function Account() {
                   <div>
                     <p className="text-sm text-gray-600">Next billing: January 15, 2025</p>
                     <p className="font-semibold">
-                      ${profile?.subscriptionTier === "full" ? "29.99" : "14.99"}/month
+                      ${profile?.subscriptionTier === "starter" ? "0" : 
+                        profile?.subscriptionTier === "professional" ? "39" :
+                        profile?.subscriptionTier === "business" ? "79" : 
+                        profile?.subscriptionTier === "enterprise" ? "149" : "0"}/month
                     </p>
                   </div>
                   <div className="space-x-2">
