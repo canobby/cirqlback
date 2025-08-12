@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { insertBusinessSchema, insertCampaignSchema, insertNfcTagSchema, insertTapSchema, insertCustomerRewardSchema, insertTapTrailSchema, insertReferralSchema } from "@shared/schema";
+import { insertBusinessSchema, insertCampaignSchema, insertNfcTagSchema, insertTapSchema, insertRewardSchema, insertTapTrailSchema, insertReferralSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -13,7 +13,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userId) {
         return res.status(400).json({ error: "User ID required" });
       }
-      const businesses = await storage.getBusinessesByUser(userId);
+      const businesses = await storage.getBusinessesByOwner(userId);
       res.json(businesses);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch businesses" });
@@ -40,7 +40,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!businessId) {
         return res.status(400).json({ error: "Business ID required" });
       }
-      const campaigns = await storage.getCampaignsByBusiness(businessId);
+      const campaigns = await storage.getCampaigns(businessId);
       res.json(campaigns);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch campaigns" });
@@ -81,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!businessId) {
         return res.status(400).json({ error: "Business ID required" });
       }
-      const tags = await storage.getNfcTagsByBusiness(businessId);
+      const tags = await storage.getNFCTags(businessId);
       res.json(tags);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch NFC tags" });
@@ -91,7 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/nfc-tags", async (req, res) => {
     try {
       const validatedData = insertNfcTagSchema.parse(req.body);
-      const tag = await storage.createNfcTag(validatedData);
+      const tag = await storage.createNFCTag(validatedData);
       res.json(tag);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -104,38 +104,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Tap routes - simulate NFC tap
   app.post("/api/taps", async (req, res) => {
     try {
-      const tapData = {
-        ...req.body,
-        ipAddress: req.ip,
-        deviceId: req.headers['user-agent'] || 'unknown'
-      };
+      const validatedData = insertTapSchema.parse(req.body);
       
-      const validatedData = insertTapSchema.parse(tapData);
+      // Process the tap (this handles reward creation automatically)
+      const result = await storage.processTap(validatedData);
       
-      // Create the tap
-      const tap = await storage.createTap(validatedData);
-      
-      // Get campaign details to create reward
-      const campaign = await storage.getCampaign(tap.campaignId);
-      if (campaign && tap.customerEmail) {
-        const reward = await storage.createCustomerReward({
-          customerEmail: tap.customerEmail,
-          businessId: tap.businessId,
-          campaignId: tap.campaignId,
-          rewardType: campaign.rewardType,
-          rewardValue: campaign.rewardValue,
-          expiresAt: campaign.expiresAt
-        });
-        
+      if (result.success) {
         // Broadcast real-time update via WebSocket
-        broadcastToClients({
-          type: 'new_tap',
-          data: { tap, campaign, reward }
-        });
+        const broadcastToClients = (global as any).broadcastToClients;
+        if (broadcastToClients) {
+          broadcastToClients({
+            type: 'new_tap',
+            data: result
+          });
+        }
         
-        res.json({ tap, reward });
+        res.json(result);
       } else {
-        res.json({ tap });
+        res.status(400).json({ error: result.message });
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -145,27 +131,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/taps/stats", async (req, res) => {
+  app.get("/api/taps", async (req, res) => {
     try {
       const businessId = req.query.businessId as string;
-      if (!businessId) {
-        return res.status(400).json({ error: "Business ID required" });
-      }
-      const stats = await storage.getTapStats(businessId);
-      res.json(stats);
+      const customerEmail = req.query.customerEmail as string;
+      const taps = await storage.getTaps(businessId, customerEmail);
+      res.json(taps);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch tap stats" });
+      res.status(500).json({ error: "Failed to fetch taps" });
     }
   });
 
   // Customer reward routes
   app.get("/api/rewards", async (req, res) => {
     try {
-      const customerEmail = req.query.customerEmail as string;
-      if (!customerEmail) {
-        return res.status(400).json({ error: "Customer email required" });
+      const email = req.query.email as string;
+      if (!email) {
+        return res.status(400).json({ error: "Email required" });
       }
-      const rewards = await storage.getCustomerRewards(customerEmail);
+      const rewards = await storage.getRewardsByEmail(email);
       res.json(rewards);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch rewards" });
@@ -198,8 +182,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tap-trails", async (req, res) => {
     try {
       const validatedData = insertTapTrailSchema.parse(req.body);
-      const trail = await storage.createTapTrail(validatedData);
-      res.json(trail);
+      // Note: createTapTrail method needs to be implemented in storage
+      res.json({ message: "Tap trail creation not yet implemented" });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
@@ -229,8 +213,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!businessId) {
         return res.status(400).json({ error: "Business ID required" });
       }
-      const analytics = await storage.getBusinessAnalytics(businessId);
-      res.json(analytics);
+      
+      // Get basic analytics data
+      const taps = await storage.getTaps(businessId);
+      const campaigns = await storage.getCampaigns(businessId);
+      
+      // Calculate analytics
+      const totalTaps = taps.length;
+      const uniqueCustomers = new Set(taps.map(tap => tap.customerEmail)).size;
+      const recentTaps = taps.slice(0, 10);
+      
+      const campaignPerformance = campaigns.map(campaign => ({
+        name: campaign.name,
+        taps: taps.filter(tap => tap.campaignId === campaign.id).length,
+        redemptions: campaign.currentRedemptions || 0,
+      }));
+
+      res.json({
+        totalTaps,
+        uniqueCustomers,
+        recentTaps,
+        campaignPerformance,
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch analytics" });
     }

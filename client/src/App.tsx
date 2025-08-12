@@ -10,6 +10,7 @@ import Customer from "@/pages/customer";
 import Merchant from "@/pages/merchant";
 import Community from "@/pages/community";
 import Analytics from "@/pages/analytics";
+import TapPage from "@/pages/tap";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
           <Route path="/merchant" component={Merchant} />
           <Route path="/community" component={Community} />
           <Route path="/analytics" component={Analytics} />
+          <Route path="/tap" component={TapPage} />
           <Route component={NotFound} />
         </Switch>
       </main>

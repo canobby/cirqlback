@@ -1,214 +1,307 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, boolean, decimal, jsonb } from "drizzle-orm/pg-core";
+import { sql } from 'drizzle-orm';
+import {
+  index,
+  jsonb,
+  pgTable,
+  timestamp,
+  varchar,
+  integer,
+  boolean,
+  text,
+  decimal,
+  uuid,
+  primaryKey,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Users table - for merchants and customers
+// Session storage table (required for auth)
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// Users table (required for auth)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: text("email").notNull().unique(),
-  name: text("name").notNull(),
-  type: text("type").notNull(), // 'merchant' | 'customer' | 'admin'
-  businessName: text("business_name"), // for merchants
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  role: varchar("role").default("customer"), // customer, merchant, admin
+  totalPoints: integer("total_points").default(0),
+  availablePoints: integer("available_points").default(0),
+  tier: varchar("tier").default("Bronze"), // Bronze, Silver, Gold, Platinum
+  referralCode: varchar("referral_code").unique(),
+  referredBy: varchar("referred_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Business/merchant profiles
+// Businesses table
 export const businesses = pgTable("businesses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  name: text("name").notNull(),
+  name: varchar("name").notNull(),
   description: text("description"),
-  address: text("address"),
-  category: text("category"), // 'coffee', 'restaurant', 'retail', etc.
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  address: varchar("address"),
+  phone: varchar("phone"),
+  email: varchar("email"),
+  website: varchar("website"),
+  logo: varchar("logo"),
+  ownerId: varchar("owner_id").references(() => users.id),
+  isActive: boolean("is_active").default(true),
+  totalTaps: integer("total_taps").default(0),
+  totalRewardsGiven: integer("total_rewards_given").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Campaigns created by merchants
+// Campaigns table
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  businessId: varchar("business_id").notNull().references(() => businesses.id),
-  name: text("name").notNull(),
-  description: text("description").notNull(),
-  rewardType: text("reward_type").notNull(), // 'discount', 'points', 'freebie', 'punch_card'
-  rewardValue: text("reward_value").notNull(),
-  isActive: boolean("is_active").default(true).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  type: varchar("type").notNull(), // discount, loyalty, referral, trail
+  value: decimal("value", { precision: 10, scale: 2 }),
+  pointsAwarded: integer("points_awarded").default(0),
   maxRedemptions: integer("max_redemptions"),
-  currentRedemptions: integer("current_redemptions").default(0).notNull(),
-  expiresAt: timestamp("expires_at"),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  currentRedemptions: integer("current_redemptions").default(0),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// NFC tags assigned to campaigns
+// NFC Tags table
 export const nfcTags = pgTable("nfc_tags", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: varchar("campaign_id").notNull().references(() => campaigns.id),
-  businessId: varchar("business_id").notNull().references(() => businesses.id),
-  location: text("location"), // 'checkout counter', 'front door', etc.
-  tagUrl: text("tag_url").notNull(),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  campaignId: varchar("campaign_id").references(() => campaigns.id),
+  tagIdentifier: varchar("tag_identifier").unique().notNull(),
+  location: varchar("location"), // where the tag is placed
+  isActive: boolean("is_active").default(true),
+  totalTaps: integer("total_taps").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Tap events when customers interact with NFC tags
+// Taps table (records each NFC tap)
 export const taps = pgTable("taps", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tagId: varchar("tag_id").notNull().references(() => nfcTags.id),
-  campaignId: varchar("campaign_id").notNull().references(() => campaigns.id),
-  businessId: varchar("business_id").notNull().references(() => businesses.id),
-  customerEmail: text("customer_email"), // optional for guest taps
-  customerName: text("customer_name"), // optional
-  deviceId: text("device_id"), // for fraud prevention
-  ipAddress: text("ip_address"),
-  location: jsonb("location"), // GPS coordinates if available
-  tappedAt: timestamp("tapped_at").default(sql`now()`).notNull(),
+  tagId: varchar("tag_id").references(() => nfcTags.id).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  campaignId: varchar("campaign_id").references(() => campaigns.id),
+  customerEmail: varchar("customer_email").notNull(),
+  customerName: varchar("customer_name"),
+  pointsEarned: integer("points_earned").default(0),
+  rewardValue: decimal("reward_value", { precision: 10, scale: 2 }),
+  metadata: jsonb("metadata"), // additional data like device info, location
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Customer rewards and loyalty tracking
-export const customerRewards = pgTable("customer_rewards", {
+// Rewards table (earned rewards)
+export const rewards = pgTable("rewards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  customerEmail: text("customer_email").notNull(),
-  businessId: varchar("business_id").notNull().references(() => businesses.id),
-  campaignId: varchar("campaign_id").notNull().references(() => campaigns.id),
-  rewardType: text("reward_type").notNull(),
-  rewardValue: text("reward_value").notNull(),
-  isRedeemed: boolean("is_redeemed").default(false).notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  campaignId: varchar("campaign_id").references(() => campaigns.id),
+  tapId: varchar("tap_id").references(() => taps.id),
+  type: varchar("type").notNull(), // discount, free_item, points, cashback
+  title: varchar("title").notNull(),
+  description: text("description"),
+  value: decimal("value", { precision: 10, scale: 2 }),
+  code: varchar("code"), // redemption code
+  isRedeemed: boolean("is_redeemed").default(false),
   redeemedAt: timestamp("redeemed_at"),
   expiresAt: timestamp("expires_at"),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Tap trails for multi-business rewards
-export const tapTrails = pgTable("tap_trails", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  description: text("description").notNull(),
-  requiredBusinessCount: integer("required_business_count").notNull(),
-  rewardValue: text("reward_value").notNull(),
-  isActive: boolean("is_active").default(true).notNull(),
-  expiresAt: timestamp("expires_at"),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
-});
-
-// Businesses participating in tap trails
-export const tapTrailBusinesses = pgTable("tap_trail_businesses", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  trailId: varchar("trail_id").notNull().references(() => tapTrails.id),
-  businessId: varchar("business_id").notNull().references(() => businesses.id),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
-});
-
-// Customer progress on tap trails
-export const customerTrailProgress = pgTable("customer_trail_progress", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  customerEmail: text("customer_email").notNull(),
-  trailId: varchar("trail_id").notNull().references(() => tapTrails.id),
-  businessesVisited: jsonb("businesses_visited").notNull().default('[]'),
-  isCompleted: boolean("is_completed").default(false).notNull(),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
-});
-
-// Referrals
+// Referrals table
 export const referrals = pgTable("referrals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  referrerEmail: text("referrer_email").notNull(),
-  refereeEmail: text("referee_email").notNull(),
-  businessId: varchar("business_id").notNull().references(() => businesses.id),
-  status: text("status").default('pending').notNull(), // 'pending', 'completed', 'rewarded'
-  rewardValue: text("reward_value"),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  referrerId: varchar("referrer_id").references(() => users.id).notNull(),
+  refereeEmail: varchar("referee_email").notNull(),
+  refereeId: varchar("referee_id").references(() => users.id),
+  status: varchar("status").default("pending"), // pending, completed, rewarded
+  bonusAmount: decimal("bonus_amount", { precision: 10, scale: 2 }),
+  bonusPaid: boolean("bonus_paid").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// Tap Trails table (multi-business challenges)
+export const tapTrails = pgTable("tap_trails", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  requiredBusinesses: jsonb("required_businesses"), // array of business IDs
+  rewardValue: decimal("reward_value", { precision: 10, scale: 2 }),
+  pointsAwarded: integer("points_awarded").default(0),
+  isActive: boolean("is_active").default(true),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User Trail Progress table
+export const userTrailProgress = pgTable("user_trail_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  trailId: varchar("trail_id").references(() => tapTrails.id).notNull(),
+  completedBusinesses: jsonb("completed_businesses"), // array of completed business IDs
+  isCompleted: boolean("is_completed").default(false),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const userRelations = relations(users, ({ many, one }) => ({
   businesses: many(businesses),
+  rewards: many(rewards),
+  referralsMade: many(referrals, { relationName: "referrer" }),
+  referralsReceived: many(referrals, { relationName: "referee" }),
+  trailProgress: many(userTrailProgress),
 }));
 
-export const businessesRelations = relations(businesses, ({ one, many }) => ({
-  user: one(users, { fields: [businesses.userId], references: [users.id] }),
+export const businessRelations = relations(businesses, ({ many, one }) => ({
+  owner: one(users, { fields: [businesses.ownerId], references: [users.id] }),
   campaigns: many(campaigns),
   nfcTags: many(nfcTags),
   taps: many(taps),
-  customerRewards: many(customerRewards),
-  tapTrailBusinesses: many(tapTrailBusinesses),
-  referrals: many(referrals),
+  rewards: many(rewards),
 }));
 
-export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
+export const campaignRelations = relations(campaigns, ({ many, one }) => ({
   business: one(businesses, { fields: [campaigns.businessId], references: [businesses.id] }),
   nfcTags: many(nfcTags),
   taps: many(taps),
-  customerRewards: many(customerRewards),
+  rewards: many(rewards),
 }));
 
-export const nfcTagsRelations = relations(nfcTags, ({ one, many }) => ({
-  campaign: one(campaigns, { fields: [nfcTags.campaignId], references: [campaigns.id] }),
+export const nfcTagRelations = relations(nfcTags, ({ many, one }) => ({
   business: one(businesses, { fields: [nfcTags.businessId], references: [businesses.id] }),
+  campaign: one(campaigns, { fields: [nfcTags.campaignId], references: [campaigns.id] }),
   taps: many(taps),
 }));
 
-export const tapsRelations = relations(taps, ({ one }) => ({
+export const tapRelations = relations(taps, ({ one }) => ({
   tag: one(nfcTags, { fields: [taps.tagId], references: [nfcTags.id] }),
-  campaign: one(campaigns, { fields: [taps.campaignId], references: [campaigns.id] }),
   business: one(businesses, { fields: [taps.businessId], references: [businesses.id] }),
+  campaign: one(campaigns, { fields: [taps.campaignId], references: [campaigns.id] }),
+  reward: one(rewards, { fields: [taps.id], references: [rewards.tapId] }),
 }));
 
-export const customerRewardsRelations = relations(customerRewards, ({ one }) => ({
-  business: one(businesses, { fields: [customerRewards.businessId], references: [businesses.id] }),
-  campaign: one(campaigns, { fields: [customerRewards.campaignId], references: [campaigns.id] }),
+export const rewardRelations = relations(rewards, ({ one }) => ({
+  user: one(users, { fields: [rewards.userId], references: [users.id] }),
+  business: one(businesses, { fields: [rewards.businessId], references: [businesses.id] }),
+  campaign: one(campaigns, { fields: [rewards.campaignId], references: [campaigns.id] }),
+  tap: one(taps, { fields: [rewards.tapId], references: [taps.id] }),
 }));
 
-export const tapTrailsRelations = relations(tapTrails, ({ many }) => ({
-  businesses: many(tapTrailBusinesses),
-  customerProgress: many(customerTrailProgress),
+export const referralRelations = relations(referrals, ({ one }) => ({
+  referrer: one(users, { fields: [referrals.referrerId], references: [users.id], relationName: "referrer" }),
+  referee: one(users, { fields: [referrals.refereeId], references: [users.id], relationName: "referee" }),
 }));
 
-export const tapTrailBusinessesRelations = relations(tapTrailBusinesses, ({ one }) => ({
-  trail: one(tapTrails, { fields: [tapTrailBusinesses.trailId], references: [tapTrails.id] }),
-  business: one(businesses, { fields: [tapTrailBusinesses.businessId], references: [businesses.id] }),
+export const tapTrailRelations = relations(tapTrails, ({ many }) => ({
+  userProgress: many(userTrailProgress),
 }));
 
-export const customerTrailProgressRelations = relations(customerTrailProgress, ({ one }) => ({
-  trail: one(tapTrails, { fields: [customerTrailProgress.trailId], references: [tapTrails.id] }),
+export const userTrailProgressRelations = relations(userTrailProgress, ({ one }) => ({
+  user: one(users, { fields: [userTrailProgress.userId], references: [users.id] }),
+  trail: one(tapTrails, { fields: [userTrailProgress.trailId], references: [tapTrails.id] }),
 }));
 
-export const referralsRelations = relations(referrals, ({ one }) => ({
-  business: one(businesses, { fields: [referrals.businessId], references: [businesses.id] }),
-}));
+// Zod schemas for validation
+export const insertUserSchema = createInsertSchema(users).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
 
-// Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
-export const insertBusinessSchema = createInsertSchema(businesses).omit({ id: true, createdAt: true });
-export const insertCampaignSchema = createInsertSchema(campaigns).omit({ id: true, createdAt: true, currentRedemptions: true });
-export const insertNfcTagSchema = createInsertSchema(nfcTags).omit({ id: true, createdAt: true });
-export const insertTapSchema = createInsertSchema(taps).omit({ id: true, tappedAt: true });
-export const insertCustomerRewardSchema = createInsertSchema(customerRewards).omit({ id: true, createdAt: true });
-export const insertTapTrailSchema = createInsertSchema(tapTrails).omit({ id: true, createdAt: true });
-export const insertTapTrailBusinessSchema = createInsertSchema(tapTrailBusinesses).omit({ id: true, createdAt: true });
-export const insertCustomerTrailProgressSchema = createInsertSchema(customerTrailProgress).omit({ id: true, createdAt: true });
-export const insertReferralSchema = createInsertSchema(referrals).omit({ id: true, createdAt: true });
+export const insertBusinessSchema = createInsertSchema(businesses).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  totalTaps: true,
+  totalRewardsGiven: true,
+});
+
+export const insertCampaignSchema = createInsertSchema(campaigns).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  currentRedemptions: true,
+});
+
+export const insertNfcTagSchema = createInsertSchema(nfcTags).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  totalTaps: true,
+});
+
+export const insertTapSchema = createInsertSchema(taps).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+export const insertRewardSchema = createInsertSchema(rewards).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+export const insertReferralSchema = createInsertSchema(referrals).omit({ 
+  id: true, 
+  createdAt: true,
+  completedAt: true,
+});
+
+export const insertTapTrailSchema = createInsertSchema(tapTrails).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+export const insertUserTrailProgressSchema = createInsertSchema(userTrailProgress).omit({ 
+  id: true, 
+  createdAt: true,
+  completedAt: true,
+});
 
 // Types
 export type User = typeof users.$inferSelect;
+export type UpsertUser = typeof users.$inferInsert;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
 export type Business = typeof businesses.$inferSelect;
 export type InsertBusiness = z.infer<typeof insertBusinessSchema>;
+
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
+
 export type NfcTag = typeof nfcTags.$inferSelect;
 export type InsertNfcTag = z.infer<typeof insertNfcTagSchema>;
+
 export type Tap = typeof taps.$inferSelect;
 export type InsertTap = z.infer<typeof insertTapSchema>;
-export type CustomerReward = typeof customerRewards.$inferSelect;
-export type InsertCustomerReward = z.infer<typeof insertCustomerRewardSchema>;
-export type TapTrail = typeof tapTrails.$inferSelect;
-export type InsertTapTrail = z.infer<typeof insertTapTrailSchema>;
-export type TapTrailBusiness = typeof tapTrailBusinesses.$inferSelect;
-export type InsertTapTrailBusiness = z.infer<typeof insertTapTrailBusinessSchema>;
-export type CustomerTrailProgress = typeof customerTrailProgress.$inferSelect;
-export type InsertCustomerTrailProgress = z.infer<typeof insertCustomerTrailProgressSchema>;
+
+export type Reward = typeof rewards.$inferSelect;
+export type InsertReward = z.infer<typeof insertRewardSchema>;
+
 export type Referral = typeof referrals.$inferSelect;
 export type InsertReferral = z.infer<typeof insertReferralSchema>;
+
+export type TapTrail = typeof tapTrails.$inferSelect;
+export type InsertTapTrail = z.infer<typeof insertTapTrailSchema>;
+
+export type UserTrailProgress = typeof userTrailProgress.$inferSelect;
+export type InsertUserTrailProgress = z.infer<typeof insertUserTrailProgressSchema>;

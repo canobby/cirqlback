@@ -1,80 +1,102 @@
-import { 
-  users, businesses, campaigns, nfcTags, taps, customerRewards, tapTrails, 
-  tapTrailBusinesses, customerTrailProgress, referrals,
-  type User, type InsertUser, type Business, type InsertBusiness, 
-  type Campaign, type InsertCampaign, type NfcTag, type InsertNfcTag,
-  type Tap, type InsertTap, type CustomerReward, type InsertCustomerReward,
-  type TapTrail, type InsertTapTrail, type TapTrailBusiness, type InsertTapTrailBusiness,
-  type CustomerTrailProgress, type InsertCustomerTrailProgress,
-  type Referral, type InsertReferral
+import {
+  users,
+  businesses,
+  campaigns,
+  nfcTags,
+  taps,
+  rewards,
+  referrals,
+  tapTrails,
+  userTrailProgress,
+  type User,
+  type UpsertUser,
+  type Business,
+  type InsertBusiness,
+  type Campaign,
+  type InsertCampaign,
+  type NfcTag,
+  type InsertNfcTag,
+  type Tap,
+  type InsertTap,
+  type Reward,
+  type InsertReward,
+  type Referral,
+  type InsertReferral,
+  type TapTrail,
+  type InsertTapTrail,
+  type UserTrailProgress,
+  type InsertUserTrailProgress,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, count, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, sql, count } from "drizzle-orm";
 
 export interface IStorage {
-  // Users
+  // User operations (required for auth)
   getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-
-  // Businesses
+  updateUserPoints(userId: string, points: number): Promise<void>;
+  
+  // Business operations
+  getBusinesses(): Promise<Business[]>;
   getBusiness(id: string): Promise<Business | undefined>;
-  getBusinessesByUser(userId: string): Promise<Business[]>;
+  getBusinessesByOwner(ownerId: string): Promise<Business[]>;
   createBusiness(business: InsertBusiness): Promise<Business>;
-  updateBusiness(id: string, updates: Partial<Business>): Promise<Business | undefined>;
-
-  // Campaigns
+  updateBusiness(id: string, updates: Partial<Business>): Promise<Business>;
+  
+  // Campaign operations  
+  getCampaigns(businessId?: string): Promise<Campaign[]>;
   getCampaign(id: string): Promise<Campaign | undefined>;
-  getCampaignsByBusiness(businessId: string): Promise<Campaign[]>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
-  updateCampaign(id: string, updates: Partial<Campaign>): Promise<Campaign | undefined>;
-
-  // NFC Tags
-  getNfcTag(id: string): Promise<NfcTag | undefined>;
-  getNfcTagsByBusiness(businessId: string): Promise<NfcTag[]>;
-  createNfcTag(tag: InsertNfcTag): Promise<NfcTag>;
-  updateNfcTag(id: string, updates: Partial<NfcTag>): Promise<NfcTag | undefined>;
-
-  // Taps
-  createTap(tap: InsertTap): Promise<Tap>;
-  getTapsByBusiness(businessId: string, limit?: number): Promise<Tap[]>;
-  getTapsByDate(businessId: string, startDate: Date, endDate: Date): Promise<Tap[]>;
-  getTapStats(businessId: string): Promise<{
-    totalTaps: number;
-    activeCustomers: number;
-    referrals: number;
-    conversionRate: number;
-  }>;
-
-  // Customer Rewards
-  getCustomerRewards(customerEmail: string): Promise<CustomerReward[]>;
-  createCustomerReward(reward: InsertCustomerReward): Promise<CustomerReward>;
-  redeemReward(id: string): Promise<CustomerReward | undefined>;
-
-  // Tap Trails
-  getTapTrails(): Promise<TapTrail[]>;
-  createTapTrail(trail: InsertTapTrail): Promise<TapTrail>;
-  addBusinessToTrail(trailBusiness: InsertTapTrailBusiness): Promise<TapTrailBusiness>;
-  getCustomerTrailProgress(customerEmail: string, trailId: string): Promise<CustomerTrailProgress | undefined>;
-  updateCustomerTrailProgress(progress: InsertCustomerTrailProgress): Promise<CustomerTrailProgress>;
-
-  // Referrals
+  updateCampaign(id: string, updates: Partial<Campaign>): Promise<Campaign>;
+  
+  // NFC Tag operations
+  getNFCTags(businessId: string): Promise<NfcTag[]>;
+  getNFCTag(id: string): Promise<NfcTag | undefined>;
+  getNFCTagByIdentifier(identifier: string): Promise<NfcTag | undefined>;
+  createNFCTag(tag: InsertNfcTag): Promise<NfcTag>;
+  updateNFCTag(id: string, updates: Partial<NfcTag>): Promise<NfcTag>;
+  
+  // Tap operations
+  processTap(tap: InsertTap): Promise<{ success: boolean; reward?: Reward; message: string }>;
+  getTaps(businessId?: string, customerEmail?: string): Promise<Tap[]>;
+  
+  // Reward operations
+  getRewardsByUser(userId: string): Promise<Reward[]>;
+  getRewardsByEmail(email: string): Promise<Reward[]>;
+  redeemReward(rewardId: string): Promise<Reward>;
+  
+  // Referral operations
   createReferral(referral: InsertReferral): Promise<Referral>;
-  getReferralsByBusiness(businessId: string): Promise<Referral[]>;
-
-  // Analytics
-  getBusinessAnalytics(businessId: string): Promise<{
-    totalTaps: number;
-    uniqueCustomers: number;
-    campaignPerformance: { campaignName: string; taps: number }[];
-    recentActivity: Tap[];
-  }>;
+  getReferralsByUser(userId: string): Promise<Referral[]>;
+  processReferralCompletion(refereeEmail: string): Promise<void>;
+  
+  // Tap Trail operations
+  getTapTrails(): Promise<TapTrail[]>;
+  getUserTrailProgress(userId: string): Promise<UserTrailProgress[]>;
+  updateTrailProgress(userId: string, trailId: string, businessId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
+  // User operations (required for auth)
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -82,9 +104,20 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+  async updateUserPoints(userId: string, points: number): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        totalPoints: sql`${users.totalPoints} + ${points}`,
+        availablePoints: sql`${users.availablePoints} + ${points}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
+  // Business operations
+  async getBusinesses(): Promise<Business[]> {
+    return await db.select().from(businesses).where(eq(businesses.isActive, true));
   }
 
   async getBusiness(id: string): Promise<Business | undefined> {
@@ -92,18 +125,34 @@ export class DatabaseStorage implements IStorage {
     return business || undefined;
   }
 
-  async getBusinessesByUser(userId: string): Promise<Business[]> {
-    return await db.select().from(businesses).where(eq(businesses.userId, userId));
+  async getBusinessesByOwner(ownerId: string): Promise<Business[]> {
+    return await db.select().from(businesses).where(eq(businesses.ownerId, ownerId));
   }
 
-  async createBusiness(insertBusiness: InsertBusiness): Promise<Business> {
-    const [business] = await db.insert(businesses).values(insertBusiness).returning();
+  async createBusiness(business: InsertBusiness): Promise<Business> {
+    const [newBusiness] = await db.insert(businesses).values(business).returning();
+    return newBusiness;
+  }
+
+  async updateBusiness(id: string, updates: Partial<Business>): Promise<Business> {
+    const [business] = await db
+      .update(businesses)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(businesses.id, id))
+      .returning();
     return business;
   }
 
-  async updateBusiness(id: string, updates: Partial<Business>): Promise<Business | undefined> {
-    const [business] = await db.update(businesses).set(updates).where(eq(businesses.id, id)).returning();
-    return business || undefined;
+  // Campaign operations
+  async getCampaigns(businessId?: string): Promise<Campaign[]> {
+    if (businessId) {
+      return await db
+        .select()
+        .from(campaigns)
+        .where(eq(campaigns.businessId, businessId))
+        .orderBy(desc(campaigns.createdAt));
+    }
+    return await db.select().from(campaigns).orderBy(desc(campaigns.createdAt));
   }
 
   async getCampaign(id: string): Promise<Campaign | undefined> {
@@ -111,177 +160,209 @@ export class DatabaseStorage implements IStorage {
     return campaign || undefined;
   }
 
-  async getCampaignsByBusiness(businessId: string): Promise<Campaign[]> {
-    return await db.select().from(campaigns).where(eq(campaigns.businessId, businessId)).orderBy(desc(campaigns.createdAt));
+  async createCampaign(campaign: InsertCampaign): Promise<Campaign> {
+    const [newCampaign] = await db.insert(campaigns).values(campaign).returning();
+    return newCampaign;
   }
 
-  async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
-    const [campaign] = await db.insert(campaigns).values(insertCampaign).returning();
+  async updateCampaign(id: string, updates: Partial<Campaign>): Promise<Campaign> {
+    const [campaign] = await db
+      .update(campaigns)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(campaigns.id, id))
+      .returning();
     return campaign;
   }
 
-  async updateCampaign(id: string, updates: Partial<Campaign>): Promise<Campaign | undefined> {
-    const [campaign] = await db.update(campaigns).set(updates).where(eq(campaigns.id, id)).returning();
-    return campaign || undefined;
+  // NFC Tag operations
+  async getNFCTags(businessId: string): Promise<NfcTag[]> {
+    return await db.select().from(nfcTags).where(eq(nfcTags.businessId, businessId));
   }
 
-  async getNfcTag(id: string): Promise<NfcTag | undefined> {
+  async getNFCTag(id: string): Promise<NfcTag | undefined> {
     const [tag] = await db.select().from(nfcTags).where(eq(nfcTags.id, id));
     return tag || undefined;
   }
 
-  async getNfcTagsByBusiness(businessId: string): Promise<NfcTag[]> {
-    return await db.select().from(nfcTags).where(eq(nfcTags.businessId, businessId));
-  }
-
-  async createNfcTag(insertTag: InsertNfcTag): Promise<NfcTag> {
-    const [tag] = await db.insert(nfcTags).values(insertTag).returning();
-    return tag;
-  }
-
-  async updateNfcTag(id: string, updates: Partial<NfcTag>): Promise<NfcTag | undefined> {
-    const [tag] = await db.update(nfcTags).set(updates).where(eq(nfcTags.id, id)).returning();
+  async getNFCTagByIdentifier(identifier: string): Promise<NfcTag | undefined> {
+    const [tag] = await db.select().from(nfcTags).where(eq(nfcTags.tagIdentifier, identifier));
     return tag || undefined;
   }
 
-  async createTap(insertTap: InsertTap): Promise<Tap> {
-    const [tap] = await db.insert(taps).values(insertTap).returning();
-    return tap;
+  async createNFCTag(tag: InsertNfcTag): Promise<NfcTag> {
+    const [newTag] = await db.insert(nfcTags).values(tag).returning();
+    return newTag;
   }
 
-  async getTapsByBusiness(businessId: string, limit: number = 50): Promise<Tap[]> {
-    return await db.select().from(taps).where(eq(taps.businessId, businessId)).orderBy(desc(taps.tappedAt)).limit(limit);
+  async updateNFCTag(id: string, updates: Partial<NfcTag>): Promise<NfcTag> {
+    const [tag] = await db
+      .update(nfcTags)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(nfcTags.id, id))
+      .returning();
+    return tag;
   }
 
-  async getTapsByDate(businessId: string, startDate: Date, endDate: Date): Promise<Tap[]> {
-    return await db.select().from(taps)
-      .where(and(
-        eq(taps.businessId, businessId),
-        sql`${taps.tappedAt} >= ${startDate}`,
-        sql`${taps.tappedAt} <= ${endDate}`
-      ));
+  // Tap operations
+  async processTap(tap: InsertTap): Promise<{ success: boolean; reward?: Reward; message: string }> {
+    try {
+      // Create the tap record
+      const [newTap] = await db.insert(taps).values(tap).returning();
+
+      // Update tag tap count
+      await db
+        .update(nfcTags)
+        .set({ totalTaps: sql`${nfcTags.totalTaps} + 1` })
+        .where(eq(nfcTags.id, tap.tagId));
+
+      // Update business tap count
+      await db
+        .update(businesses)
+        .set({ totalTaps: sql`${businesses.totalTaps} + 1` })
+        .where(eq(businesses.id, tap.businessId));
+
+      // Create reward if campaign is associated
+      let reward: Reward | undefined;
+      if (tap.campaignId) {
+        const campaign = await this.getCampaign(tap.campaignId);
+        if (campaign && campaign.isActive) {
+          const rewardData: InsertReward = {
+            businessId: tap.businessId,
+            campaignId: tap.campaignId,
+            tapId: newTap.id,
+            type: campaign.type,
+            title: `${campaign.name} Reward`,
+            description: campaign.description || `Reward from ${campaign.name}`,
+            value: campaign.value,
+            code: `CIRQ${Date.now()}`,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          };
+
+          const [newReward] = await db.insert(rewards).values(rewardData).returning();
+          reward = newReward;
+
+          // Update campaign redemption count
+          await db
+            .update(campaigns)
+            .set({ currentRedemptions: sql`${campaigns.currentRedemptions} + 1` })
+            .where(eq(campaigns.id, tap.campaignId));
+        }
+      }
+
+      return {
+        success: true,
+        reward,
+        message: reward ? "Tap successful! Reward earned." : "Tap recorded successfully.",
+      };
+    } catch (error) {
+      console.error("Error processing tap:", error);
+      return {
+        success: false,
+        message: "Failed to process tap. Please try again.",
+      };
+    }
   }
 
-  async getTapStats(businessId: string): Promise<{
-    totalTaps: number;
-    activeCustomers: number;
-    referrals: number;
-    conversionRate: number;
-  }> {
-    const [totalTapsResult] = await db.select({ count: count() }).from(taps).where(eq(taps.businessId, businessId));
-    const totalTaps = totalTapsResult.count;
+  async getTaps(businessId?: string, customerEmail?: string): Promise<Tap[]> {
+    let query = db.select().from(taps);
+    
+    if (businessId && customerEmail) {
+      query = query.where(
+        and(eq(taps.businessId, businessId), eq(taps.customerEmail, customerEmail))
+      );
+    } else if (businessId) {
+      query = query.where(eq(taps.businessId, businessId));
+    } else if (customerEmail) {
+      query = query.where(eq(taps.customerEmail, customerEmail));
+    }
 
-    const [uniqueCustomersResult] = await db.select({ count: sql`count(distinct ${taps.customerEmail})` }).from(taps).where(eq(taps.businessId, businessId));
-    const activeCustomers = Number(uniqueCustomersResult.count);
-
-    const [referralsResult] = await db.select({ count: count() }).from(referrals).where(eq(referrals.businessId, businessId));
-    const referralsCount = referralsResult.count;
-
-    const conversionRate = activeCustomers > 0 ? (activeCustomers / totalTaps) * 100 : 0;
-
-    return {
-      totalTaps,
-      activeCustomers,
-      referrals: referralsCount,
-      conversionRate: Number(conversionRate.toFixed(1))
-    };
+    return await query.orderBy(desc(taps.createdAt));
   }
 
-  async getCustomerRewards(customerEmail: string): Promise<CustomerReward[]> {
-    return await db.select().from(customerRewards).where(eq(customerRewards.customerEmail, customerEmail));
+  // Reward operations
+  async getRewardsByUser(userId: string): Promise<Reward[]> {
+    return await db.select().from(rewards).where(eq(rewards.userId, userId));
   }
 
-  async createCustomerReward(insertReward: InsertCustomerReward): Promise<CustomerReward> {
-    const [reward] = await db.insert(customerRewards).values(insertReward).returning();
+  async getRewardsByEmail(email: string): Promise<Reward[]> {
+    // First find user by email, then get their rewards
+    const user = await this.getUserByEmail(email);
+    if (!user) return [];
+    return await this.getRewardsByUser(user.id);
+  }
+
+  async redeemReward(rewardId: string): Promise<Reward> {
+    const [reward] = await db
+      .update(rewards)
+      .set({ isRedeemed: true, redeemedAt: new Date() })
+      .where(eq(rewards.id, rewardId))
+      .returning();
     return reward;
   }
 
-  async redeemReward(id: string): Promise<CustomerReward | undefined> {
-    const [reward] = await db.update(customerRewards)
-      .set({ isRedeemed: true, redeemedAt: sql`now()` })
-      .where(eq(customerRewards.id, id))
-      .returning();
-    return reward || undefined;
+  // Referral operations
+  async createReferral(referral: InsertReferral): Promise<Referral> {
+    const [newReferral] = await db.insert(referrals).values(referral).returning();
+    return newReferral;
   }
 
+  async getReferralsByUser(userId: string): Promise<Referral[]> {
+    return await db.select().from(referrals).where(eq(referrals.referrerId, userId));
+  }
+
+  async processReferralCompletion(refereeEmail: string): Promise<void> {
+    // Update referral status when referee completes first action
+    await db
+      .update(referrals)
+      .set({ status: "completed", completedAt: new Date() })
+      .where(and(eq(referrals.refereeEmail, refereeEmail), eq(referrals.status, "pending")));
+  }
+
+  // Tap Trail operations
   async getTapTrails(): Promise<TapTrail[]> {
     return await db.select().from(tapTrails).where(eq(tapTrails.isActive, true));
   }
 
-  async createTapTrail(insertTrail: InsertTapTrail): Promise<TapTrail> {
-    const [trail] = await db.insert(tapTrails).values(insertTrail).returning();
-    return trail;
+  async getUserTrailProgress(userId: string): Promise<UserTrailProgress[]> {
+    return await db.select().from(userTrailProgress).where(eq(userTrailProgress.userId, userId));
   }
 
-  async addBusinessToTrail(insertTrailBusiness: InsertTapTrailBusiness): Promise<TapTrailBusiness> {
-    const [trailBusiness] = await db.insert(tapTrailBusinesses).values(insertTrailBusiness).returning();
-    return trailBusiness;
-  }
+  async updateTrailProgress(userId: string, trailId: string, businessId: string): Promise<void> {
+    // Get existing progress
+    const [existingProgress] = await db
+      .select()
+      .from(userTrailProgress)
+      .where(and(eq(userTrailProgress.userId, userId), eq(userTrailProgress.trailId, trailId)));
 
-  async getCustomerTrailProgress(customerEmail: string, trailId: string): Promise<CustomerTrailProgress | undefined> {
-    const [progress] = await db.select().from(customerTrailProgress)
-      .where(and(
-        eq(customerTrailProgress.customerEmail, customerEmail),
-        eq(customerTrailProgress.trailId, trailId)
-      ));
-    return progress || undefined;
-  }
+    if (existingProgress) {
+      // Update existing progress
+      const completedBusinesses = existingProgress.completedBusinesses as string[] || [];
+      if (!completedBusinesses.includes(businessId)) {
+        completedBusinesses.push(businessId);
+        
+        // Check if trail is completed
+        const trail = await db.select().from(tapTrails).where(eq(tapTrails.id, trailId));
+        const requiredBusinesses = trail[0]?.requiredBusinesses as string[] || [];
+        const isCompleted = requiredBusinesses.every(reqBusiness => completedBusinesses.includes(reqBusiness));
 
-  async updateCustomerTrailProgress(insertProgress: InsertCustomerTrailProgress): Promise<CustomerTrailProgress> {
-    const [progress] = await db.insert(customerTrailProgress).values(insertProgress)
-      .onConflictDoUpdate({
-        target: [customerTrailProgress.customerEmail, customerTrailProgress.trailId],
-        set: {
-          businessesVisited: insertProgress.businessesVisited,
-          isCompleted: insertProgress.isCompleted,
-          completedAt: insertProgress.completedAt
-        }
-      })
-      .returning();
-    return progress;
-  }
-
-  async createReferral(insertReferral: InsertReferral): Promise<Referral> {
-    const [referral] = await db.insert(referrals).values(insertReferral).returning();
-    return referral;
-  }
-
-  async getReferralsByBusiness(businessId: string): Promise<Referral[]> {
-    return await db.select().from(referrals).where(eq(referrals.businessId, businessId));
-  }
-
-  async getBusinessAnalytics(businessId: string): Promise<{
-    totalTaps: number;
-    uniqueCustomers: number;
-    campaignPerformance: { campaignName: string; taps: number }[];
-    recentActivity: Tap[];
-  }> {
-    const [totalTapsResult] = await db.select({ count: count() }).from(taps).where(eq(taps.businessId, businessId));
-    const totalTaps = totalTapsResult.count;
-
-    const [uniqueCustomersResult] = await db.select({ count: sql`count(distinct ${taps.customerEmail})` }).from(taps).where(eq(taps.businessId, businessId));
-    const uniqueCustomers = Number(uniqueCustomersResult.count);
-
-    const campaignPerformance = await db.select({
-      campaignName: campaigns.name,
-      taps: count(taps.id)
-    })
-    .from(campaigns)
-    .leftJoin(taps, eq(campaigns.id, taps.campaignId))
-    .where(eq(campaigns.businessId, businessId))
-    .groupBy(campaigns.id, campaigns.name);
-
-    const recentActivity = await db.select().from(taps)
-      .where(eq(taps.businessId, businessId))
-      .orderBy(desc(taps.tappedAt))
-      .limit(10);
-
-    return {
-      totalTaps,
-      uniqueCustomers,
-      campaignPerformance,
-      recentActivity
-    };
+        await db
+          .update(userTrailProgress)
+          .set({
+            completedBusinesses,
+            isCompleted,
+            completedAt: isCompleted ? new Date() : null,
+          })
+          .where(and(eq(userTrailProgress.userId, userId), eq(userTrailProgress.trailId, trailId)));
+      }
+    } else {
+      // Create new progress
+      await db.insert(userTrailProgress).values({
+        userId,
+        trailId,
+        completedBusinesses: [businessId],
+        isCompleted: false,
+      });
+    }
   }
 }
 
