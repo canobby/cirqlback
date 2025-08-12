@@ -75,6 +75,7 @@ function Router() {
           <Route path="/ar-treasure-hunts" component={ArTreasureHunts} />
           <Route path="/viral-campaigns" component={ViralCampaigns} />
           <Route path="/ar-game-hub" component={ARGameHub} />
+          <Route path="/ar-hub" component={ARGameHub} />
           <Route path="/ar-experience/:id" component={ARExperience} />
           <Route path="/ar/:tapId" component={ARExperience} />
           <Route path="/business-settings" component={BusinessSettings} />
