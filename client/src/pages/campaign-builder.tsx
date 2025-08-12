@@ -42,6 +42,7 @@ interface CampaignTemplate {
   icon: any;
   businessTypes: string[];
   collaborationType: 'solo' | 'partner' | 'network';
+  seasonality: 'year-round' | 'spring' | 'summer' | 'fall' | 'winter';
   rewards: {
     type: 'discount' | 'points' | 'freebie' | 'experience';
     value: string;
@@ -52,6 +53,20 @@ interface CampaignTemplate {
   estimatedROI: string;
 }
 
+// Dynamic template system with seasonal rotation
+const getSeasonalTemplates = () => {
+  const currentMonth = new Date().getMonth();
+  const currentSeason = currentMonth >= 2 && currentMonth <= 4 ? 'spring' :
+                       currentMonth >= 5 && currentMonth <= 7 ? 'summer' :
+                       currentMonth >= 8 && currentMonth <= 10 ? 'fall' : 'winter';
+  
+  return campaignTemplates.filter(template => 
+    template.seasonality === 'year-round' || 
+    template.seasonality === currentSeason ||
+    template.category === 'Seasonal'
+  );
+};
+
 const campaignTemplates: CampaignTemplate[] = [
   {
     id: 'coffee_loyalty',
@@ -61,6 +76,7 @@ const campaignTemplates: CampaignTemplate[] = [
     icon: Coffee,
     businessTypes: ['cafe', 'bakery', 'restaurant'],
     collaborationType: 'solo',
+    seasonality: 'year-round',
     rewards: [
       { type: 'freebie', value: 'Free Coffee', description: 'Complimentary medium coffee after 9 purchases' }
     ],
@@ -76,6 +92,7 @@ const campaignTemplates: CampaignTemplate[] = [
     icon: MapPin,
     businessTypes: ['all'],
     collaborationType: 'network',
+    seasonality: 'year-round',
     rewards: [
       { type: 'discount', value: '20% off', description: 'Discount at each participating business' },
       { type: 'experience', value: 'VIP Experience', description: 'Exclusive behind-the-scenes tour' }
@@ -92,6 +109,7 @@ const campaignTemplates: CampaignTemplate[] = [
     icon: Dumbbell,
     businessTypes: ['gym', 'fitness', 'wellness'],
     collaborationType: 'partner',
+    seasonality: 'year-round',
     rewards: [
       { type: 'discount', value: '50% off', description: 'Partner gets 50% off first month' },
       { type: 'freebie', value: 'Free Personal Training', description: 'Complimentary PT session for referrer' }
@@ -108,6 +126,7 @@ const campaignTemplates: CampaignTemplate[] = [
     icon: Utensils,
     businessTypes: ['restaurant', 'cafe', 'bar'],
     collaborationType: 'network',
+    seasonality: 'fall',
     rewards: [
       { type: 'discount', value: '15% off', description: 'Discount on seasonal items at each location' },
       { type: 'experience', value: "Chef's Table", description: 'Exclusive chef experience at final restaurant' }
@@ -124,6 +143,7 @@ const campaignTemplates: CampaignTemplate[] = [
     icon: Gift,
     businessTypes: ['all'],
     collaborationType: 'solo',
+    seasonality: 'year-round',
     rewards: [
       { type: 'discount', value: '25% off', description: 'First purchase discount' },
       { type: 'freebie', value: 'Welcome Gift', description: 'Small branded item or sample' }
@@ -140,6 +160,7 @@ const campaignTemplates: CampaignTemplate[] = [
     icon: Crown,
     businessTypes: ['all'],
     collaborationType: 'partner',
+    seasonality: 'year-round',
     rewards: [
       { type: 'discount', value: '30% off', description: 'Anniversary celebration discount' },
       { type: 'experience', value: 'VIP Event Access', description: 'Exclusive celebration event invitation' }
@@ -147,6 +168,57 @@ const campaignTemplates: CampaignTemplate[] = [
     duration: '14 days',
     difficulty: 'medium',
     estimatedROI: '25-45%'
+  },
+  {
+    id: 'spring_renewal',
+    name: 'Spring Renewal Special',
+    category: 'Seasonal',
+    description: 'Fresh start campaigns for spring cleaning, renewal, and new beginnings',
+    icon: Sparkles,
+    businessTypes: ['wellness', 'fitness', 'home', 'services'],
+    collaborationType: 'network',
+    seasonality: 'spring',
+    rewards: [
+      { type: 'discount', value: '20% off', description: 'Spring renewal discount' },
+      { type: 'freebie', value: 'Free Consultation', description: 'Complimentary spring planning session' }
+    ],
+    duration: '45 days',
+    difficulty: 'medium',
+    estimatedROI: '30-45%'
+  },
+  {
+    id: 'summer_adventure',
+    name: 'Summer Adventure Pass',
+    category: 'Seasonal',
+    description: 'Multi-business summer activity pass for adventure seekers',
+    icon: Target,
+    businessTypes: ['entertainment', 'fitness', 'restaurant', 'retail'],
+    collaborationType: 'network',
+    seasonality: 'summer',
+    rewards: [
+      { type: 'discount', value: '15% off', description: 'Adventure activity discounts' },
+      { type: 'experience', value: 'VIP Summer Event', description: 'Exclusive summer finale event' }
+    ],
+    duration: '90 days',
+    difficulty: 'hard',
+    estimatedROI: '40-60%'
+  },
+  {
+    id: 'winter_warmup',
+    name: 'Winter Warmup Collective',
+    category: 'Seasonal',
+    description: 'Cozy winter experiences across restaurants, cafes, and comfort businesses',
+    icon: Heart,
+    businessTypes: ['restaurant', 'cafe', 'retail', 'entertainment'],
+    collaborationType: 'network',
+    seasonality: 'winter',
+    rewards: [
+      { type: 'freebie', value: 'Hot Beverage', description: 'Complimentary warm drink' },
+      { type: 'discount', value: '25% off', description: 'Winter comfort items' }
+    ],
+    duration: '60 days',
+    difficulty: 'medium',
+    estimatedROI: '25-40%'
   }
 ];
 
@@ -273,7 +345,7 @@ export default function CampaignBuilder() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {campaignTemplates.map((template) => {
+              {getSeasonalTemplates().map((template) => {
                 const IconComponent = template.icon;
                 return (
                   <Card 

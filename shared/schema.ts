@@ -561,9 +561,45 @@ export const campaignParticipations = pgTable("campaign_participations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Admin Management Tables
+export const adminUsers = pgTable("admin_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  adminLevel: varchar("admin_level").notNull(), // 'master', 'platform', 'support'
+  permissions: jsonb("permissions").notNull(), // Array of permission strings
+  createdAt: timestamp("created_at").defaultNow(),
+  lastLoginAt: timestamp("last_login_at"),
+  isActive: boolean("is_active").default(true),
+});
+
+export const platformSettings = pgTable("platform_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key").notNull().unique(),
+  value: jsonb("value").notNull(),
+  category: varchar("category").notNull(), // 'system', 'billing', 'features'
+  description: text("description"),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: varchar("admin_id").references(() => users.id).notNull(),
+  action: varchar("action").notNull(), // 'create', 'update', 'delete', 'suspend'
+  targetType: varchar("target_type").notNull(), // 'user', 'business', 'campaign', 'payment'
+  targetId: varchar("target_id").notNull(),
+  changes: jsonb("changes"), // Before/after data
+  reason: text("reason"),
+  ipAddress: varchar("ip_address"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export type CampaignTemplate = typeof campaignTemplates.$inferSelect;
 export type CampaignPartner = typeof campaignPartners.$inferSelect;
 export type CampaignParticipation = typeof campaignParticipations.$inferSelect;
+export type AdminUser = typeof adminUsers.$inferSelect;
+export type PlatformSetting = typeof platformSettings.$inferSelect;
+export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Business = typeof businesses.$inferSelect;

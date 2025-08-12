@@ -38,6 +38,7 @@ import ARGameHub from "@/pages/ar-game-hub";
 import ARExperience from "@/pages/ar-experience";
 import BusinessSettings from "@/pages/business-settings";
 import CampaignBuilder from "@/pages/campaign-builder";
+import AdminDashboard from "@/pages/admin-dashboard";
 
 function Router() {
   const [location] = useLocation();
@@ -81,6 +82,7 @@ function Router() {
           <Route path="/ar/:tapId" component={ARExperience} />
           <Route path="/business-settings" component={BusinessSettings} />
           <Route path="/campaign-builder" component={CampaignBuilder} />
+          <Route path="/admin-dashboard" component={AdminDashboard} />
           <Route component={NotFound} />
         </Switch>
       </main>
