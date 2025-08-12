@@ -37,12 +37,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns", async (req, res) => {
     try {
       const businessId = req.query.businessId as string;
-      if (!businessId) {
-        return res.status(400).json({ error: "Business ID required" });
-      }
       const campaigns = await storage.getCampaigns(businessId);
       res.json(campaigns);
     } catch (error) {
+      console.error("Campaign fetch error:", error);
       res.status(500).json({ error: "Failed to fetch campaigns" });
     }
   });

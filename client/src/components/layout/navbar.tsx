@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { CircleX } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import NotificationCenter from "@/components/notifications/notification-center";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 
 export default function Navbar() {
   const [location] = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => {
     if (path === "/" && location === "/") return true;
@@ -14,7 +16,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-card/95 backdrop-blur-md shadow-sm border-b border-border sticky top-0 z-50">
+    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center">
@@ -99,8 +101,93 @@ export default function Navbar() {
             <Button className="gradient-bg border-0 text-white font-semibold">
               Login
             </Button>
+            
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </Button>
+            </div>
           </div>
         </div>
+        
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-200 bg-white">
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              <Link href="/customer">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/customer") 
+                      ? "text-primary bg-primary/10" 
+                      : "text-gray-700 hover:text-primary"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Customer
+                </Button>
+              </Link>
+              <Link href="/merchant">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/merchant") 
+                      ? "text-secondary bg-secondary/10" 
+                      : "text-gray-700 hover:text-secondary"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Merchant
+                </Button>
+              </Link>
+              <Link href="/community">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/community") 
+                      ? "text-accent bg-accent/10" 
+                      : "text-gray-700 hover:text-accent"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Community
+                </Button>
+              </Link>
+              <Link href="/analytics">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/analytics") 
+                      ? "text-primary bg-primary/10" 
+                      : "text-gray-700 hover:text-primary"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Analytics
+                </Button>
+              </Link>
+              <Link href="/how-it-works">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/how-it-works") 
+                      ? "text-secondary bg-secondary/10" 
+                      : "text-gray-700 hover:text-secondary"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  How It Works
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );
