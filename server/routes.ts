@@ -2404,6 +2404,453 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register AR Game routes
   registerARGameRoutes(app);
 
+  // AI-POWERED FEATURES ROUTES
+
+  // Customer Health Scoring
+  app.get("/api/ai/customer-health", (req, res) => {
+    const mockHealthScores = [
+      {
+        id: "1",
+        userId: "user-1",
+        businessId: "business-1",
+        healthScore: 85,
+        churnRisk: "low",
+        visitPrediction: 7,
+        spendingPrediction: 45.50,
+        riskFactors: ["No recent visits", "Decreased spending"],
+        retentionStrategies: ["Send personalized offer", "Invite to loyalty program"],
+        lastCalculated: new Date().toISOString()
+      },
+      {
+        id: "2",
+        userId: "user-2",
+        businessId: "business-1",
+        healthScore: 35,
+        churnRisk: "critical",
+        visitPrediction: 30,
+        spendingPrediction: 15.00,
+        riskFactors: ["Long absence", "Competitor activity", "Seasonal drop"],
+        retentionStrategies: ["Urgent win-back campaign", "Special discount offer", "Personal outreach"],
+        lastCalculated: new Date().toISOString()
+      }
+    ];
+    res.json(mockHealthScores);
+  });
+
+  // Predictive Pricing
+  app.get("/api/ai/predictive-pricing", (req, res) => {
+    const mockPricing = [
+      {
+        id: "1",
+        businessId: "business-1",
+        itemCategory: "Coffee Drinks",
+        currentPrice: 4.50,
+        suggestedPrice: 5.25,
+        priceChangeReason: "High demand expected due to cold weather and nearby office events",
+        expectedDemandChange: 15.5,
+        expectedRevenueImpact: 125.80,
+        marketFactors: {
+          weather: "Cold front arriving, 45°F",
+          events: ["Office conference nearby", "Morning rush hour"],
+          competition: "Competitor prices 10% higher",
+          seasonality: "Peak coffee season"
+        },
+        validFrom: new Date().toISOString(),
+        validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      }
+    ];
+    res.json(mockPricing);
+  });
+
+  // Market Intelligence
+  app.get("/api/ai/market-intelligence", (req, res) => {
+    const mockMarketData = [
+      {
+        id: "1",
+        businessId: "business-1",
+        dataType: "weather_impact",
+        date: new Date().toISOString(),
+        insights: "Cold weather increases coffee sales by 23% and decreases outdoor seating usage by 67%. Consider promoting hot beverages and indoor comfort amenities.",
+        recommendations: [
+          "Increase coffee inventory by 25%",
+          "Promote hot food items on social media",
+          "Add seasonal comfort items like hot chocolate",
+          "Create cozy indoor atmosphere"
+        ],
+        confidenceScore: 0.89,
+        isActionable: true
+      }
+    ];
+    res.json(mockMarketData);
+  });
+
+  // Weather Triggers
+  app.get("/api/ai/weather-triggers", (req, res) => {
+    const mockWeatherTriggers = [
+      {
+        id: "1",
+        businessId: "business-1",
+        weatherCondition: "rainy",
+        customMessage: "Rainy day? Warm up with our hot coffee and pastries! 15% off when it's pouring outside.",
+        discountPercentage: 15,
+        isActive: true,
+        triggerCount: 8
+      }
+    ];
+    res.json(mockWeatherTriggers);
+  });
+
+  // Apply AI pricing recommendation
+  app.post("/api/ai/apply-pricing/:id", (req, res) => {
+    res.json({ success: true, message: "Pricing applied successfully" });
+  });
+
+  // Create win-back campaign
+  app.post("/api/ai/create-winback/:customerId", (req, res) => {
+    res.json({ success: true, message: "Win-back campaign created and sent" });
+  });
+
+  // PARTNERSHIP ROUTES
+
+  // Get business partnerships
+  app.get("/api/partnerships", (req, res) => {
+    const mockPartnerships = [
+      {
+        id: "1",
+        businessAId: "business-1",
+        businessBId: "business-2",
+        businessA: {
+          name: "Brew & Bytes Cafe",
+          category: "Coffee Shop",
+          address: "123 Main St",
+          rating: 4.5
+        },
+        businessB: {
+          name: "Pages & Prose Bookstore",
+          category: "Bookstore",
+          address: "125 Main St",
+          rating: 4.7
+        },
+        partnershipType: "cross_promotion",
+        status: "active",
+        commissionRate: 5.0,
+        sharedBudget: 500.00,
+        totalReferrals: 45,
+        totalRevenue: 1250.75,
+        terms: "Cross-promote each other's businesses. Coffee shop customers get 10% off books, bookstore customers get free pastry with coffee purchase.",
+        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    ];
+    res.json(mockPartnerships);
+  });
+
+  // Get potential partners
+  app.get("/api/partnerships/potential", (req, res) => {
+    const mockPotentialPartners = [
+      {
+        id: "business-4",
+        name: "Artisan Bakery",
+        category: "Bakery",
+        address: "150 Elm Street",
+        rating: 4.8,
+        reviewCount: 156,
+        description: "Fresh artisan breads and pastries made daily with organic ingredients.",
+        compatibilityScore: 92
+      }
+    ];
+    res.json(mockPotentialPartners);
+  });
+
+  // Get cross-business rewards
+  app.get("/api/partnerships/cross-rewards", (req, res) => {
+    const mockCrossRewards = [
+      {
+        id: "1",
+        partnershipId: "1",
+        triggerBusinessId: "business-1",
+        rewardBusinessId: "business-2",
+        rewardType: "discount",
+        rewardValue: 10.00,
+        description: "10% off any book purchase",
+        conditions: "Must show coffee receipt from same day",
+        isActive: true
+      }
+    ];
+    res.json(mockCrossRewards);
+  });
+
+  // Create partnership
+  app.post("/api/partnerships", (req, res) => {
+    res.json({ success: true, id: "new-partnership-id" });
+  });
+
+  // Update partnership status
+  app.put("/api/partnerships/:id/status", (req, res) => {
+    res.json({ success: true });
+  });
+
+  // TEAM CHALLENGE ROUTES
+
+  // Get user's teams
+  app.get("/api/teams/my-teams", (req, res) => {
+    const mockTeams = [
+      {
+        id: "team-1",
+        name: "Local Explorers",
+        description: "Discovering the best local spots together!",
+        leaderId: "user-1",
+        maxMembers: 10,
+        currentMembers: 7,
+        teamType: "casual",
+        totalPoints: 1250,
+        totalChallengesCompleted: 12,
+        teamLevel: 3,
+        teamBadges: ["Early Adopter", "Social Butterfly", "Explorer"],
+        isPublic: true,
+        isActive: true,
+        members: [
+          {
+            id: "user-1",
+            firstName: "John",
+            lastName: "Smith",
+            role: "leader",
+            pointsContributed: 450,
+            joinedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()
+          }
+        ]
+      }
+    ];
+    res.json(mockTeams);
+  });
+
+  // Get team leaderboard
+  app.get("/api/teams/leaderboard", (req, res) => {
+    const mockLeaderboard = [
+      {
+        id: "team-5",
+        name: "Challenge Champions",
+        currentMembers: 8,
+        teamLevel: 7,
+        totalPoints: 3450,
+        totalChallengesCompleted: 25
+      }
+    ];
+    res.json(mockLeaderboard);
+  });
+
+  // Create team
+  app.post("/api/teams", (req, res) => {
+    res.json({ success: true, id: "new-team-id" });
+  });
+
+  // Join challenge
+  app.post("/api/challenges/:id/join", (req, res) => {
+    res.json({ success: true });
+  });
+
+  // AR TREASURE HUNT ROUTES
+
+  // Get treasure hunts
+  app.get("/api/ar/treasure-hunts", (req, res) => {
+    const mockTreasureHunts = [
+      {
+        id: "hunt-1",
+        title: "Downtown Discovery Adventure",
+        description: "Explore downtown businesses and discover hidden AR treasures at each location!",
+        huntType: "city_wide",
+        clues: [
+          {
+            id: "clue-1",
+            text: "Where the morning brew meets the written word, seek the golden bean that speaks without sound.",
+            location: "Coffee shop near bookstore",
+            businessId: "business-1",
+            businessName: "Brew & Bytes Cafe",
+            hint: "Look for a place where caffeine and literature coexist"
+          }
+        ],
+        requiredBusinesses: ["business-1", "business-2", "business-3"],
+        treasureLocations: [
+          {
+            lat: 40.7128,
+            lng: -74.0060,
+            businessId: "business-1",
+            reward: "50 bonus points"
+          }
+        ],
+        finalReward: {
+          type: "prize",
+          value: 100,
+          description: "$100 gift card to local businesses"
+        },
+        participantCount: 156,
+        completionCount: 23,
+        difficulty: "medium",
+        estimatedDuration: 90,
+        startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: new Date(Date.now() + 23 * 24 * 60 * 60 * 1000).toISOString(),
+        isActive: true,
+        userProgress: {
+          currentClue: 0,
+          cluesCompleted: [],
+          treasuresFound: 0,
+          isCompleted: false,
+          totalTime: 0
+        }
+      }
+    ];
+    res.json(mockTreasureHunts);
+  });
+
+  // Get AR experiences
+  app.get("/api/ar/experiences", (req, res) => {
+    const mockArExperiences = [
+      {
+        id: "ar-1",
+        businessId: "business-1",
+        businessName: "Brew & Bytes Cafe",
+        title: "Virtual Coffee Menu",
+        description: "Point your camera at our menu to see 3D models of our signature drinks!",
+        experienceType: "virtual_menu",
+        triggerType: "nfc_tap",
+        rewardPoints: 25,
+        playCount: 89,
+        averageRating: 4.6,
+        isActive: true
+      }
+    ];
+    res.json(mockArExperiences);
+  });
+
+  // Get user's AR progress
+  app.get("/api/ar/my-progress", (req, res) => {
+    const mockProgress = [
+      {
+        huntId: "hunt-1",
+        huntTitle: "Downtown Discovery Adventure",
+        currentClue: {
+          text: "Where the morning brew meets the written word, seek the golden bean that speaks without sound.",
+          hint: "Look for a place where caffeine and literature coexist"
+        },
+        cluesCompleted: [],
+        totalClues: 5,
+        isCompleted: false,
+        totalTime: 0
+      }
+    ];
+    res.json(mockProgress);
+  });
+
+  // Join treasure hunt
+  app.post("/api/ar/treasure-hunts/:id/join", (req, res) => {
+    res.json({ success: true });
+  });
+
+  // VIRAL CAMPAIGN ROUTES
+
+  // Get viral campaigns
+  app.get("/api/viral-campaigns", (req, res) => {
+    const mockViralCampaigns = [
+      {
+        id: "viral-1",
+        businessId: "business-1",
+        businessName: "Brew & Bytes Cafe",
+        title: "Coffee Lover's Referral Explosion",
+        description: "Share with friends and watch your rewards multiply exponentially! Each friend you refer increases your reward potential.",
+        campaignType: "friend_referral",
+        viralMechanic: "exponential_rewards",
+        baseReward: 5.00,
+        viralMultiplier: 1.5,
+        maxReward: 100.00,
+        participantCount: 234,
+        shareCount: 567,
+        conversionRate: 0.28,
+        totalRevenue: 1250.75,
+        startDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString(),
+        isActive: true,
+        userProgress: {
+          participated: true,
+          friendsReferred: 3,
+          rewardEarned: 16.88,
+          sharesMade: 8
+        }
+      }
+    ];
+    res.json(mockViralCampaigns);
+  });
+
+  // Get social proof events
+  app.get("/api/social-proof", (req, res) => {
+    const mockSocialProof = [
+      {
+        id: "social-1",
+        userId: "user-1",
+        userName: "Sarah Chen",
+        userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=sarah",
+        businessId: "business-1",
+        businessName: "Brew & Bytes Cafe",
+        eventType: "visit",
+        visibility: "public",
+        message: "Amazing new seasonal latte! The AR menu made choosing so much fun 🚀",
+        viewCount: 47,
+        interactionCount: 12,
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+      }
+    ];
+    res.json(mockSocialProof);
+  });
+
+  // Get friend network
+  app.get("/api/friends", (req, res) => {
+    const mockFriends = [
+      {
+        id: "friend-1",
+        friendId: "user-2",
+        friendName: "Mike Johnson",
+        friendAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=mike",
+        status: "accepted",
+        sharedVisits: 12,
+        mutualRewards: 8,
+        connectedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    ];
+    res.json(mockFriends);
+  });
+
+  // Get viral stats
+  app.get("/api/viral-stats", (req, res) => {
+    const mockStats = {
+      totalShares: 1247,
+      sharesGrowth: 23,
+      viralCoefficient: 2.3,
+      campaignROI: 340,
+      activeParticipants: 456
+    };
+    res.json(mockStats);
+  });
+
+  // Create viral campaign
+  app.post("/api/viral-campaigns", (req, res) => {
+    res.json({ success: true, id: "new-viral-campaign-id" });
+  });
+
+  // Participate in viral campaign
+  app.post("/api/viral-campaigns/:id/participate", (req, res) => {
+    res.json({ success: true });
+  });
+
+  // Share viral campaign
+  app.post("/api/viral-campaigns/:id/share", (req, res) => {
+    res.json({ success: true, shareUrl: `${req.protocol}://${req.hostname}/viral/${req.params.id}` });
+  });
+
+  // Add friend
+  app.post("/api/friends/add", (req, res) => {
+    res.json({ success: true });
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates

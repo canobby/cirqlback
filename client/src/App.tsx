@@ -28,6 +28,11 @@ import UserGuide from "@/pages/user-guide";
 import InteractiveWalkthrough from "@/pages/interactive-walkthrough";
 import NotFound from "@/pages/not-found";
 import PlatformOverview from "@/pages/platform-overview";
+import AIInsights from "@/pages/ai-insights";
+import Partnerships from "@/pages/partnerships";
+import TeamChallenges from "@/pages/team-challenges";
+import ArTreasureHunts from "@/pages/ar-treasure-hunts";
+import ViralCampaigns from "@/pages/viral-campaigns";
 
 function Router() {
   return (
@@ -53,6 +58,11 @@ function Router() {
           <Route path="/platform" component={PlatformOverview} />
           <Route path="/user-guide" component={UserGuide} />
           <Route path="/walkthrough" component={InteractiveWalkthrough} />
+          <Route path="/ai-insights" component={AIInsights} />
+          <Route path="/partnerships" component={Partnerships} />
+          <Route path="/team-challenges" component={TeamChallenges} />
+          <Route path="/ar-treasure-hunts" component={ArTreasureHunts} />
+          <Route path="/viral-campaigns" component={ViralCampaigns} />
           <Route component={NotFound} />
         </Switch>
       </main>

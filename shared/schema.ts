@@ -11,6 +11,7 @@ import {
   decimal,
   uuid,
   primaryKey,
+  real,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -558,3 +559,355 @@ export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema
 
 export type ApiUsage = typeof apiUsage.$inferSelect;
 export type InsertApiUsage = z.infer<typeof insertApiUsageSchema>;
+
+// AI-POWERED FEATURES
+
+// Customer Health Scoring & Predictive Analytics
+export const customerHealthScores = pgTable("customer_health_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  healthScore: real("health_score").notNull(), // 0-100 prediction score
+  churnRisk: varchar("churn_risk").notNull(), // low, medium, high, critical
+  visitPrediction: integer("visit_prediction"), // days until next predicted visit
+  spendingPrediction: decimal("spending_prediction", { precision: 10, scale: 2 }),
+  riskFactors: jsonb("risk_factors"), // reasons for churn risk
+  retentionStrategies: jsonb("retention_strategies"), // AI recommended actions
+  lastCalculated: timestamp("last_calculated").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Automated Win-Back Campaigns
+export const winBackCampaigns = pgTable("winback_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  campaignType: varchar("campaign_type").notNull(), // email, sms, push, in_app
+  triggerReason: varchar("trigger_reason").notNull(), // high_churn_risk, long_absence, competitor_visit
+  offerType: varchar("offer_type").notNull(), // discount, free_item, points_bonus, exclusive_access
+  offerValue: decimal("offer_value", { precision: 10, scale: 2 }),
+  personalizedMessage: text("personalized_message"),
+  sentAt: timestamp("sent_at"),
+  openedAt: timestamp("opened_at"),
+  clickedAt: timestamp("clicked_at"),
+  redeemedAt: timestamp("redeemed_at"),
+  isSuccess: boolean("is_success").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// CROSS-BUSINESS PARTNERSHIPS
+
+// Business Partnerships
+export const businessPartnerships = pgTable("business_partnerships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessAId: varchar("business_a_id").references(() => businesses.id).notNull(),
+  businessBId: varchar("business_b_id").references(() => businesses.id).notNull(),
+  partnershipType: varchar("partnership_type").notNull(), // referral, joint_campaign, cross_promotion, shared_rewards
+  status: varchar("status").default("pending"), // pending, active, paused, ended
+  commissionRate: real("commission_rate"), // percentage for referrals
+  sharedBudget: decimal("shared_budget", { precision: 10, scale: 2 }),
+  totalReferrals: integer("total_referrals").default(0),
+  totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).default(sql`0`),
+  terms: text("terms"), // partnership agreement details
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Cross-Business Rewards
+export const crossBusinessRewards = pgTable("cross_business_rewards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  partnershipId: varchar("partnership_id").references(() => businessPartnerships.id).notNull(),
+  triggerBusinessId: varchar("trigger_business_id").references(() => businesses.id).notNull(),
+  rewardBusinessId: varchar("reward_business_id").references(() => businesses.id).notNull(),
+  rewardType: varchar("reward_type").notNull(), // discount, free_item, points, cashback
+  rewardValue: decimal("reward_value", { precision: 10, scale: 2 }),
+  description: text("description"),
+  conditions: text("conditions"), // e.g., "spend $50+ at partner business"
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// COMMUNITY & SOCIAL FEATURES
+
+// Teams
+export const teams = pgTable("teams", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  leaderId: varchar("leader_id").references(() => users.id).notNull(),
+  maxMembers: integer("max_members").default(10),
+  currentMembers: integer("current_members").default(1),
+  teamType: varchar("team_type").default("casual"), // casual, competitive, corporate, family
+  totalPoints: integer("total_points").default(0),
+  totalChallengesCompleted: integer("total_challenges_completed").default(0),
+  teamLevel: integer("team_level").default(1),
+  teamBadges: text("team_badges").array().default(sql`'{}'`),
+  isPublic: boolean("is_public").default(true),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Team Memberships
+export const teamMemberships = pgTable("team_memberships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: varchar("team_id").references(() => teams.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  role: varchar("role").default("member"), // leader, co_leader, member, scout
+  joinedAt: timestamp("joined_at").defaultNow(),
+  pointsContributed: integer("points_contributed").default(0),
+  isActive: boolean("is_active").default(true),
+}, (table) => ({
+  uniqueTeamUser: primaryKey({ columns: [table.teamId, table.userId] })
+}));
+
+// Community Challenges
+export const communityChallenges = pgTable("community_challenges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  challengeType: varchar("challenge_type").notNull(), // individual, team, community, city_wide
+  category: varchar("category"), // exploration, social, spending, referral, seasonal
+  difficultyLevel: varchar("difficulty_level").default("medium"), // easy, medium, hard, epic
+  requirements: jsonb("requirements"), // array of conditions to complete
+  rewards: jsonb("rewards"), // points, badges, prizes, business discounts
+  participantCount: integer("participant_count").default(0),
+  completionCount: integer("completion_count").default(0),
+  maxParticipants: integer("max_participants"),
+  sponsorBusinessId: varchar("sponsor_business_id").references(() => businesses.id),
+  isGlobal: boolean("is_global").default(false), // city-wide vs local
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User Challenge Progress
+export const userChallengeProgress = pgTable("user_challenge_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  challengeId: varchar("challenge_id").references(() => communityChallenges.id).notNull(),
+  teamId: varchar("team_id").references(() => teams.id), // if team challenge
+  progress: jsonb("progress"), // dynamic tracking of completion steps
+  currentStep: integer("current_step").default(0),
+  totalSteps: integer("total_steps"),
+  isCompleted: boolean("is_completed").default(false),
+  completedAt: timestamp("completed_at"),
+  pointsEarned: integer("points_earned").default(0),
+  badgesEarned: text("badges_earned").array().default(sql`'{}'`),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueUserChallenge: primaryKey({ columns: [table.userId, table.challengeId] })
+}));
+
+// ADVANCED AR & GAMING
+
+// AR Experiences
+export const arExperiences = pgTable("ar_experiences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  experienceType: varchar("experience_type").notNull(), // treasure_hunt, virtual_menu, game, showcase
+  triggerType: varchar("trigger_type").default("nfc_tap"), // nfc_tap, location, qr_code, manual
+  arAssetUrl: varchar("ar_asset_url"), // 3D model or experience URL
+  rewardPoints: integer("reward_points").default(0),
+  rewardItems: jsonb("reward_items"), // virtual items or real rewards
+  playCount: integer("play_count").default(0),
+  averageRating: real("average_rating"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// AR Treasure Hunts
+export const arTreasureHunts = pgTable("ar_treasure_hunts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  huntType: varchar("hunt_type").default("city_wide"), // business_specific, neighborhood, city_wide
+  clues: jsonb("clues"), // array of clue objects with locations and hints
+  requiredBusinesses: jsonb("required_businesses"), // businesses that must be visited
+  treasureLocations: jsonb("treasure_locations"), // GPS coordinates or business IDs
+  finalReward: jsonb("final_reward"), // ultimate prize
+  participantCount: integer("participant_count").default(0),
+  completionCount: integer("completion_count").default(0),
+  difficulty: varchar("difficulty").default("medium"),
+  estimatedDuration: integer("estimated_duration"), // minutes
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// AR Hunt Progress
+export const arHuntProgress = pgTable("ar_hunt_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  huntId: varchar("hunt_id").references(() => arTreasureHunts.id).notNull(),
+  currentClue: integer("current_clue").default(0),
+  cluesCompleted: jsonb("clues_completed"), // array of completed clue IDs
+  treasuresFound: integer("treasures_found").default(0),
+  isCompleted: boolean("is_completed").default(false),
+  completedAt: timestamp("completed_at"),
+  totalTime: integer("total_time"), // minutes taken to complete
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueUserHunt: primaryKey({ columns: [table.userId, table.huntId] })
+}));
+
+// HYPERLOCAL AI ANALYTICS
+
+// Local Market Intelligence
+export const localMarketData = pgTable("local_market_data", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  dataType: varchar("data_type").notNull(), // weather_impact, traffic_patterns, event_correlation, competitor_analysis
+  date: timestamp("date").notNull(),
+  dataPoints: jsonb("data_points"), // flexible data structure
+  insights: text("insights"), // AI-generated insights
+  recommendations: jsonb("recommendations"), // AI suggested actions
+  confidenceScore: real("confidence_score"), // 0-1 AI confidence level
+  isActionable: boolean("is_actionable").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Predictive Pricing
+export const predictivePricing = pgTable("predictive_pricing", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  itemCategory: varchar("item_category").notNull(),
+  currentPrice: decimal("current_price", { precision: 10, scale: 2 }),
+  suggestedPrice: decimal("suggested_price", { precision: 10, scale: 2 }),
+  priceChangeReason: text("price_change_reason"),
+  expectedDemandChange: real("expected_demand_change"), // percentage
+  expectedRevenueImpact: decimal("expected_revenue_impact", { precision: 10, scale: 2 }),
+  marketFactors: jsonb("market_factors"), // weather, events, competition, seasonality
+  validFrom: timestamp("valid_from"),
+  validUntil: timestamp("valid_until"),
+  isApplied: boolean("is_applied").default(false),
+  appliedAt: timestamp("applied_at"),
+  actualImpact: decimal("actual_impact", { precision: 10, scale: 2 }), // real result vs prediction
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// VIRAL GROWTH & SOCIAL FEATURES
+
+// Social Proof Events
+export const socialProofEvents = pgTable("social_proof_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  eventType: varchar("event_type").notNull(), // visit, review, share, recommend, check_in
+  visibility: varchar("visibility").default("friends"), // public, friends, private
+  message: text("message"),
+  metadata: jsonb("metadata"), // additional context like rating, photos
+  viewCount: integer("view_count").default(0),
+  interactionCount: integer("interaction_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Friend Networks
+export const friendConnections = pgTable("friend_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userAId: varchar("user_a_id").references(() => users.id).notNull(),
+  userBId: varchar("user_b_id").references(() => users.id).notNull(),
+  status: varchar("status").default("pending"), // pending, accepted, blocked
+  connectionSource: varchar("connection_source"), // app_invite, phone_contact, social_media, mutual_friend
+  connectedAt: timestamp("connected_at"),
+  sharedVisits: integer("shared_visits").default(0), // businesses visited together
+  mutualRewards: integer("mutual_rewards").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueFriendship: primaryKey({ columns: [table.userAId, table.userBId] })
+}));
+
+// Viral Campaigns
+export const viralCampaigns = pgTable("viral_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  campaignType: varchar("campaign_type").notNull(), // friend_referral, social_share, group_visit, challenge_completion
+  viralMechanic: varchar("viral_mechanic").notNull(), // exponential_rewards, friend_multipliers, group_discounts, fomo_triggers
+  baseReward: decimal("base_reward", { precision: 10, scale: 2 }),
+  viralMultiplier: real("viral_multiplier").default(1.5), // reward multiplication factor
+  maxReward: decimal("max_reward", { precision: 10, scale: 2 }),
+  participantCount: integer("participant_count").default(0),
+  shareCount: integer("share_count").default(0),
+  conversionRate: real("conversion_rate").default(0),
+  totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).default(sql`0`),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Weather-Based Marketing
+export const weatherTriggers = pgTable("weather_triggers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  weatherCondition: varchar("weather_condition").notNull(), // sunny, rainy, cold, hot, snowy
+  triggerType: varchar("trigger_type").notNull(), // temperature_above, temperature_below, precipitation, wind_speed
+  thresholdValue: real("threshold_value"), // temperature or other numeric threshold
+  campaignId: varchar("campaign_id").references(() => campaigns.id),
+  customMessage: text("custom_message"),
+  discountPercentage: real("discount_percentage"),
+  isActive: boolean("is_active").default(true),
+  lastTriggered: timestamp("last_triggered"),
+  triggerCount: integer("trigger_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Local Events Integration
+export const localEvents = pgTable("local_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  eventType: varchar("event_type").notNull(), // festival, sports, concert, community, seasonal
+  location: varchar("location").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  attendeeCount: integer("attendee_count"),
+  businessImpact: real("business_impact"), // predicted foot traffic increase %
+  isVerified: boolean("is_verified").default(false),
+  source: varchar("source"), // eventbrite, facebook, city_calendar, manual
+  externalId: varchar("external_id"), // ID from external source
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Event-Business Campaigns
+export const eventBusinessCampaigns = pgTable("event_business_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => localEvents.id).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  campaignId: varchar("campaign_id").references(() => campaigns.id),
+  specialOffer: text("special_offer"),
+  targetAudience: varchar("target_audience"), // event_attendees, local_residents, all
+  radius: real("radius"), // kilometers from event location
+  isActive: boolean("is_active").default(true),
+  impressions: integer("impressions").default(0),
+  clicks: integer("clicks").default(0),
+  conversions: integer("conversions").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// New Advanced Feature Types
+export type CustomerHealthScore = typeof customerHealthScores.$inferSelect;
+export type WinBackCampaign = typeof winBackCampaigns.$inferSelect;
+export type BusinessPartnership = typeof businessPartnerships.$inferSelect;
+export type CrossBusinessReward = typeof crossBusinessRewards.$inferSelect;
+export type Team = typeof teams.$inferSelect;
+export type TeamMembership = typeof teamMemberships.$inferSelect;
+export type CommunityChallenge = typeof communityChallenges.$inferSelect;
+export type UserChallengeProgress = typeof userChallengeProgress.$inferSelect;
+export type ArExperience = typeof arExperiences.$inferSelect;
+export type ArTreasureHunt = typeof arTreasureHunts.$inferSelect;
+export type ArHuntProgress = typeof arHuntProgress.$inferSelect;
+export type LocalMarketData = typeof localMarketData.$inferSelect;
+export type PredictivePricing = typeof predictivePricing.$inferSelect;
+export type SocialProofEvent = typeof socialProofEvents.$inferSelect;
+export type FriendConnection = typeof friendConnections.$inferSelect;
+export type ViralCampaign = typeof viralCampaigns.$inferSelect;
+export type WeatherTrigger = typeof weatherTriggers.$inferSelect;
+export type LocalEvent = typeof localEvents.$inferSelect;
+export type EventBusinessCampaign = typeof eventBusinessCampaigns.$inferSelect;
