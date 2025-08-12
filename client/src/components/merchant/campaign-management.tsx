@@ -28,11 +28,16 @@ export default function CampaignManagement({ businessId }: CampaignManagementPro
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: campaigns = [], isLoading } = useQuery({
+  const { data: campaigns = [], isLoading, error } = useQuery({
     queryKey: ["/api/campaigns", businessId],
-    queryFn: () => 
-      fetch(`/api/campaigns?businessId=${businessId}`)
-        .then(res => res.json()),
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns?businessId=${businessId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch campaigns');
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    },
   });
 
   const createCampaignMutation = useMutation({
@@ -83,7 +88,21 @@ export default function CampaignManagement({ businessId }: CampaignManagementPro
     return (
       <Card>
         <CardContent className="p-6 text-center">
-          Loading campaigns...
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading campaigns...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <p className="text-destructive mb-4">Failed to load campaigns</p>
+          <Button onClick={() => window.location.reload()}>
+            Retry
+          </Button>
         </CardContent>
       </Card>
     );
@@ -184,7 +203,7 @@ export default function CampaignManagement({ businessId }: CampaignManagementPro
             </CardContent>
           </Card>
         ) : (
-          campaigns.map((campaign: any) => (
+          Array.isArray(campaigns) && campaigns.map((campaign: any) => (
             <Card key={campaign.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-4">
