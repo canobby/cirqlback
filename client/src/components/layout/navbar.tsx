@@ -1,0 +1,89 @@
+import { Link, useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { CircleX } from "lucide-react";
+
+export default function Navbar() {
+  const [location] = useLocation();
+
+  const isActive = (path: string) => {
+    if (path === "/" && location === "/") return true;
+    if (path !== "/" && location.startsWith(path)) return true;
+    return false;
+  };
+
+  return (
+    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                <CircleX className="text-white h-6 w-6" />
+              </div>
+              <span className="ml-3 text-xl font-bold text-gray-900">Cirqlback</span>
+            </Link>
+          </div>
+          
+          <div className="hidden md:block">
+            <div className="ml-10 flex items-baseline space-x-8">
+              <Link href="/customer">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive("/customer") 
+                      ? "text-gray-900 bg-gray-100" 
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  Customer
+                </Button>
+              </Link>
+              <Link href="/merchant">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive("/merchant") 
+                      ? "text-gray-900 bg-gray-100" 
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  Merchant
+                </Button>
+              </Link>
+              <Link href="/community">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive("/community") 
+                      ? "text-gray-900 bg-gray-100" 
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  Community
+                </Button>
+              </Link>
+              <Link href="/analytics">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive("/analytics") 
+                      ? "text-gray-900 bg-gray-100" 
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  Analytics
+                </Button>
+              </Link>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <Button className="bg-primary text-white hover:bg-primary/90">
+              Login
+            </Button>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}

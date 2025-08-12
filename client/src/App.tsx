@@ -1,0 +1,41 @@
+import { Switch, Route } from "wouter";
+import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import Navbar from "@/components/layout/navbar";
+import Home from "@/pages/home";
+import Customer from "@/pages/customer";
+import Merchant from "@/pages/merchant";
+import Community from "@/pages/community";
+import Analytics from "@/pages/analytics";
+import NotFound from "@/pages/not-found";
+
+function Router() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/customer" component={Customer} />
+        <Route path="/merchant" component={Merchant} />
+        <Route path="/community" component={Community} />
+        <Route path="/analytics" component={Analytics} />
+        <Route component={NotFound} />
+      </Switch>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Router />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
