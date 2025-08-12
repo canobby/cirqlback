@@ -45,6 +45,7 @@ import AdminTrainingCenter from "@/pages/admin-training-center";
 import TestSystem from "@/pages/test-system";
 import CommunicationPage from "@/pages/communication";
 import ProfileSetup from "@/pages/profile-setup";
+import ExportHub from "@/pages/export-hub";
 
 function Router() {
   const [location] = useLocation();
@@ -95,6 +96,7 @@ function Router() {
           <Route path="/test-system" component={TestSystem} />
           <Route path="/communication" component={CommunicationPage} />
           <Route path="/profile-setup" component={ProfileSetup} />
+        <Route path="/export-hub" component={ExportHub} />
           <Route component={NotFound} />
         </Switch>
       </main>

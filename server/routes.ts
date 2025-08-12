@@ -4046,8 +4046,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
       email: "john@example.com",
       businessName: "Demo Business",
       businessTitle: "Owner",
-      setupComplete: false
+      setupComplete: false,
+      subscriptionTier: "business" // Enable premium features for testing
     });
+  });
+
+  // Export & Integration Hub API endpoints
+  app.post("/api/exports/generate", async (req, res) => {
+    try {
+      const { type, config } = req.body;
+      
+      // Simulate export generation
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      const timestamp = new Date().toISOString().split('T')[0];
+      const formats = {
+        csv: 'csv',
+        xlsx: 'xlsx', 
+        pdf: 'pdf',
+        json: 'json'
+      };
+      
+      const exportFiles = {
+        customers: `customer-database-${timestamp}.${formats[config.format]}`,
+        financial: `financial-summary-${timestamp}.${formats[config.format]}`,
+        campaigns: `campaign-analytics-${timestamp}.${formats[config.format]}`,
+        'business-intelligence': `business-intelligence-report-${timestamp}.${formats[config.format]}`
+      };
+      
+      res.json({
+        success: true,
+        filename: exportFiles[type] || `export-${timestamp}.${formats[config.format]}`,
+        downloadUrl: `/api/downloads/${exportFiles[type]}`,
+        size: "2.4 MB",
+        recordCount: type === 'customers' ? 1247 : type === 'financial' ? 523 : 89
+      });
+    } catch (error) {
+      console.error("Export generation error:", error);
+      res.status(500).json({ error: "Failed to generate export" });
+    }
+  });
+
+  app.post("/api/integrations/:platform/connect", async (req, res) => {
+    try {
+      const { platform } = req.params;
+      
+      // Simulate OAuth URL generation for different platforms
+      const authUrls = {
+        quickbooks: "https://appcenter.intuit.com/connect/oauth2?client_id=Q123&scope=com.intuit.quickbooks.accounting&redirect_uri=https://cirqlback.com/integrations/quickbooks/callback",
+        mailchimp: "https://login.mailchimp.com/oauth2/authorize?response_type=code&client_id=MC123&redirect_uri=https://cirqlback.com/integrations/mailchimp/callback",
+        hubspot: "https://app.hubspot.com/oauth/authorize?client_id=HS123&scope=contacts&redirect_uri=https://cirqlback.com/integrations/hubspot/callback",
+        shopify: "https://myshop.myshopify.com/admin/oauth/authorize?client_id=SH123&scope=read_products,read_orders&redirect_uri=https://cirqlback.com/integrations/shopify/callback",
+        salesforce: "https://login.salesforce.com/services/oauth2/authorize?response_type=code&client_id=SF123&redirect_uri=https://cirqlback.com/integrations/salesforce/callback"
+      };
+      
+      res.json({
+        success: true,
+        authUrl: authUrls[platform] || `https://example.com/oauth/${platform}`,
+        platform: platform,
+        status: "pending_auth"
+      });
+    } catch (error) {
+      console.error("Integration connection error:", error);
+      res.status(500).json({ error: "Failed to initiate integration" });
+    }
+  });
+
+  app.get("/api/integrations/status", async (req, res) => {
+    try {
+      // Return current integration status
+      res.json({
+        quickbooks: { connected: false, lastSync: null },
+        mailchimp: { connected: true, lastSync: "2024-01-15T10:30:00Z", contactCount: 1247 },
+        hubspot: { connected: false, lastSync: null },
+        'google-analytics': { connected: true, lastSync: "2024-01-15T09:15:00Z" },
+        shopify: { connected: false, lastSync: null },
+        salesforce: { connected: false, lastSync: null }
+      });
+    } catch (error) {
+      console.error("Integration status error:", error);
+      res.status(500).json({ error: "Failed to get integration status" });
+    }
   });
 
   return httpServer;
