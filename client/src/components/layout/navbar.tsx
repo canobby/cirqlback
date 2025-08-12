@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { CircleX } from "lucide-react";
 import NotificationCenter from "@/components/notifications/notification-center";
+import cirqlbackLogo from "@assets/066CD1BA-FD9A-40FE-8568-177951876A13_1754965785754.png";
 
 export default function Navbar() {
   const [location] = useLocation();
@@ -19,7 +20,7 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
               <img 
-                src="/attached_assets/066CD1BA-FD9A-40FE-8568-177951876A13_1754965785754.png" 
+                src={cirqlbackLogo} 
                 alt="Cirqlback" 
                 className="h-8 w-auto"
               />

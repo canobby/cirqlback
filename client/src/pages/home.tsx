@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Store, Smartphone, BarChart3, Users, Coffee, BookOpen, UtensilsCrossed, CheckCircle, Wifi, Share2, MapPin } from "lucide-react";
+import cirqlbackLogo from "@assets/066CD1BA-FD9A-40FE-8568-177951876A13_1754965785754.png";
 
 export default function Home() {
   return (
@@ -10,6 +11,14 @@ export default function Home() {
       <div className="gradient-bg rounded-2xl p-8 mb-8 text-white">
         <div className="grid md:grid-cols-2 gap-8 items-center">
           <div>
+            <div className="flex items-center mb-6">
+              <img 
+                src={cirqlbackLogo} 
+                alt="Cirqlback" 
+                className="h-12 w-auto mr-4 filter brightness-0 invert"
+              />
+              <div className="text-2xl font-bold">Cirqlback</div>
+            </div>
             <h1 className="text-4xl font-bold mb-4">NFC-Powered Local Marketing</h1>
             <p className="text-xl opacity-90 mb-6">
               Connect customers with local businesses through seamless tap-to-reward experiences
