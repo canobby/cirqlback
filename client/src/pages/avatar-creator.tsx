@@ -17,7 +17,6 @@ import {
   Eye,
   Shirt,
   Camera,
-  Zap,
   Trophy,
   Download,
   Share2,
@@ -35,7 +34,10 @@ import {
   Send,
   Group,
   Swords,
-  PartyPopper
+  PartyPopper,
+  Building2,
+  Users2,
+  ShieldCheck
 } from "lucide-react";
 
 interface AvatarAsset {
@@ -146,13 +148,47 @@ interface TeamChallenge {
   id: string;
   title: string;
   description: string;
-  type: 'cooperative' | 'competitive';
+  type: 'cooperative' | 'competitive' | 'team_battle' | 'family' | 'corporate';
   requiredMembers: number;
   timeLimit: string;
   rewards: string[];
   progress: number;
   target: number;
   participants: number;
+}
+
+interface TeamBattle {
+  id: string;
+  title: string;
+  team1: { name: string; score: number; members: number };
+  team2: { name: string; score: number; members: number };
+  challenge: string;
+  timeLeft: string;
+  prize: string;
+  status: 'active' | 'upcoming' | 'completed';
+}
+
+interface FamilyPlan {
+  id: string;
+  name: string;
+  memberLimit: number;
+  benefits: string[];
+  monthlyRewards: string;
+  price: string;
+  savings: string;
+}
+
+interface CorporateChallenge {
+  id: string;
+  company: string;
+  title: string;
+  description: string;
+  employees: number;
+  progress: number;
+  target: number;
+  corporateReward: string;
+  employeeReward: string;
+  deadline: string;
 }
 
 export default function AvatarCreator() {
@@ -445,6 +481,89 @@ export default function AvatarCreator() {
     { from: "Emma_L", teamName: "Fitness Fanatics", message: "Let's earn rewards at gyms together!", sent: "3 hours ago" }
   ];
 
+  const teamBattles: TeamBattle[] = [
+    {
+      id: "battle_1",
+      title: "Downtown Dominance",
+      team1: { name: "Coffee Crusaders", score: 847, members: 12 },
+      team2: { name: "Tea Titans", score: 723, members: 9 },
+      challenge: "Most Cirql taps in downtown area",
+      timeLeft: "4 hours",
+      prize: "Champion crowns + 2000 coins each",
+      status: "active"
+    },
+    {
+      id: "battle_2",
+      title: "Weekend Warriors Challenge",
+      team1: { name: "Your Team", score: 234, members: 5 },
+      team2: { name: "Thunder Squad", score: 189, members: 7 },
+      challenge: "Complete the most weekend tap trails",
+      timeLeft: "1 day 6 hours",
+      prize: "Legendary pet + exclusive badge",
+      status: "active"
+    }
+  ];
+
+  const familyPlans: FamilyPlan[] = [
+    {
+      id: "family_basic",
+      name: "Family Explorer Pack",
+      memberLimit: 6,
+      benefits: [
+        "Shared family achievement tracking",
+        "Family-only challenges and rewards",
+        "Combined family leaderboard ranking",
+        "Special family avatar accessories",
+        "Monthly family meetup events"
+      ],
+      monthlyRewards: "500 bonus coins per family member",
+      price: "Free with 4+ active family members",
+      savings: "Save 40% vs individual rewards"
+    },
+    {
+      id: "family_premium",
+      name: "Family Champions League",
+      memberLimit: 10,
+      benefits: [
+        "All Explorer Pack benefits",
+        "Exclusive family-vs-family tournaments",
+        "Premium family avatar collections",
+        "Priority family event access",
+        "Custom family challenge creation"
+      ],
+      monthlyRewards: "1000 bonus coins + rare items",
+      price: "$4.99/month for entire family",
+      savings: "Save 60% vs individual premium"
+    }
+  ];
+
+  const corporateChallenges: CorporateChallenge[] = [
+    {
+      id: "corp_1",
+      company: "Tech Solutions Inc",
+      title: "Lunch Break Explorers",
+      description: "Employees discover local lunch spots during work breaks",
+      employees: 47,
+      progress: 234,
+      target: 500,
+      corporateReward: "Company featured on Cirqlback + employee wellness points",
+      employeeReward: "Lunch vouchers + wellness badges",
+      deadline: "End of month"
+    },
+    {
+      id: "corp_2",
+      company: "Marketing Agency Co",
+      title: "Team Building Tap Trail",
+      description: "Department teams compete in after-work business discovery",
+      employees: 23,
+      progress: 89,
+      target: 200,
+      corporateReward: "Team building budget bonus + local business partnerships",
+      employeeReward: "Happy hour credits + team achievement badges",
+      deadline: "2 weeks"
+    }
+  ];
+
   const avatar = avatarPreview || (userAvatar as UserAvatar) || defaultAvatar;
 
   const handleAssetSelect = (asset: AvatarAsset) => {
@@ -558,12 +677,13 @@ export default function AvatarCreator() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 max-w-4xl mx-auto">
+          <TabsList className="grid w-full grid-cols-7 max-w-5xl mx-auto text-xs">
             <TabsTrigger value="customize">Customize</TabsTrigger>
             <TabsTrigger value="shop">Shop</TabsTrigger>
             <TabsTrigger value="achievements">Rewards</TabsTrigger>
             <TabsTrigger value="games">Games</TabsTrigger>
             <TabsTrigger value="teams">Teams</TabsTrigger>
+            <TabsTrigger value="battles">Battles</TabsTrigger>
             <TabsTrigger value="showcase">Showcase</TabsTrigger>
           </TabsList>
 
@@ -1254,6 +1374,232 @@ export default function AvatarCreator() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="battles" className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold mb-4">Epic Team Battles & Corporate Challenges</h2>
+              <p className="text-gray-600">Join massive team battles, family competitions, and corporate challenges for incredible rewards</p>
+            </div>
+
+            {/* Team vs Team Battles */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Swords className="h-5 w-5 text-red-500" />
+                  <span>Live Team Battles</span>
+                  <Badge variant="destructive" className="ml-auto">2 Active</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {teamBattles.map((battle) => (
+                  <div key={battle.id} className="border rounded-lg p-4 bg-gradient-to-r from-red-50 to-orange-50">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-bold text-lg">{battle.title}</h3>
+                        <p className="text-sm text-gray-600">{battle.challenge}</p>
+                      </div>
+                      <Badge variant="destructive">{battle.timeLeft}</Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="text-center p-3 bg-blue-100 rounded">
+                        <div className="font-bold text-blue-800">{battle.team1.name}</div>
+                        <div className="text-2xl font-bold text-blue-600">{battle.team1.score}</div>
+                        <div className="text-sm text-gray-600">{battle.team1.members} members</div>
+                      </div>
+                      <div className="text-center p-3 bg-purple-100 rounded">
+                        <div className="font-bold text-purple-800">{battle.team2.name}</div>
+                        <div className="text-2xl font-bold text-purple-600">{battle.team2.score}</div>
+                        <div className="text-sm text-gray-600">{battle.team2.members} members</div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-center mb-3">
+                      <p className="text-sm text-orange-600 font-medium">Prize: {battle.prize}</p>
+                    </div>
+                    
+                    <Button className="w-full bg-gradient-to-r from-red-500 to-orange-500">
+                      <Crown className="h-4 w-4 mr-2" />
+                      {battle.team1.name === "Your Team" || battle.team2.name === "Your Team" 
+                        ? "Continue Battle" 
+                        : "Join Battle"}
+                    </Button>
+                  </div>
+                ))}
+                
+                <Button variant="outline" className="w-full">
+                  <Swords className="h-4 w-4 mr-2" />
+                  Challenge Another Team
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Family Plans */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Users2 className="h-5 w-5 text-green-500" />
+                    <span>Family Plans</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {familyPlans.map((plan) => (
+                    <div key={plan.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-semibold">{plan.name}</h3>
+                          <p className="text-sm text-gray-600">Up to {plan.memberLimit} family members</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-green-600">{plan.price}</div>
+                          <div className="text-xs text-green-500">{plan.savings}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1 mb-3">
+                        {plan.benefits.slice(0, 3).map((benefit, idx) => (
+                          <div key={idx} className="text-sm text-gray-600 flex items-center">
+                            <ShieldCheck className="h-3 w-3 mr-1 text-green-500" />
+                            {benefit}
+                          </div>
+                        ))}
+                        {plan.benefits.length > 3 && (
+                          <div className="text-xs text-gray-500">+{plan.benefits.length - 3} more benefits</div>
+                        )}
+                      </div>
+                      
+                      <div className="bg-green-50 p-2 rounded text-sm text-green-700 mb-3">
+                        Monthly: {plan.monthlyRewards}
+                      </div>
+                      
+                      <Button className="w-full" variant={plan.id === 'family_basic' ? 'outline' : 'default'}>
+                        <Users2 className="h-4 w-4 mr-2" />
+                        {plan.id === 'family_basic' ? 'Start Family Plan' : 'Upgrade to Premium'}
+                      </Button>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Corporate Challenges */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Building2 className="h-5 w-5 text-blue-500" />
+                    <span>Corporate Challenges</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {corporateChallenges.map((challenge) => (
+                    <div key={challenge.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-semibold">{challenge.title}</h3>
+                          <p className="text-sm text-blue-600 font-medium">{challenge.company}</p>
+                        </div>
+                        <Badge variant="outline" className="text-blue-600 border-blue-300">
+                          {challenge.employees} employees
+                        </Badge>
+                      </div>
+                      
+                      <p className="text-sm text-gray-600 mb-3">{challenge.description}</p>
+                      
+                      <div className="space-y-2 mb-3">
+                        <div className="flex justify-between text-sm">
+                          <span>Company Progress</span>
+                          <span>{challenge.progress}/{challenge.target}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-blue-400 to-purple-400 h-2 rounded-full"
+                            style={{ width: `${(challenge.progress / challenge.target) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="bg-blue-50 p-2 rounded text-xs mb-3">
+                        <div className="font-medium">Employee Reward: {challenge.employeeReward}</div>
+                        <div className="text-gray-600">Company Reward: {challenge.corporateReward}</div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-blue-600">Deadline: {challenge.deadline}</span>
+                        <Button size="sm" className="bg-gradient-to-r from-blue-500 to-purple-500">
+                          <Building2 className="h-4 w-4 mr-1" />
+                          Join Challenge
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg">
+                    <h3 className="font-semibold mb-2">Is Your Company Missing Out?</h3>
+                    <p className="text-sm text-gray-600 mb-3">Get your workplace involved in local business discovery and team building!</p>
+                    <Button variant="outline" className="w-full border-blue-300 text-blue-600">
+                      <Building2 className="h-4 w-4 mr-2" />
+                      Invite Your Company
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Flash Events */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Zap className="h-5 w-5 text-yellow-500" />
+                  <span>Flash Events & Mass Challenges</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 rounded-lg border border-yellow-200">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="font-bold text-orange-800">MEGA FLASH MOB - ACTIVE NOW!</h3>
+                      <p className="text-sm text-orange-600">500+ users needed at Central Coffee within 2 hours!</p>
+                    </div>
+                    <Badge className="bg-yellow-500 text-white animate-pulse">LIVE</Badge>
+                  </div>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-2xl font-bold text-orange-600">347/500 users</span>
+                    <span className="text-sm text-orange-600">1h 23m remaining</span>
+                  </div>
+                  <div className="w-full bg-orange-200 rounded-full h-3 mb-3">
+                    <div className="bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full" style={{ width: '69%' }} />
+                  </div>
+                  <div className="text-sm text-orange-700 mb-3">
+                    <strong>Massive Rewards:</strong> 1000 coins + Legendary Flash Mob Crown + Business partnerships unlocked!
+                  </div>
+                  <Button className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
+                    <Zap className="h-4 w-4 mr-2" />
+                    JOIN THE FLASH MOB NOW!
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="border rounded-lg p-3">
+                    <h3 className="font-semibold mb-1">City-Wide Tournament</h3>
+                    <p className="text-sm text-gray-600 mb-2">All teams compete for ultimate city champion title</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-purple-600">Starts Monday</span>
+                      <Button size="sm" variant="outline">Register Team</Button>
+                    </div>
+                  </div>
+                  
+                  <div className="border rounded-lg p-3">
+                    <h3 className="font-semibold mb-1">Weekend Family Festival</h3>
+                    <p className="text-sm text-gray-600 mb-2">Special family-only mega challenges and prizes</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-green-600">This Saturday</span>
+                      <Button size="sm" variant="outline">Join Festival</Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="showcase" className="space-y-6">

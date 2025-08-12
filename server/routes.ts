@@ -1032,6 +1032,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team Battle API routes
+  app.get("/api/battles/active", async (req, res) => {
+    try {
+      const battles = [
+        {
+          id: "battle_1",
+          title: "Downtown Dominance",
+          team1: { name: "Coffee Crusaders", score: 847, members: 12 },
+          team2: { name: "Tea Titans", score: 723, members: 9 },
+          challenge: "Most Cirql taps in downtown area",
+          timeLeft: "4 hours",
+          prize: "Champion crowns + 2000 coins each",
+          status: "active"
+        },
+        {
+          id: "battle_2",
+          title: "Weekend Warriors Challenge",
+          team1: { name: "Your Team", score: 234, members: 5 },
+          team2: { name: "Thunder Squad", score: 189, members: 7 },
+          challenge: "Complete the most weekend tap trails",
+          timeLeft: "1 day 6 hours",
+          prize: "Legendary pet + exclusive badge",
+          status: "active"
+        }
+      ];
+      res.json(battles);
+    } catch (error) {
+      console.error("Error fetching team battles:", error);
+      res.status(500).json({ error: "Failed to fetch team battles" });
+    }
+  });
+
+  app.post("/api/battles/challenge-team", async (req, res) => {
+    try {
+      const { targetTeamId, challengeType, wager } = req.body;
+      const userId = req.body.userId || "demo_user_1";
+      
+      res.json({
+        success: true,
+        message: "Battle challenge sent!",
+        battleId: `battle_${Date.now()}`,
+        estimatedStart: "When opponent accepts (up to 24 hours)"
+      });
+    } catch (error) {
+      console.error("Error creating team battle:", error);
+      res.status(500).json({ error: "Failed to create team battle" });
+    }
+  });
+
+  // Family Plan API routes
+  app.get("/api/family/plans", async (req, res) => {
+    try {
+      const plans = [
+        {
+          id: "family_basic",
+          name: "Family Explorer Pack",
+          memberLimit: 6,
+          benefits: [
+            "Shared family achievement tracking",
+            "Family-only challenges and rewards",
+            "Combined family leaderboard ranking",
+            "Special family avatar accessories",
+            "Monthly family meetup events"
+          ],
+          monthlyRewards: "500 bonus coins per family member",
+          price: "Free with 4+ active family members",
+          savings: "Save 40% vs individual rewards"
+        },
+        {
+          id: "family_premium",
+          name: "Family Champions League",
+          memberLimit: 10,
+          benefits: [
+            "All Explorer Pack benefits",
+            "Exclusive family-vs-family tournaments",
+            "Premium family avatar collections",
+            "Priority family event access",
+            "Custom family challenge creation"
+          ],
+          monthlyRewards: "1000 bonus coins + rare items",
+          price: "$4.99/month for entire family",
+          savings: "Save 60% vs individual premium"
+        }
+      ];
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching family plans:", error);
+      res.status(500).json({ error: "Failed to fetch family plans" });
+    }
+  });
+
+  app.post("/api/family/create", async (req, res) => {
+    try {
+      const { planId, familyName, inviteEmails } = req.body;
+      const userId = req.body.userId || "demo_user_1";
+      
+      res.json({
+        success: true,
+        message: "Family plan created successfully!",
+        familyCode: `FAM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        invitesSent: inviteEmails?.length || 0,
+        bonusCoins: 500
+      });
+    } catch (error) {
+      console.error("Error creating family plan:", error);
+      res.status(500).json({ error: "Failed to create family plan" });
+    }
+  });
+
+  // Corporate Challenge API routes
+  app.get("/api/corporate/challenges", async (req, res) => {
+    try {
+      const challenges = [
+        {
+          id: "corp_1",
+          company: "Tech Solutions Inc",
+          title: "Lunch Break Explorers",
+          description: "Employees discover local lunch spots during work breaks",
+          employees: 47,
+          progress: 234,
+          target: 500,
+          corporateReward: "Company featured on Cirqlback + employee wellness points",
+          employeeReward: "Lunch vouchers + wellness badges",
+          deadline: "End of month"
+        },
+        {
+          id: "corp_2",
+          company: "Marketing Agency Co",
+          title: "Team Building Tap Trail",
+          description: "Department teams compete in after-work business discovery",
+          employees: 23,
+          progress: 89,
+          target: 200,
+          corporateReward: "Team building budget bonus + local business partnerships",
+          employeeReward: "Happy hour credits + team achievement badges",
+          deadline: "2 weeks"
+        }
+      ];
+      res.json(challenges);
+    } catch (error) {
+      console.error("Error fetching corporate challenges:", error);
+      res.status(500).json({ error: "Failed to fetch corporate challenges" });
+    }
+  });
+
+  app.post("/api/corporate/invite-company", async (req, res) => {
+    try {
+      const { companyName, contactEmail, employeeCount, message } = req.body;
+      const userId = req.body.userId || "demo_user_1";
+      
+      res.json({
+        success: true,
+        message: "Corporate invitation sent successfully!",
+        referralBonus: 1000,
+        corporateCode: `CORP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+      });
+    } catch (error) {
+      console.error("Error sending corporate invitation:", error);
+      res.status(500).json({ error: "Failed to send corporate invitation" });
+    }
+  });
+
+  // Flash Events API routes
+  app.get("/api/events/flash", async (req, res) => {
+    try {
+      const flashEvent = {
+        id: "flash_mega_1",
+        title: "MEGA FLASH MOB - ACTIVE NOW!",
+        description: "500+ users needed at Central Coffee within 2 hours!",
+        location: "Central Coffee",
+        currentParticipants: 347,
+        targetParticipants: 500,
+        timeRemaining: "1h 23m",
+        rewards: ["1000 coins", "Legendary Flash Mob Crown", "Business partnerships unlocked"],
+        status: "active"
+      };
+      res.json(flashEvent);
+    } catch (error) {
+      console.error("Error fetching flash events:", error);
+      res.status(500).json({ error: "Failed to fetch flash events" });
+    }
+  });
+
+  app.post("/api/events/join-flash/:eventId", async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      const userId = req.body.userId || "demo_user_1";
+      
+      res.json({
+        success: true,
+        message: "Successfully joined the flash mob!",
+        participantNumber: Math.floor(Math.random() * 100) + 300,
+        bonusForEarlyJoin: 50
+      });
+    } catch (error) {
+      console.error("Error joining flash event:", error);
+      res.status(500).json({ error: "Failed to join flash event" });
+    }
+  });
+
   // Cirql Platform API routes
   app.post("/api/cirql/tap", async (req, res) => {
     try {

@@ -47,6 +47,9 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **AR Video Integration**: Immersive augmented reality experiences that transform simple Cirql taps into interactive mini-games with collectible rewards, progress visualization, and social sharing capabilities
 - **Team-Based Social Gamification**: Complete friend invitation system, team formation, cooperative/competitive challenges, social events, and viral growth mechanics to maximize user acquisition and business traffic
 - **Advanced Avatar Gamification Hub**: AR treasure hunts, social competitions, peer-to-peer trading system, and streak bonuses with full backend API support
+- **Epic Team vs Team Battles**: Live competitive battles between teams with real-time scoring, champion rewards, and team challenge systems
+- **Family Plans & Corporate Challenges**: Family group rewards (up to 10 members), corporate employee challenges, and workplace team building through local business discovery
+- **Mega Flash Events**: City-wide flash mobs requiring 500+ simultaneous users, massive rewards, and real-time community engagement
 - **How It Works Page**: Comprehensive educational page with diagrams and explanations for business growth
 - **Advanced Analytics Dashboard**: Real-time metrics, AI-powered insights, and performance tracking
 - **Community Hub**: Gamified challenges, leaderboards, social feeds, and group rewards
