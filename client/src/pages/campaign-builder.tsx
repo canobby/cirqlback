@@ -328,12 +328,14 @@ export default function CampaignBuilder() {
         </div>
 
         <Tabs defaultValue="templates" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="ai-builder">AI Builder</TabsTrigger>
-            <TabsTrigger value="custom">Custom</TabsTrigger>
-            <TabsTrigger value="collaboration">Partners</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="grid grid-cols-4 min-w-max lg:w-full">
+              <TabsTrigger value="templates" className="px-2 text-xs lg:px-3 lg:text-sm">Templates</TabsTrigger>
+              <TabsTrigger value="ai-builder" className="px-2 text-xs lg:px-3 lg:text-sm">AI Builder</TabsTrigger>
+              <TabsTrigger value="custom" className="px-2 text-xs lg:px-3 lg:text-sm">Custom</TabsTrigger>
+              <TabsTrigger value="collaboration" className="px-2 text-xs lg:px-3 lg:text-sm">Partners</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Template Selection */}
           <TabsContent value="templates" className="space-y-6">

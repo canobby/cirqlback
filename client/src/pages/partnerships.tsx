@@ -200,24 +200,26 @@ export default function Partnerships() {
 
         {/* Partnership Tabs */}
         <Tabs defaultValue="discover" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto">
-            <TabsTrigger value="discover" className="flex items-center gap-2">
-              <Search className="h-4 w-4" />
-              Discover Partners
-            </TabsTrigger>
-            <TabsTrigger value="active" className="flex items-center gap-2">
-              <Handshake className="h-4 w-4" />
-              Active Partnerships
-            </TabsTrigger>
-            <TabsTrigger value="templates" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Campaign Templates
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Partnership Analytics
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="grid grid-cols-4 min-w-max lg:w-full">
+              <TabsTrigger value="discover" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Search className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Discover</span>
+              </TabsTrigger>
+              <TabsTrigger value="active" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Handshake className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Active</span>
+              </TabsTrigger>
+              <TabsTrigger value="templates" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Zap className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Templates</span>
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <BarChart3 className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Analytics</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Discover Partners */}
           <TabsContent value="discover" className="space-y-6">

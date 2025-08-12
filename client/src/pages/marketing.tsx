@@ -289,14 +289,16 @@ export default function ViralMarketingSuite() {
 
         {/* Main Marketing Tabs */}
         <Tabs defaultValue="website" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="website">Website Builder</TabsTrigger>
-            <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
-            <TabsTrigger value="audiences">Audiences</TabsTrigger>
-            <TabsTrigger value="integrations">Integrations</TabsTrigger>
-            <TabsTrigger value="automation">Automation</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="grid grid-cols-6 min-w-max lg:w-full">
+              <TabsTrigger value="website" className="px-2 text-xs lg:px-3 lg:text-sm">Website</TabsTrigger>
+              <TabsTrigger value="campaigns" className="px-2 text-xs lg:px-3 lg:text-sm">Campaigns</TabsTrigger>
+              <TabsTrigger value="audiences" className="px-2 text-xs lg:px-3 lg:text-sm">Audiences</TabsTrigger>
+              <TabsTrigger value="integrations" className="px-2 text-xs lg:px-3 lg:text-sm">Integrations</TabsTrigger>
+              <TabsTrigger value="automation" className="px-2 text-xs lg:px-3 lg:text-sm">Automation</TabsTrigger>
+              <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Analytics</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Website Builder Tab */}
           <TabsContent value="website" className="space-y-6">

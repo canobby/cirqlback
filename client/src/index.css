@@ -172,6 +172,76 @@
       box-shadow: 0 0 20px 10px hsl(280 100% 65% / 0.3);
     }
   }
+  
+  /* UI Fix Classes */
+  .hover-tooltip {
+    position: relative;
+  }
+  
+  .hover-tooltip .tooltip-content {
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: hsl(220 27% 8%);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 50;
+  }
+  
+  .hover-tooltip:hover .tooltip-content {
+    opacity: 1;
+  }
+  
+  .hover-tooltip .tooltip-content::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: hsl(220 27% 8%);
+  }
+  
+  /* Fix button text visibility */
+  .gradient-text {
+    background: linear-gradient(135deg, 
+      var(--cirq-purple) 0%, 
+      var(--cirq-pink) 50%,
+      var(--cirq-orange) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Ensure buttons don't overlap */
+  .nav-button-spacing {
+    margin-right: 0.5rem;
+  }
+  
+  /* Fix overlapping elements */
+  .z-fixed {
+    position: relative;
+    z-index: 10;
+  }
+  
+  /* Mobile responsive improvements */
+  @media (max-width: 1024px) {
+    .mobile-text-adjust {
+      font-size: 0.875rem;
+    }
+    
+    .mobile-padding-adjust {
+      padding: 0.5rem;
+    }
+  }
 
   .card-hover {
     @apply transition-all duration-300 ease-in-out hover:shadow-xl;

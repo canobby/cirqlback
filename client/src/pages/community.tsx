@@ -229,13 +229,15 @@ export default function ViralCommunityHub() {
 
         {/* Main Community Tabs */}
         <Tabs defaultValue="leaderboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-            <TabsTrigger value="challenges">Challenges</TabsTrigger>
-            <TabsTrigger value="social">Social Feed</TabsTrigger>
-            <TabsTrigger value="ar-gallery">AR Gallery</TabsTrigger>
-            <TabsTrigger value="referrals">Referrals</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="grid grid-cols-5 min-w-max lg:w-full">
+              <TabsTrigger value="leaderboard" className="px-2 text-xs lg:px-3 lg:text-sm">Leaderboard</TabsTrigger>
+              <TabsTrigger value="challenges" className="px-2 text-xs lg:px-3 lg:text-sm">Challenges</TabsTrigger>
+              <TabsTrigger value="social" className="px-2 text-xs lg:px-3 lg:text-sm">Social Feed</TabsTrigger>
+              <TabsTrigger value="ar-gallery" className="px-2 text-xs lg:px-3 lg:text-sm">AR Gallery</TabsTrigger>
+              <TabsTrigger value="referrals" className="px-2 text-xs lg:px-3 lg:text-sm">Referrals</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="leaderboard" className="space-y-6">
             <Card>

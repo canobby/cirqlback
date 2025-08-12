@@ -97,17 +97,19 @@ export default function Merchant() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="campaigns" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-9">
-          <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
-          <TabsTrigger value="nfc-wizard">Cirql Wizard</TabsTrigger>
-          <TabsTrigger value="nfc-manager">Tag Manager</TabsTrigger>
-          <TabsTrigger value="nfc-guide">Deployment</TabsTrigger>
-          <TabsTrigger value="nfc-analytics">Tag Analytics</TabsTrigger>
-          <TabsTrigger value="pricing">AI Pricing</TabsTrigger>
-          <TabsTrigger value="viral">Viral Marketing</TabsTrigger>
-          <TabsTrigger value="marketing">Marketing</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList className="grid grid-cols-9 min-w-max lg:w-full">
+            <TabsTrigger value="campaigns" className="px-2 text-xs lg:px-3 lg:text-sm">Campaigns</TabsTrigger>
+            <TabsTrigger value="nfc-wizard" className="px-2 text-xs lg:px-3 lg:text-sm">Cirql Wizard</TabsTrigger>
+            <TabsTrigger value="nfc-manager" className="px-2 text-xs lg:px-3 lg:text-sm">Tag Manager</TabsTrigger>
+            <TabsTrigger value="nfc-guide" className="px-2 text-xs lg:px-3 lg:text-sm">Deployment</TabsTrigger>
+            <TabsTrigger value="nfc-analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Tag Analytics</TabsTrigger>
+            <TabsTrigger value="pricing" className="px-2 text-xs lg:px-3 lg:text-sm">AI Pricing</TabsTrigger>
+            <TabsTrigger value="viral" className="px-2 text-xs lg:px-3 lg:text-sm">Viral Marketing</TabsTrigger>
+            <TabsTrigger value="marketing" className="px-2 text-xs lg:px-3 lg:text-sm">Marketing</TabsTrigger>
+            <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Analytics</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="campaigns">
           <CampaignManagement businessId={selectedBusiness} />

@@ -64,14 +64,14 @@ export default function Customer() {
 
         {showDashboard && (
           <Tabs defaultValue="rewards" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <TabsList className="grid w-full grid-cols-4 max-w-md">
-                <TabsTrigger value="rewards">Rewards</TabsTrigger>
-                <TabsTrigger value="progress">Progress</TabsTrigger>
-                <TabsTrigger value="community">Community</TabsTrigger>
-                <TabsTrigger value="referrals">Referrals</TabsTrigger>
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+              <TabsList className="grid w-full grid-cols-4 lg:max-w-md">
+                <TabsTrigger value="rewards" className="text-xs lg:text-sm">Rewards</TabsTrigger>
+                <TabsTrigger value="progress" className="text-xs lg:text-sm">Progress</TabsTrigger>
+                <TabsTrigger value="community" className="text-xs lg:text-sm">Community</TabsTrigger>
+                <TabsTrigger value="referrals" className="text-xs lg:text-sm">Referrals</TabsTrigger>
               </TabsList>
-              <Button variant="outline" onClick={() => setShowDashboard(false)}>
+              <Button variant="outline" onClick={() => setShowDashboard(false)} className="lg:ml-4 whitespace-nowrap">
                 Change Email
               </Button>
             </div>

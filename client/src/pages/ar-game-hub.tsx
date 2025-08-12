@@ -159,13 +159,15 @@ export default function ARGameHub() {
       </div>
 
       <Tabs defaultValue="challenges" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="challenges">Active Challenges</TabsTrigger>
-          <TabsTrigger value="avatar">Avatar Progress</TabsTrigger>
-          <TabsTrigger value="social">Social Features</TabsTrigger>
-          <TabsTrigger value="transforms">Business AR</TabsTrigger>
-          <TabsTrigger value="rewards">Rewards & Items</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList className="grid grid-cols-5 min-w-max lg:w-full">
+            <TabsTrigger value="challenges" className="px-2 text-xs lg:px-3 lg:text-sm">Challenges</TabsTrigger>
+            <TabsTrigger value="avatar" className="px-2 text-xs lg:px-3 lg:text-sm">Avatar</TabsTrigger>
+            <TabsTrigger value="social" className="px-2 text-xs lg:px-3 lg:text-sm">Social</TabsTrigger>
+            <TabsTrigger value="transforms" className="px-2 text-xs lg:px-3 lg:text-sm">Business AR</TabsTrigger>
+            <TabsTrigger value="rewards" className="px-2 text-xs lg:px-3 lg:text-sm">Rewards</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Active Challenges */}
         <TabsContent value="challenges" className="space-y-6">

@@ -136,28 +136,30 @@ export default function AIInsights() {
 
         {/* AI Insights Tabs */}
         <Tabs defaultValue="health-scoring" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto">
-            <TabsTrigger value="health-scoring" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Health Scoring
-            </TabsTrigger>
-            <TabsTrigger value="churn-prediction" className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              Churn Prediction
-            </TabsTrigger>
-            <TabsTrigger value="pricing-optimization" className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              Pricing AI
-            </TabsTrigger>
-            <TabsTrigger value="market-intelligence" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Market Intelligence
-            </TabsTrigger>
-            <TabsTrigger value="weather-insights" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Weather AI
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="grid grid-cols-5 min-w-max lg:w-full">
+              <TabsTrigger value="health-scoring" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Activity className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Health</span>
+              </TabsTrigger>
+              <TabsTrigger value="churn-prediction" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Churn</span>
+              </TabsTrigger>
+              <TabsTrigger value="pricing-optimization" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <DollarSign className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Pricing</span>
+              </TabsTrigger>
+              <TabsTrigger value="market-intelligence" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Target className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Market</span>
+              </TabsTrigger>
+              <TabsTrigger value="weather-insights" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Sparkles className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Weather</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Customer Health Scoring */}
           <TabsContent value="health-scoring" className="space-y-6">

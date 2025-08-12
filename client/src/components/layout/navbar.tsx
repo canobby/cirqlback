@@ -32,8 +32,8 @@ export default function Navbar() {
             </Link>
           </div>
           
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-8">
+          <div className="hidden lg:block">
+            <div className="ml-10 flex items-baseline space-x-4">
               <Link href="/customer">
                 <Button 
                   variant="ghost" 
@@ -70,18 +70,6 @@ export default function Navbar() {
                   Community
                 </Button>
               </Link>
-              <Link href="/avatar">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/avatar") 
-                      ? "text-pink-600 bg-pink-50 border border-pink-200" 
-                      : "text-muted-foreground hover:text-pink-600 hover:bg-pink-50"
-                  }`}
-                >
-                  Avatar
-                </Button>
-              </Link>
               <Link href="/map">
                 <Button 
                   variant="ghost" 
@@ -94,18 +82,6 @@ export default function Navbar() {
                   Map
                 </Button>
               </Link>
-              <Link href="/ai-insights">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/ai-insights") 
-                      ? "text-primary bg-primary/10 border border-primary/20" 
-                      : "text-muted-foreground hover:text-primary hover:bg-primary/5"
-                  }`}
-                >
-                  AI Insights
-                </Button>
-              </Link>
               <Link href="/account">
                 <Button 
                   variant="ghost" 
@@ -116,78 +92,6 @@ export default function Navbar() {
                   }`}
                 >
                   Account
-                </Button>
-              </Link>
-              <Link href="/partnerships">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/partnerships") 
-                      ? "text-orange-600 bg-orange-50 border border-orange-200" 
-                      : "text-muted-foreground hover:text-orange-600 hover:bg-orange-50"
-                  }`}
-                >
-                  Partnerships
-                </Button>
-              </Link>
-              <Link href="/team-challenges">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/team-challenges") 
-                      ? "text-blue-600 bg-blue-50 border border-blue-200" 
-                      : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
-                  }`}
-                >
-                  Teams
-                </Button>
-              </Link>
-              <Link href="/ar-treasure-hunts">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/ar-treasure-hunts") 
-                      ? "text-purple-600 bg-purple-50 border border-purple-200" 
-                      : "text-muted-foreground hover:text-purple-600 hover:bg-purple-50"
-                  }`}
-                >
-                  AR Hunts
-                </Button>
-              </Link>
-              <Link href="/viral-campaigns">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/viral-campaigns") 
-                      ? "text-pink-600 bg-pink-50 border border-pink-200" 
-                      : "text-muted-foreground hover:text-pink-600 hover:bg-pink-50"
-                  }`}
-                >
-                  Viral
-                </Button>
-              </Link>
-              <Link href="/how-it-works">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/how-it-works") 
-                      ? "text-secondary bg-secondary/10 border border-secondary/20" 
-                      : "text-muted-foreground hover:text-secondary hover:bg-secondary/5"
-                  }`}
-                >
-                  How It Works
-                </Button>
-              </Link>
-              <Link href="/user-guide">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/user-guide") 
-                      ? "text-blue-600 bg-blue-50 border border-blue-200" 
-                      : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
-                  }`}
-                >
-                  User Guide
                 </Button>
               </Link>
             </div>
@@ -209,7 +113,7 @@ export default function Navbar() {
             </Button>
             
             {/* Mobile menu button */}
-            <div className="md:hidden">
+            <div className="lg:hidden">
               <Button
                 variant="ghost"
                 size="sm"
@@ -224,8 +128,8 @@ export default function Navbar() {
         
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 bg-white">
-            <div className="px-2 pt-2 pb-3 space-y-1">
+          <div className="lg:hidden border-t border-gray-200 bg-white">
+            <div className="px-2 pt-2 pb-3 space-y-1 max-h-96 overflow-y-auto">
               <Link href="/customer">
                 <Button 
                   variant="ghost" 
@@ -236,7 +140,7 @@ export default function Navbar() {
                   }`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Customer
+                  Customer Dashboard
                 </Button>
               </Link>
               <Link href="/merchant">
@@ -249,7 +153,7 @@ export default function Navbar() {
                   }`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Merchant
+                  Merchant Dashboard
                 </Button>
               </Link>
               <Link href="/community">
@@ -262,7 +166,72 @@ export default function Navbar() {
                   }`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Community
+                  Community Hub
+                </Button>
+              </Link>
+              <Link href="/map">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/map") 
+                      ? "text-primary bg-primary/10" 
+                      : "text-gray-700 hover:text-primary"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Discovery Map
+                </Button>
+              </Link>
+              <Link href="/avatar">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/avatar") 
+                      ? "text-pink-600 bg-pink-50" 
+                      : "text-gray-700 hover:text-pink-600"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Avatar Creator
+                </Button>
+              </Link>
+              <Link href="/ar-game-hub">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/ar-game-hub") 
+                      ? "text-purple-600 bg-purple-50" 
+                      : "text-gray-700 hover:text-purple-600"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  AR Gaming Hub
+                </Button>
+              </Link>
+              <Link href="/team-challenges">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/team-challenges") 
+                      ? "text-blue-600 bg-blue-50" 
+                      : "text-gray-700 hover:text-blue-600"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Team Challenges
+                </Button>
+              </Link>
+              <Link href="/partnerships">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/partnerships") 
+                      ? "text-orange-600 bg-orange-50" 
+                      : "text-gray-700 hover:text-orange-600"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Partnerships
                 </Button>
               </Link>
               <Link href="/analytics">
@@ -276,6 +245,19 @@ export default function Navbar() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Analytics
+                </Button>
+              </Link>
+              <Link href="/account">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/account") 
+                      ? "text-purple-600 bg-purple-50" 
+                      : "text-gray-700 hover:text-purple-600"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Account Settings
                 </Button>
               </Link>
               <Link href="/how-it-works">

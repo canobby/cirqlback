@@ -64,13 +64,15 @@ export default function SettingsPage() {
 
       <div className="max-w-4xl mx-auto p-6">
         <Tabs defaultValue="notifications" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="privacy">Privacy</TabsTrigger>
-            <TabsTrigger value="appearance">Appearance</TabsTrigger>
-            <TabsTrigger value="integrations">Integrations</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="grid grid-cols-5 min-w-max lg:w-full">
+              <TabsTrigger value="notifications" className="px-2 text-xs lg:px-3 lg:text-sm">Notifications</TabsTrigger>
+              <TabsTrigger value="privacy" className="px-2 text-xs lg:px-3 lg:text-sm">Privacy</TabsTrigger>
+              <TabsTrigger value="appearance" className="px-2 text-xs lg:px-3 lg:text-sm">Appearance</TabsTrigger>
+              <TabsTrigger value="integrations" className="px-2 text-xs lg:px-3 lg:text-sm">Integrations</TabsTrigger>
+              <TabsTrigger value="security" className="px-2 text-xs lg:px-3 lg:text-sm">Security</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Notifications Settings */}
           <TabsContent value="notifications" className="space-y-6">

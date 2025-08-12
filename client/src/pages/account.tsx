@@ -65,13 +65,15 @@ export default function Account() {
         <StarterTrialBanner userId={profile?.id} />
 
         <Tabs defaultValue="subscription" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="subscription">Subscription</TabsTrigger>
-            <TabsTrigger value="referrals">Referrals</TabsTrigger>
-            <TabsTrigger value="api">API Access</TabsTrigger>
-            <TabsTrigger value="usage">Usage</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="grid grid-cols-5 min-w-max lg:w-full">
+              <TabsTrigger value="subscription" className="px-2 text-xs lg:px-3 lg:text-sm whitespace-nowrap">Subscription</TabsTrigger>
+              <TabsTrigger value="referrals" className="px-2 text-xs lg:px-3 lg:text-sm whitespace-nowrap">Referrals</TabsTrigger>
+              <TabsTrigger value="api" className="px-2 text-xs lg:px-3 lg:text-sm whitespace-nowrap">API Access</TabsTrigger>
+              <TabsTrigger value="usage" className="px-2 text-xs lg:px-3 lg:text-sm whitespace-nowrap">Usage</TabsTrigger>
+              <TabsTrigger value="settings" className="px-2 text-xs lg:px-3 lg:text-sm whitespace-nowrap">Settings</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="subscription" className="space-y-6">
             <Card>

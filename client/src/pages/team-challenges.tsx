@@ -241,28 +241,30 @@ export default function TeamChallenges() {
 
         {/* Team Challenges Tabs */}
         <Tabs defaultValue="active-challenges" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto">
-            <TabsTrigger value="active-challenges" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Active Challenges
-            </TabsTrigger>
-            <TabsTrigger value="my-team" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              My Team
-            </TabsTrigger>
-            <TabsTrigger value="leaderboard" className="flex items-center gap-2">
-              <Trophy className="h-4 w-4" />
-              Leaderboard
-            </TabsTrigger>
-            <TabsTrigger value="team-types" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Create Team
-            </TabsTrigger>
-            <TabsTrigger value="events" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Mega Events
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="grid grid-cols-5 min-w-max lg:w-full">
+              <TabsTrigger value="active-challenges" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Target className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Active</span>
+              </TabsTrigger>
+              <TabsTrigger value="my-team" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Users className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">My Team</span>
+              </TabsTrigger>
+              <TabsTrigger value="leaderboard" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Trophy className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Leaderboard</span>
+              </TabsTrigger>
+              <TabsTrigger value="team-types" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Shield className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Create</span>
+              </TabsTrigger>
+              <TabsTrigger value="events" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Sparkles className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Events</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Active Challenges */}
           <TabsContent value="active-challenges" className="space-y-6">
