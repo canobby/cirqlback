@@ -1077,7 +1077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Payment processing endpoint (requires Stripe keys)
+  // Payment processing endpoint with real Stripe integration
   app.post("/api/create-payment-intent", async (req, res) => {
     try {
       if (!process.env.STRIPE_SECRET_KEY) {
@@ -1088,21 +1088,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { amount } = req.body;
       
-      // Mock payment intent creation (would use actual Stripe SDK when keys are provided)
-      const paymentIntent = {
-        id: `pi_mock_${Date.now()}`,
-        client_secret: `pi_mock_${Date.now()}_secret_mock`,
+      // Import Stripe dynamically to ensure it's available
+      const Stripe = require('stripe');
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+        apiVersion: '2023-10-16',
+      });
+
+      // Create real payment intent with Stripe
+      const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(amount * 100), // Convert to cents
-        currency: "usd",
-        status: "requires_payment_method"
-      };
+        currency: 'usd',
+        metadata: {
+          platform: 'Cirqlback',
+          timestamp: new Date().toISOString()
+        }
+      });
 
       res.json({ 
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id 
       });
     } catch (error: any) {
-      console.error("Payment intent creation error:", error);
+      console.error("Stripe payment intent creation error:", error);
       res.status(500).json({ error: "Failed to create payment intent: " + error.message });
     }
   });
