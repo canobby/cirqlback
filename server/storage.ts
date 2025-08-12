@@ -48,6 +48,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   getUserByEmail(email: string): Promise<User | undefined>;
   updateUserPoints(userId: string, points: number): Promise<void>;
+  updateUserSubscription(userId: string, updates: { subscriptionTier?: string; subscriptionStatus?: string; starterExpiresAt?: Date }): Promise<User>;
   
   // Business operations
   getBusinesses(): Promise<Business[]>;
@@ -114,9 +115,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    // Set starter expiration date for new users (6 months from now)
+    const userDataWithExpiration = {
+      ...userData,
+      starterExpiresAt: userData.subscriptionTier === 'starter' || !userData.subscriptionTier ? 
+        new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000) : // 6 months 
+        userData.starterExpiresAt
+    };
+
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values(userDataWithExpiration)
       .onConflictDoUpdate({
         target: users.id,
         set: {
@@ -147,6 +156,15 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId));
+  }
+
+  async updateUserSubscription(userId: string, updates: { subscriptionTier?: string; subscriptionStatus?: string; starterExpiresAt?: Date }): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
 
   // Business operations

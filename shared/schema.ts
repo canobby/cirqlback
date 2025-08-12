@@ -38,6 +38,7 @@ export const users = pgTable("users", {
   role: varchar("role").default("customer"), // customer, merchant, admin
   subscriptionTier: varchar("subscription_tier").default("starter"), // starter, professional, business, enterprise
   subscriptionStatus: varchar("subscription_status").default("active"), // active, cancelled, expired
+  starterExpiresAt: timestamp("starter_expires_at"), // 6 months from signup for starter tier
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   apiKey: varchar("api_key").unique(), // for API access to both Cirql and InSpektAI

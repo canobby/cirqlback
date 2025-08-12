@@ -7,6 +7,81 @@ import { insertBusinessSchema, insertCampaignSchema, insertNfcTagSchema, insertT
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // Check subscription limits middleware
+  const checkSubscriptionLimits = async (req: any, res: any, next: any) => {
+    // For now, just pass through - will implement auth checking later
+    req.cirqlUser = { subscriptionTier: 'professional', subscriptionStatus: 'active' };
+    next();
+  };
+
+  // Starter tier expiration check route
+  app.get('/api/account/check-expiration', async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID required" });
+      }
+
+      let user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Check if starter tier has expired
+      if (user.subscriptionTier === 'starter' && user.starterExpiresAt) {
+        const now = new Date();
+        const expirationDate = new Date(user.starterExpiresAt);
+        const isExpired = now > expirationDate;
+        
+        if (isExpired && user.subscriptionStatus === 'active') {
+          // Update user to expired status
+          user = await storage.updateUserSubscription(userId, {
+            subscriptionStatus: 'expired'
+          });
+        }
+        
+        return res.json({
+          isExpired,
+          expirationDate: expirationDate.toISOString(),
+          daysRemaining: Math.max(0, Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
+          subscriptionStatus: user.subscriptionStatus,
+          upgradeRequired: isExpired
+        });
+      }
+      
+      res.json({
+        isExpired: false,
+        subscriptionStatus: user.subscriptionStatus,
+        upgradeRequired: false
+      });
+    } catch (error) {
+      console.error("Error checking expiration:", error);
+      res.status(500).json({ error: "Failed to check expiration" });
+    }
+  });
+
+  // Update user subscription route
+  app.post('/api/subscription/update', async (req, res) => {
+    try {
+      const { userId, subscriptionTier, subscriptionStatus } = req.body;
+      
+      if (!userId || !subscriptionTier) {
+        return res.status(400).json({ error: "User ID and subscription tier required" });
+      }
+
+      const user = await storage.updateUserSubscription(userId, {
+        subscriptionTier,
+        subscriptionStatus: subscriptionStatus || 'active',
+        ...(subscriptionTier !== 'starter' ? { starterExpiresAt: null } : {})
+      });
+
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating subscription:", error);
+      res.status(500).json({ error: "Failed to update subscription" });
+    }
+  });
   // Business routes
   app.get("/api/businesses", async (req, res) => {
     try {
@@ -661,11 +736,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "starter",
           name: "Starter",
-          description: "Perfect for new businesses testing the waters",
+          description: "Perfect for new businesses testing the waters - 6 months free trial",
           price: 0,
           yearlyPrice: 0,
           billingInterval: "monthly",
-          features: ["1 business location", "3 active campaigns", "100 customer taps/month", "Basic tap analytics", "5 Cirql tags included", "QR code generation", "Community map listing", "Email support"],
+          trialDuration: "6 months",
+          features: ["1 business location", "3 active campaigns", "100 customer taps/month", "Basic tap analytics", "5 Cirql tags included", "QR code generation", "Community map listing", "Email support", "6-month trial period"],
           maxBusinesses: 1,
           maxCampaigns: 3,
           maxTaps: 100,

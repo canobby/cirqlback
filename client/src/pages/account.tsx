@@ -9,6 +9,7 @@ import { Key, CreditCard, Settings, Shield, Copy, RefreshCw, Check } from "lucid
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { StarterTrialBanner } from "@/components/StarterTrialBanner";
 
 export default function Account() {
   const [copied, setCopied] = useState(false);
@@ -59,6 +60,9 @@ export default function Account() {
             Manage comprehensive subscriptions, multi-platform API access, usage analytics, and advanced platform settings
           </p>
         </div>
+
+        {/* Starter Trial Banner */}
+        <StarterTrialBanner userId={profile?.id} />
 
         <Tabs defaultValue="subscription" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
