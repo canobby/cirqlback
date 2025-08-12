@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Navbar from "@/components/layout/navbar";
+import Footer from "@/components/layout/footer";
 import Home from "@/pages/home";
 import Customer from "@/pages/customer";
 import Merchant from "@/pages/merchant";
@@ -13,16 +14,19 @@ import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/customer" component={Customer} />
-        <Route path="/merchant" component={Merchant} />
-        <Route path="/community" component={Community} />
-        <Route path="/analytics" component={Analytics} />
-        <Route component={NotFound} />
-      </Switch>
+      <main className="flex-1">
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/customer" component={Customer} />
+          <Route path="/merchant" component={Merchant} />
+          <Route path="/community" component={Community} />
+          <Route path="/analytics" component={Analytics} />
+          <Route component={NotFound} />
+        </Switch>
+      </main>
+      <Footer />
     </div>
   );
 }

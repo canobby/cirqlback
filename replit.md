@@ -7,6 +7,7 @@ Cirqlback is an NFC-powered local marketing and loyalty platform for small busin
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Logo: Official Cirqlback logo (circular gradient design with purple/pink/orange colors) locked in and implemented throughout platform.
 
 ## System Architecture
 
