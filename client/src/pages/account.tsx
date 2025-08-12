@@ -80,8 +80,8 @@ export default function Account() {
               <CardContent>
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-xl font-semibold">{profile?.subscriptionTier?.charAt(0).toUpperCase() + profile?.subscriptionTier?.slice(1)} Plan</h3>
-                    <p className="text-gray-600">Access to multiple platform services</p>
+                    <h3 className="text-xl font-semibold">{profile?.subscriptionTier?.charAt(0).toUpperCase() + profile?.subscriptionTier?.slice(1)} Cirql Member</h3>
+                    <p className="text-gray-600">Business platform access with campaign management</p>
                   </div>
                   <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
                     {profile?.subscriptionStatus?.charAt(0).toUpperCase() + profile?.subscriptionStatus?.slice(1)}
@@ -302,10 +302,10 @@ export default function Account() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <h4 className="font-medium text-yellow-800 mb-2">🔑 Multi-Platform API Access</h4>
+                  <h4 className="font-medium text-yellow-800 mb-2">🔑 Business Platform API Access</h4>
                   <p className="text-sm text-yellow-700">
-                    Your API key provides access to multiple platforms. Use the same key across different services
-                    by specifying the platform in your API requests.
+                    Your API key provides business-level access to multiple platforms. Use the same key across different services
+                    by specifying the platform in your API requests. Customer accounts do not require API keys.
                   </p>
                 </div>
 

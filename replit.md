@@ -62,9 +62,9 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 
 ### Authentication & Session Management
 - **Session-based Authentication**: Uses connect-pg-simple for PostgreSQL session storage
-- **User Types**: Support for merchants, customers, and admin roles
+- **User Types**: Support for business owners (paid subscriptions), customers (free reward access), and admin roles
 - **Business Associations**: Users can manage multiple business profiles
-- **Subscription Management**: Two-tier system (Core Cirql Member $14.99/mo or $149.99/yr, Full Cirql Member $29.99/mo or $299.99/yr) with feature restrictions
+- **Subscription Management**: Two-tier business system (Core Cirql Member $14.99/mo or $149.99/yr, Full Cirql Member $29.99/mo or $299.99/yr) - customers use the platform for free through participating businesses
 - **API Key System**: Single key authentication for accessing multiple separate platforms (Cirql, InSpektAI)
 - **Usage Tracking**: Real-time monitoring of API requests, success rates, and response times
 - **Account Dashboard**: Complete profile management, billing, and usage analytics interface
