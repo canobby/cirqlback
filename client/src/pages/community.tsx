@@ -32,6 +32,7 @@ import {
   Video,
   Sparkles
 } from "lucide-react";
+import ARIntegrationPanel from "@/components/global/ar-integration-panel";
 
 export default function Community() {
   const [activeChallenge, setActiveChallenge] = useState<string | null>(null);

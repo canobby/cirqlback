@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
+import QuickActions from "@/components/global/quick-actions";
+import NotificationCenter from "@/components/global/notification-center";
 import Home from "@/pages/home";
 import Customer from "@/pages/customer";
 import Merchant from "@/pages/merchant";
@@ -51,6 +53,7 @@ function Router() {
         </Switch>
       </main>
       <Footer />
+      <QuickActions userRole="merchant" />
     </div>
   );
 }

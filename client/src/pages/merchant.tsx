@@ -7,6 +7,7 @@ import PricingOptimizer from "@/components/merchant/pricing-optimizer";
 import ViralCampaigns from "@/components/marketing/viral-campaigns";
 import StatsCard from "@/components/ui/stats-card";
 import { Store, Users, Share2, TrendingUp, Coffee, BookOpen, UtensilsCrossed, DollarSign, Zap } from "lucide-react";
+import PlatformSync from "@/components/global/platform-sync";
 
 export default function Merchant() {
   const [selectedBusiness] = useState("business-1"); // Simulate selected business
@@ -45,6 +46,11 @@ export default function Merchant() {
           </div>
         </CardHeader>
       </Card>
+
+      {/* Platform Sync Status */}
+      <div className="mb-8">
+        <PlatformSync />
+      </div>
 
       {/* Enhanced Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Gift, Users, MapPin, Share2, Star, Target, Zap } from "lucide-react";
 import EnhancedRewards from "@/components/customer/enhanced-rewards";
+import LoyaltyIntegration from "@/components/customer/loyalty-integration";
 
 export default function Customer() {
   const [customerEmail, setCustomerEmail] = useState("");
@@ -76,7 +77,7 @@ export default function Customer() {
             </div>
 
             <TabsContent value="rewards" className="space-y-6">
-              <EnhancedRewards customerEmail={customerEmail} />
+              <LoyaltyIntegration />
             </TabsContent>
 
             <TabsContent value="progress" className="space-y-6">
@@ -128,6 +129,28 @@ export default function Customer() {
                         </Button>
                       </div>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Zap className="h-5 w-5 mr-2 text-purple-600" />
+                    AR Gaming Integration
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center space-y-4">
+                    <div className="text-2xl">🎮</div>
+                    <p className="text-gray-600">Access your AR Avatar and team challenges</p>
+                    <Button 
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      onClick={() => window.location.href = '/ar-hub'}
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      Launch AR Hub
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

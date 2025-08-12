@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Settings, Search, Bell } from "lucide-react";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
+import NotificationCenter from "@/components/global/notification-center";
 
 export default function Navbar() {
   const [location] = useLocation();
@@ -135,9 +136,7 @@ export default function Navbar() {
             <Button variant="outline" size="sm" className="hidden md:flex">
               <Search className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="relative">
-              <Bell className="h-4 w-4" />
-            </Button>
+            <NotificationCenter />
             <Link href="/settings">
               <Button variant="ghost" size="sm" className="hidden md:flex">
                 <Settings className="h-4 w-4" />
