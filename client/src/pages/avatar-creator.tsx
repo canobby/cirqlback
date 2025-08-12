@@ -1650,6 +1650,24 @@ export default function AvatarCreator() {
                     and price range to create perfect challenge matches that enhance your local discovery experience.
                   </p>
                 </div>
+                
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-purple-800 mb-3">🎮 AR Game Features</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="bg-white/50 p-2 rounded">
+                      <strong className="text-purple-700">Skill Development:</strong> Level up cooking, fitness, art, social, and explorer skills at local businesses
+                    </div>
+                    <div className="bg-white/50 p-2 rounded">
+                      <strong className="text-purple-700">Collectible Hunting:</strong> Find rare virtual items, recipes, artwork, and power-ups hidden at businesses
+                    </div>
+                    <div className="bg-white/50 p-2 rounded">
+                      <strong className="text-purple-700">Social AR Meetups:</strong> Meet friends' avatars at businesses for collaborative challenges and item trading
+                    </div>
+                    <div className="bg-white/50 p-2 rounded">
+                      <strong className="text-purple-700">Business Transformations:</strong> Watch restaurants become cooking academies, gyms become training grounds
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

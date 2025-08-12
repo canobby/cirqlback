@@ -20,6 +20,7 @@ import SettingsPage from "@/pages/settings";
 import Checkout from "@/pages/checkout";
 import AvatarCreator from "@/pages/avatar-creator";
 import CustomerProfile from "@/pages/customer-profile";
+import ARGameHub from "@/pages/ar-game-hub";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -43,6 +44,7 @@ function Router() {
           <Route path="/checkout" component={Checkout} />
           <Route path="/avatar" component={AvatarCreator} />
           <Route path="/profile" component={CustomerProfile} />
+          <Route path="/ar-hub" component={ARGameHub} />
           <Route component={NotFound} />
         </Switch>
       </main>

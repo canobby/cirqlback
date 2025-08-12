@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { registerARGameRoutes } from "./ar-game-routes";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertBusinessSchema, insertCampaignSchema, insertNfcTagSchema, insertTapSchema, insertRewardSchema, insertTapTrailSchema, insertReferralSchema, insertSubscriptionPlanSchema, insertUserSubscriptionSchema, insertApiUsageSchema } from "@shared/schema";
@@ -2179,6 +2180,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch businesses" });
     }
   });
+
+  // Register AR Game routes
+  registerARGameRoutes(app);
 
   const httpServer = createServer(app);
 
