@@ -284,45 +284,273 @@ export default function Analytics() {
           </TabsContent>
 
           <TabsContent value="campaigns" className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Top Performing Campaigns</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[
+                      { name: "Weekend Coffee Special", clicks: 847, conversions: 203, revenue: "$2,847" },
+                      { name: "Loyalty Rewards Program", clicks: 612, conversions: 156, revenue: "$1,923" },
+                      { name: "Happy Hour Tacos", clicks: 534, conversions: 127, revenue: "$1,456" }
+                    ].map((campaign, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <h4 className="font-medium">{campaign.name}</h4>
+                          <p className="text-sm text-gray-600">{campaign.clicks} clicks • {campaign.conversions} conversions</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-green-600">{campaign.revenue}</div>
+                          <div className="text-xs text-gray-500">{((campaign.conversions/campaign.clicks)*100).toFixed(1)}% CVR</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Campaign ROI Analysis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[
+                      { campaign: "Weekend Coffee Special", spend: "$450", revenue: "$2,847", roi: "533%" },
+                      { campaign: "Loyalty Rewards Program", spend: "$320", revenue: "$1,923", roi: "501%" },
+                      { campaign: "Happy Hour Tacos", spend: "$280", revenue: "$1,456", roi: "420%" }
+                    ].map((item, index) => (
+                      <div key={index} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-sm">{item.campaign}</span>
+                          <Badge className="bg-green-100 text-green-800">{item.roi}</Badge>
+                        </div>
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>Spend: {item.spend}</span>
+                          <span>Revenue: {item.revenue}</span>
+                        </div>
+                        <Progress value={parseInt(item.roi)} className="h-2" />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card>
               <CardHeader>
-                <CardTitle>Campaign Performance</CardTitle>
+                <CardTitle>Campaign Timeline Performance</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-16 text-gray-500">
-                  <BarChart3 className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-lg font-medium mb-2">Campaign Analytics</h3>
-                  <p>Detailed campaign performance metrics coming soon</p>
+                <div className="grid grid-cols-7 gap-4 mb-6">
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => {
+                    const values = [45, 52, 48, 61, 55, 67, 73];
+                    return (
+                      <div key={day} className="text-center">
+                        <div className="text-xs text-gray-500 mb-2">{day}</div>
+                        <div className={`h-${Math.floor(values[index]/10) + 8} bg-gradient-to-t from-blue-500 to-purple-500 rounded-t mx-auto w-8 mb-1`}></div>
+                        <div className="text-xs font-medium">{values[index]}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="text-center text-sm text-gray-600">
+                  Average campaign engagement rate by day of week
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="customers" className="space-y-6">
+            <div className="grid md:grid-cols-3 gap-6 mb-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Customer Segments</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {[
+                      { segment: "VIP Customers", count: 89, percentage: 12, color: "bg-purple-500" },
+                      { segment: "Regular Visitors", count: 245, percentage: 34, color: "bg-blue-500" },
+                      { segment: "Occasional", count: 178, percentage: 25, color: "bg-green-500" },
+                      { segment: "New Customers", count: 203, percentage: 29, color: "bg-orange-500" }
+                    ].map((item, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
+                          <span className="text-sm font-medium">{item.segment}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-semibold">{item.count}</div>
+                          <div className="text-xs text-gray-500">{item.percentage}%</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Purchase Behavior</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">$47.30</div>
+                      <div className="text-sm text-gray-600">Average Order Value</div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-sm">Visit Frequency</span>
+                        <span className="text-sm font-medium">2.3x/month</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm">Retention Rate</span>
+                        <span className="text-sm font-medium">68%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm">Loyalty Program</span>
+                        <span className="text-sm font-medium">42% enrolled</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Peak Hours</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {[
+                      { hour: "8-9 AM", traffic: 85, label: "Morning Rush" },
+                      { hour: "12-1 PM", traffic: 95, label: "Lunch Peak" },
+                      { hour: "3-4 PM", traffic: 65, label: "Afternoon" },
+                      { hour: "6-7 PM", traffic: 78, label: "Evening" }
+                    ].map((period, index) => (
+                      <div key={index} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>{period.hour}</span>
+                          <span className="font-medium">{period.traffic}%</span>
+                        </div>
+                        <Progress value={period.traffic} className="h-2" />
+                        <div className="text-xs text-gray-500">{period.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card>
               <CardHeader>
-                <CardTitle>Customer Insights</CardTitle>
+                <CardTitle>Customer Journey Analytics</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-16 text-gray-500">
-                  <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-lg font-medium mb-2">Customer Analytics</h3>
-                  <p>Customer behavior and demographic insights coming soon</p>
+                <div className="grid md:grid-cols-4 gap-6">
+                  {[
+                    { stage: "Discovery", customers: 1247, conversion: "100%", color: "from-blue-500 to-blue-600" },
+                    { stage: "First Visit", customers: 892, conversion: "71.5%", color: "from-green-500 to-green-600" },
+                    { stage: "Return Visit", customers: 547, conversion: "61.3%", color: "from-orange-500 to-orange-600" },
+                    { stage: "Loyalty Member", customers: 234, conversion: "42.8%", color: "from-purple-500 to-purple-600" }
+                  ].map((stage, index) => (
+                    <div key={index} className="text-center">
+                      <div className={`w-16 h-16 bg-gradient-to-br ${stage.color} rounded-full flex items-center justify-center mx-auto mb-3`}>
+                        <span className="text-white font-bold text-lg">{index + 1}</span>
+                      </div>
+                      <h4 className="font-semibold mb-1">{stage.stage}</h4>
+                      <div className="text-2xl font-bold text-gray-900">{stage.customers.toLocaleString()}</div>
+                      <div className="text-sm text-gray-600">{stage.conversion} conversion</div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="locations" className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Location Performance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[
+                      { location: "Downtown Store", taps: 847, revenue: "$12,450", growth: "+23%" },
+                      { location: "Mall Location", taps: 623, revenue: "$8,970", growth: "+18%" },
+                      { location: "University Area", taps: 534, revenue: "$7,230", growth: "+31%" },
+                      { location: "Suburban Plaza", taps: 412, revenue: "$5,680", growth: "+12%" }
+                    ].map((location, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <MapPin className="h-5 w-5 text-blue-500" />
+                          <div>
+                            <h4 className="font-medium">{location.location}</h4>
+                            <p className="text-sm text-gray-600">{location.taps} taps this month</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold">{location.revenue}</div>
+                          <Badge className="bg-green-100 text-green-800">{location.growth}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Geographic Heat Map</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-square bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg flex items-center justify-center mb-4">
+                    <div className="text-center">
+                      <MapPin className="h-12 w-12 mx-auto mb-2 text-blue-500" />
+                      <p className="text-sm text-gray-600">Interactive map visualization</p>
+                      <p className="text-xs text-gray-500">Showing customer density by area</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-600">4.2km</div>
+                      <div className="text-xs text-gray-600">Avg. Travel Distance</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-green-600">85%</div>
+                      <div className="text-xs text-gray-600">Local Market Share</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card>
               <CardHeader>
-                <CardTitle>Location Performance</CardTitle>
+                <CardTitle>Regional Insights</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-16 text-gray-500">
-                  <MapPin className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-lg font-medium mb-2">Location Analytics</h3>
-                  <p>Geographic performance metrics coming soon</p>
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">67%</div>
+                    <div className="text-sm font-medium">Downtown Traffic</div>
+                    <div className="text-xs text-gray-600">Highest conversion area</div>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">$52.30</div>
+                    <div className="text-sm font-medium">Suburban AOV</div>
+                    <div className="text-xs text-gray-600">Highest spending customers</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">3.4x</div>
+                    <div className="text-sm font-medium">University Frequency</div>
+                    <div className="text-xs text-gray-600">Most loyal customers</div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
