@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { registerARGameRoutes } from "./ar-game-routes";
 import { WebSocketServer, WebSocket } from "ws";
+import { registerARGameRoutes } from "./ar-game-routes";
 import { storage } from "./storage";
 import { db } from "./db";
 import { adminUsers, adminCommunications, adminTrainingProgress, adminTrainingModules, adminKnowledgeItems } from "@shared/schema";
@@ -3873,6 +3873,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error analyzing customer behavior:", error);
       res.status(500).json({ error: "Failed to analyze customer behavior" });
     }
+  });
+
+  // Communication API routes
+  app.get("/api/communication/channels", async (req, res) => {
+    try {
+      const channels = [
+        {
+          id: "testing-main",
+          name: "Testing Partnership",
+          type: "testing",
+          participants: ["admin", "partner"],
+          unreadCount: 0
+        },
+        {
+          id: "merchants-general",
+          name: "Merchant Collaboration",
+          type: "group",
+          participants: ["merchant1", "merchant2", "merchant3"],
+          unreadCount: 2
+        },
+        {
+          id: "campaign-winter",
+          name: "Winter Campaign Planning",
+          type: "campaign",
+          participants: ["merchant1", "merchant2"],
+          unreadCount: 1
+        }
+      ];
+      res.json(channels);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch channels" });
+    }
+  });
+
+  app.get("/api/communication/messages/:channelId", async (req, res) => {
+    try {
+      const { channelId } = req.params;
+      const messages = [
+        {
+          id: "1",
+          senderId: "partner",
+          senderName: "Testing Partner",
+          content: "Ready to start testing the platform!",
+          timestamp: new Date(),
+          type: "text",
+          status: "read"
+        }
+      ];
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // Setup WebSocket server for communication
+  const communicationWss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws/communication' 
+  });
+
+  const connectedUsers = new Map<string, WebSocket>();
+
+  communicationWss.on('connection', (ws: WebSocket) => {
+    const userId = `user_${Date.now()}`;
+    connectedUsers.set(userId, ws);
+
+    console.log(`Communication client connected: ${userId}`);
+
+    // Send current online users
+    const onlineUsers = Array.from(connectedUsers.keys());
+    ws.send(JSON.stringify({
+      type: 'user-status',
+      onlineUsers
+    }));
+
+    // Broadcast new user to all clients
+    connectedUsers.forEach((client, clientId) => {
+      if (client !== ws && client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({
+          type: 'user-status',
+          onlineUsers
+        }));
+      }
+    });
+
+    ws.on('message', (data: Buffer) => {
+      try {
+        const message = JSON.parse(data.toString());
+        
+        switch (message.type) {
+          case 'message':
+            // Broadcast message to all clients in the channel
+            connectedUsers.forEach((client, clientId) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({
+                  type: 'message',
+                  channelId: message.channelId,
+                  message: message.message
+                }));
+              }
+            });
+            break;
+
+          case 'call-offer':
+          case 'call-answer':
+          case 'ice-candidate':
+            // Forward WebRTC signaling to specific user or all users in channel
+            connectedUsers.forEach((client, clientId) => {
+              if (client !== ws && client.readyState === WebSocket.OPEN) {
+                client.send(data.toString());
+              }
+            });
+            break;
+        }
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    });
+
+    ws.on('close', () => {
+      connectedUsers.delete(userId);
+      console.log(`Communication client disconnected: ${userId}`);
+      
+      // Broadcast updated user list
+      const onlineUsers = Array.from(connectedUsers.keys());
+      connectedUsers.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'user-status',
+            onlineUsers
+          }));
+        }
+      });
+    });
+
+    ws.on('error', (error) => {
+      console.error('Communication WebSocket error:', error);
+    });
   });
 
   return httpServer;

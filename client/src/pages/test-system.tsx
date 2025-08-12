@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, Users, MapPin, Star, Trophy, Gift, Zap, Shield, Play, UserCheck } from "lucide-react";
+import { Crown, Users, MapPin, Star, Trophy, Gift, Zap, Shield, Play, UserCheck, MessageSquare, Video, Phone } from "lucide-react";
+import CommunicationHub from "@/components/communication/communication-hub";
 
 interface TestUser {
   id: string;
@@ -139,6 +140,7 @@ export default function TestSystem() {
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [competitionMode, setCompetitionMode] = useState(false);
+  const [showCommunication, setShowCommunication] = useState(false);
   const { toast } = useToast();
 
   const createTestUser = () => {
@@ -262,14 +264,25 @@ export default function TestSystem() {
                 <UserCheck className="h-5 w-5 text-purple-600" />
                 <CardTitle className="text-lg">Current Testing Role</CardTitle>
               </div>
-              <Button
-                onClick={enableCompetition}
-                variant={competitionMode ? "destructive" : "default"}
-                size="sm"
-              >
-                <Trophy className="h-4 w-4 mr-2" />
-                {competitionMode ? "Disable Competition" : "Enable Competition"}
-              </Button>
+              <div className="flex items-center space-x-3">
+                <Button 
+                  onClick={() => setShowCommunication(!showCommunication)}
+                  variant={showCommunication ? "default" : "outline"}
+                  size="sm"
+                  className={showCommunication ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white" : ""}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Partner Communication
+                </Button>
+                <Button
+                  onClick={enableCompetition}
+                  variant={competitionMode ? "destructive" : "default"}
+                  size="sm"
+                >
+                  <Trophy className="h-4 w-4 mr-2" />
+                  {competitionMode ? "Disable Competition" : "Enable Competition"}
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -693,6 +706,29 @@ export default function TestSystem() {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Communication Panel */}
+        {showCommunication && (
+          <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg text-blue-800">Testing Partnership Communication</CardTitle>
+                <Button 
+                  onClick={() => setShowCommunication(false)}
+                  variant="outline" 
+                  size="sm"
+                >
+                  Close
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="h-96">
+                <CommunicationHub context="testing" channelId="testing-main" />
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

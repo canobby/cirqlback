@@ -36,9 +36,13 @@ import {
   Check,
   Brain,
   Loader2,
-  Lightbulb
+  Lightbulb,
+  MessageSquare,
+  Video,
+  Phone
 } from "lucide-react";
 import { GuidedTour } from "@/components/interactive/guided-tour";
+import CommunicationHub from "@/components/communication/communication-hub";
 
 interface CampaignTemplate {
   id: string;
@@ -259,6 +263,7 @@ export default function CampaignBuilder() {
   const [partnerBusinesses, setPartnerBusinesses] = useState<Array<{id: string, name: string, category: string}>>([]);
   const [aiSuggestion, setAiSuggestion] = useState<string>('');
   const [showAIBuilder, setShowAIBuilder] = useState(false);
+  const [showCommunication, setShowCommunication] = useState(false);
   const { toast } = useToast();
 
   // AI Campaign Suggestions Query
