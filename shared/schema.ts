@@ -474,6 +474,13 @@ export const userAvatarAssets = pgTable("user_avatar_assets", {
   purchasedAt: timestamp("purchased_at").defaultNow(),
 });
 
+
+
+export type UserAvatar = typeof userAvatars.$inferSelect;
+export type AvatarAsset = typeof avatarAssets.$inferSelect;
+export type UserAvatarAsset = typeof userAvatarAssets.$inferSelect;
+export type UserAvatarAchievement = typeof userAvatarAchievements.$inferSelect;
+
 export const avatarAchievements = pgTable("avatar_achievements", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: varchar("title").notNull(),
