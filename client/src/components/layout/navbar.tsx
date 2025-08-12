@@ -14,7 +14,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-card/95 backdrop-blur-md shadow-sm border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center">
@@ -34,10 +34,10 @@ export default function Navbar() {
               <Link href="/customer">
                 <Button 
                   variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
                     isActive("/customer") 
-                      ? "text-gray-900 bg-gray-100" 
-                      : "text-gray-500 hover:text-gray-900"
+                      ? "text-primary bg-primary/10 border border-primary/20" 
+                      : "text-muted-foreground hover:text-primary hover:bg-primary/5"
                   }`}
                 >
                   Customer
@@ -46,10 +46,10 @@ export default function Navbar() {
               <Link href="/merchant">
                 <Button 
                   variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
                     isActive("/merchant") 
-                      ? "text-gray-900 bg-gray-100" 
-                      : "text-gray-500 hover:text-gray-900"
+                      ? "text-secondary bg-secondary/10 border border-secondary/20" 
+                      : "text-muted-foreground hover:text-secondary hover:bg-secondary/5"
                   }`}
                 >
                   Merchant
@@ -58,10 +58,10 @@ export default function Navbar() {
               <Link href="/community">
                 <Button 
                   variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
                     isActive("/community") 
-                      ? "text-gray-900 bg-gray-100" 
-                      : "text-gray-500 hover:text-gray-900"
+                      ? "text-accent bg-accent/10 border border-accent/20" 
+                      : "text-muted-foreground hover:text-accent hover:bg-accent/5"
                   }`}
                 >
                   Community
@@ -70,10 +70,10 @@ export default function Navbar() {
               <Link href="/analytics">
                 <Button 
                   variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
                     isActive("/analytics") 
-                      ? "text-gray-900 bg-gray-100" 
-                      : "text-gray-500 hover:text-gray-900"
+                      ? "text-primary bg-primary/10 border border-primary/20" 
+                      : "text-muted-foreground hover:text-primary hover:bg-primary/5"
                   }`}
                 >
                   Analytics

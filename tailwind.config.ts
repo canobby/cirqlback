@@ -61,6 +61,13 @@ export default {
           border: "var(--sidebar-border)",
           ring: "var(--sidebar-ring)",
         },
+        // Cirqlback Brand Colors
+        cirq: {
+          purple: "var(--cirq-purple)",
+          pink: "var(--cirq-pink)",
+          orange: "var(--cirq-orange)",
+          lime: "var(--cirq-lime)",
+        },
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

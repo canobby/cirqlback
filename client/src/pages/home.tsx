@@ -51,8 +51,8 @@ export default function Home() {
       {/* Customer Experience Section */}
       <section className="mb-12">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Customer Experience</h2>
-          <p className="text-xl text-gray-600">Simple tap-to-reward system that keeps customers coming back</p>
+          <h2 className="text-3xl font-bold gradient-text mb-4">Customer Experience</h2>
+          <p className="text-xl text-muted-foreground">Simple tap-to-reward system that keeps customers coming back</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -61,22 +61,22 @@ export default function Home() {
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0 w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold">1</div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Tap NFC Tag</h3>
-                  <p className="text-gray-600">Customer taps the Cirqlback NFC tag at participating businesses</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Tap NFC Tag</h3>
+                  <p className="text-muted-foreground">Customer taps the Cirqlback NFC tag at participating businesses</p>
                 </div>
               </div>
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0 w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-white font-bold">2</div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Instant Rewards</h3>
-                  <p className="text-gray-600">Receive loyalty points, discounts, or special offers immediately</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Instant Rewards</h3>
+                  <p className="text-muted-foreground">Receive loyalty points, discounts, or special offers immediately</p>
                 </div>
               </div>
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0 w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white font-bold">3</div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Build Tap Trails</h3>
-                  <p className="text-gray-600">Visit multiple partner businesses to unlock bonus rewards</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Build Tap Trails</h3>
+                  <p className="text-muted-foreground">Visit multiple partner businesses to unlock bonus rewards</p>
                 </div>
               </div>
             </div>
@@ -88,11 +88,11 @@ export default function Home() {
               <div className="w-80 h-[600px] bg-white rounded-[2.5rem] border-8 border-gray-300 shadow-2xl overflow-hidden">
                 <div className="h-full bg-gradient-to-b from-gray-50 to-white">
                   {/* Status Bar */}
-                  <div className="flex justify-between items-center px-6 pt-4 pb-2 text-sm text-gray-900">
+                  <div className="flex justify-between items-center px-6 pt-4 pb-2 text-sm text-foreground">
                     <span>9:41</span>
                     <div className="flex space-x-1">
-                      <div className="w-4 h-2 bg-gray-300 rounded-full"></div>
-                      <div className="w-6 h-2 bg-gray-300 rounded-full"></div>
+                      <div className="w-4 h-2 bg-muted rounded-full"></div>
+                      <div className="w-6 h-2 bg-muted rounded-full"></div>
                       <div className="w-6 h-2 bg-secondary rounded-full"></div>
                     </div>
                   </div>
@@ -103,8 +103,8 @@ export default function Home() {
                       <div className="w-24 h-24 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                         <CheckCircle className="text-white h-12 w-12" />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">Reward Unlocked!</h3>
-                      <p className="text-gray-600">Joe's Coffee Shop</p>
+                      <h3 className="text-xl font-bold text-foreground mb-2">Reward Unlocked!</h3>
+                      <p className="text-muted-foreground">Joe's Coffee Shop</p>
                     </div>
 
                     {/* Reward Card */}
@@ -130,13 +130,13 @@ export default function Home() {
                     <Card className="mb-4">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-semibold text-gray-900">Downtown Tap Trail</h4>
-                          <span className="text-sm text-gray-500">2/5 shops</span>
+                          <h4 className="font-semibold text-foreground">Downtown Tap Trail</h4>
+                          <span className="text-sm text-muted-foreground">2/5 shops</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3 mb-3">
+                        <div className="w-full bg-muted rounded-full h-3 mb-3">
                           <div className="bg-gradient-to-r from-secondary to-accent h-3 rounded-full" style={{ width: "40%" }}></div>
                         </div>
-                        <p className="text-sm text-gray-600">Visit 3 more shops to unlock $20 bonus!</p>
+                        <p className="text-sm text-muted-foreground">Visit 3 more shops to unlock $20 bonus!</p>
                       </CardContent>
                     </Card>
 
@@ -167,8 +167,8 @@ export default function Home() {
       {/* Business Showcase */}
       <section className="mb-12">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Join Local Businesses</h2>
-          <p className="text-xl text-gray-600">See how Cirqlback transforms customer engagement</p>
+          <h2 className="text-3xl font-bold gradient-text mb-4">Join Local Businesses</h2>
+          <p className="text-xl text-muted-foreground">See how Cirqlback transforms customer engagement</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
@@ -179,11 +179,11 @@ export default function Home() {
               className="w-full h-48 object-cover"
             />
             <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Joe's Coffee Shop</h3>
-              <p className="text-gray-600 mb-4">Increased customer retention by 40% with loyalty tap campaigns</p>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Joe's Coffee Shop</h3>
+              <p className="text-muted-foreground mb-4">Increased customer retention by 40% with loyalty tap campaigns</p>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">1,247 total taps</span>
-                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Active</span>
+                <span className="text-sm text-muted-foreground">1,247 total taps</span>
+                <span className="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium">Active</span>
               </div>
             </CardContent>
           </Card>
@@ -195,11 +195,11 @@ export default function Home() {
               className="w-full h-48 object-cover"
             />
             <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Downtown Books</h3>
-              <p className="text-gray-600 mb-4">Connected with local coffee shops through tap trails</p>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Downtown Books</h3>
+              <p className="text-muted-foreground mb-4">Connected with local coffee shops through tap trails</p>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">892 total taps</span>
-                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Active</span>
+                <span className="text-sm text-muted-foreground">892 total taps</span>
+                <span className="bg-secondary/10 text-secondary px-2 py-1 rounded-full text-xs font-medium">Active</span>
               </div>
             </CardContent>
           </Card>
@@ -211,11 +211,11 @@ export default function Home() {
               className="w-full h-48 object-cover"
             />
             <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Mama's Bistro</h3>
-              <p className="text-gray-600 mb-4">Boosted referrals by 60% with tap-to-share campaigns</p>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Mama's Bistro</h3>
+              <p className="text-muted-foreground mb-4">Boosted referrals by 60% with tap-to-share campaigns</p>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">1,543 total taps</span>
-                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Active</span>
+                <span className="text-sm text-muted-foreground">1,543 total taps</span>
+                <span className="bg-accent/10 text-accent px-2 py-1 rounded-full text-xs font-medium">Active</span>
               </div>
             </CardContent>
           </Card>
@@ -225,8 +225,8 @@ export default function Home() {
       {/* Call to Action */}
       <section className="text-center py-16">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-4xl font-bold text-gray-900 mb-6">Ready to Transform Your Local Business?</h2>
-          <p className="text-xl text-gray-600 mb-8">Join the Cirqlback community and start building stronger customer relationships today</p>
+          <h2 className="text-4xl font-bold gradient-text mb-6">Ready to Transform Your Local Business?</h2>
+          <p className="text-xl text-muted-foreground mb-8">Join the Cirqlback community and start building stronger customer relationships today</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/merchant">
               <Button size="lg" className="bg-primary text-white hover:bg-primary/90">
@@ -239,7 +239,7 @@ export default function Home() {
               Schedule Demo
             </Button>
           </div>
-          <p className="text-sm text-gray-500 mt-4">No credit card required • 5 free NFC tags included</p>
+          <p className="text-sm text-muted-foreground mt-4">No credit card required • 5 free NFC tags included</p>
         </div>
       </section>
     </main>
