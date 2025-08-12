@@ -3,8 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignManagement from "@/components/merchant/campaign-management";
 import NFCWritingInterface from "@/components/merchant/nfc-writing-interface";
+import PricingOptimizer from "@/components/merchant/pricing-optimizer";
+import ViralCampaigns from "@/components/marketing/viral-campaigns";
 import StatsCard from "@/components/ui/stats-card";
-import { Store, Users, Share2, TrendingUp, Coffee, BookOpen, UtensilsCrossed } from "lucide-react";
+import { Store, Users, Share2, TrendingUp, Coffee, BookOpen, UtensilsCrossed, DollarSign, Zap } from "lucide-react";
 
 export default function Merchant() {
   const [selectedBusiness] = useState("business-1"); // Simulate selected business
@@ -82,9 +84,11 @@ export default function Merchant() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="campaigns" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
           <TabsTrigger value="nfc-tags">NFC Tags</TabsTrigger>
+          <TabsTrigger value="pricing">AI Pricing</TabsTrigger>
+          <TabsTrigger value="viral">Viral Marketing</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
@@ -94,6 +98,14 @@ export default function Merchant() {
 
         <TabsContent value="nfc-tags">
           <NFCWritingInterface businessId={selectedBusiness} />
+        </TabsContent>
+
+        <TabsContent value="pricing">
+          <PricingOptimizer />
+        </TabsContent>
+
+        <TabsContent value="viral">
+          <ViralCampaigns />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">

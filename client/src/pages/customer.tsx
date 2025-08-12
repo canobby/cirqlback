@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import NFCTapInterface from "@/components/customer/nfc-tap-interface";
+import PointsDisplay from "@/components/loyalty/points-display";
 import { Gift, Users, MapPin, Share2 } from "lucide-react";
 
 export default function Customer() {
@@ -55,6 +56,15 @@ export default function Customer() {
 
         {/* Rewards & Features */}
         <div className="space-y-6">
+          {/* Loyalty Points Display */}
+          {customerEmail && (
+            <PointsDisplay
+              totalPoints={3247}
+              availablePoints={1850}
+              tier="Gold"
+              nextTierPoints={5000}
+            />
+          )}
           {/* Active Rewards */}
           <Card className="card-hover glow-effect">
             <CardHeader>

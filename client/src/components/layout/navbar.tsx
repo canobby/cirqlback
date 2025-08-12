@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { CircleX } from "lucide-react";
+import NotificationCenter from "@/components/notifications/notification-center";
 
 export default function Navbar() {
   const [location] = useLocation();
@@ -79,7 +80,8 @@ export default function Navbar() {
           </div>
           
           <div className="flex items-center space-x-4">
-            <Button className="bg-primary text-white hover:bg-primary/90">
+            <NotificationCenter />
+            <Button className="gradient-bg border-0 text-white font-semibold">
               Login
             </Button>
           </div>

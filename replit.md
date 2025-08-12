@@ -33,8 +33,13 @@ Preferred communication style: Simple, everyday language.
 - **Campaign Management**: Merchants can create discount, loyalty, and reward campaigns
 - **NFC Tag Writing**: Interface for assigning campaigns to physical NFC tags
 - **Customer Tap Interface**: Mobile-optimized experience for claiming rewards
-- **Analytics Dashboard**: Real-time metrics and performance tracking
-- **Community Features**: Business networks and "Tap Trails" for multi-store engagement
+- **Advanced Analytics Dashboard**: Real-time metrics, AI-powered insights, and performance tracking
+- **Community Hub**: Gamified challenges, leaderboards, social feeds, and group rewards
+- **Premium Referral System**: $5 per friend + 5% lifetime earnings with viral growth mechanics
+- **Loyalty Points System**: Tiered membership (Bronze/Silver/Gold/Platinum) with escalating benefits
+- **Smart Notifications**: Real-time alerts for rewards, challenges, and achievements
+- **AI Pricing Optimization**: Dynamic pricing strategies with market analysis and revenue projections
+- **Viral Marketing Campaigns**: Automated social media campaigns with FOMO and challenge templates
 
 ### Authentication & Session Management
 - **Session-based Authentication**: Uses connect-pg-simple for PostgreSQL session storage
