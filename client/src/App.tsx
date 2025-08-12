@@ -18,6 +18,7 @@ import ARExperience from "@/pages/ar-experience";
 import Marketing from "@/pages/marketing";
 import SettingsPage from "@/pages/settings";
 import Checkout from "@/pages/checkout";
+import AvatarCreator from "@/pages/avatar-creator";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -39,6 +40,7 @@ function Router() {
           <Route path="/marketing" component={Marketing} />
           <Route path="/settings" component={SettingsPage} />
           <Route path="/checkout" component={Checkout} />
+          <Route path="/avatar" component={AvatarCreator} />
           <Route component={NotFound} />
         </Switch>
       </main>

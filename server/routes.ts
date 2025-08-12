@@ -667,6 +667,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Avatar API routes
+  app.get("/api/avatar/me", async (req, res) => {
+    try {
+      const userId = req.query.userId as string || "demo_user_1";
+      const avatar = await storage.getUserAvatar(userId);
+      
+      if (!avatar) {
+        const defaultAvatar = {
+          id: "default",
+          userId,
+          name: "My Avatar",
+          hair: "default_hair",
+          eyes: "default_eyes",
+          skin: "default_skin",
+          outfit: "default_outfit",
+          accessories: [],
+          effects: [],
+          level: 1,
+          experience: 0,
+          coins: 500,
+          badges: []
+        };
+        return res.json(defaultAvatar);
+      }
+      
+      res.json(avatar);
+    } catch (error) {
+      console.error("Error fetching user avatar:", error);
+      res.status(500).json({ error: "Failed to fetch avatar" });
+    }
+  });
+
+  app.get("/api/avatar/assets", async (req, res) => {
+    try {
+      const assets = await storage.getAvatarAssets();
+      const userOwnedAssets = await storage.getUserAvatarAssets("demo_user_1");
+      
+      const sampleAssets = [
+        { id: "hair_1", type: "hair", name: "Classic Brown", rarity: "common", cost: 0, isOwned: true, previewUrl: "" },
+        { id: "hair_2", type: "hair", name: "Stylish Pink", rarity: "rare", cost: 100, isOwned: false, previewUrl: "" },
+        { id: "outfit_1", type: "outfit", name: "Casual Hoodie", rarity: "common", cost: 0, isOwned: true, previewUrl: "" },
+        { id: "pet_1", type: "pet", name: "Digital Dragon", rarity: "legendary", cost: 500, unlockCondition: "Visit 10 businesses", isOwned: false, previewUrl: "" }
+      ];
+      
+      const assetsWithOwnership = assets.length > 0 
+        ? assets.map(asset => ({ ...asset, isOwned: userOwnedAssets.includes(asset.id) }))
+        : sampleAssets;
+        
+      res.json(assetsWithOwnership);
+    } catch (error) {
+      console.error("Error fetching avatar assets:", error);
+      res.status(500).json({ error: "Failed to fetch assets" });
+    }
+  });
+
+  app.get("/api/avatar/achievements", async (req, res) => {
+    try {
+      const achievements = await storage.getUserAvatarAchievements("demo_user_1");
+      
+      const sampleAchievements = [
+        { id: "ach_1", title: "First Steps", description: "Complete your first tap", type: "taps", target: 1, progress: 1, reward: "50 coins", rarity: "common", completed: true },
+        { id: "ach_2", title: "Social Butterfly", description: "Share your avatar 5 times", type: "social", target: 5, progress: 2, reward: "Rare effect: Sparkles", rarity: "rare", completed: false }
+      ];
+      
+      res.json(achievements.length > 0 ? achievements : sampleAchievements);
+    } catch (error) {
+      console.error("Error fetching avatar achievements:", error);
+      res.status(500).json({ error: "Failed to fetch achievements" });
+    }
+  });
+
+  app.post("/api/avatar/save", async (req, res) => {
+    try {
+      const userId = req.body.userId || "demo_user_1";
+      const avatarData = req.body;
+      
+      const updatedAvatar = await storage.updateUserAvatar(userId, avatarData);
+      res.json(updatedAvatar);
+    } catch (error) {
+      console.error("Error saving avatar:", error);
+      res.status(500).json({ error: "Failed to save avatar" });
+    }
+  });
+
   // Cirql Platform API routes
   app.post("/api/cirql/tap", async (req, res) => {
     try {

@@ -365,6 +365,90 @@ export const insertApiUsageSchema = createInsertSchema(apiUsage).omit({
 
 // Types
 export type User = typeof users.$inferSelect;
+
+// Avatar system tables
+export const userAvatars = pgTable("user_avatars", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  name: varchar("name").default("My Avatar"),
+  hair: varchar("hair").default("default_hair"),
+  eyes: varchar("eyes").default("default_eyes"),
+  skin: varchar("skin").default("default_skin"),
+  outfit: varchar("outfit").default("default_outfit"),
+  accessories: jsonb("accessories").default([]),
+  pet: varchar("pet"),
+  effects: jsonb("effects").default([]),
+  level: integer("level").default(1),
+  experience: integer("experience").default(0),
+  coins: integer("coins").default(500),
+  badges: jsonb("badges").default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const avatarAssets = pgTable("avatar_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: varchar("type").notNull(), // 'hair', 'eyes', 'skin', 'outfit', 'accessory', 'pet', 'effect'
+  name: varchar("name").notNull(),
+  rarity: varchar("rarity").notNull().default("common"), // 'common', 'rare', 'epic', 'legendary'
+  cost: integer("cost").default(0),
+  unlockCondition: varchar("unlock_condition"),
+  businessId: varchar("business_id").references(() => businesses.id),
+  previewUrl: varchar("preview_url"),
+  animationUrl: varchar("animation_url"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userAvatarAssets = pgTable("user_avatar_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  assetId: varchar("asset_id").references(() => avatarAssets.id),
+  purchasedAt: timestamp("purchased_at").defaultNow(),
+});
+
+export const avatarAchievements = pgTable("avatar_achievements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: varchar("description"),
+  type: varchar("type").notNull(), // 'taps', 'visits', 'referrals', 'spending'
+  target: integer("target").notNull(),
+  reward: varchar("reward"), // description of reward
+  rewardType: varchar("reward_type"), // 'coins', 'asset', 'badge'
+  rewardValue: varchar("reward_value"),
+  rarity: varchar("rarity").default("common"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userAvatarAchievements = pgTable("user_avatar_achievements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  achievementId: varchar("achievement_id").references(() => avatarAchievements.id),
+  progress: integer("progress").default(0),
+  completed: boolean("completed").default(false),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Avatar interaction logs
+export const avatarInteractions = pgTable("avatar_interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  businessId: varchar("business_id").references(() => businesses.id),
+  interactionType: varchar("interaction_type").notNull(), // 'ar_photo', 'tap_animation', 'social_share'
+  metadata: jsonb("metadata").default({}),
+  experienceGained: integer("experience_gained").default(0),
+  coinsEarned: integer("coins_earned").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type UserAvatar = typeof userAvatars.$inferSelect;
+export type InsertUserAvatar = typeof userAvatars.$inferInsert;
+export type AvatarAsset = typeof avatarAssets.$inferSelect;
+export type InsertAvatarAsset = typeof avatarAssets.$inferInsert;
+export type AvatarAchievement = typeof avatarAchievements.$inferSelect;
+export type AvatarInteraction = typeof avatarInteractions.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 

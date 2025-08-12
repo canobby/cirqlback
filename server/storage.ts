@@ -8,6 +8,12 @@ import {
   referrals,
   tapTrails,
   userTrailProgress,
+  userAvatars,
+  avatarAssets,
+  userAvatarAssets,
+  avatarAchievements,
+  userAvatarAchievements,
+  avatarInteractions,
   type User,
   type UpsertUser,
   type Business,
@@ -26,6 +32,12 @@ import {
   type InsertTapTrail,
   type UserTrailProgress,
   type InsertUserTrailProgress,
+  type UserAvatar,
+  type InsertUserAvatar,
+  type AvatarAsset,
+  type InsertAvatarAsset,
+  type AvatarAchievement,
+  type AvatarInteraction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, count } from "drizzle-orm";
@@ -76,6 +88,22 @@ export interface IStorage {
   getTapTrails(): Promise<TapTrail[]>;
   getUserTrailProgress(userId: string): Promise<UserTrailProgress[]>;
   updateTrailProgress(userId: string, trailId: string, businessId: string): Promise<void>;
+  
+  // Analytics and reporting
+  getBusinessAnalytics(businessId: string): Promise<any>;
+  getUserActivity(userId: string): Promise<any>;
+  getCustomerInsights(businessId: string): Promise<any>;
+  
+  // Avatar operations
+  getUserAvatar(userId: string): Promise<UserAvatar | undefined>;
+  createUserAvatar(avatar: InsertUserAvatar): Promise<UserAvatar>;
+  updateUserAvatar(userId: string, updates: Partial<UserAvatar>): Promise<UserAvatar>;
+  getAvatarAssets(): Promise<AvatarAsset[]>;
+  getUserAvatarAssets(userId: string): Promise<string[]>;
+  purchaseAvatarAsset(userId: string, assetId: string): Promise<void>;
+  getAvatarAchievements(): Promise<AvatarAchievement[]>;
+  getUserAvatarAchievements(userId: string): Promise<any[]>;
+  recordAvatarInteraction(interaction: Omit<AvatarInteraction, 'id' | 'createdAt'>): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -373,6 +401,114 @@ export class DatabaseStorage implements IStorage {
         isCompleted: false,
       });
     }
+  }
+
+  // Avatar operations
+  async getUserAvatar(userId: string): Promise<UserAvatar | undefined> {
+    try {
+      const [avatar] = await db.select().from(userAvatars).where(eq(userAvatars.userId, userId));
+      return avatar || undefined;
+    } catch (error) {
+      console.error("Error getting user avatar:", error);
+      return undefined;
+    }
+  }
+
+  async createUserAvatar(avatar: InsertUserAvatar): Promise<UserAvatar> {
+    const [newAvatar] = await db.insert(userAvatars).values(avatar).returning();
+    return newAvatar;
+  }
+
+  async updateUserAvatar(userId: string, updates: Partial<UserAvatar>): Promise<UserAvatar> {
+    const [updatedAvatar] = await db
+      .update(userAvatars)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(userAvatars.userId, userId))
+      .returning();
+    return updatedAvatar;
+  }
+
+  async getAvatarAssets(): Promise<AvatarAsset[]> {
+    try {
+      return await db.select().from(avatarAssets).where(eq(avatarAssets.isActive, true));
+    } catch (error) {
+      console.error("Error getting avatar assets:", error);
+      return [];
+    }
+  }
+
+  async getUserAvatarAssets(userId: string): Promise<string[]> {
+    try {
+      const assets = await db
+        .select({ assetId: userAvatarAssets.assetId })
+        .from(userAvatarAssets)
+        .where(eq(userAvatarAssets.userId, userId));
+      return assets.map(asset => asset.assetId!);
+    } catch (error) {
+      console.error("Error getting user avatar assets:", error);
+      return [];
+    }
+  }
+
+  async purchaseAvatarAsset(userId: string, assetId: string): Promise<void> {
+    await db.insert(userAvatarAssets).values({
+      userId,
+      assetId,
+    });
+  }
+
+  async getAvatarAchievements(): Promise<AvatarAchievement[]> {
+    try {
+      return await db.select().from(avatarAchievements).where(eq(avatarAchievements.isActive, true));
+    } catch (error) {
+      console.error("Error getting avatar achievements:", error);
+      return [];
+    }
+  }
+
+  async getUserAvatarAchievements(userId: string): Promise<any[]> {
+    try {
+      const achievements = await db
+        .select({
+          achievementId: userAvatarAchievements.achievementId,
+          progress: userAvatarAchievements.progress,
+          completed: userAvatarAchievements.completed,
+          completedAt: userAvatarAchievements.completedAt,
+          title: avatarAchievements.title,
+          description: avatarAchievements.description,
+          target: avatarAchievements.target,
+          reward: avatarAchievements.reward,
+          rarity: avatarAchievements.rarity,
+        })
+        .from(userAvatarAchievements)
+        .innerJoin(avatarAchievements, eq(userAvatarAchievements.achievementId, avatarAchievements.id))
+        .where(eq(userAvatarAchievements.userId, userId));
+      return achievements;
+    } catch (error) {
+      console.error("Error getting user avatar achievements:", error);
+      return [];
+    }
+  }
+
+  async recordAvatarInteraction(interaction: Omit<AvatarInteraction, 'id' | 'createdAt'>): Promise<void> {
+    try {
+      await db.insert(avatarInteractions).values(interaction);
+    } catch (error) {
+      console.error("Error recording avatar interaction:", error);
+    }
+  }
+
+  // Placeholder analytics methods
+  async getBusinessAnalytics(businessId: string): Promise<any> {
+    return { businessId, analytics: "placeholder" };
+  }
+
+  async getUserActivity(userId: string): Promise<any> {
+    return { userId, activity: "placeholder" };
+  }
+
+  async getCustomerInsights(businessId: string): Promise<any> {
+    return { businessId, insights: "placeholder" };
   }
 }
 
