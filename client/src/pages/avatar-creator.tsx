@@ -22,7 +22,15 @@ import {
   Download,
   Share2,
   Heart,
-  Coins
+  Coins,
+  MapPin,
+  Users,
+  ArrowUpDown,
+  Flame,
+  Calendar,
+  Target,
+  Medal,
+  Gamepad2
 } from "lucide-react";
 
 interface AvatarAsset {
@@ -66,6 +74,48 @@ interface AvatarAchievement {
   completed: boolean;
 }
 
+interface TreasureHunt {
+  id: string;
+  name: string;
+  description: string;
+  locations: { businessId: string; name: string; discovered: boolean }[];
+  rewards: string[];
+  timeLimit: string;
+  participants: number;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+}
+
+interface SocialCompetition {
+  id: string;
+  title: string;
+  description: string;
+  type: 'leaderboard' | 'tournament' | 'challenge';
+  participants: number;
+  timeLeft: string;
+  prize: string;
+  myRank?: number;
+  status: 'active' | 'upcoming' | 'ended';
+}
+
+interface TradingOffer {
+  id: string;
+  fromUser: string;
+  toUser: string;
+  offeredItems: string[];
+  requestedItems: string[];
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+}
+
+interface StreakBonus {
+  type: 'daily' | 'weekly' | 'monthly';
+  current: number;
+  target: number;
+  multiplier: number;
+  reward: string;
+  nextReward: string;
+}
+
 export default function AvatarCreator() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -75,6 +125,7 @@ export default function AvatarCreator() {
   const [avatarPreview, setAvatarPreview] = useState<UserAvatar | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<AvatarAsset | null>(null);
+  const [activeGameTab, setActiveGameTab] = useState('treasureHunts');
 
   // Fetch user's current avatar (with default fallback data)
   const { data: userAvatar, isLoading: avatarLoading } = useQuery({
@@ -228,6 +279,82 @@ export default function AvatarCreator() {
     }
   ];
 
+  // Sample gamification data
+  const treasureHunts: TreasureHunt[] = [
+    {
+      id: "hunt_1",
+      name: "Downtown Explorer",
+      description: "Discover hidden AR treasures across 5 downtown businesses",
+      locations: [
+        { businessId: "biz_1", name: "Central Coffee", discovered: true },
+        { businessId: "biz_2", name: "Metro Deli", discovered: true },
+        { businessId: "biz_3", name: "Art Gallery", discovered: false },
+        { businessId: "biz_4", name: "Book Store", discovered: false },
+        { businessId: "biz_5", name: "Music Shop", discovered: false }
+      ],
+      rewards: ["Legendary pet: Crystal Dragon", "500 Cirql coins", "Exclusive badge"],
+      timeLimit: "3 days left",
+      participants: 234,
+      difficulty: "Medium"
+    }
+  ];
+
+  const socialCompetitions: SocialCompetition[] = [
+    {
+      id: "comp_1",
+      title: "Avatar Style Contest",
+      description: "Show off your most creative avatar combination",
+      type: "tournament",
+      participants: 1247,
+      timeLeft: "2 days",
+      prize: "Epic hair style + 1000 coins",
+      myRank: 23,
+      status: "active"
+    },
+    {
+      id: "comp_2",
+      title: "Weekly Leaderboard",
+      description: "Earn the most Cirql coins this week",
+      type: "leaderboard",
+      participants: 856,
+      timeLeft: "5 days",
+      prize: "Champion crown accessory",
+      myRank: 42,
+      status: "active"
+    }
+  ];
+
+  const tradingOffers: TradingOffer[] = [
+    {
+      id: "trade_1",
+      fromUser: "AvatarMaster99",
+      toUser: "You",
+      offeredItems: ["Rare sunglasses", "Cool jacket"],
+      requestedItems: ["Your epic boots"],
+      status: "pending",
+      createdAt: "2 hours ago"
+    }
+  ];
+
+  const streakBonuses: StreakBonus[] = [
+    {
+      type: "daily",
+      current: 7,
+      target: 7,
+      multiplier: 2,
+      reward: "Double coins earned",
+      nextReward: "Streak pet unlock"
+    },
+    {
+      type: "weekly",
+      current: 3,
+      target: 4,
+      multiplier: 1.5,
+      reward: "Weekly bonus coins",
+      nextReward: "Rare effect unlock"
+    }
+  ];
+
   const avatar = avatarPreview || (userAvatar as UserAvatar) || defaultAvatar;
 
   const handleAssetSelect = (asset: AvatarAsset) => {
@@ -341,10 +468,11 @@ export default function AvatarCreator() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 max-w-2xl mx-auto">
+          <TabsList className="grid w-full grid-cols-5 max-w-3xl mx-auto">
             <TabsTrigger value="customize">Customize</TabsTrigger>
             <TabsTrigger value="shop">Shop</TabsTrigger>
             <TabsTrigger value="achievements">Rewards</TabsTrigger>
+            <TabsTrigger value="games">Games</TabsTrigger>
             <TabsTrigger value="showcase">Showcase</TabsTrigger>
           </TabsList>
 
@@ -639,6 +767,169 @@ export default function AvatarCreator() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="games" className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold mb-4">Gamification Hub</h2>
+              <p className="text-gray-600">Complete challenges, compete with friends, and earn exclusive rewards</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Flame className="h-5 w-5 text-orange-500" />
+                      <span>Daily Streaks</span>
+                    </div>
+                    <Badge variant="outline" className="text-orange-600 border-orange-300">
+                      7-day streak!
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {streakBonuses.map((streak, index) => (
+                    <div key={index} className="bg-gradient-to-r from-orange-50 to-pink-50 p-4 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium capitalize">{streak.type} Streak</span>
+                        <span className="text-sm font-bold text-orange-600">
+                          {streak.current}/{streak.target}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                        <div 
+                          className="bg-gradient-to-r from-orange-400 to-pink-400 h-2 rounded-full"
+                          style={{ width: `${(streak.current / streak.target) * 100}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>Reward: {streak.reward}</span>
+                        <span>Next: {streak.nextReward}</span>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <MapPin className="h-5 w-5 text-green-500" />
+                    <span>AR Treasure Hunts</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {treasureHunts.map((hunt) => (
+                    <div key={hunt.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-semibold">{hunt.name}</h3>
+                          <p className="text-sm text-gray-600">{hunt.description}</p>
+                        </div>
+                        <Badge variant={hunt.difficulty === 'Easy' ? 'secondary' : hunt.difficulty === 'Medium' ? 'default' : 'destructive'}>
+                          {hunt.difficulty}
+                        </Badge>
+                      </div>
+                      <div className="space-y-2 mb-4">
+                        {hunt.locations.map((location, idx) => (
+                          <div key={idx} className="flex items-center space-x-2">
+                            <div className={`w-3 h-3 rounded-full ${location.discovered ? 'bg-green-500' : 'bg-gray-300'}`} />
+                            <span className={`text-sm ${location.discovered ? 'text-green-700' : 'text-gray-600'}`}>
+                              {location.name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-orange-600">{hunt.timeLimit}</span>
+                        <Button size="sm" className="bg-gradient-to-r from-green-500 to-emerald-500">
+                          <MapPin className="h-4 w-4 mr-1" />
+                          Start Hunt
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Users className="h-5 w-5 text-blue-500" />
+                    <span>Social Competitions</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {socialCompetitions.map((comp) => (
+                    <div key={comp.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold">{comp.title}</h3>
+                        <Badge variant="outline" className="text-blue-600 border-blue-300">
+                          Rank #{comp.myRank}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">{comp.description}</p>
+                      <div className="flex justify-between text-sm text-gray-500 mb-3">
+                        <span>{comp.participants} participants</span>
+                        <span>{comp.timeLeft} left</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-purple-600">Prize: {comp.prize}</span>
+                        <Button size="sm" variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50">
+                          <Trophy className="h-4 w-4 mr-1" />
+                          Join
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <ArrowUpDown className="h-5 w-5 text-purple-500" />
+                    <span>Trading System</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {tradingOffers.map((offer) => (
+                    <div key={offer.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold">{offer.fromUser}</span>
+                        <Badge variant="outline" className="text-purple-600 border-purple-300">
+                          {offer.status}
+                        </Badge>
+                      </div>
+                      <div className="space-y-2 mb-3">
+                        <div>
+                          <span className="text-sm text-gray-600">Offering: </span>
+                          <span className="text-sm font-medium">{offer.offeredItems.join(', ')}</span>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-600">Wants: </span>
+                          <span className="text-sm font-medium">{offer.requestedItems.join(', ')}</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">{offer.createdAt}</span>
+                        <div className="space-x-2">
+                          <Button size="sm" variant="outline">Decline</Button>
+                          <Button size="sm" className="bg-gradient-to-r from-purple-500 to-pink-500">Accept</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <Button className="w-full" variant="outline" className="border-purple-300 text-purple-600 hover:bg-purple-50">
+                    <ArrowUpDown className="h-4 w-4 mr-2" />
+                    Browse All Trades
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 

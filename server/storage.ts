@@ -510,6 +510,93 @@ export class DatabaseStorage implements IStorage {
   async getCustomerInsights(businessId: string): Promise<any> {
     return { businessId, insights: "placeholder" };
   }
+
+  // Avatar operations
+  async getUserAvatar(userId: string): Promise<UserAvatar | undefined> {
+    try {
+      const [avatar] = await db.select().from(userAvatars).where(eq(userAvatars.userId, userId));
+      return avatar || undefined;
+    } catch (error) {
+      console.error("Database error in getUserAvatar:", error);
+      return undefined;
+    }
+  }
+
+  async createUserAvatar(avatar: InsertUserAvatar): Promise<UserAvatar> {
+    const [newAvatar] = await db
+      .insert(userAvatars)
+      .values(avatar)
+      .returning();
+    return newAvatar;
+  }
+
+  async updateUserAvatar(userId: string, updates: Partial<UserAvatar>): Promise<UserAvatar> {
+    const [updated] = await db
+      .update(userAvatars)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(userAvatars.userId, userId))
+      .returning();
+    return updated;
+  }
+
+  async getAvatarAssets(): Promise<AvatarAsset[]> {
+    try {
+      return await db.select().from(avatarAssets);
+    } catch (error) {
+      console.error("Database error in getAvatarAssets:", error);
+      return [];
+    }
+  }
+
+  async getUserAvatarAssets(userId: string): Promise<string[]> {
+    try {
+      const assets = await db
+        .select({ assetId: userAvatarAssets.assetId })
+        .from(userAvatarAssets)
+        .where(eq(userAvatarAssets.userId, userId));
+      return assets.map(asset => asset.assetId);
+    } catch (error) {
+      console.error("Database error in getUserAvatarAssets:", error);
+      return [];
+    }
+  }
+
+  async purchaseAvatarAsset(userId: string, assetId: string): Promise<void> {
+    await db.insert(userAvatarAssets).values({
+      userId,
+      assetId,
+      purchasedAt: new Date()
+    });
+  }
+
+  async getAvatarAchievements(): Promise<AvatarAchievement[]> {
+    try {
+      return await db.select().from(avatarAchievements);
+    } catch (error) {
+      console.error("Database error in getAvatarAchievements:", error);
+      return [];
+    }
+  }
+
+  async getUserAvatarAchievements(userId: string): Promise<any[]> {
+    try {
+      const achievements = await db
+        .select()
+        .from(userAvatarAchievements)
+        .where(eq(userAvatarAchievements.userId, userId));
+      return achievements;
+    } catch (error) {
+      console.error("Database error in getUserAvatarAchievements:", error);
+      return [];
+    }
+  }
+
+  async recordAvatarInteraction(interaction: Omit<AvatarInteraction, 'id' | 'createdAt'>): Promise<void> {
+    await db.insert(avatarInteractions).values({
+      ...interaction,
+      createdAt: new Date()
+    });
+  }
 }
 
 export const storage = new DatabaseStorage();

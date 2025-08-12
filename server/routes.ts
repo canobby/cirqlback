@@ -751,6 +751,192 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Gamification API routes
+  app.get("/api/gamification/treasure-hunts", async (req, res) => {
+    try {
+      const treasureHunts = [
+        {
+          id: "hunt_1",
+          name: "Downtown Explorer",
+          description: "Discover hidden AR treasures across 5 downtown businesses",
+          locations: [
+            { businessId: "biz_1", name: "Central Coffee", discovered: true },
+            { businessId: "biz_2", name: "Metro Deli", discovered: true },
+            { businessId: "biz_3", name: "Art Gallery", discovered: false },
+            { businessId: "biz_4", name: "Book Store", discovered: false },
+            { businessId: "biz_5", name: "Music Shop", discovered: false }
+          ],
+          rewards: ["Legendary pet: Crystal Dragon", "500 Cirql coins", "Exclusive badge"],
+          timeLimit: "3 days left",
+          participants: 234,
+          difficulty: "Medium",
+          progress: 2,
+          totalLocations: 5
+        }
+      ];
+      res.json(treasureHunts);
+    } catch (error) {
+      console.error("Error fetching treasure hunts:", error);
+      res.status(500).json({ error: "Failed to fetch treasure hunts" });
+    }
+  });
+
+  app.get("/api/gamification/competitions", async (req, res) => {
+    try {
+      const competitions = [
+        {
+          id: "comp_1",
+          title: "Avatar Style Contest",
+          description: "Show off your most creative avatar combination",
+          type: "tournament",
+          participants: 1247,
+          timeLeft: "2 days",
+          prize: "Epic hair style + 1000 coins",
+          myRank: 23,
+          status: "active",
+          entryFee: 50
+        },
+        {
+          id: "comp_2", 
+          title: "Weekly Leaderboard",
+          description: "Earn the most Cirql coins this week",
+          type: "leaderboard",
+          participants: 856,
+          timeLeft: "5 days",
+          prize: "Champion crown accessory",
+          myRank: 42,
+          status: "active",
+          entryFee: 0
+        }
+      ];
+      res.json(competitions);
+    } catch (error) {
+      console.error("Error fetching competitions:", error);
+      res.status(500).json({ error: "Failed to fetch competitions" });
+    }
+  });
+
+  app.get("/api/gamification/trades", async (req, res) => {
+    try {
+      const trades = [
+        {
+          id: "trade_1",
+          fromUser: "AvatarMaster99", 
+          fromUserId: "user_123",
+          toUser: "You",
+          toUserId: "demo_user_1",
+          offeredItems: [
+            { id: "sunglasses_rare", name: "Rare sunglasses", rarity: "rare" },
+            { id: "jacket_cool", name: "Cool jacket", rarity: "common" }
+          ],
+          requestedItems: [
+            { id: "boots_epic", name: "Epic boots", rarity: "epic" }
+          ],
+          status: "pending",
+          createdAt: "2 hours ago",
+          expiresAt: "2 days"
+        }
+      ];
+      res.json(trades);
+    } catch (error) {
+      console.error("Error fetching trades:", error);
+      res.status(500).json({ error: "Failed to fetch trades" });
+    }
+  });
+
+  app.get("/api/gamification/streaks", async (req, res) => {
+    try {
+      const streaks = [
+        {
+          type: "daily",
+          current: 7,
+          target: 7,
+          multiplier: 2,
+          reward: "Double coins earned",
+          nextReward: "Streak pet unlock",
+          bonus: "Active",
+          completionRate: 100
+        },
+        {
+          type: "weekly", 
+          current: 3,
+          target: 4,
+          multiplier: 1.5,
+          reward: "Weekly bonus coins",
+          nextReward: "Rare effect unlock",
+          bonus: "Pending",
+          completionRate: 75
+        },
+        {
+          type: "monthly",
+          current: 1,
+          target: 4,
+          multiplier: 3,
+          reward: "Monthly champion badge",
+          nextReward: "Legendary avatar unlock",
+          bonus: "Pending", 
+          completionRate: 25
+        }
+      ];
+      res.json(streaks);
+    } catch (error) {
+      console.error("Error fetching streaks:", error);
+      res.status(500).json({ error: "Failed to fetch streaks" });
+    }
+  });
+
+  app.post("/api/gamification/start-hunt/:huntId", async (req, res) => {
+    try {
+      const { huntId } = req.params;
+      const userId = req.body.userId || "demo_user_1";
+      
+      // Record hunt participation
+      res.json({ 
+        success: true, 
+        message: "Treasure hunt started! Check your AR view at participating businesses.",
+        huntId,
+        nextLocation: "Art Gallery"
+      });
+    } catch (error) {
+      console.error("Error starting hunt:", error);
+      res.status(500).json({ error: "Failed to start treasure hunt" });
+    }
+  });
+
+  app.post("/api/gamification/join-competition/:compId", async (req, res) => {
+    try {
+      const { compId } = req.params;
+      const userId = req.body.userId || "demo_user_1";
+      
+      res.json({
+        success: true,
+        message: "Successfully joined competition!",
+        competitionId: compId,
+        currentRank: Math.floor(Math.random() * 100) + 1
+      });
+    } catch (error) {
+      console.error("Error joining competition:", error);
+      res.status(500).json({ error: "Failed to join competition" });
+    }
+  });
+
+  app.post("/api/gamification/accept-trade/:tradeId", async (req, res) => {
+    try {
+      const { tradeId } = req.params;
+      const userId = req.body.userId || "demo_user_1";
+      
+      res.json({
+        success: true,
+        message: "Trade completed successfully!",
+        itemsReceived: ["Rare sunglasses", "Cool jacket"],
+        itemsGiven: ["Epic boots"]
+      });
+    } catch (error) {
+      console.error("Error accepting trade:", error);
+      res.status(500).json({ error: "Failed to accept trade" });
+    }
+  });
+
   // Cirql Platform API routes
   app.post("/api/cirql/tap", async (req, res) => {
     try {
