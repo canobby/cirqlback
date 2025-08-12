@@ -301,9 +301,18 @@ export default function AdminDashboard() {
             </h1>
             <p className="text-gray-600 mt-2">Complete platform control and analytics dashboard</p>
           </div>
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-            Admin Access Level: Master
-          </Badge>
+          <div className="flex items-center space-x-3">
+            <Button 
+              onClick={() => window.location.href = '/test-system'}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+            >
+              <Target className="h-4 w-4 mr-2" />
+              Testing System
+            </Button>
+            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+              Admin Access Level: Master
+            </Badge>
+          </div>
         </div>
 
         {/* Quick Stats */}

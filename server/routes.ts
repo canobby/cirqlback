@@ -986,7 +986,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Admin Insights endpoint
   app.post("/api/ai/admin-insights", async (req, res) => {
     try {
-      const openaiService = new OpenAIService();
       const platformData = req.body;
       
       const insights = await openaiService.generateAdminInsights(platformData);
@@ -994,6 +993,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("AI admin insights error:", error);
       res.status(500).json({ error: "Failed to generate admin insights" });
+    }
+  });
+
+  // Testing System API routes
+  app.get("/api/test/users", async (req, res) => {
+    try {
+      const testUsers = [
+        {
+          id: "user_1",
+          name: "Alex Thompson",
+          email: "alex@test.com",
+          role: "customer",
+          points: 2450,
+          tier: "Silver",
+          location: "Downtown Seattle",
+          challengesCompleted: 12,
+          campaignsCreated: 0
+        },
+        {
+          id: "user_2", 
+          name: "Jordan Martinez",
+          email: "jordan@test.com",
+          role: "customer",
+          points: 3200,
+          tier: "Gold", 
+          location: "Capitol Hill Seattle",
+          challengesCompleted: 18,
+          campaignsCreated: 0
+        }
+      ];
+      res.json(testUsers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch test users" });
+    }
+  });
+
+  app.get("/api/test/campaigns", async (req, res) => {
+    try {
+      const testCampaigns = [
+        {
+          id: "camp_1",
+          name: "Coffee Loyalty Rewards",
+          businessId: "biz_1",
+          businessName: "Grind Coffee Co.",
+          type: "loyalty",
+          status: "active",
+          participants: 89,
+          rewards: "Buy 10 get 1 free coffee",
+          endDate: "2025-03-15"
+        },
+        {
+          id: "camp_2",
+          name: "Winter Adventure Challenge",
+          businessId: "biz_2", 
+          businessName: "Summit Outdoor Gear",
+          type: "seasonal",
+          status: "active",
+          participants: 156,
+          rewards: "25% off winter gear",
+          endDate: "2025-02-28"
+        },
+        {
+          id: "camp_3",
+          name: "AR Treasure Hunt",
+          businessId: "biz_1",
+          businessName: "Grind Coffee Co.",
+          type: "ar-experience",
+          status: "active", 
+          participants: 67,
+          rewards: "Free pastry + coffee",
+          endDate: "2025-02-20"
+        }
+      ];
+      res.json(testCampaigns);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch test campaigns" });
+    }
+  });
+
+  app.post("/api/test/tap-simulation", async (req, res) => {
+    try {
+      const { userId, campaignId } = req.body;
+      const pointsEarned = Math.floor(Math.random() * 100) + 50;
+      
+      res.json({
+        success: true,
+        pointsEarned,
+        message: `User ${userId} tapped campaign ${campaignId} and earned ${pointsEarned} points`
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to simulate tap" });
     }
   });
 
