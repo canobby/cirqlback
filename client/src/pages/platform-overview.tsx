@@ -35,6 +35,7 @@ const platformSections = [
     title: "Advanced Features",
     description: "AI-powered business intelligence and growth automation",
     pages: [
+      { path: "/campaign-builder", name: "Campaign Builder", icon: Zap, description: "Pre-made templates with seasonal rotation and cross-business collaboration" },
       { path: "/ai-insights", name: "AI Business Intelligence", icon: Gamepad2, description: "Customer health scoring, predictive pricing, and market intelligence" },
       { path: "/partnerships", name: "Cross-Business Network", icon: UserCircle, description: "AI-powered partnership discovery and revenue sharing analytics" },
       { path: "/team-challenges", name: "Team Challenges", icon: Zap, description: "Multi-tier team system with corporate integration and social gamification" },
@@ -64,6 +65,7 @@ const platformSections = [
     title: "Account & Settings",
     description: "User profiles, subscriptions, and platform settings",
     pages: [
+      { path: "/admin-dashboard", name: "Administrator Dashboard", icon: Settings, description: "Master platform control, user management, and template administration" },
       { path: "/account", name: "Account Management", icon: User, description: "Subscription plans, API keys, and billing" },
       { path: "/profile", name: "Customer Profile", icon: UserCircle, description: "Personal preferences and activity history" },
       { path: "/settings", name: "Platform Settings", icon: Settings, description: "Notifications, privacy, and integrations" },

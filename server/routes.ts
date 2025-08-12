@@ -2144,7 +2144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Use Stripe with proper import
       const stripe = new (await import('stripe')).default(stripeSecretKey, {
-        apiVersion: '2023-10-16',
+        apiVersion: '2025-07-30.basil' as any,
       });
 
       // Create real payment intent with Stripe

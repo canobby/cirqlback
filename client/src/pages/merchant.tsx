@@ -92,8 +92,9 @@ export default function Merchant() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="campaigns" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+          <TabsTrigger value="campaign-builder">Template Builder</TabsTrigger>
           <TabsTrigger value="marketing">Marketing</TabsTrigger>
           <TabsTrigger value="nfc-tags">NFC Tags</TabsTrigger>
           <TabsTrigger value="pricing">AI Pricing</TabsTrigger>
@@ -103,6 +104,31 @@ export default function Merchant() {
 
         <TabsContent value="campaigns">
           <CampaignManagement businessId={selectedBusiness} />
+        </TabsContent>
+
+        <TabsContent value="campaign-builder">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Zap className="h-5 w-5 mr-2 text-purple-500" />
+                Campaign Builder Access
+              </CardTitle>
+              <p className="text-gray-600">Create campaigns using pre-made templates with seasonal rotation</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Zap className="h-8 w-8 text-purple-600" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Advanced Campaign Templates</h3>
+                <p className="text-gray-600 mb-6">Access 9+ pre-made templates with seasonal rotation and cross-business collaboration</p>
+                <Button onClick={() => window.location.href = '/campaign-builder'} className="bg-purple-600 hover:bg-purple-700">
+                  <Zap className="mr-2 h-4 w-4" />
+                  Open Campaign Builder
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="nfc-tags" className="space-y-6">
