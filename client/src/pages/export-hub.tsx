@@ -138,18 +138,34 @@ export default function ExportHub() {
     {
       name: "QuickBooks",
       description: "Export financial data directly to QuickBooks for accounting",
-      icon: "https://plugin.intuitcdn.net/designsystem_qbse2e/5.0.0/assets/images/logos_product_quickbooks_avatar.svg",
+      icon: "📊",
       category: "Accounting",
       premium: true,
       features: ["Revenue tracking", "Customer invoicing", "Tax reporting", "Expense categorization"]
     },
     {
+      name: "Xero",
+      description: "Cloud accounting integration for small-medium businesses",
+      icon: "💼",
+      category: "Accounting", 
+      premium: true,
+      features: ["Bank reconciliation", "Invoice automation", "Financial reports", "Tax compliance"]
+    },
+    {
       name: "Mailchimp",
       description: "Sync customer data for targeted email marketing campaigns",
       icon: "🐵",
-      category: "Marketing",
+      category: "Email Marketing",
       premium: false,
       features: ["Customer segmentation", "Automated campaigns", "Analytics sync", "List management"]
+    },
+    {
+      name: "Constant Contact",
+      description: "Email marketing with event management integration",
+      icon: "📧",
+      category: "Email Marketing",
+      premium: false,
+      features: ["Event promotion", "Customer surveys", "Social media integration", "Contact management"]
     },
     {
       name: "HubSpot",
@@ -160,28 +176,140 @@ export default function ExportHub() {
       features: ["Lead tracking", "Sales pipeline", "Customer journey", "Revenue attribution"]
     },
     {
-      name: "Google Analytics",
-      description: "Enhanced analytics with Cirqlback customer behavior data",
-      icon: "📊",
-      category: "Analytics",
-      premium: false,
-      features: ["Customer journey tracking", "Conversion attribution", "Audience insights", "ROI analysis"]
-    },
-    {
-      name: "Shopify",
-      description: "E-commerce integration for online store analytics",
-      icon: "🛍️",
-      category: "E-commerce",
-      premium: true,
-      features: ["Product performance", "Customer sync", "Inventory insights", "Sales analysis"]
-    },
-    {
       name: "Salesforce",
       description: "Enterprise CRM for advanced customer relationship management",
       icon: "☁️",
       category: "Enterprise CRM",
       premium: true,
       features: ["Lead management", "Opportunity tracking", "Custom reporting", "Automation"]
+    },
+    {
+      name: "Google Analytics",
+      description: "Enhanced analytics with Cirqlback customer behavior data",
+      icon: "📈",
+      category: "Analytics",
+      premium: false,
+      features: ["Customer journey tracking", "Conversion attribution", "Audience insights", "ROI analysis"]
+    },
+    {
+      name: "Facebook Business",
+      description: "Social media advertising with customer data integration",
+      icon: "📱",
+      category: "Social Media",
+      premium: false,
+      features: ["Custom audiences", "Lookalike targeting", "Ad performance", "Social insights"]
+    },
+    {
+      name: "Shopify",
+      description: "E-commerce integration for online store analytics",
+      icon: "🛒",
+      category: "E-commerce",
+      premium: true,
+      features: ["Product performance", "Customer sync", "Inventory insights", "Sales analysis"]
+    },
+    {
+      name: "WooCommerce",
+      description: "WordPress e-commerce integration for online stores",
+      icon: "🛍️",
+      category: "E-commerce",
+      premium: true,
+      features: ["Order management", "Customer behavior", "Product analytics", "Sales reporting"]
+    },
+    {
+      name: "Square",
+      description: "Point-of-sale system integration for retail businesses",
+      icon: "⚡",
+      category: "POS Systems",
+      premium: true,
+      features: ["Transaction sync", "Inventory management", "Customer profiles", "Sales reporting"]
+    },
+    {
+      name: "Toast POS",
+      description: "Restaurant POS integration for food service businesses",
+      icon: "🍽️",
+      category: "POS Systems",
+      premium: true,
+      features: ["Menu management", "Order tracking", "Customer preferences", "Revenue analysis"]
+    },
+    {
+      name: "Stripe",
+      description: "Payment processing integration with detailed transaction data",
+      icon: "💳",
+      category: "Payments",
+      premium: false,
+      features: ["Payment tracking", "Subscription management", "Customer billing", "Revenue analytics"]
+    },
+    {
+      name: "PayPal Business",
+      description: "PayPal integration for transaction and customer management",
+      icon: "💰",
+      category: "Payments",
+      premium: false,
+      features: ["Transaction history", "Customer insights", "Refund management", "Sales tracking"]
+    },
+    {
+      name: "Yelp Business",
+      description: "Reputation management with review and rating integration",
+      icon: "⭐",
+      category: "Reviews",
+      premium: false,
+      features: ["Review monitoring", "Rating analytics", "Customer feedback", "Reputation tracking"]
+    },
+    {
+      name: "Google My Business",
+      description: "Local business presence with customer interaction data",
+      icon: "📍",
+      category: "Local Business",
+      premium: false,
+      features: ["Location insights", "Customer photos", "Review management", "Local search data"]
+    },
+    {
+      name: "Hootsuite",
+      description: "Social media management with customer engagement tracking",
+      icon: "🐦",
+      category: "Social Media",
+      premium: true,
+      features: ["Post scheduling", "Engagement analytics", "Customer interactions", "Social listening"]
+    },
+    {
+      name: "Buffer",
+      description: "Social media scheduling with performance analytics",
+      icon: "📲",
+      category: "Social Media",
+      premium: true,
+      features: ["Content planning", "Analytics dashboard", "Team collaboration", "Engagement tracking"]
+    },
+    {
+      name: "Canva",
+      description: "Design integration for marketing materials and campaigns",
+      icon: "🎨",
+      category: "Design",
+      premium: false,
+      features: ["Template access", "Brand consistency", "Campaign materials", "Visual content"]
+    },
+    {
+      name: "Zapier",
+      description: "Workflow automation connecting Cirqlback to 5000+ apps",
+      icon: "⚙️",
+      category: "Automation",
+      premium: true,
+      features: ["Custom workflows", "Data synchronization", "Task automation", "Multi-app integration"]
+    },
+    {
+      name: "Slack",
+      description: "Team communication with customer activity notifications",
+      icon: "💬",
+      category: "Communication",
+      premium: false,
+      features: ["Real-time alerts", "Team notifications", "Customer updates", "Integration reports"]
+    },
+    {
+      name: "Microsoft Teams",
+      description: "Business communication with customer data integration",
+      icon: "👥",
+      category: "Communication",
+      premium: false,
+      features: ["Team collaboration", "Customer insights", "Data sharing", "Meeting integration"]
     }
   ];
 
