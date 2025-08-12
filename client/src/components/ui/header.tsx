@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Store, Smartphone, BarChart3, Users } from "lucide-react";
-import cirqlbackLogo from "@assets/066CD1BA-FD9A-40FE-8568-177951876A13_1754965785754.png";
+import cirqlbackLogo from "@assets/cirqlback-logo.png";
 
 export default function Header() {
   const [location] = useLocation();
