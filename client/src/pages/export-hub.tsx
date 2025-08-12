@@ -383,9 +383,11 @@ export default function ExportHub() {
         </div>
 
         <Tabs defaultValue="exports" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="exports">Data Exports</TabsTrigger>
             <TabsTrigger value="integrations">Platform Integrations</TabsTrigger>
+            <TabsTrigger value="automation">Marketing Automation</TabsTrigger>
+            <TabsTrigger value="communication">Communication Tools</TabsTrigger>
             <TabsTrigger value="reports">Business Reports</TabsTrigger>
           </TabsList>
 
@@ -551,6 +553,195 @@ export default function ExportHub() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          </TabsContent>
+
+          {/* Marketing Automation Tab */}
+          <TabsContent value="automation" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                {
+                  name: "Automated Email Sequences",
+                  description: "Trigger-based email campaigns for customer lifecycle management",
+                  icon: "📧",
+                  features: ["Welcome series", "Abandoned cart recovery", "Win-back campaigns", "Birthday offers"],
+                  category: "Email Automation"
+                },
+                {
+                  name: "SMS Marketing Campaigns", 
+                  description: "Text message automation for immediate customer engagement",
+                  icon: "📱",
+                  features: ["Flash sale alerts", "Appointment reminders", "Order updates", "Loyalty rewards"],
+                  category: "SMS Automation"
+                },
+                {
+                  name: "Social Media Auto-Posting",
+                  description: "Automated content scheduling across social platforms",
+                  icon: "📲",
+                  features: ["Deal announcements", "Event promotion", "Customer spotlights", "Behind-the-scenes"],
+                  category: "Social Automation"
+                },
+                {
+                  name: "Review Request Automation",
+                  description: "Automated review solicitation after customer interactions",
+                  icon: "⭐",
+                  features: ["Post-purchase follow-up", "Service completion requests", "Feedback collection", "Response management"],
+                  category: "Reputation Management"
+                },
+                {
+                  name: "Customer Segmentation Engine",
+                  description: "AI-powered customer grouping for targeted campaigns",
+                  icon: "🎯",
+                  features: ["Behavioral segmentation", "Purchase history analysis", "Engagement scoring", "Predictive targeting"],
+                  category: "Customer Intelligence"
+                },
+                {
+                  name: "Loyalty Program Automation",
+                  description: "Automated reward distribution and tier management",
+                  icon: "🏆",
+                  features: ["Points accumulation", "Tier upgrades", "Reward notifications", "Expiration alerts"],
+                  category: "Loyalty Management"
+                }
+              ].map((automation, index) => (
+                <Card key={index} className="relative">
+                  <CardContent className="p-6">
+                    <Badge className="absolute top-4 right-4 bg-green-600">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Active
+                    </Badge>
+                    
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="text-2xl">{automation.icon}</div>
+                      <div>
+                        <h4 className="font-semibold">{automation.name}</h4>
+                        <Badge variant="outline" className="text-xs">{automation.category}</Badge>
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-gray-600 mb-4">{automation.description}</p>
+                    
+                    <div className="space-y-2 mb-4">
+                      <Label className="text-xs font-medium">Features:</Label>
+                      <ul className="text-xs space-y-1">
+                        {automation.features.map((feature, i) => (
+                          <li key={i} className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <Button className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Configure Automation
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Communication Tools Tab */}
+          <TabsContent value="communication" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Customer Communication Hub
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[
+                    {
+                      name: "Live Chat Integration",
+                      description: "Real-time customer support with chat history",
+                      features: ["Website widget", "Mobile app chat", "Agent handoff", "Chat analytics"]
+                    },
+                    {
+                      name: "Video Call Scheduling",
+                      description: "Book and manage customer consultation calls",
+                      features: ["Calendar integration", "Automated reminders", "Meeting recordings", "Follow-up tasks"]
+                    },
+                    {
+                      name: "WhatsApp Business API",
+                      description: "Customer communication via WhatsApp",
+                      features: ["Business profile", "Catalog sharing", "Order updates", "Customer support"]
+                    },
+                    {
+                      name: "Multi-Channel Inbox",
+                      description: "Unified inbox for all customer communications",
+                      features: ["Email integration", "Social media messages", "Chat consolidation", "Team assignment"]
+                    }
+                  ].map((tool, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold">{tool.name}</h4>
+                        <Badge className="bg-blue-600">Available</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">{tool.description}</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {tool.features.map((feature, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-blue-600" />
+                            <span className="text-xs">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Advanced Marketing Tools
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[
+                    {
+                      name: "A/B Testing Suite",
+                      description: "Test campaigns, offers, and messaging effectiveness",
+                      features: ["Email subject lines", "Landing pages", "Offer variations", "Statistical analysis"]
+                    },
+                    {
+                      name: "Customer Journey Mapping",
+                      description: "Visualize and optimize customer touchpoints",
+                      features: ["Touchpoint tracking", "Conversion funnels", "Drop-off analysis", "Optimization suggestions"]
+                    },
+                    {
+                      name: "Predictive Analytics Engine",
+                      description: "AI-powered insights for business growth",
+                      features: ["Churn prediction", "Lifetime value", "Purchase timing", "Trend forecasting"]
+                    },
+                    {
+                      name: "Competitive Intelligence",
+                      description: "Monitor competitor activities and pricing",
+                      features: ["Price tracking", "Promotion monitoring", "Review analysis", "Market positioning"]
+                    }
+                  ].map((tool, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold">{tool.name}</h4>
+                        <Badge className="bg-purple-600">Premium</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">{tool.description}</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {tool.features.map((feature, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-purple-600" />
+                            <span className="text-xs">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
