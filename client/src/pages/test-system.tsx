@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Crown, Users, MapPin, Star, Trophy, Gift, Zap, Shield, Play, UserCheck, MessageSquare, Video, Phone } from "lucide-react";
 import CommunicationHub from "@/components/communication/communication-hub";
+import SoloTestingSimulator from "@/components/communication/solo-testing-simulator";
 
 interface TestUser {
   id: string;
@@ -141,6 +142,7 @@ export default function TestSystem() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [competitionMode, setCompetitionMode] = useState(false);
   const [showCommunication, setShowCommunication] = useState(false);
+  const [showSoloTesting, setShowSoloTesting] = useState(false);
   const { toast } = useToast();
 
   const createTestUser = () => {
@@ -273,6 +275,15 @@ export default function TestSystem() {
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Partner Communication
+                </Button>
+                <Button 
+                  onClick={() => setShowSoloTesting(!showSoloTesting)}
+                  variant={showSoloTesting ? "default" : "outline"}
+                  size="sm"
+                  className={showSoloTesting ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white" : "border-purple-200 hover:bg-purple-50"}
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  Solo Testing Mode
                 </Button>
                 <Button
                   onClick={enableCompetition}
@@ -726,6 +737,32 @@ export default function TestSystem() {
               <div className="h-96">
                 <CommunicationHub context="testing" channelId="testing-main" />
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Solo Testing Simulator */}
+        {showSoloTesting && (
+          <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg text-purple-800">Solo Communication Testing</CardTitle>
+                <Button 
+                  onClick={() => setShowSoloTesting(false)}
+                  variant="outline" 
+                  size="sm"
+                >
+                  Close
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-2">
+              <SoloTestingSimulator onMessageReceived={(message) => {
+                toast({
+                  title: `Message from ${message.sender === "you" ? "You" : "Testing Partner"}`,
+                  description: message.content.substring(0, 100) + "...",
+                });
+              }} />
             </CardContent>
           </Card>
         )}
