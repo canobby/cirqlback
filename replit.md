@@ -41,11 +41,11 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **Campaign Management**: Merchants can create discount, loyalty, and reward campaigns
 - **Cirql Tag Management**: Interface for assigning campaigns to physical Cirql tags (user-friendly term for NFC)
 - **Customer Cirql Tap Interface**: Mobile-optimized experience for claiming rewards via "Cirql tap"
-- **Interactive Business Map**: Triple-view map showing participating businesses for customers, visibility rewards earned through referral program for businesses, and visual campaign routes with suggested tap trails for maximum rewards
-- **Visual Campaign Routes**: Interactive trail system showing optimal business-to-business paths with challenge completion indicators and reward maximization suggestions
+- **Local Discovery Map**: Real-time interactive map displaying subscribed businesses, visible customers, and active rewards with comprehensive search and filtering capabilities
+- **Privacy-Controlled Visibility**: Customers can choose their visibility settings, control what information others can see, and manage communication preferences
 - **Badge System**: Comprehensive peer-visible badges for both customers and businesses showcasing achievements, loyalty levels, and platform contributions
-- **AR Video Integration**: Immersive augmented reality experiences that transform simple Cirql taps into interactive mini-games with collectible rewards, progress visualization, and social sharing capabilities
-- **Advanced AR Gaming System**: Complete avatar progression with skill development (cooking, fitness, art, social, explorer), collectible hunting, business transformations, team battles, daily challenges, and social meetups that turn local businesses into game worlds
+- **Real-World Map Integration**: Interactive map showing live locations of subscribed businesses, visible customers, and active rewards with privacy controls and communication features
+- **Customer-to-Customer Communication**: Messaging system allowing visible customers to connect with each other and contact businesses directly through the map interface
 - **Team-Based Social Gamification**: Complete friend invitation system, team formation, cooperative/competitive challenges, social events, and viral growth mechanics to maximize user acquisition and business traffic
 - **Advanced Avatar Gamification Hub**: AR treasure hunts, social competitions, peer-to-peer trading system, and streak bonuses with full backend API support
 - **Epic Team vs Team Battles**: Live competitive battles between teams with real-time scoring, champion rewards, and team challenge systems

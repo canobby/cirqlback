@@ -15,14 +15,14 @@ import Analytics from "@/pages/analytics";
 import Account from "@/pages/account";
 import TapPage from "@/pages/tap";
 import HowItWorksPage from "@/pages/how-it-works";
-import MapPage from "@/pages/map";
-import ARExperience from "@/pages/ar-experience";
+
+import Map from "@/pages/map";
 import Marketing from "@/pages/marketing";
 import SettingsPage from "@/pages/settings";
 import Checkout from "@/pages/checkout";
 import AvatarCreator from "@/pages/avatar-creator";
 import CustomerProfile from "@/pages/customer-profile";
-import ARGameHub from "@/pages/ar-game-hub";
+
 import BusinessWebsitePreview from "@/pages/business-website-preview";
 import NotFound from "@/pages/not-found";
 import PlatformOverview from "@/pages/platform-overview";
@@ -41,14 +41,12 @@ function Router() {
           <Route path="/account" component={Account} />
           <Route path="/tap" component={TapPage} />
           <Route path="/how-it-works" component={HowItWorksPage} />
-          <Route path="/map" component={MapPage} />
-          <Route path="/ar/:tapId" component={ARExperience} />
+          <Route path="/map" component={Map} />
           <Route path="/marketing" component={Marketing} />
           <Route path="/settings" component={SettingsPage} />
           <Route path="/checkout" component={Checkout} />
           <Route path="/avatar" component={AvatarCreator} />
           <Route path="/profile" component={CustomerProfile} />
-          <Route path="/ar-hub" component={ARGameHub} />
           <Route path="/website-preview" component={BusinessWebsitePreview} />
           <Route path="/platform" component={PlatformOverview} />
           <Route component={NotFound} />
