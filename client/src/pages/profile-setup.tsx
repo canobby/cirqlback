@@ -41,6 +41,46 @@ interface ProfileData {
   businessCity: string;
   businessState: string;
   businessZip: string;
+  businessWebsite: string;
+  businessHours: string;
+  businessSize: string; // Solo, Small (2-10), Medium (11-50), Large (50+)
+  
+  // Financial & Payment Integration
+  expectedMonthlyRevenue: string;
+  averageTransactionValue: string;
+  acceptsPayments: boolean;
+  stripeConnected: boolean;
+  taxId: string; // For payment processing compliance
+  
+  // Communication & Marketing
+  preferredContactMethod: string;
+  communicationLanguages: string[];
+  socialMediaPresence: string[];
+  marketingBudget: string;
+  emailMarketingTool: string;
+  
+  // Analytics & Tracking Requirements
+  googleAnalyticsId: string;
+  facebookPixelId: string;
+  trackingGoals: string[];
+  dataPrivacyCompliance: boolean;
+  
+  // API & Integration Needs
+  needsApiAccess: boolean;
+  plannedIntegrations: string[];
+  technicalContactName: string;
+  technicalContactEmail: string;
+  
+  // AR/Gaming Profile
+  gamificationInterest: boolean;
+  arCampaignTypes: string[];
+  rewardTypes: string[];
+  
+  // Partnership & Collaboration
+  partnershipInterest: boolean;
+  partnershipTypes: string[];
+  crossPromotionWilling: boolean;
+  referralProgramInterest: boolean;
   
   // Platform Information
   aboutBusiness: string;
@@ -67,6 +107,34 @@ export default function ProfileSetup() {
     businessCity: "",
     businessState: "",
     businessZip: "",
+    businessWebsite: "",
+    businessHours: "",
+    businessSize: "",
+    expectedMonthlyRevenue: "",
+    averageTransactionValue: "",
+    acceptsPayments: false,
+    stripeConnected: false,
+    taxId: "",
+    preferredContactMethod: "",
+    communicationLanguages: [],
+    socialMediaPresence: [],
+    marketingBudget: "",
+    emailMarketingTool: "",
+    googleAnalyticsId: "",
+    facebookPixelId: "",
+    trackingGoals: [],
+    dataPrivacyCompliance: false,
+    needsApiAccess: false,
+    plannedIntegrations: [],
+    technicalContactName: "",
+    technicalContactEmail: "",
+    gamificationInterest: false,
+    arCampaignTypes: [],
+    rewardTypes: [],
+    partnershipInterest: false,
+    partnershipTypes: [],
+    crossPromotionWilling: false,
+    referralProgramInterest: false,
     aboutBusiness: "",
     marketingGoals: [],
     targetCustomers: "",
@@ -77,6 +145,59 @@ export default function ProfileSetup() {
     "Restaurant", "Coffee Shop", "Retail Store", "Salon/Spa", 
     "Fitness Center", "Medical Practice", "Legal Services", 
     "Real Estate", "Automotive", "Entertainment", "Other"
+  ];
+
+  const businessSizeOptions = [
+    "Solo (Just me)", "Small (2-10 employees)", "Medium (11-50 employees)", "Large (50+ employees)"
+  ];
+
+  const revenueRanges = [
+    "Under $5K/month", "$5K-$15K/month", "$15K-$50K/month", "$50K-$100K/month", "$100K+/month"
+  ];
+
+  const transactionRanges = [
+    "Under $10", "$10-$25", "$25-$50", "$50-$100", "$100-$250", "$250+"
+  ];
+
+  const contactMethods = [
+    "Email", "Phone", "Text/SMS", "In-Person", "Social Media"
+  ];
+
+  const languageOptions = [
+    "English", "Spanish", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Other"
+  ];
+
+  const socialPlatforms = [
+    "Facebook", "Instagram", "Twitter/X", "LinkedIn", "TikTok", "YouTube", "Pinterest", "Yelp"
+  ];
+
+  const marketingBudgetRanges = [
+    "Under $500/month", "$500-$1,500/month", "$1,500-$5,000/month", "$5,000+/month"
+  ];
+
+  const trackingGoalOptions = [
+    "Customer Acquisition", "Conversion Rates", "Customer Lifetime Value", "Return on Ad Spend", 
+    "Foot Traffic", "Online Engagement", "Email Performance", "Social Media Metrics"
+  ];
+
+  const integrationOptions = [
+    "Point of Sale (POS)", "Email Marketing", "Social Media", "E-commerce Platform", 
+    "Customer Relationship Management (CRM)", "Inventory Management", "Accounting Software", "Analytics Tools"
+  ];
+
+  const arCampaignTypeOptions = [
+    "Virtual Try-On", "Interactive Product Demos", "Location-Based Rewards", "Gamified Experiences", 
+    "Virtual Store Tours", "AR Treasure Hunts", "3D Product Visualization", "Educational Content"
+  ];
+
+  const rewardTypeOptions = [
+    "Discounts/Coupons", "Loyalty Points", "Free Products/Services", "VIP Access", 
+    "Exclusive Content", "Early Access", "Gift Cards", "Cashback"
+  ];
+
+  const partnershipTypeOptions = [
+    "Cross-Promotional Campaigns", "Joint Events", "Referral Programs", "Bundle Offers", 
+    "Shared Customer Base", "Co-Marketing", "Resource Sharing", "Community Events"
   ];
 
   const marketingGoalOptions = [
@@ -134,8 +255,25 @@ export default function ProfileSetup() {
   };
 
   const nextStep = () => {
-    if (currentStep < 3) {
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const isStepValid = () => {
+    switch (currentStep) {
+      case 0:
+        return profileData.firstName && profileData.lastName && profileData.contactName && profileData.email;
+      case 1:
+        return profileData.businessName && profileData.businessTitle && profileData.businessType;
+      case 2:
+        return profileData.taxId && profileData.dataPrivacyCompliance;
+      case 3:
+        return profileData.marketingGoals.length > 0;
+      case 4:
+        return true;
+      default:
+        return false;
     }
   };
 
@@ -152,7 +290,8 @@ export default function ProfileSetup() {
   const steps = [
     { title: "Personal Info", icon: User },
     { title: "Business Details", icon: Building2 },
-    { title: "Goals & Challenges", icon: Star },
+    { title: "Platform Integration", icon: Star },
+    { title: "Goals & Preferences", icon: Star },
     { title: "Review & Complete", icon: CheckCircle2 }
   ];
 
@@ -345,6 +484,31 @@ export default function ProfileSetup() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="businessWebsite">Business Website</Label>
+                    <Input
+                      id="businessWebsite"
+                      value={profileData.businessWebsite}
+                      onChange={(e) => updateField("businessWebsite", e.target.value)}
+                      placeholder="https://yourwebsite.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="businessSize">Business Size</Label>
+                    <Select value={profileData.businessSize} onValueChange={(value) => updateField("businessSize", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select business size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {businessSizeOptions.map(size => (
+                          <SelectItem key={size} value={size}>{size}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="aboutBusiness">About Your Business</Label>
                   <Textarea
@@ -358,8 +522,165 @@ export default function ProfileSetup() {
               </div>
             )}
 
-            {/* Step 2: Goals & Challenges */}
+            {/* Step 2: Platform Integration */}
             {currentStep === 2 && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="expectedRevenue">Expected Monthly Revenue</Label>
+                    <Select value={profileData.expectedMonthlyRevenue} onValueChange={(value) => updateField("expectedMonthlyRevenue", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select revenue range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {revenueRanges.map(range => (
+                          <SelectItem key={range} value={range}>{range}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="transactionValue">Average Transaction Value</Label>
+                    <Select value={profileData.averageTransactionValue} onValueChange={(value) => updateField("averageTransactionValue", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select transaction range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {transactionRanges.map(range => (
+                          <SelectItem key={range} value={range}>{range}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-blue-50 rounded-lg space-y-4">
+                  <h4 className="font-semibold text-blue-800">Payment Processing & Compliance</h4>
+                  <div className="space-y-2">
+                    <Label htmlFor="taxId">Tax ID (EIN or SSN) *</Label>
+                    <Input
+                      id="taxId"
+                      value={profileData.taxId}
+                      onChange={(e) => updateField("taxId", e.target.value)}
+                      placeholder="Required for Stripe payment processing"
+                      required
+                    />
+                    <p className="text-sm text-gray-600">Required for payment processing compliance and business verification</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="preferredContact">Preferred Contact Method</Label>
+                    <Select value={profileData.preferredContactMethod} onValueChange={(value) => updateField("preferredContactMethod", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select contact method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {contactMethods.map(method => (
+                          <SelectItem key={method} value={method}>{method}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="marketingBudget">Monthly Marketing Budget</Label>
+                    <Select value={profileData.marketingBudget} onValueChange={(value) => updateField("marketingBudget", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select budget range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {marketingBudgetRanges.map(budget => (
+                          <SelectItem key={budget} value={budget}>{budget}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Communication Languages (for customer interaction)</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {languageOptions.map(language => (
+                      <label key={language} className="flex items-center space-x-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={profileData.communicationLanguages.includes(language)}
+                          onChange={(e) => {
+                            const newLanguages = e.target.checked 
+                              ? [...profileData.communicationLanguages, language]
+                              : profileData.communicationLanguages.filter(l => l !== language);
+                            updateField("communicationLanguages", newLanguages);
+                          }}
+                        />
+                        <span>{language}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-4 bg-green-50 rounded-lg space-y-4">
+                  <h4 className="font-semibold text-green-800">Analytics & Tracking Setup</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="googleAnalytics">Google Analytics ID (optional)</Label>
+                      <Input
+                        id="googleAnalytics"
+                        value={profileData.googleAnalyticsId}
+                        onChange={(e) => updateField("googleAnalyticsId", e.target.value)}
+                        placeholder="G-XXXXXXXXXX"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="facebookPixel">Facebook Pixel ID (optional)</Label>
+                      <Input
+                        id="facebookPixel"
+                        value={profileData.facebookPixelId}
+                        onChange={(e) => updateField("facebookPixelId", e.target.value)}
+                        placeholder="123456789012345"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="dataPrivacy"
+                      checked={profileData.dataPrivacyCompliance}
+                      onChange={(e) => updateField("dataPrivacyCompliance", e.target.checked)}
+                      required
+                    />
+                    <Label htmlFor="dataPrivacy">I consent to analytics data collection for platform features and marketing compliance *</Label>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-purple-50 rounded-lg space-y-4">
+                  <h4 className="font-semibold text-purple-800">AR & Gamification Interest</h4>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="gamificationInterest"
+                      checked={profileData.gamificationInterest}
+                      onChange={(e) => updateField("gamificationInterest", e.target.checked)}
+                    />
+                    <Label htmlFor="gamificationInterest">I'm interested in AR gaming and gamification features</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="partnershipInterest"
+                      checked={profileData.partnershipInterest}
+                      onChange={(e) => updateField("partnershipInterest", e.target.checked)}
+                    />
+                    <Label htmlFor="partnershipInterest">I'm interested in partnering with other local businesses</Label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Goals & Challenges */}
+            {currentStep === 3 && (
               <div className="space-y-6">
                 <div className="space-y-4">
                   <Label>Marketing Goals (Select all that apply)</Label>
@@ -418,8 +739,8 @@ export default function ProfileSetup() {
               </div>
             )}
 
-            {/* Step 3: Review */}
-            {currentStep === 3 && (
+            {/* Step 4: Review */}
+            {currentStep === 4 && (
               <div className="space-y-6">
                 <div className="text-center mb-6">
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Review Your Information</h3>
@@ -503,7 +824,7 @@ export default function ProfileSetup() {
                 Previous
               </Button>
               
-              {currentStep < 3 ? (
+              {currentStep < 4 ? (
                 <Button
                   onClick={nextStep}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
