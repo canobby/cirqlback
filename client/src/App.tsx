@@ -21,6 +21,7 @@ import InteractiveDiscoveryMap from "@/pages/map";
 import ViralMarketingSuite from "@/pages/marketing";
 import SettingsPage from "@/pages/settings";
 import Checkout from "@/pages/checkout";
+import TrialDiscount from "@/pages/trial-discount";
 import AvatarCreator from "@/pages/avatar-creator";
 import CustomerProfile from "@/pages/customer-profile";
 
@@ -65,6 +66,7 @@ function Router() {
           <Route path="/marketing" component={ViralMarketingSuite} />
           <Route path="/settings" component={SettingsPage} />
           <Route path="/checkout" component={Checkout} />
+          <Route path="/trial-discount" component={TrialDiscount} />
           <Route path="/avatar" component={AvatarCreator} />
           <Route path="/profile" component={CustomerProfile} />
           <Route path="/website-preview" component={BusinessWebsitePreview} />

@@ -48,7 +48,14 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   getUserByEmail(email: string): Promise<User | undefined>;
   updateUserPoints(userId: string, points: number): Promise<void>;
-  updateUserSubscription(userId: string, updates: { subscriptionTier?: string; subscriptionStatus?: string; starterExpiresAt?: Date }): Promise<User>;
+  updateUserSubscription(userId: string, updates: { 
+    subscriptionTier?: string; 
+    subscriptionStatus?: string; 
+    starterExpiresAt?: Date;
+    trialDiscountTier?: string;
+    trialDiscountEndsAt?: Date;
+    trialDiscountActive?: boolean;
+  }): Promise<User>;
   
   // Business operations
   getBusinesses(): Promise<Business[]>;
@@ -158,7 +165,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId));
   }
 
-  async updateUserSubscription(userId: string, updates: { subscriptionTier?: string; subscriptionStatus?: string; starterExpiresAt?: Date }): Promise<User> {
+  async updateUserSubscription(userId: string, updates: { 
+    subscriptionTier?: string; 
+    subscriptionStatus?: string; 
+    starterExpiresAt?: Date;
+    trialDiscountTier?: string;
+    trialDiscountEndsAt?: Date;
+    trialDiscountActive?: boolean;
+  }): Promise<User> {
     const [user] = await db
       .update(users)
       .set({ ...updates, updatedAt: new Date() })

@@ -15,7 +15,7 @@ export function StarterTrialBanner({ userId }: StarterTrialBannerProps) {
   const [isVisible, setIsVisible] = useState(true);
 
   const { data: expirationData } = useQuery({
-    queryKey: ["/api/account/check-expiration", { userId }],
+    queryKey: ["/api/account/check-expiration", userId],
     enabled: !!userId,
     refetchInterval: 60000, // Check every minute
   });
@@ -102,12 +102,12 @@ export function StarterTrialBanner({ userId }: StarterTrialBannerProps) {
         </div>
         <div className="flex items-center space-x-2">
           <Button
-            onClick={() => setLocation('/checkout')}
+            onClick={() => setLocation('/trial-discount')}
             className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
             size="sm"
           >
             <Zap className="h-4 w-4 mr-1" />
-            Upgrade Now
+            Choose Your Tier (50% Off)
             <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
           <Button

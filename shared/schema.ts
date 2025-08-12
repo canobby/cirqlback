@@ -39,6 +39,9 @@ export const users = pgTable("users", {
   subscriptionTier: varchar("subscription_tier").default("starter"), // starter, professional, business, enterprise
   subscriptionStatus: varchar("subscription_status").default("active"), // active, cancelled, expired
   starterExpiresAt: timestamp("starter_expires_at"), // 6 months from signup for starter tier
+  trialDiscountTier: varchar("trial_discount_tier"), // Selected tier during trial for 50% discount
+  trialDiscountEndsAt: timestamp("trial_discount_ends_at"), // When 50% discount expires
+  trialDiscountActive: boolean("trial_discount_active").default(false),
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   apiKey: varchar("api_key").unique(), // for API access to both Cirql and InSpektAI

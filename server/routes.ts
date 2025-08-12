@@ -61,6 +61,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Trial discount selection route
+  app.post('/api/subscription/trial-discount', async (req, res) => {
+    try {
+      const { userId, selectedTier } = req.body;
+      
+      if (!userId || !selectedTier) {
+        return res.status(400).json({ error: "User ID and selected tier required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check if still in trial period
+      if (user.subscriptionTier !== 'starter' || !user.starterExpiresAt) {
+        return res.status(400).json({ error: "Not eligible for trial discount" });
+      }
+
+      const now = new Date();
+      const expirationDate = new Date(user.starterExpiresAt);
+      
+      if (now > expirationDate) {
+        return res.status(400).json({ error: "Trial period has expired" });
+      }
+
+      // Activate trial discount
+      const updatedUser = await storage.updateUserSubscription(userId, {
+        trialDiscountTier: selectedTier,
+        trialDiscountEndsAt: expirationDate,
+        trialDiscountActive: true,
+        subscriptionTier: selectedTier,
+        subscriptionStatus: 'trial_discount'
+      });
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error activating trial discount:", error);
+      res.status(500).json({ error: "Failed to activate trial discount" });
+    }
+  });
+
   // Update user subscription route
   app.post('/api/subscription/update', async (req, res) => {
     try {
