@@ -66,7 +66,8 @@ export default {
           purple: "var(--cirq-purple)",
           pink: "var(--cirq-pink)",
           orange: "var(--cirq-orange)",
-          lime: "var(--cirq-lime)",
+          blue: "var(--cirq-blue)",
+          green: "var(--cirq-green)",
         },
       },
       fontFamily: {

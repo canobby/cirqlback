@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import cirqlbackLogo from "@assets/cirqlback-logo.png";
+import cirqlbackLogo from "@assets/cirqlback-logo-new.png";
 
 export default function Footer() {
   return (

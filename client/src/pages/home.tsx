@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Store, Smartphone, BarChart3, Users, Coffee, BookOpen, UtensilsCrossed, CheckCircle, Wifi, Share2, MapPin } from "lucide-react";
-import cirqlbackLogo from "@assets/cirqlback-logo.png";
+import cirqlbackLogo from "@assets/cirqlback-logo-new.png";
 
 export default function Home() {
   return (

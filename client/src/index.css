@@ -4,11 +4,12 @@
 @tailwind utilities;
 
 :root {
-  /* Cirqlback Logo Color Palette */
-  --cirq-purple: hsl(280 100% 65%);
-  --cirq-pink: hsl(320 100% 75%);
-  --cirq-orange: hsl(25 95% 65%);
-  --cirq-lime: hsl(85 85% 60%);
+  /* Cirqlback Logo Color Palette - Updated to match new logo */
+  --cirq-purple: hsl(260 95% 55%);
+  --cirq-pink: hsl(320 100% 60%);
+  --cirq-orange: hsl(30 100% 55%);
+  --cirq-blue: hsl(200 100% 55%);
+  --cirq-green: hsl(120 70% 45%);
   
   /* Base Colors */
   --background: hsl(0 0% 100%);
@@ -39,8 +40,8 @@
   --chart-1: var(--cirq-purple);
   --chart-2: var(--cirq-pink);
   --chart-3: var(--cirq-orange);
-  --chart-4: var(--cirq-lime);
-  --chart-5: hsl(260 85% 70%);
+  --chart-4: var(--cirq-blue);
+  --chart-5: var(--cirq-green);
   
   /* Sidebar Colors */
   --sidebar: hsl(0 0% 98%);
@@ -117,29 +118,32 @@
   /* Cirqlback Brand Gradient - matches logo colors exactly */
   .gradient-bg {
     background: linear-gradient(135deg, 
-      var(--cirq-purple) 0%, 
-      var(--cirq-pink) 35%, 
-      var(--cirq-orange) 70%, 
-      var(--cirq-lime) 100%
+      var(--cirq-orange) 0%, 
+      var(--cirq-green) 25%, 
+      var(--cirq-blue) 50%, 
+      var(--cirq-purple) 75%,
+      var(--cirq-pink) 100%
     );
   }
   
   /* Secondary gradient variations */
   .gradient-bg-subtle {
     background: linear-gradient(135deg, 
-      hsl(280 100% 95%) 0%, 
-      hsl(320 100% 95%) 35%, 
-      hsl(25 95% 95%) 70%, 
-      hsl(85 85% 95%) 100%
+      hsl(30 100% 95%) 0%, 
+      hsl(120 70% 95%) 25%, 
+      hsl(200 100% 95%) 50%, 
+      hsl(260 95% 95%) 75%,
+      hsl(320 100% 95%) 100%
     );
   }
   
   .gradient-bg-reverse {
     background: linear-gradient(135deg, 
-      var(--cirq-lime) 0%, 
-      var(--cirq-orange) 30%, 
-      var(--cirq-pink) 65%, 
-      var(--cirq-purple) 100%
+      var(--cirq-pink) 0%, 
+      var(--cirq-purple) 25%, 
+      var(--cirq-blue) 50%, 
+      var(--cirq-green) 75%,
+      var(--cirq-orange) 100%
     );
   }
   
