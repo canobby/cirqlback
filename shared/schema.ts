@@ -165,8 +165,12 @@ export const nfcTags = pgTable("nfc_tags", {
   campaignId: varchar("campaign_id").references(() => campaigns.id),
   tagIdentifier: varchar("tag_identifier").unique().notNull(),
   location: varchar("location"), // where the tag is placed
+  customLabel: varchar("custom_label"), // friendly name for internal reference
+  description: text("description"), // what customers should expect
+  placementNotes: text("placement_notes"), // optimal placement notes
   isActive: boolean("is_active").default(true),
   totalTaps: integer("total_taps").default(0),
+  lastTapAt: timestamp("last_tap_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -390,6 +394,7 @@ export const insertNfcTagSchema = createInsertSchema(nfcTags).omit({
   createdAt: true, 
   updatedAt: true,
   totalTaps: true,
+  lastTapAt: true,
 });
 
 export const insertTapSchema = createInsertSchema(taps).omit({ 

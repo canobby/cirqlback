@@ -273,6 +273,18 @@ export class DatabaseStorage implements IStorage {
     return tag;
   }
 
+  async deleteNFCTag(id: string): Promise<boolean> {
+    const result = await db.delete(nfcTags).where(eq(nfcTags.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getNFCTagAnalytics(businessId: string, timeRange: string): Promise<any[]> {
+    // This would implement complex analytics queries
+    // For now, return empty array as real implementation would require
+    // aggregation queries across taps, rewards, and user engagement data
+    return [];
+  }
+
   // Tap operations
   async processTap(tap: InsertTap): Promise<{ success: boolean; reward?: Reward; message: string }> {
     try {
