@@ -103,7 +103,7 @@ export default function TapPage() {
 
   if (!tagInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center p-4">
+      <div className="bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center p-4 min-h-[80vh]">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
             <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
@@ -115,7 +115,7 @@ export default function TapPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 to-secondary/10 p-4">
+    <div className="bg-gradient-to-br from-primary/10 to-secondary/10 p-4 min-h-[80vh]">
       <div className="max-w-md mx-auto space-y-6 pt-8">
         
         {/* Business Info */}
