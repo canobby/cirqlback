@@ -1080,7 +1080,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payment processing endpoint with real Stripe integration
   app.post("/api/create-payment-intent", async (req, res) => {
     try {
-      if (!process.env.STRIPE_SECRET_KEY) {
+      // Use the actual Stripe key from environment (checking multiple possible names)
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.Stripe1;
+      
+      if (!stripeSecretKey) {
         return res.status(400).json({ 
           error: "Payment processing not configured. Please add STRIPE_SECRET_KEY to environment variables." 
         });
@@ -1090,7 +1093,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Import Stripe dynamically to ensure it's available
       const Stripe = require('stripe');
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      const stripe = new Stripe(stripeSecretKey, {
         apiVersion: '2023-10-16',
       });
 

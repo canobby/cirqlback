@@ -9,10 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, CreditCard, Shield, Check } from "lucide-react";
 import { useLocation } from "wouter";
 
-// Load Stripe (will be available once keys are provided)
-const stripePromise = typeof window !== 'undefined' && import.meta.env.VITE_STRIPE_PUBLIC_KEY 
-  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
-  : null;
+// Load Stripe - check multiple possible environment variable names
+const getStripePublicKey = () => {
+  if (typeof window === 'undefined') return null;
+  return import.meta.env.VITE_STRIPE_PUBLIC_KEY || 
+         import.meta.env.Stripevite ||
+         'pk_live_51RvBnvHfTI7iuDsWQmpnpC7uvT1LjcwLfwpowIENWaoqstKYWvSDVmAXh09abw5FM3jFJOrnEEEbtniaYX2WM1nTRJ00KeOkBjBR';
+};
+
+const stripePromise = getStripePublicKey() ? loadStripe(getStripePublicKey()) : null;
 
 const CheckoutForm = ({ amount, description }: { amount: number; description: string }) => {
   const stripe = useStripe();
@@ -115,13 +120,13 @@ export default function Checkout() {
       }
     };
 
-    if (import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+    if (getStripePublicKey()) {
       createPaymentIntent();
     }
   }, []);
 
   // Show message if Stripe keys are not configured
-  if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+  if (!getStripePublicKey()) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-2xl mx-auto">
