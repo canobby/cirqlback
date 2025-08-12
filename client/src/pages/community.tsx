@@ -320,7 +320,7 @@ export default function ViralCommunityHub() {
                   <CardContent className="p-12 text-center text-gray-500">
                     <Target className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                     <h3 className="text-lg font-medium mb-2">No Active Challenges</h3>
-                    <p>New challenges coming soon! Check back later.</p>
+                    <p>Start participating in community challenges to unlock rewards and compete with others!</p>
                   </CardContent>
                 </Card>
               ) : (

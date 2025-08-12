@@ -437,21 +437,69 @@ export default function AvatarCreator() {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Users className="h-5 w-5 mr-2 text-blue-500" />
-                  Social Features Coming Soon
+                  Social Features & Team Battles
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 space-y-4">
-                  <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
-                    <Gamepad2 className="h-8 w-8 text-blue-500" />
+                <div className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50">
+                      <CardContent className="p-4">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <Gamepad2 className="h-5 w-5 text-blue-500" />
+                          <span className="font-medium">Team Battles</span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Form teams and compete in real-time multiplayer AR challenges
+                        </p>
+                        <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700">
+                          <Zap className="h-4 w-4 mr-2" />
+                          Join Battle
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
+                      <CardContent className="p-4">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <Users className="h-5 w-5 text-purple-500" />
+                          <span className="font-medium">Friend System</span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Connect with friends, share achievements, and play together
+                        </p>
+                        <Button size="sm" className="w-full bg-purple-600 hover:bg-purple-700">
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Find Friends
+                        </Button>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">Team Battles & Social Competitions</h3>
-                    <p className="text-gray-600">Join teams, compete with friends, and participate in epic multiplayer challenges</p>
-                  </div>
-                  <Button className="bg-gradient-to-r from-blue-500 to-purple-500">
-                    Get Notified When Available
-                  </Button>
+
+                  <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <Trophy className="h-5 w-5 text-green-500" />
+                          <span className="font-medium">Leaderboards</span>
+                        </div>
+                        <Badge className="bg-green-100 text-green-800">Live</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">
+                        Compete for top rankings in various AR game categories
+                      </p>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline" className="flex-1">
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Rankings
+                        </Button>
+                        <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700">
+                          <Crown className="h-4 w-4 mr-2" />
+                          Compete Now
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </CardContent>
             </Card>
