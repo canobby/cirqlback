@@ -25,7 +25,7 @@ export default function Home() {
             </p>
             <div className="flex flex-wrap gap-4">
               <Link href="/customer">
-                <Button variant="secondary" size="lg">
+                <Button variant="secondary" size="lg" className="bg-white text-primary hover:bg-gray-50">
                   <Smartphone className="mr-2 h-5 w-5" />
                   Try Customer Experience
                 </Button>
