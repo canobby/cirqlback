@@ -16,7 +16,8 @@ import {
   Globe, 
   Users, 
   Leaf,
-  Shield
+  Shield,
+  Star
 } from "lucide-react";
 
 interface BusinessDescriptors {
@@ -25,6 +26,10 @@ interface BusinessDescriptors {
   communityFocus: string[];
   accessibilityFeatures: string[];
   sustainabilityPractices: string[];
+  businessMaturity: string;
+  establishmentType: string[];
+  specialtyFeatures: string[];
+  priceRange: string;
 }
 
 export default function BusinessSettings() {
@@ -36,7 +41,11 @@ export default function BusinessSettings() {
     culturalBackground: "",
     communityFocus: [],
     accessibilityFeatures: [],
-    sustainabilityPractices: []
+    sustainabilityPractices: [],
+    businessMaturity: "",
+    establishmentType: [],
+    specialtyFeatures: [],
+    priceRange: ""
   });
 
   // Available descriptor options
@@ -95,6 +104,51 @@ export default function BusinessSettings() {
     "Recycling programs",
     "Community garden support",
     "Fair trade partnerships"
+  ];
+
+  const businessMaturityOptions = [
+    "New business (under 2 years)",
+    "Established business (2-10 years)",
+    "Veteran business (10+ years)",
+    "Legacy business (20+ years)",
+    "Multi-generational family business"
+  ];
+
+  const establishmentTypeOptions = [
+    "Independent local business",
+    "Small chain (2-5 locations)",
+    "Regional chain",
+    "Franchise location",
+    "Pop-up business",
+    "Seasonal business",
+    "Home-based business",
+    "Mobile business/food truck",
+    "Co-op or collective"
+  ];
+
+  const specialtyFeaturesOptions = [
+    "24/7 operation",
+    "Delivery available",
+    "Online ordering",
+    "Outdoor seating",
+    "Live entertainment",
+    "Pet-friendly",
+    "Kid-friendly",
+    "Group bookings",
+    "Private events",
+    "Catering services",
+    "WiFi available",
+    "Parking available",
+    "Public transportation accessible",
+    "Tourist attraction nearby",
+    "Historic building/location"
+  ];
+
+  const priceRangeOptions = [
+    "Budget-friendly ($)",
+    "Moderate ($$)",
+    "Premium ($$$)",
+    "Luxury ($$$$)"
   ];
 
   const updateDescriptorsMutation = useMutation({
@@ -270,6 +324,98 @@ export default function BusinessSettings() {
                       }
                     />
                     <Label htmlFor={`sustainability-${option}`} className="text-sm">{option}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Business Maturity & Type */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Building2 className="h-5 w-5 text-blue-600" />
+              <span>Business Profile</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="business-maturity" className="text-sm font-medium">Business maturity</Label>
+              <Select 
+                value={descriptors.businessMaturity} 
+                onValueChange={(value) => setDescriptors(prev => ({ ...prev, businessMaturity: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="How long has your business been operating?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {businessMaturityOptions.map((option) => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="price-range" className="text-sm font-medium">Price range</Label>
+              <Select 
+                value={descriptors.priceRange} 
+                onValueChange={(value) => setDescriptors(prev => ({ ...prev, priceRange: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="What's your typical price range?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {priceRangeOptions.map((option) => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium mb-3 block">Establishment type</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {establishmentTypeOptions.slice(0, 5).map((option) => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`establishment-${option}`}
+                      checked={descriptors.establishmentType.includes(option)}
+                      onCheckedChange={(checked) => 
+                        handleCheckboxChange('establishmentType', option, checked as boolean)
+                      }
+                    />
+                    <Label htmlFor={`establishment-${option}`} className="text-sm">{option}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Special Features */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Star className="h-5 w-5 text-yellow-500" />
+              <span>Special Features & Services</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium mb-3 block">What makes your business special?</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {specialtyFeaturesOptions.map((option) => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`specialty-${option}`}
+                      checked={descriptors.specialtyFeatures.includes(option)}
+                      onCheckedChange={(checked) => 
+                        handleCheckboxChange('specialtyFeatures', option, checked as boolean)
+                      }
+                    />
+                    <Label htmlFor={`specialty-${option}`} className="text-sm">{option}</Label>
                   </div>
                 ))}
               </div>

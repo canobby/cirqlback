@@ -1243,7 +1243,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         culturalBackground: "Hispanic/Latino heritage",
         communityFocus: ["Youth programs", "Local artist support"],
         accessibilityFeatures: ["Wheelchair accessible", "Service animal friendly"],
-        sustainabilityPractices: ["Locally sourced ingredients", "Eco-friendly packaging"]
+        sustainabilityPractices: ["Locally sourced ingredients", "Eco-friendly packaging"],
+        businessMaturity: "Established business (2-10 years)",
+        establishmentType: ["Independent local business"],
+        specialtyFeatures: ["Outdoor seating", "Pet-friendly", "WiFi available"],
+        priceRange: "Moderate ($$)"
       };
       
       res.json(descriptors);
@@ -1255,7 +1259,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/business/descriptors", async (req, res) => {
     try {
-      const { businessDescriptors, culturalBackground, communityFocus, accessibilityFeatures, sustainabilityPractices } = req.body;
+      const { 
+        businessDescriptors, 
+        culturalBackground, 
+        communityFocus, 
+        accessibilityFeatures, 
+        sustainabilityPractices,
+        businessMaturity,
+        establishmentType,
+        specialtyFeatures,
+        priceRange
+      } = req.body;
       const businessId = req.body.businessId || "demo_business_1";
       
       // In a real implementation, this would update the database
@@ -1267,7 +1281,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           culturalBackground,
           communityFocus,
           accessibilityFeatures,
-          sustainabilityPractices
+          sustainabilityPractices,
+          businessMaturity,
+          establishmentType,
+          specialtyFeatures,
+          priceRange
         }
       });
     } catch (error) {
@@ -1324,6 +1342,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rewards: "Community builder badge + featured business networking",
           focusArea: "Local entrepreneurship",
           inclusiveAspect: "Supporting diverse business ownership"
+        },
+        {
+          id: "community_4",
+          title: "New Business Discovery Trail",
+          description: "Be among the first to discover and support new local businesses",
+          type: "new_business_support",
+          participants: 178,
+          businesses: [
+            { name: "Fresh Start Smoothie Bar", maturity: "New business (6 months)", features: "Organic ingredients, outdoor seating" },
+            { name: "Corner Craft Studio", maturity: "New business (1 year)", features: "Local artist classes, community events" },
+            { name: "Digital Nomad Cafe", maturity: "New business (8 months)", features: "24/7 WiFi, co-working space" }
+          ],
+          rewards: "Early adopter badge + new business loyalty perks",
+          focusArea: "Supporting new entrepreneurs",
+          inclusiveAspect: "Helping new businesses establish customer base"
+        },
+        {
+          id: "community_5",
+          title: "Legacy Business Heritage Walk",
+          description: "Honor businesses that have shaped our community for generations",
+          type: "legacy_business_celebration",
+          participants: 312,
+          businesses: [
+            { name: "Murphy's Five & Dime", maturity: "Legacy business (60 years)", heritage: "Family-owned since 1964" },
+            { name: "Giuseppe's Traditional Deli", maturity: "Multi-generational family business", heritage: "Italian recipes passed down 3 generations" },
+            { name: "Riverside Hardware", maturity: "Veteran business (35 years)", heritage: "Community fixture, local expertise" }
+          ],
+          rewards: "Heritage keeper badge + legacy business history collection",
+          focusArea: "Celebrating community history",
+          inclusiveAspect: "Honoring businesses that built our community"
+        },
+        {
+          id: "community_6",
+          title: "Budget-Friendly Finds Challenge",
+          description: "Discover amazing value at local budget-friendly businesses",
+          type: "budget_conscious",
+          participants: 445,
+          businesses: [
+            { name: "Student Corner Cafe", priceRange: "Budget-friendly ($)", features: "Student discounts, study-friendly" },
+            { name: "Family Pack Market", priceRange: "Budget-friendly ($)", features: "Bulk buying, family deals" },
+            { name: "Happy Hour Hub", priceRange: "Budget-friendly ($)", features: "Daily specials, group discounts" }
+          ],
+          rewards: "Smart shopper badge + exclusive budget deals",
+          focusArea: "Affordable local options",
+          inclusiveAspect: "Supporting accessible community businesses"
         }
       ];
       

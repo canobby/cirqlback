@@ -70,6 +70,10 @@ export const businesses = pgTable("businesses", {
   communityFocus: text("community_focus").array().default(sql`'{}'`),
   accessibilityFeatures: text("accessibility_features").array().default(sql`'{}'`),
   sustainabilityPractices: text("sustainability_practices").array().default(sql`'{}'`),
+  businessMaturity: varchar("business_maturity"), // new/established/veteran/legacy
+  establishmentType: text("establishment_type").array().default(sql`'{}'`),
+  specialtyFeatures: text("specialty_features").array().default(sql`'{}'`),
+  priceRange: varchar("price_range"), // budget/moderate/premium/luxury
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -1595,12 +1595,59 @@ export default function AvatarCreator() {
                       Support Local Entrepreneurs
                     </Button>
                   </div>
+                  
+                  <div className="border rounded-lg p-3 bg-gradient-to-r from-teal-50 to-cyan-50">
+                    <h3 className="font-semibold mb-1">New Business Discovery Trail</h3>
+                    <p className="text-sm text-gray-600 mb-2">Be among the first to discover and support new local businesses</p>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-teal-600">178 participants</span>
+                      <Badge variant="outline" className="text-teal-600 border-teal-300">New Business Support</Badge>
+                    </div>
+                    <div className="text-xs text-gray-500 mb-2">Featured: Fresh Start Smoothie • Corner Craft Studio • Digital Nomad Cafe</div>
+                    <Button size="sm" className="w-full bg-gradient-to-r from-teal-500 to-cyan-500">
+                      Discover New Businesses
+                    </Button>
+                  </div>
+                  
+                  <div className="border rounded-lg p-3 bg-gradient-to-r from-amber-50 to-yellow-50">
+                    <h3 className="font-semibold mb-1">Legacy Business Heritage Walk</h3>
+                    <p className="text-sm text-gray-600 mb-2">Honor businesses that have shaped our community for generations</p>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-amber-600">312 participants</span>
+                      <Badge variant="outline" className="text-amber-600 border-amber-300">Heritage Celebration</Badge>
+                    </div>
+                    <div className="text-xs text-gray-500 mb-2">Featured: Murphy's Five & Dime (60 years) • Giuseppe's Deli • Riverside Hardware</div>
+                    <Button size="sm" className="w-full bg-gradient-to-r from-amber-500 to-yellow-500">
+                      Honor Legacy Businesses
+                    </Button>
+                  </div>
+                  
+                  <div className="border rounded-lg p-3 bg-gradient-to-r from-emerald-50 to-green-50">
+                    <h3 className="font-semibold mb-1">Budget-Friendly Finds Challenge</h3>
+                    <p className="text-sm text-gray-600 mb-2">Discover amazing value at local budget-friendly businesses</p>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-emerald-600">445 participants</span>
+                      <Badge variant="outline" className="text-emerald-600 border-emerald-300">Smart Shopping</Badge>
+                    </div>
+                    <div className="text-xs text-gray-500 mb-2">Featured: Student Corner Cafe • Family Pack Market • Happy Hour Hub</div>
+                    <Button size="sm" className="w-full bg-gradient-to-r from-emerald-500 to-green-500">
+                      Find Great Deals
+                    </Button>
+                  </div>
                 </div>
                 
                 <div className="bg-purple-50 p-3 rounded-lg">
                   <p className="text-sm text-purple-700">
                     <strong>Community Impact:</strong> These challenges connect you with businesses that share your values 
-                    while supporting diversity, accessibility, and local entrepreneurship in your community.
+                    while supporting diversity, accessibility, local entrepreneurship, new businesses, heritage preservation, and budget-conscious choices in your community.
+                  </p>
+                </div>
+                
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <h4 className="font-semibold text-blue-800 mb-2">AI-Powered Business Matching</h4>
+                  <p className="text-sm text-blue-700">
+                    Our smart system uses business descriptors like maturity (new/established/legacy), features (pet-friendly, outdoor seating, WiFi), 
+                    and price range to create perfect challenge matches that enhance your local discovery experience.
                   </p>
                 </div>
               </CardContent>
