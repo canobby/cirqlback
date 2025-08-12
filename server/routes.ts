@@ -3102,7 +3102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Query actual admin users from database
       const adminInvites = await db.select().from(adminUsers);
       
-      const adminUsers = adminInvites.map(invite => ({
+      const adminUsersList = adminInvites.map(invite => ({
         id: invite.id,
         user: {
           email: invite.email,
@@ -3119,7 +3119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: invite.isActive ? "accepted" : "inactive"
       }));
       
-      res.json(adminUsers);
+      res.json(adminUsersList);
     } catch (error) {
       console.error("Error fetching admin users:", error);
       res.status(500).json({ error: "Failed to fetch admin users" });
@@ -3162,13 +3162,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [communication] = await db.insert(adminCommunications).values({
         id: crypto.randomUUID(),
         senderId: "current_admin", // TODO: Get from authenticated session
-        recipientType,
-        recipientId,
+        recipientRole: recipientType === "role" ? recipientId : null,
+        recipientLevel: recipientType === "level" ? recipientId : null,
+        recipientType: recipientType,
+        type: "announcement",
         subject,
         content,
         priority: priority || "normal",
         requiresAcknowledgment: requiresAcknowledgment || false,
-        createdAt: new Date(),
         isRead: false
       }).returning();
 
