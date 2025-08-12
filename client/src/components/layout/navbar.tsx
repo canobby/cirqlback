@@ -142,6 +142,18 @@ export default function Navbar() {
                   How It Works
                 </Button>
               </Link>
+              <Link href="/user-guide">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/user-guide") 
+                      ? "text-blue-600 bg-blue-50 border border-blue-200" 
+                      : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                  }`}
+                >
+                  User Guide
+                </Button>
+              </Link>
             </div>
           </div>
           

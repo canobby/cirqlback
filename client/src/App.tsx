@@ -24,6 +24,8 @@ import AvatarCreator from "@/pages/avatar-creator";
 import CustomerProfile from "@/pages/customer-profile";
 
 import BusinessWebsitePreview from "@/pages/business-website-preview";
+import UserGuide from "@/pages/user-guide";
+import InteractiveWalkthrough from "@/pages/interactive-walkthrough";
 import NotFound from "@/pages/not-found";
 import PlatformOverview from "@/pages/platform-overview";
 
@@ -49,6 +51,8 @@ function Router() {
           <Route path="/profile" component={CustomerProfile} />
           <Route path="/website-preview" component={BusinessWebsitePreview} />
           <Route path="/platform" component={PlatformOverview} />
+          <Route path="/user-guide" component={UserGuide} />
+          <Route path="/walkthrough" component={InteractiveWalkthrough} />
           <Route component={NotFound} />
         </Switch>
       </main>
