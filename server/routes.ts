@@ -4,7 +4,7 @@ import { registerARGameRoutes } from "./ar-game-routes";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { db } from "./db";
-import { adminUsers, adminCommunications, adminTrainingProgress } from "@shared/schema";
+import { adminUsers, adminCommunications, adminTrainingProgress, adminTrainingModules, adminKnowledgeItems } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import { insertBusinessSchema, insertCampaignSchema, insertNfcTagSchema, insertTapSchema, insertRewardSchema, insertTapTrailSchema, insertReferralSchema, insertSubscriptionPlanSchema, insertUserSubscriptionSchema, insertApiUsageSchema } from "@shared/schema";
 import { z } from "zod";
@@ -3183,9 +3183,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/admin/invitations/:inviteId", async (req, res) => {
     try {
       const { inviteId } = req.params;
-      // Mock revoke invitation logic
+      
+      // Delete invitation from database
+      await db.delete(adminUsers)
+        .where(eq(adminUsers.id, inviteId));
+      
       res.json({ success: true, message: "Invitation revoked" });
     } catch (error) {
+      console.error("Error revoking invitation:", error);
       res.status(500).json({ error: "Failed to revoke invitation" });
     }
   });
@@ -3194,9 +3199,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { adminId } = req.params;
       const { isActive } = req.body;
-      // Mock admin status update
+      
+      // Update admin status in database
+      await db.update(adminUsers)
+        .set({ 
+          isActive: isActive,
+          updatedAt: new Date()
+        })
+        .where(eq(adminUsers.id, adminId));
+      
       res.json({ success: true, message: "Admin status updated" });
     } catch (error) {
+      console.error("Error updating admin status:", error);
       res.status(500).json({ error: "Failed to update admin status" });
     }
   });
@@ -3205,69 +3219,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/admin/training/progress", async (req, res) => {
     try {
-      // Mock training progress data
-      const trainingProgress: any[] = [];
+      // Query actual training progress from database
+      const trainingProgress = await db.select()
+        .from(adminTrainingProgress)
+        .orderBy(desc(adminTrainingProgress.updatedAt));
+      
       res.json(trainingProgress);
     } catch (error) {
+      console.error("Error fetching training progress:", error);
       res.status(500).json({ error: "Failed to fetch training progress" });
     }
   });
 
   app.get("/api/admin/training/modules", async (req, res) => {
     try {
-      // Mock training modules - this would come from database
-      const modules = [
-        {
-          id: "module_1",
-          title: "Platform Overview Fundamentals",
-          description: "Learn Cirqlback's core features and business model",
-          category: "platform_overview",
-          moduleType: "knowledge",
-          timeEstimate: 45,
-          requiredLevel: "basic"
-        },
-        {
-          id: "module_2", 
-          title: "User Account Management",
-          description: "Managing customer and merchant accounts",
-          category: "user_management",
-          moduleType: "practical",
-          timeEstimate: 60,
-          requiredLevel: "basic"
-        }
-      ];
+      // Query actual training modules from database
+      const modules = await db.select()
+        .from(adminTrainingModules)
+        .where(eq(adminTrainingModules.isActive, true))
+        .orderBy(adminTrainingModules.category, adminTrainingModules.requiredLevel);
+      
       res.json(modules);
     } catch (error) {
+      console.error("Error fetching training modules:", error);
       res.status(500).json({ error: "Failed to fetch training modules" });
     }
   });
 
   app.get("/api/admin/training/knowledge-checklist", async (req, res) => {
     try {
-      // Mock knowledge checklist data
-      const checklist = {
-        platform_overview: [
-          {
-            id: "po_1",
-            title: "Understand NFC tag functionality",
-            description: "Know how Cirql tags work and their purpose",
-            importance: "critical",
-            completed: false
-          }
-        ],
-        user_management: [
-          {
-            id: "um_1",
-            title: "User role permissions",
-            description: "Understand different user roles and their capabilities",
-            importance: "high",
-            completed: false
-          }
-        ]
-      };
-      res.json(checklist);
+      // Query knowledge checklist items from database
+      const knowledgeItems = await db.select()
+        .from(adminKnowledgeItems)
+        .where(eq(adminKnowledgeItems.isActive, true))
+        .orderBy(adminKnowledgeItems.category, adminKnowledgeItems.importance);
+      
+      res.json(knowledgeItems);
     } catch (error) {
+      console.error("Error fetching knowledge checklist:", error);
       res.status(500).json({ error: "Failed to fetch knowledge checklist" });
+    }
+  });
+
+  app.post("/api/admin/training/progress", async (req, res) => {
+    try {
+      const { adminUserId, moduleId, status, score, answers } = req.body;
+      
+      // Insert or update training progress
+      const progressRecord = {
+        id: crypto.randomUUID(),
+        adminUserId,
+        moduleId,
+        status,
+        score,
+        answers,
+        timeSpent: req.body.timeSpent || 0,
+        attempts: 1,
+        lastAttemptAt: new Date(),
+        createdAt: new Date()
+      };
+      
+      await db.insert(adminTrainingProgress).values(progressRecord);
+      
+      res.json({ success: true, progressId: progressRecord.id });
+    } catch (error) {
+      console.error("Error updating training progress:", error);
+      res.status(500).json({ error: "Failed to update training progress" });
     }
   });
 
