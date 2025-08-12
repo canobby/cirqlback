@@ -625,6 +625,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/map/tap-trails", async (req, res) => {
+    try {
+      const tapTrails = [
+        {
+          id: "trail1",
+          name: "Downtown Coffee & Eats",
+          businesses: ["1", "2"],
+          totalReward: 250,
+          difficulty: "easy",
+          estimatedTime: "45 minutes",
+          theme: "Food & Drink"
+        },
+        {
+          id: "trail2", 
+          name: "Wellness & Fitness Journey",
+          businesses: ["4", "5"],
+          totalReward: 350,
+          difficulty: "medium",
+          estimatedTime: "2 hours",
+          theme: "Health & Wellness"
+        },
+        {
+          id: "trail3",
+          name: "Complete Downtown Experience",
+          businesses: ["1", "2", "3", "4"],
+          totalReward: 500,
+          difficulty: "hard",
+          estimatedTime: "3 hours",
+          theme: "Full Experience"
+        }
+      ];
+      res.json(tapTrails);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch tap trails" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates
