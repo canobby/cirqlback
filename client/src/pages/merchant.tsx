@@ -6,6 +6,8 @@ import NFCWritingInterface from "@/components/merchant/nfc-writing-interface";
 import PricingOptimizer from "@/components/merchant/pricing-optimizer";
 import ViralCampaigns from "@/components/marketing/viral-campaigns";
 import StatsCard from "@/components/ui/stats-card";
+import WebNFCInterface from "@/components/nfc/web-nfc-interface";
+import NFCStatusIndicator from "@/components/nfc/nfc-status-indicator";
 import { Store, Users, Share2, TrendingUp, Coffee, BookOpen, UtensilsCrossed, DollarSign, Zap } from "lucide-react";
 import PlatformSync from "@/components/global/platform-sync";
 
@@ -103,8 +105,35 @@ export default function Merchant() {
           <CampaignManagement businessId={selectedBusiness} />
         </TabsContent>
 
-        <TabsContent value="nfc-tags">
-          <NFCWritingInterface businessId={selectedBusiness} />
+        <TabsContent value="nfc-tags" className="space-y-6">
+          <div className="grid lg:grid-cols-2 gap-6">
+            <div>
+              <NFCWritingInterface businessId={selectedBusiness} />
+            </div>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5" />
+                    Advanced NFC Management
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <NFCStatusIndicator />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <WebNFCInterface 
+                    onTagRead={(data) => {
+                      console.log('NFC tag read:', data);
+                    }}
+                    onTagWritten={(success) => {
+                      console.log('NFC tag written:', success);
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="pricing">
