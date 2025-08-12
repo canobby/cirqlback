@@ -715,6 +715,185 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Marketing Suite endpoints
+  app.get("/api/marketing/campaigns", async (req, res) => {
+    try {
+      const campaigns = [
+        {
+          id: "camp1",
+          name: "Weekend Coffee Special",
+          type: "email",
+          status: "active",
+          sent: 2847,
+          opened: 1943,
+          clicked: 421,
+          revenue: 3420,
+          scheduledDate: "2024-01-15T10:00:00",
+          audience: "Frequent Visitors"
+        },
+        {
+          id: "camp2", 
+          name: "New Customer Welcome",
+          type: "sms",
+          status: "scheduled",
+          sent: 0,
+          opened: 0,
+          clicked: 0,
+          revenue: 0,
+          scheduledDate: "2024-01-18T14:00:00",
+          audience: "New Customers"
+        }
+      ];
+      res.json(campaigns);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch campaigns" });
+    }
+  });
+
+  app.post("/api/marketing/campaigns", async (req, res) => {
+    try {
+      const { name, type, content, targetAudience, scheduledDate, budget } = req.body;
+      
+      // In real implementation, this would create the campaign and integrate with external services
+      const campaign = {
+        id: `camp_${Date.now()}`,
+        name,
+        type,
+        content,
+        targetAudience,
+        scheduledDate,
+        budget,
+        status: "scheduled",
+        createdAt: new Date().toISOString()
+      };
+
+      // Simulate integration with external marketing platforms
+      const integrations = {
+        email: "Mailchimp API integration",
+        sms: "Twilio API integration", 
+        social: "Facebook/Instagram API integration",
+        push: "Firebase Cloud Messaging integration",
+        retargeting: "Google Ads API integration"
+      };
+
+      res.json({
+        success: true,
+        campaign,
+        integration: integrations[type as keyof typeof integrations],
+        message: `Campaign created and scheduled with ${integrations[type as keyof typeof integrations]}`
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create campaign" });
+    }
+  });
+
+  app.get("/api/marketing/audiences", async (req, res) => {
+    try {
+      const audiences = [
+        {
+          id: "freq_visitors",
+          name: "Frequent Visitors",
+          count: 847,
+          description: "Customers with 5+ visits this month",
+          criteria: { visits: { min: 5, period: "month" } }
+        },
+        {
+          id: "high_value",
+          name: "High-Value Customers", 
+          count: 234,
+          description: "Customers spending $100+ monthly",
+          criteria: { spending: { min: 100, period: "month" } }
+        },
+        {
+          id: "new_customers",
+          name: "New Customers",
+          count: 456,
+          description: "First visit within last 30 days",
+          criteria: { firstVisit: { within: "30 days" } }
+        }
+      ];
+      res.json(audiences);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch audiences" });
+    }
+  });
+
+  app.get("/api/marketing/analytics", async (req, res) => {
+    try {
+      const analytics = {
+        totalCustomers: 2847,
+        emailOpenRate: 68.3,
+        campaignROI: "4.2x",
+        activeCampaigns: 7,
+        totalRevenue: 12847,
+        conversionRate: 14.8,
+        averageOrderValue: 42.50,
+        customerLifetimeValue: 185.30
+      };
+      res.json(analytics);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  app.get("/api/marketing/integrations", async (req, res) => {
+    try {
+      const integrations = [
+        {
+          id: "mailchimp",
+          name: "Mailchimp",
+          type: "email",
+          connected: true,
+          apiKey: "****",
+          lastSync: "2024-01-15T10:30:00Z"
+        },
+        {
+          id: "instagram",
+          name: "Instagram Business",
+          type: "social",
+          connected: true,
+          apiKey: "****",
+          lastSync: "2024-01-15T09:45:00Z"
+        },
+        {
+          id: "google_ads",
+          name: "Google Ads",
+          type: "advertising",
+          connected: true,
+          apiKey: "****",
+          lastSync: "2024-01-15T08:20:00Z"
+        }
+      ];
+      res.json(integrations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch integrations" });
+    }
+  });
+
+  // Customer data export for marketing
+  app.get("/api/marketing/export", async (req, res) => {
+    try {
+      const { format, segment, dateRange } = req.query;
+      
+      // In real implementation, this would export customer data in various formats
+      // with proper privacy compliance and data protection
+      const exportData = {
+        exportId: `export_${Date.now()}`,
+        format: format || "csv",
+        segment: segment || "all",
+        dateRange: dateRange || "last_30_days",
+        status: "processing",
+        downloadUrl: null,
+        estimatedSize: "2.3 MB",
+        estimatedRecords: 2847
+      };
+
+      res.json(exportData);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to initiate data export" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates

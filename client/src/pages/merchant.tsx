@@ -84,8 +84,9 @@ export default function Merchant() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="campaigns" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+          <TabsTrigger value="marketing">Marketing</TabsTrigger>
           <TabsTrigger value="nfc-tags">NFC Tags</TabsTrigger>
           <TabsTrigger value="pricing">AI Pricing</TabsTrigger>
           <TabsTrigger value="viral">Viral Marketing</TabsTrigger>
@@ -106,6 +107,91 @@ export default function Merchant() {
 
         <TabsContent value="viral">
           <ViralCampaigns />
+        </TabsContent>
+
+        <TabsContent value="marketing">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <BookOpen className="h-5 w-5 mr-2 text-blue-500" />
+                Marketing Suite Access
+              </CardTitle>
+              <p className="text-gray-600">Advanced marketing tools and customer data analytics</p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/marketing'}>
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                      <BookOpen className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <h3 className="font-semibold text-blue-800">Email Campaigns</h3>
+                    <p className="text-sm text-gray-600 mt-1">Send targeted emails to customer segments</p>
+                    <div className="mt-3 text-sm">
+                      <span className="text-blue-600 font-medium">2,847</span> customers
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/marketing'}>
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                      <UtensilsCrossed className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <h3 className="font-semibold text-purple-800">Social Media</h3>
+                    <p className="text-sm text-gray-600 mt-1">Automated Instagram and Facebook ads</p>
+                    <div className="mt-3 text-sm">
+                      <span className="text-purple-600 font-medium">68%</span> engagement rate
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/marketing'}>
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                      <DollarSign className="h-6 w-6 text-green-600" />
+                    </div>
+                    <h3 className="font-semibold text-green-800">SMS Marketing</h3>
+                    <p className="text-sm text-gray-600 mt-1">Direct text message campaigns</p>
+                    <div className="mt-3 text-sm">
+                      <span className="text-green-600 font-medium">4.2x</span> ROI
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-800 mb-2">Customer Data Insights</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-blue-700 font-medium">Frequent Visitors:</span>
+                    <div className="text-2xl font-bold text-blue-800">847</div>
+                  </div>
+                  <div>
+                    <span className="text-purple-700 font-medium">High-Value:</span>
+                    <div className="text-2xl font-bold text-purple-800">234</div>
+                  </div>
+                  <div>
+                    <span className="text-green-700 font-medium">New Customers:</span>
+                    <div className="text-2xl font-bold text-green-800">456</div>
+                  </div>
+                  <div>
+                    <span className="text-orange-700 font-medium">At Risk:</span>
+                    <div className="text-2xl font-bold text-orange-800">312</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center">
+                <button 
+                  onClick={() => window.location.href = '/marketing'}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors font-medium"
+                >
+                  Open Full Marketing Suite
+                </button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">
