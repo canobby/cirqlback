@@ -20,9 +20,9 @@ export default function Home() {
               />
               <div className="text-3xl font-bold">Cirqlback</div>
             </div>
-            <h1 className="text-4xl font-bold mb-4">The Tesla of Local Business Platforms</h1>
+            <h1 className="text-4xl font-bold mb-4">The Most Comprehensive Local Business Platform</h1>
             <p className="text-xl opacity-90 mb-6">
-              The most comprehensive local business ecosystem available - combining AI-powered analytics, cross-business partnerships, AR treasure hunts, team challenges, viral campaigns, complete websites, and predictive customer intelligence in one unified platform
+              The most advanced local business ecosystem available - combining AI-powered analytics, cross-business partnerships, AR treasure hunts, team challenges, viral campaigns, complete websites, and predictive customer intelligence in one revolutionary unified platform
             </p>
             <div className="flex flex-wrap gap-4">
               <Link href="/tap">

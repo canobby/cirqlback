@@ -67,7 +67,7 @@ export default function HowItWorksPage() {
     },
     {
       icon: <Sparkles className="h-6 w-6 text-orange-500" />,
-      title: "Tesla-Level Unified Platform",
+      title: "Revolutionary Unified Platform",
       description: "The most comprehensive local business ecosystem available: AI-powered customer intelligence, cross-business partnership networks, AR treasure hunt adventures, multi-tier team challenges, exponential viral growth mechanics, complete website platforms, and predictive business optimization - a unified system no competitor can replicate piece by piece"
     }
   ];
@@ -220,7 +220,7 @@ export default function HowItWorksPage() {
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Explore the comprehensive features that make Cirqlback the most advanced local business platform available - 
-              the Tesla of local marketing ecosystems with unified AI intelligence, cross-business networks, AR adventures, 
+              a revolutionary marketing ecosystem with unified AI intelligence, cross-business networks, AR adventures, 
               team challenges, and viral growth mechanics.
             </p>
           </div>
