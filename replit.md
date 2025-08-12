@@ -44,6 +44,7 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **Interactive Business Map**: Triple-view map showing participating businesses for customers, visibility rewards earned through referral program for businesses, and visual campaign routes with suggested tap trails for maximum rewards
 - **Visual Campaign Routes**: Interactive trail system showing optimal business-to-business paths with challenge completion indicators and reward maximization suggestions
 - **Badge System**: Comprehensive peer-visible badges for both customers and businesses showcasing achievements, loyalty levels, and platform contributions
+- **AR Video Integration**: Immersive augmented reality experiences that transform simple Cirql taps into interactive mini-games with collectible rewards, progress visualization, and social sharing capabilities
 - **How It Works Page**: Comprehensive educational page with diagrams and explanations for business growth
 - **Advanced Analytics Dashboard**: Real-time metrics, AI-powered insights, and performance tracking
 - **Community Hub**: Gamified challenges, leaderboards, social feeds, and group rewards

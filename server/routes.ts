@@ -662,6 +662,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AR Experience endpoints
+  app.get("/api/ar/:tagId", async (req, res) => {
+    try {
+      const { tagId } = req.params;
+      const arScene = {
+        id: tagId,
+        businessId: "1",
+        businessName: "Brew & Beans Coffee",
+        sceneType: "reward_unlock",
+        animation: "coffee_cup_rising",
+        rewards: [
+          {
+            id: "reward1",
+            type: "discount",
+            title: "Free Coffee Upgrade",
+            description: "Upgrade any drink to large size",
+            value: "20% off",
+            animation: "steaming_cup",
+            rarity: "common"
+          },
+          {
+            id: "reward2", 
+            type: "badge",
+            title: "Coffee Connoisseur",
+            description: "Earned for 5th visit this month",
+            value: "Achievement Unlocked",
+            animation: "golden_badge",
+            rarity: "rare"
+          }
+        ],
+        isMultiplayer: false,
+        shareEnabled: true
+      };
+      res.json(arScene);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load AR scene" });
+    }
+  });
+
+  app.post("/api/ar/share", async (req, res) => {
+    try {
+      const { platform, sceneId, businessId } = req.body;
+      // In real implementation, this would generate share links and track viral marketing
+      res.json({
+        success: true,
+        shareUrl: `https://cirqlback.com/shared-ar/${sceneId}`,
+        message: `AR experience shared to ${platform} with Cirqlback branding`
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to share AR experience" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates

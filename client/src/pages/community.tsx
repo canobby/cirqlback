@@ -25,7 +25,12 @@ import {
   TrendingUp,
   Clock,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Camera,
+  Play,
+  Instagram,
+  Video,
+  Sparkles
 } from "lucide-react";
 
 export default function Community() {
@@ -215,10 +220,11 @@ export default function Community() {
 
         {/* Main Community Tabs */}
         <Tabs defaultValue="leaderboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
             <TabsTrigger value="challenges">Challenges</TabsTrigger>
             <TabsTrigger value="social">Social Feed</TabsTrigger>
+            <TabsTrigger value="ar-gallery">AR Gallery</TabsTrigger>
             <TabsTrigger value="referrals">Referrals</TabsTrigger>
           </TabsList>
 
@@ -420,6 +426,141 @@ export default function Community() {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* AR Gallery Tab */}
+          <TabsContent value="ar-gallery" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Camera className="h-5 w-5 mr-2 text-purple-500" />
+                  Community AR Experiences
+                </CardTitle>
+                <p className="text-gray-600">Discover and share amazing AR moments from Cirql taps around the community</p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Featured AR Experiences */}
+                  {[
+                    {
+                      id: "ar1",
+                      user: "CoffeeExplorer",
+                      business: "Brew & Beans Coffee",
+                      title: "Golden Coffee Bean Discovery",
+                      description: "Unlocked rare collectible through AR tap experience",
+                      video: "/ar-videos/coffee-bean.mp4",
+                      likes: 47,
+                      shares: 12,
+                      rarity: "legendary",
+                      timestamp: "2 hours ago"
+                    },
+                    {
+                      id: "ar2",
+                      user: "FitnessGuru",
+                      business: "PowerFit Gym",
+                      title: "Strength Badge Unlock",
+                      description: "Epic AR animation showing achievement progress",
+                      video: "/ar-videos/strength-badge.mp4",
+                      likes: 32,
+                      shares: 8,
+                      rarity: "epic",
+                      timestamp: "5 hours ago"
+                    },
+                    {
+                      id: "ar3",
+                      user: "LocalFoodie",
+                      business: "Taco Libre",
+                      title: "Spicy Trail Completion",
+                      description: "Completed 3-restaurant tap trail with fireworks finale",
+                      video: "/ar-videos/trail-complete.mp4",
+                      likes: 65,
+                      shares: 18,
+                      rarity: "rare",
+                      timestamp: "1 day ago"
+                    }
+                  ].map((experience) => (
+                    <Card key={experience.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <div className="relative">
+                        <div className="aspect-video bg-gradient-to-br from-purple-100 to-pink-100 rounded-t-lg flex items-center justify-center">
+                          <div className="text-center">
+                            <Play className="h-12 w-12 text-purple-500 mx-auto mb-2" />
+                            <Badge 
+                              className={`${
+                                experience.rarity === 'legendary' ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
+                                experience.rarity === 'epic' ? 'bg-gradient-to-r from-purple-500 to-pink-500' :
+                                'bg-gradient-to-r from-blue-500 to-cyan-500'
+                              } text-white`}
+                            >
+                              {experience.rarity}
+                            </Badge>
+                          </div>
+                        </div>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h4 className="font-semibold text-sm">{experience.title}</h4>
+                              <p className="text-xs text-gray-600">by {experience.user}</p>
+                            </div>
+                            <Sparkles className="h-4 w-4 text-purple-500" />
+                          </div>
+                          <p className="text-xs text-gray-700 mb-3">{experience.description}</p>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>{experience.business}</span>
+                            <span>{experience.timestamp}</span>
+                          </div>
+                          <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                            <div className="flex items-center space-x-4">
+                              <button className="flex items-center space-x-1 text-gray-600 hover:text-red-500 transition-colors">
+                                <Heart className="h-4 w-4" />
+                                <span className="text-xs">{experience.likes}</span>
+                              </button>
+                              <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-500 transition-colors">
+                                <Share2 className="h-4 w-4" />
+                                <span className="text-xs">{experience.shares}</span>
+                              </button>
+                            </div>
+                            <div className="flex space-x-1">
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs">
+                                <Instagram className="h-3 w-3 mr-1" />
+                                Share
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* AR Challenge Prompts */}
+                <div className="mt-8 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-purple-800">Weekly AR Challenge</h3>
+                      <p className="text-sm text-purple-600">Create viral AR content and win prizes!</p>
+                    </div>
+                    <Video className="h-8 w-8 text-purple-500" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span className="text-sm text-purple-700">Record an AR experience at 3 different businesses</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span className="text-sm text-purple-700">Share to Instagram with #CirqlbackAR hashtag</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span className="text-sm text-purple-700">Get 50+ likes to qualify for bonus rewards</span>
+                    </div>
+                  </div>
+                  <Button className="mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                    Start AR Challenge
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

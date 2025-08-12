@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Gift, Star, CheckCircle, Clock } from "lucide-react";
+import { Zap, Gift, Star, CheckCircle, Clock, Camera, Sparkles, Play, Share2 } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function TapPage() {
@@ -22,6 +22,7 @@ export default function TapPage() {
   const [tagInfo, setTagInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [tapResult, setTapResult] = useState<any>(null);
+  const [hasArEnabled, setHasArEnabled] = useState(true);
 
   // Simulate getting tag info (normally from NFC scan)
   useEffect(() => {
@@ -53,7 +54,10 @@ export default function TapPage() {
           description: "Get 10% off your first order",
           type: "discount",
           value: "10.00",
-          pointsAwarded: 100
+          pointsAwarded: 100,
+          arEnabled: true,
+          arScene: "coffee_cup_rising",
+          collectibles: ["Golden Coffee Bean Badge", "First Timer Trophy"]
         }
       });
     }
@@ -86,6 +90,13 @@ export default function TapPage() {
         title: "Tap Successful! 🎉",
         description: "You've earned a reward!",
       });
+
+      // Trigger AR experience if enabled
+      if (tagInfo?.campaign?.arEnabled && hasArEnabled) {
+        setTimeout(() => {
+          setLocation(`/ar/${tagInfo.tag.id}`);
+        }, 1500);
+      }
     } catch (error) {
       toast({
         title: "Tap Failed",
@@ -154,6 +165,31 @@ export default function TapPage() {
                   ${tagInfo.campaign.value} off
                 </div>
               </div>
+              
+              {/* AR Features Preview */}
+              {tagInfo.campaign.arEnabled && (
+                <div className="mt-4 p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg border border-purple-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Camera className="h-4 w-4 text-purple-600" />
+                      <span className="text-sm font-medium text-purple-700">AR Experience Enabled</span>
+                    </div>
+                    <Sparkles className="h-4 w-4 text-pink-500 animate-pulse" />
+                  </div>
+                  <p className="text-xs text-purple-600 mb-2">
+                    Tap to unlock an immersive augmented reality reward experience!
+                  </p>
+                  {tagInfo.campaign.collectibles && (
+                    <div className="flex flex-wrap gap-1">
+                      {tagInfo.campaign.collectibles.map((collectible: string, i: number) => (
+                        <Badge key={i} variant="outline" className="text-xs bg-purple-50 border-purple-200">
+                          {collectible}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -235,6 +271,19 @@ export default function TapPage() {
                   </div>
                 )}
               </div>
+              
+              {/* AR Experience Launch Notification */}
+              {tagInfo?.campaign?.arEnabled && hasArEnabled && (
+                <div className="p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg border border-purple-200 mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Play className="h-4 w-4 text-purple-600 animate-pulse" />
+                    <span className="text-sm font-medium text-purple-700">AR Experience Launching...</span>
+                  </div>
+                  <p className="text-xs text-purple-600">
+                    Get ready for an immersive reward experience! Your camera will open shortly.
+                  </p>
+                </div>
+              )}
               
               <div className="space-y-2">
                 <Button 
