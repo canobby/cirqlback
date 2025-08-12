@@ -1,367 +1,345 @@
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Smartphone, Store, Users, TrendingUp, Zap, Gift, Star, Target, BarChart3, Globe, Crown } from "lucide-react";
-import { Link } from "wouter";
+import { Badge } from "@/components/ui/badge";
+import { useLocation } from "wouter";
+import { 
+  Smartphone, 
+  Zap, 
+  Gift, 
+  TrendingUp, 
+  Users, 
+  Crown, 
+  Target,
+  MapPin,
+  Star,
+  ChevronRight,
+  Sparkles,
+  DollarSign
+} from "lucide-react";
+import cirqlLogoPath from "@assets/cirqlback-logo-transparent.png";
 
 export default function HowItWorksPage() {
+  const [, setLocation] = useLocation();
+
+  const steps = [
+    {
+      icon: <Smartphone className="h-8 w-8" />,
+      title: "Find a Cirql Tag",
+      description: "Look for our distinctive Cirql tags at participating businesses",
+      details: "Cirql tags are placed at checkout counters, tables, and key locations in partner businesses"
+    },
+    {
+      icon: <Zap className="h-8 w-8" />,
+      title: "Tap to Connect",
+      description: "Simply tap your phone on the Cirql tag - no app download required",
+      details: "Works with any NFC-enabled smartphone. Just tap and go!"
+    },
+    {
+      icon: <Gift className="h-8 w-8" />,
+      title: "Instant Rewards",
+      description: "Unlock discounts, earn points, and collect exclusive offers",
+      details: "Get immediate rewards plus points that add up to bigger benefits"
+    },
+    {
+      icon: <Crown className="h-8 w-8" />,
+      title: "Level Up",
+      description: "Advance through Bronze, Silver, Gold, and Platinum tiers",
+      details: "Higher tiers unlock better rewards, exclusive perks, and VIP treatment"
+    }
+  ];
+
+  const businessBenefits = [
+    {
+      icon: <TrendingUp className="h-6 w-6 text-green-500" />,
+      title: "Increase Revenue",
+      description: "Drive repeat visits and higher spending with targeted rewards"
+    },
+    {
+      icon: <Users className="h-6 w-6 text-blue-500" />,
+      title: "Build Community",
+      description: "Create loyal customers who become brand ambassadors"
+    },
+    {
+      icon: <Target className="h-6 w-6 text-purple-500" />,
+      title: "Smart Analytics",
+      description: "Track customer behavior and optimize your marketing"
+    },
+    {
+      icon: <Sparkles className="h-6 w-6 text-orange-500" />,
+      title: "Easy Setup",
+      description: "Get started in minutes with our simple tag placement"
+    }
+  ];
+
+  const tierBenefits = [
+    {
+      tier: "Bronze",
+      color: "from-amber-600 to-amber-700",
+      points: "0-999 points",
+      benefits: ["Standard rewards", "Basic point multiplier", "Monthly challenges"]
+    },
+    {
+      tier: "Silver", 
+      color: "from-gray-400 to-gray-600",
+      points: "1,000-4,999 points",
+      benefits: ["Enhanced rewards", "1.5x point multiplier", "Exclusive offers", "Priority support"]
+    },
+    {
+      tier: "Gold",
+      color: "from-yellow-400 to-yellow-600", 
+      points: "5,000-14,999 points",
+      benefits: ["Premium rewards", "2x point multiplier", "VIP events", "Early access", "Free delivery"]
+    },
+    {
+      tier: "Platinum",
+      color: "from-purple-500 to-indigo-600",
+      points: "15,000+ points", 
+      benefits: ["Maximum rewards", "3x point multiplier", "Concierge service", "Exclusive partnerships", "Custom experiences"]
+    }
+  ];
+
   return (
-    <div className="bg-gradient-to-br from-primary/5 to-secondary/5">
-      <div className="container mx-auto px-4 py-8">
-        
-        {/* Hero Section */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold gradient-text mb-6">How Cirqlback Works</h1>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-            Transform your business with Cirql tags - small, smart devices that create instant connections 
-            between you and your customers. No apps to download, no codes to scan, just tap and reward.
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500">
+        <div className="absolute inset-0 bg-black/20"></div>
+        <div className="relative max-w-7xl mx-auto px-4 py-20 text-center">
+          <img src={cirqlLogoPath} alt="Cirqlback" className="h-16 mx-auto mb-6" />
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
+            How Cirqlback Works
+          </h1>
+          <p className="text-xl text-white/90 max-w-3xl mx-auto mb-8">
+            Discover how our innovative Cirql tag technology transforms local shopping into 
+            rewarding experiences for customers and powerful growth tools for businesses.
           </p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <Link href="/tap">
-              <Button size="lg" className="gradient-bg">
-                <Smartphone className="mr-2 h-5 w-5" />
-                Try Live Demo
-              </Button>
-            </Link>
-            <Link href="/merchant">
-              <Button variant="outline" size="lg">
-                <Store className="mr-2 h-5 w-5" />
-                Merchant Dashboard
-              </Button>
-            </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              size="lg" 
+              className="bg-white text-purple-600 hover:bg-gray-100"
+              onClick={() => setLocation("/tap")}
+            >
+              Try a Cirql Tap
+              <ChevronRight className="ml-2 h-5 w-5" />
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline" 
+              className="border-white text-white hover:bg-white/10"
+              onClick={() => setLocation("/merchant")}
+            >
+              For Businesses
+            </Button>
           </div>
         </div>
+      </div>
 
-        {/* What Are Cirql Tags Section */}
-        <section className="mb-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">What Are Cirql Tags?</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Cirql tags are small, wireless devices that customers can tap with their phone to instantly 
-              connect with your business and earn rewards.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-12 items-center mb-12">
-            <div>
-              <div className="space-y-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-                    <Zap className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">Instant Connection</h3>
-                    <p className="text-muted-foreground">
-                      No apps to download or QR codes to scan. Customers simply tap their phone on the tag 
-                      and instantly connect to your business.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
-                    <Gift className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">Immediate Rewards</h3>
-                    <p className="text-muted-foreground">
-                      Customers earn points, discounts, or special offers the moment they tap. 
-                      Build loyalty with every interaction.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center flex-shrink-0">
-                    <BarChart3 className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">Track Everything</h3>
-                    <p className="text-muted-foreground">
-                      See real-time analytics of customer visits, popular campaigns, 
-                      and reward redemptions to optimize your marketing.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Visual representation of Cirql tag */}
-            <div className="flex justify-center">
-              <div className="relative">
-                <div className="w-80 h-80 bg-white rounded-full border-8 border-gray-200 shadow-2xl flex items-center justify-center relative overflow-hidden">
-                  {/* Cirql tag design */}
-                  <div className="w-60 h-60 gradient-bg rounded-full flex items-center justify-center relative">
-                    <div className="w-40 h-40 bg-white rounded-full flex items-center justify-center">
-                      <div className="text-6xl font-bold gradient-text">C</div>
-                    </div>
-                    {/* Animated pulse rings */}
-                    <div className="absolute inset-0 rounded-full border-4 border-white opacity-30 animate-ping"></div>
-                    <div className="absolute inset-4 rounded-full border-2 border-white opacity-20 animate-ping" style={{animationDelay: '0.5s'}}></div>
-                  </div>
-                  
-                  {/* Tap indicator */}
-                  <div className="absolute -top-4 -right-4 w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg animate-bounce">
-                    <Smartphone className="h-8 w-8" />
-                  </div>
-                </div>
-                
-                {/* Helper text */}
-                <div className="text-center mt-6">
-                  <p className="text-lg font-semibold text-foreground">Cirql Tag</p>
-                  <p className="text-sm text-muted-foreground">Tap with any smartphone</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Step-by-Step Process */}
-        <section className="mb-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">How It Works for Your Business</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Set up your Cirql-powered marketing system in minutes and start building customer loyalty immediately.
+      {/* How It Works Steps */}
+      <section className="py-20 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Simple as 1-2-3-4
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Getting started with Cirqlback is incredibly easy. No apps to download, 
+              no accounts to create - just tap and earn.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Step 1 */}
-            <Card className="card-hover text-center">
-              <CardHeader>
-                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-white">1</span>
-                </div>
-                <CardTitle>Setup Campaigns</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  Create reward campaigns like "10% off next purchase" or "Buy 5 get 1 free" in our easy dashboard.
-                </p>
-                <div className="w-full h-32 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center">
-                  <Target className="h-12 w-12 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Step 2 */}
-            <Card className="card-hover text-center">
-              <CardHeader>
-                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-white">2</span>
-                </div>
-                <CardTitle>Place Cirql Tags</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  Put small Cirql tags at your counter, tables, or anywhere customers visit. We'll help you optimize placement.
-                </p>
-                <div className="w-full h-32 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-lg flex items-center justify-center">
-                  <Store className="h-12 w-12 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Step 3 */}
-            <Card className="card-hover text-center">
-              <CardHeader>
-                <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-white">3</span>
-                </div>
-                <CardTitle>Customers Tap</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  Customers tap their phone on the tag, enter their email, and instantly receive rewards and points.
-                </p>
-                <div className="w-full h-32 bg-gradient-to-br from-green-100 to-emerald-100 rounded-lg flex items-center justify-center">
-                  <Users className="h-12 w-12 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Step 4 */}
-            <Card className="card-hover text-center">
-              <CardHeader>
-                <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-white">4</span>
-                </div>
-                <CardTitle>Watch Growth</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  Track customer visits, popular campaigns, and revenue growth through our analytics dashboard.
-                </p>
-                <div className="w-full h-32 bg-gradient-to-br from-orange-100 to-red-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="h-12 w-12 text-orange-600" />
-                </div>
-              </CardContent>
-            </Card>
+            {steps.map((step, index) => (
+              <Card key={index} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 opacity-10 rounded-bl-full"></div>
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center text-white">
+                      {step.icon}
+                    </div>
+                    <Badge variant="outline" className="text-lg font-bold px-3 py-1">
+                      {index + 1}
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-xl">{step.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600 mb-3">{step.description}</p>
+                  <p className="text-sm text-gray-500">{step.details}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Advanced Features */}
-        <section className="mb-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Advanced Features for Growth</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Go beyond basic rewards with features designed to build community and drive viral growth.
+      {/* Tier System */}
+      <section className="py-20 px-4 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Loyalty That Pays Off
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Advance through our tier system and unlock increasingly valuable rewards.
+              The more you engage, the more you earn.
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Tap Trails */}
-            <Card className="card-hover">
-              <CardHeader>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
-                    <Globe className="h-6 w-6 text-white" />
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {tierBenefits.map((tier, index) => (
+              <Card key={tier.tier} className="relative overflow-hidden border-2 hover:shadow-lg transition-all duration-300">
+                <div className={`absolute inset-x-0 top-0 h-2 bg-gradient-to-r ${tier.color}`}></div>
+                <CardHeader className="pt-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <CardTitle className="text-xl">{tier.tier}</CardTitle>
+                    <Crown className={`h-6 w-6 ${index === 3 ? 'text-purple-500' : index === 2 ? 'text-yellow-500' : index === 1 ? 'text-gray-500' : 'text-amber-600'}`} />
                   </div>
-                  <div>
-                    <CardTitle>Tap Trails</CardTitle>
-                    <Badge variant="secondary">Community Feature</Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  Create multi-business challenges where customers visit partner locations to unlock bonus rewards. 
-                  Build a network of local businesses working together.
-                </p>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Partner with nearby businesses</li>
-                  <li>• Create "Coffee Shop → Bakery → Bookstore" trails</li>
-                  <li>• Offer big rewards for completion</li>
-                  <li>• Share customers with trusted partners</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Referral System */}
-            <Card className="card-hover">
-              <CardHeader>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
-                    <Users className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle>Viral Referrals</CardTitle>
-                    <Badge variant="secondary">Growth Engine</Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  Turn customers into advocates with our built-in referral system. 
-                  Reward both referrer and referee to create viral growth loops.
-                </p>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• $5 bonus per successful referral</li>
-                  <li>• 5% lifetime earnings from referees</li>
-                  <li>• Automated tracking and payouts</li>
-                  <li>• Social sharing tools included</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Premium Analytics */}
-            <Card className="card-hover">
-              <CardHeader>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
-                    <BarChart3 className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle>Smart Analytics</CardTitle>
-                    <Badge variant="secondary">AI-Powered</Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  Get AI-powered insights about customer behavior, optimal pricing, 
-                  and campaign performance to maximize your ROI.
-                </p>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Real-time customer insights</li>
-                  <li>• Predictive analytics</li>
-                  <li>• Automated A/B testing</li>
-                  <li>• Revenue optimization suggestions</li>
-                </ul>
-              </CardContent>
-            </Card>
+                  <p className="text-sm text-gray-500 font-medium">{tier.points}</p>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {tier.benefits.map((benefit, i) => (
+                      <li key={i} className="flex items-center text-sm">
+                        <Star className="h-4 w-4 text-yellow-500 mr-2 flex-shrink-0" />
+                        {benefit}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Business Benefits */}
-        <section className="mb-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Why Businesses Choose Cirqlback</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Join thousands of local businesses using Cirql technology to build stronger customer relationships and increase revenue.
+      {/* Business Benefits */}
+      <section className="py-20 px-4 bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Why Businesses Love Cirqlback
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Our platform doesn't just reward customers - it drives real business growth 
+              with measurable results.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="h-10 w-10 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Increase Repeat Visits</h3>
-              <p className="text-muted-foreground">
-                Customers return 3x more often with reward programs. Build lasting loyalty with every tap.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="h-10 w-10 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Build Community</h3>
-              <p className="text-muted-foreground">
-                Connect with other local businesses through Tap Trails and cross-promotional campaigns.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
-                <Crown className="h-10 w-10 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Stand Out</h3>
-              <p className="text-muted-foreground">
-                Be the first in your area to offer cutting-edge Cirql tap technology to customers.
-              </p>
-            </div>
+          <div className="grid md:grid-cols-2 gap-8 mb-12">
+            {businessBenefits.map((benefit, index) => (
+              <Card key={index} className="p-6 border-0 shadow-lg">
+                <div className="flex items-start space-x-4">
+                  <div className="flex-shrink-0">
+                    {benefit.icon}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                      {benefit.title}
+                    </h3>
+                    <p className="text-gray-600">
+                      {benefit.description}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
-        </section>
 
-        {/* Getting Started CTA */}
-        <section className="text-center">
-          <Card className="max-w-4xl mx-auto gradient-bg text-white">
-            <CardContent className="p-12">
-              <h2 className="text-3xl font-bold mb-4">Ready to Transform Your Business?</h2>
-              <p className="text-xl opacity-90 mb-8">
-                Start building customer loyalty with Cirql technology today. 
-                Set up takes less than 10 minutes, and your first customers can start earning rewards immediately.
-              </p>
-              <div className="flex flex-wrap gap-4 justify-center">
-                <Link href="/merchant">
-                  <Button size="lg" variant="secondary">
-                    <Store className="mr-2 h-5 w-5" />
-                    Start Free Trial
-                  </Button>
-                </Link>
-                <Link href="/tap">
-                  <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-primary">
-                    <Smartphone className="mr-2 h-5 w-5" />
-                    Try Demo
-                  </Button>
-                </Link>
+          <div className="text-center">
+            <Button 
+              size="lg" 
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+              onClick={() => setLocation("/merchant")}
+            >
+              Start Growing Your Business
+              <ChevronRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Referral Program */}
+      <section className="py-20 px-4 bg-gradient-to-br from-green-50 to-emerald-50">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="mb-12">
+            <DollarSign className="h-16 w-16 text-green-500 mx-auto mb-6" />
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Earn $5 for Every Friend
+            </h2>
+            <p className="text-xl text-gray-600 mb-8">
+              Share Cirqlback with friends and both of you earn $5 when they make their first tap.
+              Plus, earn 5% of their lifetime activity!
+            </p>
+          </div>
+
+          <Card className="p-8 border-2 border-green-200 bg-white">
+            <div className="grid md:grid-cols-3 gap-8 text-center">
+              <div>
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-8 w-8 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Share Your Code</h3>
+                <p className="text-gray-600 text-sm">Send your unique referral code to friends</p>
               </div>
-            </CardContent>
+              <div>
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Zap className="h-8 w-8 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">They Tap & Earn</h3>
+                <p className="text-gray-600 text-sm">Your friend makes their first Cirql tap</p>
+              </div>
+              <div>
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <DollarSign className="h-8 w-8 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Both Get $5</h3>
+                <p className="text-gray-600 text-sm">Instant $5 bonus plus ongoing earnings</p>
+              </div>
+            </div>
           </Card>
-        </section>
-      </div>
+
+          <div className="mt-8">
+            <Button 
+              size="lg" 
+              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+              onClick={() => setLocation("/community")}
+            >
+              Get Your Referral Code
+              <ChevronRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4 bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl font-bold text-white mb-6">
+            Ready to Start Earning?
+          </h2>
+          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+            Join thousands of customers already earning rewards and businesses growing 
+            their communities with Cirqlback.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              size="lg" 
+              className="bg-white text-purple-600 hover:bg-gray-100"
+              onClick={() => setLocation("/customer")}
+            >
+              Find Rewards Near You
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline" 
+              className="border-white text-white hover:bg-white/10"
+              onClick={() => setLocation("/merchant")}
+            >
+              Grow Your Business
+            </Button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

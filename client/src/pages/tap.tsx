@@ -84,7 +84,7 @@ export default function TapPage() {
       setTapResult(result);
       toast({
         title: "Tap Successful! 🎉",
-        description: result.message || "You've earned a reward!",
+        description: "You've earned a reward!",
       });
     } catch (error) {
       toast({

@@ -18,7 +18,8 @@ import {
   Zap,
   Award,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Brain
 } from "lucide-react";
 
 export default function Analytics() {
@@ -327,6 +328,75 @@ export default function Analytics() {
             </Card>
           </TabsContent>
         </Tabs>
+        {/* AI Insights Section */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Brain className="h-6 w-6 text-purple-500" />
+              <span>AI-Powered Business Insights</span>
+              <Badge className="bg-purple-100 text-purple-800">Beta</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card className="border-orange-200 bg-orange-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Target className="h-5 w-5 text-orange-500" />
+                    <span className="font-medium text-orange-800">Optimization Opportunity</span>
+                  </div>
+                  <p className="text-sm text-orange-700">
+                    Your 3-5 PM period shows 40% higher conversion rates. 
+                    Consider launching targeted campaigns during these peak hours.
+                  </p>
+                  <Badge className="mt-2 bg-orange-100 text-orange-700">+$2,400 potential</Badge>
+                </CardContent>
+              </Card>
+
+              <Card className="border-green-200 bg-green-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <TrendingUp className="h-5 w-5 text-green-500" />
+                    <span className="font-medium text-green-800">Positive Trend</span>
+                  </div>
+                  <p className="text-sm text-green-700">
+                    Customer retention improved 23% this month. 
+                    Your loyalty program is driving strong results.
+                  </p>
+                  <Badge className="mt-2 bg-green-100 text-green-700">92% confidence</Badge>
+                </CardContent>
+              </Card>
+
+              <Card className="border-blue-200 bg-blue-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Eye className="h-5 w-5 text-blue-500" />
+                    <span className="font-medium text-blue-800">Revenue Forecast</span>
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    Predicted 26% revenue increase next 30 days based on 
+                    current trends and seasonal patterns.
+                  </p>
+                  <Badge className="mt-2 bg-blue-100 text-blue-700">$15,680 projected</Badge>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-purple-800">AI Performance Score</h4>
+                  <p className="text-sm text-purple-600">Your campaigns are performing above average</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-purple-600">87/100</div>
+                  <div className="text-xs text-purple-500">Excellent</div>
+                </div>
+              </div>
+              <Progress value={87} className="mt-3 h-2" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

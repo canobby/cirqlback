@@ -2,188 +2,201 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import NFCTapInterface from "@/components/customer/nfc-tap-interface";
-import PointsDisplay from "@/components/loyalty/points-display";
-import { Gift, Users, MapPin, Share2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Gift, Users, MapPin, Share2, Star, Target, Zap } from "lucide-react";
+import EnhancedRewards from "@/components/customer/enhanced-rewards";
 
 export default function Customer() {
   const [customerEmail, setCustomerEmail] = useState("");
-  const [customerName, setCustomerName] = useState("");
+  const [showDashboard, setShowDashboard] = useState(false);
+
+  const handleSearch = () => {
+    if (customerEmail) {
+      setShowDashboard(true);
+    }
+  };
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Customer Experience</h1>
-        <p className="text-xl text-gray-600">Tap NFC tags to unlock rewards and build your tap trail</p>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Customer Info & NFC Interface */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="customerName">Name</Label>
-                <Input
-                  id="customerName"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Enter your name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="customerEmail">Email</Label>
-                <Input
-                  id="customerEmail"
-                  type="email"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                  placeholder="Enter your email for rewards"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <NFCTapInterface 
-            customerEmail={customerEmail} 
-            customerName={customerName}
-          />
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+            Your Cirqlback Experience
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Track your progress, discover personalized offers, and unlock exclusive rewards!
+          </p>
         </div>
 
-        {/* Rewards & Features */}
-        <div className="space-y-6">
-          {/* Loyalty Points Display */}
-          {customerEmail && (
-            <PointsDisplay
-              totalPoints={3247}
-              availablePoints={1850}
-              tier="Gold"
-              nextTierPoints={5000}
-            />
-          )}
-          {/* Active Rewards */}
-          <Card className="card-hover glow-effect">
-            <CardHeader>
-              <CardTitle className="flex items-center gradient-text">
-                <Gift className="mr-2 h-5 w-5" />
-                Your Rewards
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {customerEmail ? (
-                <div className="space-y-3">
-                  <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg floating-animation">
-                    <h4 className="font-medium text-green-800">🎉 Free Coffee</h4>
-                    <p className="text-sm text-green-600">Joe's Coffee Shop - Expires Dec 31</p>
-                    <div className="mt-2 text-xs text-green-500 font-medium">Value: $4.50</div>
-                  </div>
-                  <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg floating-animation" style={{ animationDelay: '0.5s' }}>
-                    <h4 className="font-medium text-blue-800">📚 10% Off Books</h4>
-                    <p className="text-sm text-blue-600">Downtown Books - Valid until used</p>
-                    <div className="mt-2 text-xs text-blue-500 font-medium">Up to $15 savings</div>
-                  </div>
-                  <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg floating-animation" style={{ animationDelay: '1s' }}>
-                    <h4 className="font-medium text-purple-800">🍕 $5 Off Dinner</h4>
-                    <p className="text-sm text-purple-600">Luigi's Pizza - Earned from referral</p>
-                    <div className="mt-2 text-xs text-purple-500 font-medium">Referral bonus!</div>
-                  </div>
+        {/* Email Input */}
+        {!showDashboard && (
+          <Card className="mb-8 hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <label htmlFor="customer-email" className="block text-sm font-medium text-gray-700 mb-2">
+                    Enter your email to access your rewards dashboard
+                  </label>
+                  <Input
+                    id="customer-email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className="w-full"
+                  />
                 </div>
-              ) : (
-                <p className="text-gray-500 text-center py-4">
-                  Enter your email to see your rewards
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Tap Trail Progress */}
-          <Card className="card-hover">
-            <CardHeader>
-              <CardTitle className="flex items-center gradient-text">
-                <MapPin className="mr-2 h-5 w-5" />
-                Tap Trail Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="p-4 bg-gradient-to-r from-primary to-secondary rounded-xl text-white glow-effect">
-                  <h4 className="font-semibold mb-2">🏪 Downtown Discovery</h4>
-                  <p className="text-sm opacity-90 mb-3">Visit 5 shops for $20 bonus</p>
-                  <div className="w-full bg-white bg-opacity-20 rounded-full h-3 mb-2">
-                    <div className="bg-white h-3 rounded-full transition-all duration-500 ease-out" style={{ width: "40%" }}></div>
-                  </div>
-                  <p className="text-sm">2 of 5 shops visited • $8 earned so far</p>
-                </div>
-
-                <div className="p-4 bg-gradient-to-r from-secondary to-accent rounded-xl text-white glow-effect">
-                  <h4 className="font-semibold mb-2">🍽️ Foodie Trail</h4>
-                  <p className="text-sm opacity-90 mb-3">Try 3 restaurants for free dessert</p>
-                  <div className="w-full bg-white bg-opacity-20 rounded-full h-3 mb-2">
-                    <div className="bg-white h-3 rounded-full transition-all duration-500 ease-out" style={{ width: "67%" }}></div>
-                  </div>
-                  <p className="text-sm">2 of 3 restaurants visited • Almost there!</p>
+                <div className="flex items-end">
+                  <Button 
+                    onClick={handleSearch}
+                    disabled={!customerEmail}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 min-w-[120px]"
+                  >
+                    <Gift className="h-4 w-4 mr-2" />
+                    Access Dashboard
+                  </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Enhanced Referral Program */}
-          <Card className="card-hover glow-effect">
-            <CardHeader>
-              <CardTitle className="flex items-center gradient-text">
-                <Users className="mr-2 h-5 w-5" />
-                Premium Referral Program
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
-                  <h4 className="font-semibold text-yellow-800 mb-2">💰 Earn Big Rewards</h4>
-                  <ul className="text-sm text-yellow-700 space-y-1">
-                    <li>• $5 when friend makes first tap</li>
-                    <li>• $10 bonus after their 5th tap</li>
-                    <li>• 5% of their rewards forever!</li>
-                  </ul>
-                </div>
-                
-                {customerEmail && (
-                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-2">Your unique referral code:</p>
-                    <div className="flex items-center space-x-2">
-                      <code className="px-3 py-1 bg-white border rounded text-primary font-mono">CHRIS2024</code>
-                      <Button size="sm" variant="outline">Copy</Button>
+        {showDashboard && (
+          <Tabs defaultValue="rewards" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <TabsList className="grid w-full grid-cols-4 max-w-md">
+                <TabsTrigger value="rewards">Rewards</TabsTrigger>
+                <TabsTrigger value="progress">Progress</TabsTrigger>
+                <TabsTrigger value="community">Community</TabsTrigger>
+                <TabsTrigger value="referrals">Referrals</TabsTrigger>
+              </TabsList>
+              <Button variant="outline" onClick={() => setShowDashboard(false)}>
+                Change Email
+              </Button>
+            </div>
+
+            <TabsContent value="rewards" className="space-y-6">
+              <EnhancedRewards customerEmail={customerEmail} />
+            </TabsContent>
+
+            <TabsContent value="progress" className="space-y-6">
+              <Card className="bg-gradient-to-br from-orange-500 to-red-500 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold">Tap Trail Progress</h3>
+                      <p className="text-orange-100">Multi-business challenges</p>
+                    </div>
+                    <Target className="h-8 w-8 text-orange-200" />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium">Downtown Discovery</span>
+                        <span className="text-sm">2/5 complete</span>
+                      </div>
+                      <div className="w-full bg-white bg-opacity-20 rounded-full h-2">
+                        <div className="bg-white h-2 rounded-full" style={{ width: "40%" }}></div>
+                      </div>
+                      <p className="text-sm text-orange-100 mt-1">$20 bonus when complete</p>
                     </div>
                   </div>
-                )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="p-3 bg-green-50 rounded-lg">
-                    <div className="font-bold text-green-600">3</div>
-                    <div className="text-xs text-green-600">Friends Joined</div>
+            <TabsContent value="community" className="space-y-6">
+              <Card className="bg-gradient-to-br from-green-500 to-emerald-500 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold">Community Hub</h3>
+                      <p className="text-green-100">Connect with local shoppers</p>
+                    </div>
+                    <Users className="h-8 w-8 text-green-200" />
                   </div>
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <div className="font-bold text-blue-600">$25</div>
-                    <div className="text-xs text-blue-600">Earned</div>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-4">
+                      <h4 className="font-medium mb-2">Holiday Helper Challenge</h4>
+                      <p className="text-sm text-green-100 mb-2">Help support local businesses during the holidays</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs">234/500 participants</span>
+                        <Button size="sm" variant="outline" className="border-white text-white hover:bg-white hover:text-green-600">
+                          Join Challenge
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-3 bg-purple-50 rounded-lg">
-                    <div className="font-bold text-purple-600">Gold</div>
-                    <div className="text-xs text-purple-600">Status</div>
-                  </div>
-                </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                <Button className="w-full gradient-bg border-0 text-white font-semibold">
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share & Earn $5 per Friend
-                </Button>
+            <TabsContent value="referrals" className="space-y-6">
+              <Card className="bg-gradient-to-br from-purple-500 to-pink-500 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold">Referral Program</h3>
+                      <p className="text-purple-100">Earn $5 per friend + 5% lifetime</p>
+                    </div>
+                    <Share2 className="h-8 w-8 text-purple-200" />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-4">
+                      <h4 className="font-medium mb-2">Your Referral Stats</h4>
+                      <div className="grid grid-cols-2 gap-4 text-center">
+                        <div>
+                          <div className="text-2xl font-bold">12</div>
+                          <div className="text-sm text-purple-100">Friends Referred</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold">$340</div>
+                          <div className="text-sm text-purple-100">Total Earned</div>
+                        </div>
+                      </div>
+                      <Button className="w-full mt-4 bg-white text-purple-600 hover:bg-gray-100">
+                        Share Your Link
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {/* Default Feature Cards for non-logged in users */}
+        {!showDashboard && (
+          <div className="grid md:grid-cols-3 gap-6 mt-12">
+            <Card className="text-center p-6 hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Gift className="h-8 w-8 text-white" />
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <h3 className="text-xl font-bold mb-2">Smart Rewards</h3>
+              <p className="text-gray-600">AI-powered personalized offers based on your preferences and shopping habits</p>
+            </Card>
+
+            <Card className="text-center p-6 hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Target className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Tap Trails</h3>
+              <p className="text-gray-600">Complete multi-business challenges to unlock bonus rewards and exclusive deals</p>
+            </Card>
+
+            <Card className="text-center p-6 hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Community</h3>
+              <p className="text-gray-600">Connect with local shoppers, join challenges, and support your community</p>
+            </Card>
+          </div>
+        )}
       </div>
-    </main>
+    </div>
   );
 }
