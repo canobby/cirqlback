@@ -1,0 +1,204 @@
+Alright Chris — here’s a full, end-to-end breakdown of Cirqlback:
+what it is, how it works, how it’s set up technically, and the marketing plan to grow it.
+I’ll lay this out like an internal platform blueprint so it’s comprehensive.
+
+⸻
+
+1. Overview & Core Concept
+
+Cirqlback is an NFC-powered local marketing and loyalty platform for small businesses, designed to:
+	•	Reward customer engagement (in-store visits, purchases, referrals)
+	•	Encourage multi-store shopping (through “Tap Trails” and partner promotions)
+	•	Strengthen community ties by connecting local shops, nonprofits, and event organizers
+
+The name comes from:
+	•	“Cirql” → Circle of local businesses
+	•	“Back” → Giving back to loyal customers and the local economy
+
+The NFC “tap” is the universal trigger — customers tap a Cirqlback tag (or scan QR) and receive promotions, loyalty stamps, or referral credits instantly.
+
+⸻
+
+2. Platform Structure
+
+The Cirqlback ecosystem is composed of four layers:
+
+A. Customer Experience Layer
+	•	In-Store Taps:
+NFC tags (called Bugs) placed at checkout counters, doorways, product displays, or event booths.
+	•	Mobile Web App:
+Instantly launches in the customer’s browser after tapping — no download required.
+	•	Reward & Referral Engine:
+On tap, customers can:
+	•	Claim loyalty points
+	•	Unlock discounts
+	•	Trigger referral links
+	•	Tap Trails:
+Customers visiting multiple partner businesses in a route unlock additional perks.
+
+⸻
+
+B. Merchant Dashboard
+
+Accessible via secure login, businesses can:
+	1.	Create Campaigns
+	•	Campaign name (e.g., “Free Coffee Friday”)
+	•	Message on tap
+	•	Reward rules
+	2.	Write NFC Tags
+	•	Assign a campaign to an NFC tag directly from dashboard
+	3.	View Analytics
+	•	Tap counts
+	•	Referral performance
+	•	Campaign conversions
+	4.	Referral Progress
+	•	Track shops referred by the merchant (to unlock visibility perks)
+
+⸻
+
+C. Community Partner Features
+
+For community coordinators or local orgs:
+	•	Group Promotions:
+Multiple stores join one campaign (e.g., “Shop Small Week”)
+	•	Nonprofit Integration:
+% of purchases from a tap trail can go to a local cause
+	•	Local Map View:
+Shows participating businesses and their current promos
+
+⸻
+
+D. Cirqlback Admin Layer
+
+Internal tools for managing:
+	•	Merchant onboarding
+	•	NFC provisioning & encoding
+	•	Fraud prevention (anti-tap spam, time & location checks)
+	•	Platform-wide analytics
+
+⸻
+
+3. Technical Setup (Front to End)
+
+Frontend
+	•	Framework: React + Vite for speed and modularity
+	•	UI Library: Tailwind CSS for flexible theming
+	•	Hosting: Netlify for instant deploys + serverless functions
+	•	Routing: React Router with protected routes for dashboard
+	•	Auth: Supabase magic-link authentication (email sign-in, no password)
+
+⸻
+
+Backend
+	•	Platform Backend: Supabase
+	•	PostgreSQL database for campaigns, taps, referrals
+	•	Row-Level Security (RLS) to keep merchant data separate
+	•	Realtime subscriptions for live analytics updates
+	•	Functions:
+	•	recordTap → logs a tap, triggers rewards logic
+	•	writeNFCTag → encodes a tag URL for a campaign
+	•	getTapTrailStatus → calculates progress toward a trail reward
+
+⸻
+
+NFC Tags (Bugs)
+	•	Type: NTAG213/215/216 (universal compatibility)
+	•	Encoding:
+	•	URL structure: https://cirqlback.netlify.app/c/:campaignId
+	•	Optional tracking parameters (merchant ID, location ID)
+	•	Fraud Protection:
+	•	Minimum time between taps per device
+	•	Optional GPS check
+	•	Device fingerprinting to detect abuse
+
+⸻
+
+QR Code Option
+	•	Every NFC tag’s URL can be mirrored as a QR code
+(lets non-NFC devices still participate)
+
+⸻
+
+4. How It Works — Step by Step
+
+For a Merchant:
+	1.	Sign up via magic link → land on their empty dashboard
+	2.	Create a campaign
+	3.	Use the dashboard to write campaign data to an NFC tag
+	4.	Place the NFC tag in store
+	5.	View live analytics as customers tap
+
+For a Customer:
+	1.	Tap the NFC tag (or scan QR) in-store
+	2.	Web app launches instantly → shows campaign reward/message
+	3.	If logged in → reward is credited
+If not → quick login/signup for loyalty
+	4.	Can share referral link → earn extra perks
+
+⸻
+
+5. Marketing Plan
+
+A. Merchant Acquisition
+	•	Direct Outreach:
+	•	Local sales reps visiting shops in person
+	•	Starter kits: 5 NFC tags, signage, onboarding
+	•	Community Partnerships:
+	•	Chambers of commerce, farmers markets, tourism boards
+	•	Freemium → Paid:
+	•	First month free, limited campaigns
+	•	Paid unlocks unlimited campaigns, advanced analytics
+
+⸻
+
+B. Customer Engagement
+	•	Gamification:
+	•	Tap Trails: Visit X shops in a week → unlock special deals
+	•	Referral races: Leaderboards for customers
+	•	Seasonal Events:
+	•	Holiday shopping trails
+	•	Back-to-school shop challenges
+
+⸻
+
+C. Retention & Expansion
+	•	Merchant Retention:
+	•	Monthly engagement reports
+	•	Suggesting optimized campaigns based on analytics
+	•	Customer Retention:
+	•	Opt-in email/text for reminders when near a Cirqlback location
+	•	Upsell:
+	•	White-label NFC tags (merchant’s brand)
+	•	Custom campaign templates
+	•	Featured placement on the Cirqlback Map
+
+⸻
+
+6. Revenue Model
+	•	Subscription: $29.99/mo for unlimited campaigns, analytics, NFC writing
+	•	Hardware Sales: NFC tags (Bugs) at $0.25 each (Cirql-branded) or $0.75 custom
+	•	Community Coordinator Program: 20% rev share for referrals (first 12 months)
+	•	Add-ons:
+	•	Featured map spots
+	•	Sponsored Tap Trails
+
+⸻
+
+7. Long-Term Vision
+	•	Expand to multi-city networks via coordinators
+	•	Offer API integrations for POS systems
+	•	Launch customer mobile app for stored rewards
+	•	Partner with nonprofits & municipalities for tourism & event trails
+
+⸻
+
+Chris —
+If you want, I can turn this into a polished PDF pitch deck with diagrams of:
+	•	System architecture
+	•	Customer journey
+	•	Merchant dashboard screenshots
+	•	Revenue flowchart
+
+That way, you’d have a ready-to-send document for partners and investors.
+
+Do you want me to prepare that next?
