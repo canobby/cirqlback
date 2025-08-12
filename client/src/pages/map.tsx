@@ -33,7 +33,9 @@ import {
   Settings,
   Filter,
   Search,
-  RefreshCw
+  RefreshCw,
+  Plus,
+  Minus
 } from "lucide-react";
 
 interface Business {
@@ -318,29 +320,127 @@ export default function InteractiveDiscoveryMap() {
                   </Select>
                 </div>
 
-                {/* Interactive Map Placeholder */}
-                <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-8 h-96 flex flex-col items-center justify-center border-2 border-dashed border-blue-200">
-                  <MapPin className="h-16 w-16 text-blue-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">Interactive Map</h3>
-                  <p className="text-gray-600 text-center mb-4">Real-time locations of businesses, customers, and rewards</p>
-                  
+                {/* Interactive Map Display */}
+                <div className="bg-gray-100 rounded-lg h-96 relative overflow-hidden">
+                  {/* Map Background */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-100 via-blue-50 to-purple-50">
+                    {/* Grid pattern to simulate map */}
+                    <div className="absolute inset-0 opacity-20" 
+                         style={{
+                           backgroundImage: `
+                             linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+                             linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
+                           `,
+                           backgroundSize: '20px 20px'
+                         }}>
+                    </div>
+                  </div>
+
+                  {/* User Location */}
+                  {userLocation && (
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
+                      <div className="relative">
+                        <div className="w-4 h-4 bg-orange-500 rounded-full border-2 border-white shadow-lg"></div>
+                        <div className="absolute -top-1 -left-1 w-6 h-6 bg-orange-300 rounded-full animate-ping opacity-30"></div>
+                        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-orange-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                          Your Location
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Business Markers */}
+                  {filteredBusinesses.map((business, index) => {
+                    const Icon = getBusinessIcon(business.type);
+                    // Position businesses around the map
+                    const positions = [
+                      { top: '25%', left: '30%' },
+                      { top: '60%', left: '70%' },
+                      { top: '40%', left: '20%' },
+                      { top: '70%', left: '40%' }
+                    ];
+                    const position = positions[index % positions.length];
+                    
+                    return (
+                      <div
+                        key={business.id}
+                        className="absolute z-10 cursor-pointer transform hover:scale-110 transition-transform"
+                        style={position}
+                        onClick={() => setSelectedBusiness(business)}
+                      >
+                        <div className="relative">
+                          <div className="w-8 h-8 bg-blue-500 rounded-lg border-2 border-white shadow-lg flex items-center justify-center">
+                            <Icon className="w-4 h-4 text-white" />
+                          </div>
+                          {business.activeRewards > 0 && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-purple-500 rounded-full border border-white text-xs text-white flex items-center justify-center font-bold">
+                              {business.activeRewards}
+                            </div>
+                          )}
+                          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity">
+                            {business.name}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Customer Markers */}
+                  {isVisible && filteredCustomers.map((customer, index) => {
+                    // Position customers around the map
+                    const positions = [
+                      { top: '35%', left: '60%' },
+                      { top: '55%', left: '25%' },
+                      { top: '75%', left: '65%' }
+                    ];
+                    const position = positions[index % positions.length];
+                    
+                    return (
+                      <div
+                        key={customer.id}
+                        className="absolute z-10 cursor-pointer transform hover:scale-110 transition-transform"
+                        style={position}
+                        onClick={() => setSelectedCustomer(customer)}
+                      >
+                        <div className="relative">
+                          <div className="w-6 h-6 bg-green-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-xs">
+                            {customer.avatar}
+                          </div>
+                          <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs px-1 py-0.5 rounded whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity">
+                            {customer.name}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Map Controls */}
+                  <div className="absolute top-4 right-4 space-y-2">
+                    <Button size="sm" variant="outline" className="bg-white/90 backdrop-blur">
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="outline" className="bg-white/90 backdrop-blur">
+                      <Minus className="h-3 w-3" />
+                    </Button>
+                  </div>
+
                   {/* Map Legend */}
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                      <span>Subscribed Businesses</span>
+                  <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur rounded-lg p-3 space-y-2">
+                    <div className="flex items-center space-x-2 text-xs">
+                      <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                      <span>Businesses</span>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 text-xs">
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      <span>Visible Customers</span>
+                      <span>Customers</span>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 text-xs">
                       <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                      <span>Active Rewards</span>
+                      <span>Rewards</span>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 text-xs">
                       <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                      <span>Your Location</span>
+                      <span>You</span>
                     </div>
                   </div>
                 </div>
