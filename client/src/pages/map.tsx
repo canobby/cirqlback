@@ -80,6 +80,8 @@ export default function InteractiveDiscoveryMap() {
   const [messageContent, setMessageContent] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState("local"); // "local" or "global"
+  const [partnershipMode, setPartnershipMode] = useState(false);
   const { toast } = useToast();
 
   // Mock data for businesses
@@ -103,31 +105,61 @@ export default function InteractiveDiscoveryMap() {
       id: "biz2", 
       name: "Green Leaf Fitness",
       type: "fitness",
-      location: { lat: 40.7589, lng: -73.9851 },
-      address: "456 Fitness Ave, New York, NY",
-      rating: 4.6,
+      location: { lat: 40.7580, lng: -73.9855 },
+      address: "456 Broadway, New York, NY",
+      rating: 4.9,
       activeRewards: 2,
       customersNearby: 8,
       isSubscribed: true,
-      phone: "(555) 987-6543",
-      email: "info@greenleaf.com", 
+      phone: "(555) 234-5678",
+      email: "info@greenleaffitness.com",
       hours: "5:00 AM - 11:00 PM",
-      specialOffer: "Free trial week for new members"
+      specialOffer: "First month membership 50% off!"
     },
     {
       id: "biz3",
-      name: "Artisan Pizza Kitchen", 
+      name: "Pizza Palace LA",
       type: "restaurant",
-      location: { lat: 40.7505, lng: -73.9934 },
-      address: "789 Food St, New York, NY",
-      rating: 4.9,
-      activeRewards: 4,
-      customersNearby: 15,
+      location: { lat: 34.0522, lng: -118.2437 },
+      address: "789 Sunset Blvd, Los Angeles, CA",
+      rating: 4.6,
+      activeRewards: 5,
+      customersNearby: 23,
+      isSubscribed: true,
+      phone: "(555) 345-6789",
+      email: "orders@pizzapalacela.com",
+      hours: "11:00 AM - 12:00 AM",
+      specialOffer: "Cross-city partnership: 20% off when you show Cirql tap from NY!"
+    },
+    {
+      id: "biz4",
+      name: "Austin Book Nook",
+      type: "retail",
+      location: { lat: 30.2672, lng: -97.7431 },
+      address: "321 South St, Austin, TX",
+      rating: 4.7,
+      activeRewards: 1,
+      customersNearby: 5,
       isSubscribed: true,
       phone: "(555) 456-7890",
-      email: "orders@artisanpizza.com",
-      hours: "11:00 AM - 10:00 PM",
-      specialOffer: "20% off orders over $30"
+      email: "hello@austinbooknook.com",
+      hours: "9:00 AM - 9:00 PM",
+      specialOffer: "Partner rewards: Get book credits for coffee shop visits nationwide!"
+    },
+    {
+      id: "biz5",
+      name: "Seattle Artisan Coffee", 
+      type: "cafe",
+      location: { lat: 47.6062, lng: -122.3321 },
+      address: "555 Pike St, Seattle, WA",
+      rating: 4.8,
+      activeRewards: 3,
+      customersNearby: 14,
+      isSubscribed: true,
+      phone: "(555) 567-8901",
+      email: "roasters@seattleartisan.com",
+      hours: "6:00 AM - 8:00 PM",
+      specialOffer: "Global coffee network: Show any Cirql tap for 15% off specialty drinks!"
     }
   ];
 
@@ -234,7 +266,12 @@ export default function InteractiveDiscoveryMap() {
   const filteredBusinesses = businesses.filter(business => {
     const matchesType = filterType === "all" || business.type === filterType;
     const matchesSearch = business.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesType && matchesSearch;
+    
+    // In local mode, show only nearby businesses (simulated with first 2 businesses)
+    // In global mode, show all subscribed merchants regardless of location
+    const matchesLocation = viewMode === "global" || ["biz1", "biz2"].includes(business.id);
+    
+    return matchesType && matchesSearch && matchesLocation;
   });
 
   const filteredCustomers = visibleCustomers.filter(customer => {
@@ -306,18 +343,44 @@ export default function InteractiveDiscoveryMap() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full"
                   />
-                  <Select value={filterType} onValueChange={setFilterType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filter by business type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Businesses</SelectItem>
-                      <SelectItem value="cafe">Cafes</SelectItem>
-                      <SelectItem value="restaurant">Restaurants</SelectItem>
-                      <SelectItem value="fitness">Fitness</SelectItem>
-                      <SelectItem value="retail">Retail</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex space-x-2">
+                    <Select value={filterType} onValueChange={setFilterType}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Filter by business type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Businesses</SelectItem>
+                        <SelectItem value="cafe">Cafes</SelectItem>
+                        <SelectItem value="restaurant">Restaurants</SelectItem>
+                        <SelectItem value="fitness">Fitness</SelectItem>
+                        <SelectItem value="retail">Retail</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={viewMode} onValueChange={setViewMode}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="View mode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="local">Nearby Only</SelectItem>
+                        <SelectItem value="global">All Cirqlback Merchants</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                    <Switch
+                      id="partnership-mode"
+                      checked={partnershipMode}
+                      onCheckedChange={setPartnershipMode}
+                    />
+                    <Label htmlFor="partnership-mode" className="text-sm font-medium">
+                      Partnership Network Mode
+                    </Label>
+                    <div className="text-xs text-purple-600 ml-2">
+                      Connect with merchants anywhere for cross-campaigns
+                    </div>
+                  </div>
                 </div>
 
                 {/* Interactive Map Display */}
@@ -352,14 +415,27 @@ export default function InteractiveDiscoveryMap() {
                   {/* Business Markers */}
                   {filteredBusinesses.map((business, index) => {
                     const Icon = getBusinessIcon(business.type);
-                    // Position businesses around the map
-                    const positions = [
+                    // Position businesses around the map - more spread out for global view
+                    const localPositions = [
                       { top: '25%', left: '30%' },
-                      { top: '60%', left: '70%' },
-                      { top: '40%', left: '20%' },
-                      { top: '70%', left: '40%' }
+                      { top: '60%', left: '70%' }
                     ];
+                    const globalPositions = [
+                      { top: '20%', left: '25%' }, // NY area
+                      { top: '45%', left: '50%' }, // Central
+                      { top: '70%', left: '15%' }, // LA area
+                      { top: '40%', left: '75%' }, // Austin area
+                      { top: '15%', left: '80%' }  // Seattle area
+                    ];
+                    
+                    const positions = viewMode === "global" ? globalPositions : localPositions;
                     const position = positions[index % positions.length];
+                    
+                    // Different colors for local vs global merchants
+                    const isGlobalMerchant = !["biz1", "biz2"].includes(business.id);
+                    const markerColor = isGlobalMerchant && viewMode === "global" 
+                      ? "bg-gradient-to-r from-purple-500 to-pink-500" 
+                      : "bg-blue-500";
                     
                     return (
                       <div
@@ -369,13 +445,16 @@ export default function InteractiveDiscoveryMap() {
                         onClick={() => setSelectedBusiness(business)}
                       >
                         <div className="relative">
-                          <div className="w-8 h-8 bg-blue-500 rounded-lg border-2 border-white shadow-lg flex items-center justify-center">
+                          <div className={`w-8 h-8 ${markerColor} rounded-lg border-2 border-white shadow-lg flex items-center justify-center`}>
                             <Icon className="w-4 h-4 text-white" />
                           </div>
                           {business.activeRewards > 0 && (
-                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-purple-500 rounded-full border border-white text-xs text-white flex items-center justify-center font-bold">
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full border border-white text-xs text-white flex items-center justify-center font-bold">
                               {business.activeRewards}
                             </div>
+                          )}
+                          {partnershipMode && (
+                            <div className="absolute -top-2 -left-2 w-3 h-3 bg-yellow-400 rounded-full border border-white animate-pulse"></div>
                           )}
                           <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity">
                             {business.name}
@@ -428,19 +507,31 @@ export default function InteractiveDiscoveryMap() {
                   <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur rounded-lg p-3 space-y-2">
                     <div className="flex items-center space-x-2 text-xs">
                       <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                      <span>Businesses</span>
+                      <span>Local Businesses</span>
                     </div>
+                    {viewMode === "global" && (
+                      <div className="flex items-center space-x-2 text-xs">
+                        <div className="w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded"></div>
+                        <span>Global Partners</span>
+                      </div>
+                    )}
                     <div className="flex items-center space-x-2 text-xs">
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                       <span>Customers</span>
                     </div>
                     <div className="flex items-center space-x-2 text-xs">
-                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                      <span>Rewards</span>
+                      <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                      <span>Active Rewards</span>
                     </div>
+                    {partnershipMode && (
+                      <div className="flex items-center space-x-2 text-xs">
+                        <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
+                        <span>Partnership Ready</span>
+                      </div>
+                    )}
                     <div className="flex items-center space-x-2 text-xs">
                       <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                      <span>You</span>
+                      <span>Your Location</span>
                     </div>
                   </div>
                 </div>
