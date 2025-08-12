@@ -41,7 +41,9 @@ interface ARScene {
 }
 
 export default function ARExperience() {
-  const [, params] = useRoute("/ar/:tapId");
+  const [, params1] = useRoute("/ar/:tapId");
+  const [, params2] = useRoute("/ar-experience/:id");
+  const params = params1 || params2;
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -79,7 +81,7 @@ export default function ARExperience() {
     // Load AR scene based on tap ID
     const loadARScene = () => {
       const mockScene: ARScene = {
-        id: params?.tapId || "scene1",
+        id: params?.tapId || params?.id || "scene1",
         businessId: "1",
         businessName: "Brew & Beans Coffee",
         sceneType: "reward_unlock",
@@ -119,7 +121,7 @@ export default function ARExperience() {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [params?.tapId]);
+  }, [params?.tapId, params?.id]);
 
   const startCamera = async () => {
     try {
