@@ -25,6 +25,7 @@ import CustomerProfile from "@/pages/customer-profile";
 import ARGameHub from "@/pages/ar-game-hub";
 import BusinessWebsitePreview from "@/pages/business-website-preview";
 import NotFound from "@/pages/not-found";
+import PlatformOverview from "@/pages/platform-overview";
 
 function Router() {
   return (
@@ -49,6 +50,7 @@ function Router() {
           <Route path="/profile" component={CustomerProfile} />
           <Route path="/ar-hub" component={ARGameHub} />
           <Route path="/website-preview" component={BusinessWebsitePreview} />
+          <Route path="/platform" component={PlatformOverview} />
           <Route component={NotFound} />
         </Switch>
       </main>

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Menu, X, Settings, Search, Bell } from "lucide-react";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 import NotificationCenter from "@/components/global/notification-center";
+import PlatformMenu from "./platform-menu";
 
 export default function Navbar() {
   const [location] = useLocation();
@@ -133,6 +134,7 @@ export default function Navbar() {
           </div>
           
           <div className="flex items-center space-x-4">
+            <PlatformMenu />
             <Button variant="outline" size="sm" className="hidden md:flex">
               <Search className="h-4 w-4" />
             </Button>
