@@ -94,16 +94,16 @@ export default function Navbar() {
                   Map
                 </Button>
               </Link>
-              <Link href="/analytics">
+              <Link href="/ai-insights">
                 <Button 
                   variant="ghost" 
                   className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/analytics") 
+                    isActive("/ai-insights") 
                       ? "text-primary bg-primary/10 border border-primary/20" 
                       : "text-muted-foreground hover:text-primary hover:bg-primary/5"
                   }`}
                 >
-                  Analytics
+                  AI Insights
                 </Button>
               </Link>
               <Link href="/account">
@@ -118,16 +118,16 @@ export default function Navbar() {
                   Account
                 </Button>
               </Link>
-              <Link href="/marketing">
+              <Link href="/partnerships">
                 <Button 
                   variant="ghost" 
                   className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/marketing") 
+                    isActive("/partnerships") 
                       ? "text-orange-600 bg-orange-50 border border-orange-200" 
                       : "text-muted-foreground hover:text-orange-600 hover:bg-orange-50"
                   }`}
                 >
-                  Marketing
+                  Partnerships
                 </Button>
               </Link>
               <Link href="/how-it-works">

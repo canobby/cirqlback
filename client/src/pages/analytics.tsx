@@ -23,7 +23,7 @@ import {
   Brain
 } from "lucide-react";
 
-export default function Analytics() {
+export default function PredictiveAnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState("7d");
   const [selectedBusiness, setSelectedBusiness] = useState("all");
 
@@ -99,7 +99,7 @@ export default function Analytics() {
                   Platform Analytics
                 </h1>
               </div>
-              <p className="text-gray-600 mt-1">Comprehensive insights across Cirql taps, websites, AR gaming, and team activities</p>
+              <p className="text-gray-600 mt-1">AI-powered predictive analytics with customer health scoring, churn prediction, partnership revenue tracking, AR engagement, team challenges, and viral campaign performance across the complete ecosystem</p>
             </div>
             <div className="flex items-center space-x-4">
               <Select value={selectedBusiness} onValueChange={setSelectedBusiness}>

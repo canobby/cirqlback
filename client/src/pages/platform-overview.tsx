@@ -24,38 +24,40 @@ import {
 const platformSections = [
   {
     title: "Core Platform",
-    description: "Main dashboard and user portals",
+    description: "AI-powered dashboards and unified portals",
     pages: [
-      { path: "/", name: "Home Dashboard", icon: Home, description: "Main platform overview and quick access" },
-      { path: "/customer", name: "Customer Portal", icon: User, description: "Tap rewards, trails, and customer features" },
-      { path: "/merchant", name: "Merchant Dashboard", icon: Store, description: "Business management and campaign tools" },
+      { path: "/", name: "Home Dashboard", icon: Home, description: "Comprehensive platform overview with AI insights and quick access" },
+      { path: "/customer", name: "Customer Portal", icon: User, description: "AR adventures, team challenges, viral campaigns, and predictive rewards" },
+      { path: "/merchant", name: "Merchant Dashboard", icon: Store, description: "AI-powered business intelligence, partnerships, and growth optimization" },
     ]
   },
   {
-    title: "AR & Gaming",
-    description: "Augmented reality experiences and avatar system",
+    title: "Advanced Features",
+    description: "AI-powered business intelligence and growth automation",
     pages: [
-      { path: "/ar-hub", name: "AR Game Hub", icon: Gamepad2, description: "Central hub for AR gaming and challenges" },
-      { path: "/avatar", name: "Avatar Creator", icon: UserCircle, description: "Create and customize your virtual avatar" },
-      { path: "/ar/demo", name: "AR Experience", icon: Zap, description: "Demo AR interaction with NFC tags" },
+      { path: "/ai-insights", name: "AI Business Intelligence", icon: Gamepad2, description: "Customer health scoring, predictive pricing, and market intelligence" },
+      { path: "/partnerships", name: "Cross-Business Network", icon: UserCircle, description: "AI-powered partnership discovery and revenue sharing analytics" },
+      { path: "/team-challenges", name: "Team Challenges", icon: Zap, description: "Multi-tier team system with corporate integration and social gamification" },
+      { path: "/ar-treasure-hunts", name: "AR Treasure Hunts", icon: Zap, description: "City-wide AR adventures with immersive storytelling and achievement rewards" },
+      { path: "/viral-campaigns", name: "Viral Growth Engine", icon: Zap, description: "Exponential referral systems with social proof automation and network effects" },
     ]
   },
   {
     title: "Discovery & Social",
-    description: "Maps, community features, and social interactions",
+    description: "Real-world maps, viral community features, and predictive engagement",
     pages: [
-      { path: "/map", name: "Interactive Map", icon: Map, description: "Find businesses and tap trails near you" },
-      { path: "/community", name: "Community Hub", icon: Users, description: "Social challenges, leaderboards, and groups" },
-      { path: "/tap", name: "Tap Interface", icon: NfcIcon, description: "NFC tag scanning and reward claiming" },
+      { path: "/map", name: "Interactive Discovery Map", icon: Map, description: "Real-time business locations, customer visibility controls, and cross-business rewards" },
+      { path: "/community", name: "Viral Community Hub", icon: Users, description: "Team competitions, viral challenges, exponential referral tracking, and social proof feeds" },
+      { path: "/tap", name: "Smart Tap Interface", icon: NfcIcon, description: "AI-enhanced tag scanning with partnership rewards and AR treasure hunt triggers" },
     ]
   },
   {
-    title: "Business Tools",
-    description: "Analytics, marketing, and business management",
+    title: "Business Intelligence Tools",
+    description: "AI-powered analytics, predictive marketing, and growth automation",
     pages: [
-      { path: "/analytics", name: "Analytics Dashboard", icon: BarChart3, description: "Real-time business insights and metrics" },
-      { path: "/marketing", name: "Marketing Suite", icon: BookOpen, description: "Email, SMS, and social media campaigns" },
-      { path: "/website-preview", name: "Website Builder", icon: Globe, description: "Create professional business websites" },
+      { path: "/analytics", name: "Predictive Analytics Dashboard", icon: BarChart3, description: "AI-powered customer health scoring, churn prediction, and revenue optimization" },
+      { path: "/marketing", name: "Viral Marketing Suite", icon: BookOpen, description: "Cross-business campaigns, automated win-back strategies, and exponential growth mechanics" },
+      { path: "/website-preview", name: "Complete Website Platform", icon: Globe, description: "Professional websites with integrated campaigns, AR showcases, and partnership displays" },
     ]
   },
   {

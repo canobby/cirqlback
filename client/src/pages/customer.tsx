@@ -22,10 +22,10 @@ export default function Customer() {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
-            Your Cirqlback Experience
+            Advanced Community & Rewards Hub
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Track your progress, discover personalized offers, and unlock exclusive rewards!
+            Join team challenges, explore AR treasure hunts, earn exponential viral rewards, discover cross-business partnerships, and unlock personalized AI-powered experiences!
           </p>
         </div>
 

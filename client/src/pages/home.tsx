@@ -20,9 +20,9 @@ export default function Home() {
               />
               <div className="text-3xl font-bold">Cirqlback</div>
             </div>
-            <h1 className="text-4xl font-bold mb-4">Revolutionary Local Marketing Platform</h1>
+            <h1 className="text-4xl font-bold mb-4">The Tesla of Local Business Platforms</h1>
             <p className="text-xl opacity-90 mb-6">
-              Transform local shopping with Cirql tags, real-world discovery maps, team challenges, and complete business websites - all in one unified platform
+              The most comprehensive local business ecosystem available - combining AI-powered analytics, cross-business partnerships, AR treasure hunts, team challenges, viral campaigns, complete websites, and predictive customer intelligence in one unified platform
             </p>
             <div className="flex flex-wrap gap-4">
               <Link href="/tap">
@@ -54,8 +54,8 @@ export default function Home() {
       {/* Customer Experience Section */}
       <section className="mb-12" data-tour="customer-section">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold gradient-text mb-4">Complete Customer Experience</h2>
-          <p className="text-xl text-muted-foreground">Cirql taps unlock rewards, local discovery maps, team challenges, and exclusive business content</p>
+          <h2 className="text-3xl font-bold gradient-text mb-4">Advanced Customer Intelligence & Engagement</h2>
+          <p className="text-xl text-muted-foreground">AI-powered customer health scoring, predictive retention, cross-business partnerships, AR adventures, team competitions, and exponential viral growth mechanics</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -71,15 +71,15 @@ export default function Home() {
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0 w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-white font-bold">2</div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Instant Rewards</h3>
-                  <p className="text-muted-foreground">Receive loyalty points, discounts, or special offers immediately</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">AI-Powered Rewards & Partnerships</h3>
+                  <p className="text-muted-foreground">Receive personalized rewards, cross-business benefits, and join AR treasure hunts with exponential viral multipliers</p>
                 </div>
               </div>
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0 w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white font-bold">3</div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Map Discovery & Teams</h3>
-                  <p className="text-muted-foreground">Explore local businesses on the map, build your avatar, compete in team challenges with massive prizes</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Team Challenges & Viral Growth</h3>
+                  <p className="text-muted-foreground">Form teams, compete in city-wide AR adventures, earn exponential referral rewards, and drive viral community engagement</p>
                 </div>
               </div>
             </div>

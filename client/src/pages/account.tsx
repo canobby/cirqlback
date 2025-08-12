@@ -53,10 +53,10 @@ export default function Account() {
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
-            Account & Subscription
+            Advanced Platform Management
           </h1>
           <p className="text-xl text-gray-600">
-            Manage your subscription, API access, and account settings
+            Manage comprehensive subscriptions, multi-platform API access, usage analytics, and advanced platform settings
           </p>
         </div>
 

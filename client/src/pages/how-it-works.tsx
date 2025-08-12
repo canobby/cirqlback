@@ -25,21 +25,21 @@ export default function HowItWorksPage() {
   const steps = [
     {
       icon: <Smartphone className="h-8 w-8" />,
-      title: "Discover Cirql-Enabled Businesses",
-      description: "Find businesses with Cirql tags, hosted websites, and AR experiences",
-      details: "Each business has a complete digital presence: Cirql tags, professional websites, and interactive AR games"
+      title: "Discover AI-Enhanced Business Network",
+      description: "Find businesses with predictive analytics, cross-partnerships, AR adventures, and complete digital presence",
+      details: "Each business offers AI-powered customer intelligence, partnership rewards, city-wide AR treasure hunts, team challenges, and comprehensive websites"
     },
     {
       icon: <Zap className="h-8 w-8" />,
-      title: "Tap to Access Everything",
-      description: "One tap unlocks rewards, AR games, team challenges, and business content",
-      details: "Instantly access the business website, join AR adventures, earn loyalty points, and connect with the community"
+      title: "Tap for AI-Powered Experiences",
+      description: "One tap unlocks predictive rewards, cross-business benefits, AR treasure hunts, team challenges, and viral campaigns",
+      details: "Instantly access AI-enhanced rewards, partnership networks, immersive AR adventures, exponential referral multipliers, and comprehensive business platforms"
     },
     {
       icon: <Gift className="h-8 w-8" />,
-      title: "Complete Gaming Experience",
-      description: "Earn rewards, build your avatar, collect items, and join team battles",
-      details: "Every tap advances your AR character, unlocks collectibles, and contributes to team challenges with massive prizes"
+      title: "Advanced Team & Viral Growth",
+      description: "Form teams, compete in city-wide AR adventures, earn exponential referral rewards, and drive community engagement",
+      details: "Every tap contributes to team challenges, unlocks AR treasure hunt clues, multiplies viral referral rewards, and builds cross-business partnerships"
     },
     {
       icon: <Crown className="h-8 w-8" />,
@@ -52,23 +52,23 @@ export default function HowItWorksPage() {
   const businessBenefits = [
     {
       icon: <TrendingUp className="h-6 w-6 text-green-500" />,
-      title: "Complete Digital Presence",
-      description: "Get Cirql campaigns, professional website, AR integration, and marketing suite"
+      title: "AI-Powered Business Intelligence",
+      description: "Get predictive customer analytics, cross-business partnerships, AR treasure hunts, viral campaigns, complete websites, and automated growth optimization"
     },
     {
       icon: <Users className="h-6 w-6 text-blue-500" />,
-      title: "Unified Customer Experience",
-      description: "Connect loyalty rewards, AR gaming, team challenges, and website content seamlessly"
+      title: "Comprehensive Ecosystem Integration",
+      description: "Connect AI-powered analytics, cross-business rewards, AR adventures, team competitions, viral growth mechanics, and complete digital presence seamlessly"
     },
     {
       icon: <Target className="h-6 w-6 text-purple-500" />,
-      title: "Real-Time Platform Analytics",
-      description: "Monitor Cirql taps, website visits, AR engagement, and team participation across all features"
+      title: "Predictive Business Intelligence",
+      description: "Monitor customer health scoring, churn prediction, partnership revenue, AR engagement, team challenges, viral campaign performance, and cross-platform analytics"
     },
     {
       icon: <Sparkles className="h-6 w-6 text-orange-500" />,
-      title: "All-in-One Platform",
-      description: "Everything integrated: website builder, Cirql tags, AR games, marketing tools, and analytics"
+      title: "Complete Tesla-Level Integration",
+      description: "Most comprehensive local business platform available: AI analytics, cross-business networks, AR treasure hunts, team challenges, viral campaigns, complete websites, and predictive optimization - no competitor can replicate this ecosystem"
     }
   ];
 

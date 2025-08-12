@@ -35,7 +35,7 @@ import {
 import ARIntegrationPanel from "@/components/global/ar-integration-panel";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 
-export default function Community() {
+export default function ViralCommunityHub() {
   const [activeChallenge, setActiveChallenge] = useState<string | null>(null);
   const [referralCode, setReferralCode] = useState("");
   const { toast } = useToast();

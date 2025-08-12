@@ -69,7 +69,7 @@ interface Customer {
   };
 }
 
-export default function Map() {
+export default function InteractiveDiscoveryMap() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);

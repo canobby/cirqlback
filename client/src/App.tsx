@@ -10,14 +10,14 @@ import NotificationCenter from "@/components/global/notification-center";
 import Home from "@/pages/home";
 import Customer from "@/pages/customer";
 import Merchant from "@/pages/merchant";
-import Community from "@/pages/community";
-import Analytics from "@/pages/analytics";
+import ViralCommunityHub from "@/pages/community";
+import PredictiveAnalyticsDashboard from "@/pages/analytics";
 import Account from "@/pages/account";
 import TapPage from "@/pages/tap";
 import HowItWorksPage from "@/pages/how-it-works";
 
-import Map from "@/pages/map";
-import Marketing from "@/pages/marketing";
+import InteractiveDiscoveryMap from "@/pages/map";
+import ViralMarketingSuite from "@/pages/marketing";
 import SettingsPage from "@/pages/settings";
 import Checkout from "@/pages/checkout";
 import AvatarCreator from "@/pages/avatar-creator";
@@ -43,13 +43,13 @@ function Router() {
           <Route path="/" component={Home} />
           <Route path="/customer" component={Customer} />
           <Route path="/merchant" component={Merchant} />
-          <Route path="/community" component={Community} />
-          <Route path="/analytics" component={Analytics} />
+          <Route path="/community" component={ViralCommunityHub} />
+          <Route path="/analytics" component={PredictiveAnalyticsDashboard} />
           <Route path="/account" component={Account} />
           <Route path="/tap" component={TapPage} />
           <Route path="/how-it-works" component={HowItWorksPage} />
-          <Route path="/map" component={Map} />
-          <Route path="/marketing" component={Marketing} />
+          <Route path="/map" component={InteractiveDiscoveryMap} />
+          <Route path="/marketing" component={ViralMarketingSuite} />
           <Route path="/settings" component={SettingsPage} />
           <Route path="/checkout" component={Checkout} />
           <Route path="/avatar" component={AvatarCreator} />

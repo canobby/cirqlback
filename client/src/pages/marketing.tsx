@@ -51,7 +51,7 @@ import {
   Palette
 } from "lucide-react";
 
-export default function Marketing() {
+export default function ViralMarketingSuite() {
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
   const [websiteForm, setWebsiteForm] = useState({
     websiteEnabled: false,
