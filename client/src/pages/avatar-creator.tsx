@@ -655,7 +655,7 @@ export default function AvatarCreator() {
     { id: 'effect', name: 'Effects', icon: Sparkles }
   ];
 
-  const filteredAssets = (availableAssets as AvatarAsset[]).filter((asset: AvatarAsset) => asset.type === selectedCategory);
+  const filteredAssets = Array.isArray(availableAssets) ? availableAssets.filter((asset: any) => asset.type === selectedCategory) : [];
 
   if (avatarLoading || assetsLoading) {
     return (
@@ -805,7 +805,7 @@ export default function AvatarCreator() {
 
                     {/* Asset Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {filteredAssets.map((asset: AvatarAsset) => {
+                      {(Array.isArray(availableAssets) ? availableAssets.filter((asset: any) => asset.type === selectedCategory) : []).map((asset: any) => {
                         const RarityIcon = getRarityIcon(asset.rarity);
                         const isActive = (() => {
                           switch (asset.type) {
@@ -884,9 +884,9 @@ export default function AvatarCreator() {
 
           <TabsContent value="shop" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {(availableAssets as AvatarAsset[])
-                .filter((asset: AvatarAsset) => !asset.isOwned && asset.cost > 0)
-                .map((asset: AvatarAsset) => {
+              {(Array.isArray(availableAssets) ? availableAssets : [])
+                .filter((asset: any) => !asset.isOwned && asset.cost > 0)
+                .map((asset: any) => {
                   const RarityIcon = getRarityIcon(asset.rarity);
                   
                   return (
@@ -940,7 +940,7 @@ export default function AvatarCreator() {
 
           <TabsContent value="achievements" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {(achievements as AvatarAchievement[]).map((achievement: AvatarAchievement) => (
+              {(Array.isArray(achievements) ? achievements : []).map((achievement: any) => (
                 <Card key={achievement.id} className="overflow-hidden">
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">

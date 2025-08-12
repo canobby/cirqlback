@@ -179,13 +179,13 @@ export default function Community() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-green-100 text-sm">Total Points</p>
-                  <p className="text-3xl font-bold">{stats.totalPoints.toLocaleString()}</p>
+                  <p className="text-3xl font-bold">{stats.totalPoints?.toLocaleString() || "0"}</p>
                 </div>
                 <Star className="h-8 w-8 text-green-200" />
               </div>
               <div className="flex items-center mt-4 text-green-100">
                 <TrendingUp className="h-4 w-4 mr-1" />
-                <span className="text-sm">+{stats.earnedThisMonth} this month</span>
+                <span className="text-sm">+{stats.earnedThisMonth || 0} this month</span>
               </div>
             </CardContent>
           </Card>
@@ -195,7 +195,7 @@ export default function Community() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-100 text-sm">Challenges Won</p>
-                  <p className="text-3xl font-bold">{stats.challengesCompleted}</p>
+                  <p className="text-3xl font-bold">{stats.challengesCompleted || 0}</p>
                 </div>
                 <Target className="h-8 w-8 text-blue-200" />
               </div>
@@ -210,7 +210,7 @@ export default function Community() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-pink-100 text-sm">Referral Code</p>
-                  <p className="text-lg font-bold">{stats.referralCode}</p>
+                  <p className="text-lg font-bold">{stats.referralCode || "—"}</p>
                 </div>
                 <Gift className="h-8 w-8 text-pink-200" />
               </div>
