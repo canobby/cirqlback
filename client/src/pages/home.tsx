@@ -3,12 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Store, Smartphone, BarChart3, Users, Coffee, BookOpen, UtensilsCrossed, CheckCircle, Wifi, Share2, MapPin } from "lucide-react";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
-import QuickAccessBar from "@/components/layout/quick-access-bar";
 
 export default function Home() {
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <QuickAccessBar />
       {/* Hero Section */}
       <div className="gradient-bg rounded-2xl p-8 mb-8 text-white">
         <div className="grid md:grid-cols-2 gap-8 items-center">
