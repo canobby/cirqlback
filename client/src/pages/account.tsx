@@ -61,8 +61,9 @@ export default function Account() {
         </div>
 
         <Tabs defaultValue="subscription" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="subscription">Subscription</TabsTrigger>
+            <TabsTrigger value="referrals">Referrals</TabsTrigger>
             <TabsTrigger value="api">API Access</TabsTrigger>
             <TabsTrigger value="usage">Usage</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -88,23 +89,25 @@ export default function Account() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">Unlimited</div>
-                    <div className="text-sm text-gray-600">Businesses</div>
+                    <div className="text-2xl font-bold text-green-600">{profile?.subscriptionTier === "full" ? "Unlimited" : "1"}</div>
+                    <div className="text-sm text-gray-600">Business{profile?.subscriptionTier === "full" ? "es" : ""}</div>
                   </div>
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
                     <div className="text-2xl font-bold text-blue-600">{usage?.currentPeriod?.apiRequests?.toLocaleString() || "0"}</div>
                     <div className="text-sm text-gray-600">API Requests Used</div>
                   </div>
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">✓</div>
-                    <div className="text-sm text-gray-600">AI Insights</div>
+                    <div className="text-2xl font-bold text-purple-600">{usage?.referralStats?.totalReferrals || 0}</div>
+                    <div className="text-sm text-gray-600">Referrals</div>
                   </div>
                 </div>
                 <Separator className="my-4" />
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-sm text-gray-600">Next billing: January 15, 2025</p>
-                    <p className="font-semibold">$99.00/month</p>
+                    <p className="font-semibold">
+                      ${profile?.subscriptionTier === "full" ? "29.99" : "14.99"}/month
+                    </p>
                   </div>
                   <div className="space-x-2">
                     <Button variant="outline">Change Plan</Button>
@@ -119,14 +122,19 @@ export default function Account() {
                 <CardTitle>Available Plans</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {plans?.map((plan: any, index: number) => (
                     <div key={plan.id} className={`p-4 border rounded-lg relative ${index === 1 ? 'border-2 border-purple-500' : ''}`}>
                       {index === 1 && <Badge className="absolute -top-2 left-4 bg-purple-500">Popular</Badge>}
                       <h4 className="font-semibold mb-2">{plan.name}</h4>
-                      <p className="text-2xl font-bold mb-2">
-                        ${plan.price}{plan.price > 0 && <span className="text-sm font-normal">/month</span>}
-                      </p>
+                      <div className="mb-2">
+                        <p className="text-2xl font-bold">
+                          ${plan.price}<span className="text-sm font-normal">/month</span>
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          or ${plan.yearlyPrice}/year (save ${((plan.price * 12) - plan.yearlyPrice).toFixed(2)})
+                        </p>
+                      </div>
                       <ul className="text-sm space-y-1 text-gray-600">
                         {plan.features?.map((feature: string, i: number) => (
                           <li key={i}>• {feature}</li>
@@ -134,6 +142,151 @@ export default function Account() {
                       </ul>
                     </div>
                   ))}
+                </div>
+                
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="p-4">
+                    <h4 className="font-semibold mb-3 text-orange-800">Cirql Tags</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span>Single tag</span>
+                        <span className="font-semibold">$0.99</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>6-pack bundle</span>
+                        <span className="font-semibold">$4.99</span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-2">
+                        Physical NFC stickers for your campaigns
+                      </div>
+                    </div>
+                  </Card>
+                  
+                  <Card className="p-4">
+                    <h4 className="font-semibold mb-3 text-green-800">New Subscriber Starter Pack</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span>Complete setup package</span>
+                        <span className="font-semibold">$99</span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        • 6 Cirqlback NFC stickers<br/>
+                        • In-store signage<br/>
+                        • 1 hour personalized setup support
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="referrals" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Shield className="h-5 w-5 mr-2" />
+                  Referral Program - Visibility Rewards
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                  <h4 className="font-semibold text-purple-800 mb-2">Your Progress</h4>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">{usage?.referralStats?.totalReferrals || 0}</div>
+                      <div className="text-sm text-purple-600">Total Referrals</div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm text-gray-600 mb-1">Progress to next reward</div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full" 
+                          style={{width: `${Math.min(((usage?.referralStats?.totalReferrals || 0) % 10) * 10, 100)}%`}}
+                        ></div>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {10 - ((usage?.referralStats?.totalReferrals || 0) % 10)} more for next milestone
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-medium">Visibility Rewards Milestones</h4>
+                  <div className="space-y-3">
+                    <div className={`flex items-center p-3 rounded-lg border ${(usage?.referralStats?.totalReferrals || 0) >= 5 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${(usage?.referralStats?.totalReferrals || 0) >= 5 ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                        {(usage?.referralStats?.totalReferrals || 0) >= 5 ? '✓' : '5'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">Featured Referrer Map Layer</div>
+                        <div className="text-sm text-gray-600">Highlighted pin + badge on the map</div>
+                      </div>
+                    </div>
+                    
+                    <div className={`flex items-center p-3 rounded-lg border ${(usage?.referralStats?.totalReferrals || 0) >= 10 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${(usage?.referralStats?.totalReferrals || 0) >= 10 ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                        {(usage?.referralStats?.totalReferrals || 0) >= 10 ? '✓' : '10'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">Priority Map Placement</div>
+                        <div className="text-sm text-gray-600">Your business appears higher in search results</div>
+                      </div>
+                    </div>
+                    
+                    <div className={`flex items-center p-3 rounded-lg border ${(usage?.referralStats?.totalReferrals || 0) >= 25 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${(usage?.referralStats?.totalReferrals || 0) >= 25 ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                        {(usage?.referralStats?.totalReferrals || 0) >= 25 ? '✓' : '25'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">Newsletter & Social Spotlight</div>
+                        <div className="text-sm text-gray-600">Featured in our newsletter and social channels</div>
+                      </div>
+                    </div>
+                    
+                    <div className={`flex items-center p-3 rounded-lg border ${(usage?.referralStats?.totalReferrals || 0) >= 50 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${(usage?.referralStats?.totalReferrals || 0) >= 50 ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                        {(usage?.referralStats?.totalReferrals || 0) >= 50 ? '✓' : '50'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">Custom Tap Trail</div>
+                        <div className="text-sm text-gray-600">Your shop becomes an anchor in a custom tap trail</div>
+                      </div>
+                    </div>
+                    
+                    <div className={`flex items-center p-3 rounded-lg border ${(usage?.referralStats?.totalReferrals || 0) >= 100 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${(usage?.referralStats?.totalReferrals || 0) >= 100 ? 'bg-gold-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                        {(usage?.referralStats?.totalReferrals || 0) >= 100 ? '👑' : '100'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">"Powered by Cirqlback Champion" Badge</div>
+                        <div className="text-sm text-gray-600">Top billing in seasonal promotions + exclusive champion badge</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator className="my-6" />
+
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="font-medium text-blue-800 mb-2">Share Your Referral Link</h4>
+                  <div className="flex space-x-2 mb-2">
+                    <Input
+                      value="https://cirqlback.com/ref/user123"
+                      readOnly
+                      className="font-mono text-sm"
+                    />
+                    <Button onClick={() => {
+                      navigator.clipboard.writeText("https://cirqlback.com/ref/user123");
+                      toast({ title: "Referral link copied!" });
+                    }}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    Share this link to earn visibility rewards and help grow the Cirqlback community!
+                  </p>
                 </div>
               </CardContent>
             </Card>

@@ -355,8 +355,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: "chris@example.com",
         firstName: "Chris",
         lastName: "Johnson",
-        role: "premium",
-        subscriptionTier: "premium",
+        role: "full",
+        subscriptionTier: "full",
         subscriptionStatus: "active",
         apiKey: "cirql_live_sk_1234567890abcdef",
         apiKeyCreatedAt: new Date(),
@@ -383,26 +383,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const plans = [
         {
-          id: "free",
-          name: "Free",
-          description: "Perfect for trying out Cirql",
-          price: 0,
+          id: "core",
+          name: "Core Cirql Member",
+          description: "Essential Cirql features for local businesses",
+          price: 14.99,
+          yearlyPrice: 149.99,
           billingInterval: "monthly",
-          features: ["1 Business", "5 Campaigns", "1,000 API requests", "Basic analytics"],
+          features: ["Basic Cirql tag campaigns", "Customer analytics", "5 active campaigns", "Email support"],
           maxBusinesses: 1,
           maxCampaigns: 5,
-          apiRequestsPerMonth: 1000,
+          apiRequestsPerMonth: 10000,
           hasAdvancedAnalytics: false,
           hasAiInsights: false,
           hasPrioritySupport: false
         },
         {
-          id: "premium",
-          name: "Premium",
-          description: "Access to multiple platform services",
-          price: 99,
+          id: "full",
+          name: "Full Cirql Member",
+          description: "Complete Cirql platform with advanced features",
+          price: 29.99,
+          yearlyPrice: 299.99,
           billingInterval: "monthly",
-          features: ["Unlimited Businesses", "Unlimited Campaigns", "50,000 API requests", "Multi-platform Access", "Priority Support"],
+          features: ["Unlimited campaigns", "Advanced analytics", "Multi-platform access", "Priority support", "Tap Trails"],
           maxBusinesses: null,
           maxCampaigns: null,
           apiRequestsPerMonth: 50000,
@@ -425,6 +427,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           end: new Date(),
           apiRequests: 12457,
           apiRequestsLimit: 50000
+        },
+        referralStats: {
+          totalReferrals: 8,
+          currentRewards: ["Featured Referrer Map Layer", "Priority map placement"],
+          nextMilestone: { count: 10, reward: "Priority map placement" }
         },
         recentActivity: [
           {

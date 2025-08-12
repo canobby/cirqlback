@@ -44,7 +44,7 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **How It Works Page**: Comprehensive educational page with diagrams and explanations for business growth
 - **Advanced Analytics Dashboard**: Real-time metrics, AI-powered insights, and performance tracking
 - **Community Hub**: Gamified challenges, leaderboards, social feeds, and group rewards
-- **Premium Referral System**: $5 per friend + 5% lifetime earnings with viral growth mechanics
+- **Visibility Rewards Referral System**: Milestone-based rewards including featured map placement, priority placement, newsletter spotlight, custom tap trails, and champion badges
 - **Loyalty Points System**: Tiered membership (Bronze/Silver/Gold/Platinum) with escalating benefits
 - **Smart Notifications**: Real-time alerts for rewards, challenges, and achievements
 - **AI Pricing Optimization**: Dynamic pricing strategies with market analysis and revenue projections
@@ -57,12 +57,14 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **Blockchain & Web3**: NFT loyalty rewards, CIRQ token ecosystem, DAO governance, DeFi staking, and crypto payments
 - **User Authentication & Subscriptions**: Complete account management with subscription tiers, API key generation, and usage tracking
 - **Multi-Platform API Access**: Single API key provides access to multiple separate platforms (Cirql, InSpektAI) with platform-specific functionality
+- **Cirql Tags & Add-ons**: Physical NFC stickers ($0.99 each or 6 for $4.99) and New Subscriber Starter Pack ($99) with setup support
+- **Referral Program Dashboard**: Complete visibility rewards tracking with milestone progress and referral link sharing
 
 ### Authentication & Session Management
 - **Session-based Authentication**: Uses connect-pg-simple for PostgreSQL session storage
 - **User Types**: Support for merchants, customers, and admin roles
 - **Business Associations**: Users can manage multiple business profiles
-- **Subscription Management**: Three-tier system (Free $0, Premium $99, Enterprise $299) with feature restrictions
+- **Subscription Management**: Two-tier system (Core Cirql Member $14.99/mo or $149.99/yr, Full Cirql Member $29.99/mo or $299.99/yr) with feature restrictions
 - **API Key System**: Single key authentication for accessing multiple separate platforms (Cirql, InSpektAI)
 - **Usage Tracking**: Real-time monitoring of API requests, success rates, and response times
 - **Account Dashboard**: Complete profile management, billing, and usage analytics interface
