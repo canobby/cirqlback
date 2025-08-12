@@ -19,6 +19,7 @@ import Marketing from "@/pages/marketing";
 import SettingsPage from "@/pages/settings";
 import Checkout from "@/pages/checkout";
 import AvatarCreator from "@/pages/avatar-creator";
+import CustomerProfile from "@/pages/customer-profile";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -41,6 +42,7 @@ function Router() {
           <Route path="/settings" component={SettingsPage} />
           <Route path="/checkout" component={Checkout} />
           <Route path="/avatar" component={AvatarCreator} />
+          <Route path="/profile" component={CustomerProfile} />
           <Route component={NotFound} />
         </Switch>
       </main>

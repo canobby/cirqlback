@@ -575,6 +575,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Customer profile routes
+  app.get("/api/customer/profile", async (req, res) => {
+    try {
+      const customerId = req.query.customerId || "demo_customer_1";
+      
+      // In a real implementation, this would fetch from database
+      const profile = {
+        age: 28,
+        location: "San Francisco, CA",
+        interests: ["Local dining", "Coffee culture", "Fitness & wellness"],
+        shoppingPreferences: ["Support local businesses", "Quality focused", "Experience-driven"],
+        dietaryRestrictions: ["Vegetarian"],
+        spendingHabits: "Value-focused",
+        socialMediaActivity: ["Instagram stories/posts", "Google reviews"],
+        referralSource: "Friend/family",
+        preferredContactMethod: "Email",
+        favoriteBusinessTypes: ["Coffee shops", "Restaurants", "Fitness studios"],
+        visitFrequency: "Several times a week",
+        averageSpendRange: "$15-$30"
+      };
+      
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch customer profile" });
+    }
+  });
+
+  app.put("/api/customer/profile", async (req, res) => {
+    try {
+      const {
+        age,
+        location,
+        interests,
+        shoppingPreferences,
+        dietaryRestrictions,
+        spendingHabits,
+        socialMediaActivity,
+        referralSource,
+        preferredContactMethod,
+        favoriteBusinessTypes,
+        visitFrequency,
+        averageSpendRange
+      } = req.body;
+      const customerId = req.body.customerId || "demo_customer_1";
+      
+      // In a real implementation, this would update the database
+      res.json({
+        success: true,
+        message: "Customer profile updated successfully",
+        profile: {
+          age,
+          location,
+          interests,
+          shoppingPreferences,
+          dietaryRestrictions,
+          spendingHabits,
+          socialMediaActivity,
+          referralSource,
+          preferredContactMethod,
+          favoriteBusinessTypes,
+          visitFrequency,
+          averageSpendRange
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update customer profile" });
+    }
+  });
+
   app.post("/api/account/generate-api-key", async (req, res) => {
     try {
       // Generate new API key
@@ -1247,7 +1316,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessMaturity: "Established business (2-10 years)",
         establishmentType: ["Independent local business"],
         specialtyFeatures: ["Outdoor seating", "Pet-friendly", "WiFi available"],
-        priceRange: "Moderate ($$)"
+        priceRange: "Moderate ($$)",
+        // Enhanced marketing fields
+        targetDemographics: ["Young professionals (25-35)", "Families with children"],
+        peakHours: ["Lunch hours (11 AM-2 PM)", "Dinner time (7-9 PM)"],
+        seasonalPatterns: ["Consistent year-round"],
+        customerCapacity: 85,
+        averageVisitDuration: "30-60 minutes",
+        primaryProducts: ["Food & beverages"],
+        uniqueSellingPoints: ["Locally sourced ingredients", "Expert consultation"],
+        marketingGoals: ["Increase foot traffic", "Improve customer retention"],
+        customerRetentionRate: "50-75%",
+        averageSpendPerCustomer: "$15-$30",
+        socialMediaPresence: ["Instagram active", "Facebook business page"],
+        eventHostingCapability: true,
+        loyaltyProgramInterest: "Very interested",
+        marketingBudget: "$500-$1000"
       };
       
       res.json(descriptors);
@@ -1268,7 +1352,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessMaturity,
         establishmentType,
         specialtyFeatures,
-        priceRange
+        priceRange,
+        targetDemographics,
+        peakHours,
+        seasonalPatterns,
+        customerCapacity,
+        averageVisitDuration,
+        primaryProducts,
+        uniqueSellingPoints,
+        competitorAdvantages,
+        marketingGoals,
+        customerRetentionRate,
+        averageSpendPerCustomer,
+        socialMediaPresence,
+        eventHostingCapability,
+        loyaltyProgramInterest,
+        marketingBudget
       } = req.body;
       const businessId = req.body.businessId || "demo_business_1";
       
@@ -1285,7 +1384,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           businessMaturity,
           establishmentType,
           specialtyFeatures,
-          priceRange
+          priceRange,
+          targetDemographics,
+          peakHours,
+          seasonalPatterns,
+          customerCapacity,
+          averageVisitDuration,
+          primaryProducts,
+          uniqueSellingPoints,
+          competitorAdvantages,
+          marketingGoals,
+          customerRetentionRate,
+          averageSpendPerCustomer,
+          socialMediaPresence,
+          eventHostingCapability,
+          loyaltyProgramInterest,
+          marketingBudget
         }
       });
     } catch (error) {

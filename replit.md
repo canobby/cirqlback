@@ -51,6 +51,8 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **Family Plans & Corporate Challenges**: Family group rewards (up to 10 members), corporate employee challenges, and workplace team building through local business discovery
 - **Mega Flash Events**: City-wide flash mobs requiring 500+ simultaneous users, massive rewards, and real-time community engagement
 - **Inclusive Business Support**: Subtle integration supporting minority groups, LGBTQ+, women-owned businesses through optional business descriptors and AI-powered challenge grouping - equal treatment while enabling community connection
+- **Enhanced Marketing Intelligence**: Comprehensive business profiling with target demographics, peak hours, customer capacity, unique selling points, marketing goals, social media presence, and budget tracking for sophisticated AI-powered matching
+- **Customer Profile System**: Detailed customer preferences including interests, shopping habits, dietary restrictions, spending patterns, and favorite business types for personalized experience delivery
 - **How It Works Page**: Comprehensive educational page with diagrams and explanations for business growth
 - **Advanced Analytics Dashboard**: Real-time metrics, AI-powered insights, and performance tracking
 - **Community Hub**: Gamified challenges, leaderboards, social feeds, and group rewards

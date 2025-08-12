@@ -30,6 +30,22 @@ interface BusinessDescriptors {
   establishmentType: string[];
   specialtyFeatures: string[];
   priceRange: string;
+  // Enhanced marketing fields
+  targetDemographics: string[];
+  peakHours: string[];
+  seasonalPatterns: string[];
+  customerCapacity: number;
+  averageVisitDuration: string;
+  primaryProducts: string[];
+  uniqueSellingPoints: string[];
+  competitorAdvantages: string[];
+  marketingGoals: string[];
+  customerRetentionRate: string;
+  averageSpendPerCustomer: string;
+  socialMediaPresence: string[];
+  eventHostingCapability: boolean;
+  loyaltyProgramInterest: string;
+  marketingBudget: string;
 }
 
 export default function BusinessSettings() {
@@ -45,7 +61,23 @@ export default function BusinessSettings() {
     businessMaturity: "",
     establishmentType: [],
     specialtyFeatures: [],
-    priceRange: ""
+    priceRange: "",
+    // Enhanced marketing fields
+    targetDemographics: [],
+    peakHours: [],
+    seasonalPatterns: [],
+    customerCapacity: 0,
+    averageVisitDuration: "",
+    primaryProducts: [],
+    uniqueSellingPoints: [],
+    competitorAdvantages: [],
+    marketingGoals: [],
+    customerRetentionRate: "",
+    averageSpendPerCustomer: "",
+    socialMediaPresence: [],
+    eventHostingCapability: false,
+    loyaltyProgramInterest: "",
+    marketingBudget: ""
   });
 
   // Available descriptor options
@@ -149,6 +181,118 @@ export default function BusinessSettings() {
     "Moderate ($$)",
     "Premium ($$$)",
     "Luxury ($$$$)"
+  ];
+
+  const targetDemographicsOptions = [
+    "Families with children",
+    "Young professionals (25-35)",
+    "Students",
+    "Seniors (55+)",
+    "Millennials",
+    "Gen Z",
+    "Working parents",
+    "Empty nesters",
+    "First-time visitors",
+    "Regular locals",
+    "Business travelers",
+    "Tourists",
+    "Date night couples",
+    "Friend groups",
+    "Solo diners/shoppers"
+  ];
+
+  const peakHoursOptions = [
+    "Early morning (6-9 AM)",
+    "Mid-morning (9-11 AM)",
+    "Lunch hours (11 AM-2 PM)",
+    "Afternoon (2-5 PM)",
+    "Happy hour (5-7 PM)",
+    "Dinner time (7-9 PM)",
+    "Late evening (9-11 PM)",
+    "Weekend mornings",
+    "Weekend evenings",
+    "Weekdays only",
+    "24/7 operation"
+  ];
+
+  const seasonalPatternsOptions = [
+    "Spring surge",
+    "Summer peak",
+    "Fall boost",
+    "Winter slow",
+    "Holiday rush",
+    "Back-to-school busy",
+    "Tourist season dependent",
+    "Weather dependent",
+    "Event-driven traffic",
+    "Consistent year-round"
+  ];
+
+  const primaryProductsOptions = [
+    "Food & beverages",
+    "Retail merchandise",
+    "Professional services",
+    "Entertainment",
+    "Health & wellness",
+    "Personal care",
+    "Home & garden",
+    "Technology & electronics",
+    "Art & crafts",
+    "Books & media",
+    "Clothing & accessories",
+    "Sports & recreation",
+    "Automotive services",
+    "Education & training"
+  ];
+
+  const uniqueSellingPointsOptions = [
+    "Handmade/artisanal products",
+    "Locally sourced ingredients",
+    "Award-winning quality",
+    "Fastest service in area",
+    "Largest selection",
+    "Best prices guaranteed",
+    "Expert consultation",
+    "Customization available",
+    "Same-day service",
+    "Family recipes/tradition",
+    "Eco-friendly approach",
+    "Latest technology",
+    "Personalized experience",
+    "Community gathering space",
+    "Educational workshops"
+  ];
+
+  const marketingGoalsOptions = [
+    "Increase foot traffic",
+    "Build brand awareness",
+    "Attract new customers",
+    "Improve customer retention",
+    "Boost average spending",
+    "Launch new products",
+    "Compete with chains",
+    "Seasonal promotions",
+    "Community engagement",
+    "Social media growth",
+    "Customer education",
+    "Loyalty program adoption",
+    "Event promotion",
+    "Cross-selling opportunities"
+  ];
+
+  const socialMediaPresenceOptions = [
+    "Instagram active",
+    "Facebook business page",
+    "TikTok content creator",
+    "Twitter/X updates",
+    "LinkedIn professional",
+    "YouTube channel",
+    "Google My Business",
+    "Yelp presence",
+    "Pinterest boards",
+    "Snapchat geofilters",
+    "Local blogger partnerships",
+    "Influencer collaborations"
   ];
 
   const updateDescriptorsMutation = useMutation({
@@ -419,6 +563,268 @@ export default function BusinessSettings() {
                   </div>
                 ))}
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Marketing Analytics */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Building2 className="h-5 w-5 text-purple-600" />
+              <span>Marketing Intelligence</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium mb-3 block">Target demographics</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {targetDemographicsOptions.slice(0, 8).map((option) => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`demographics-${option}`}
+                      checked={descriptors.targetDemographics.includes(option)}
+                      onCheckedChange={(checked) => 
+                        handleCheckboxChange('targetDemographics', option, checked as boolean)
+                      }
+                    />
+                    <Label htmlFor={`demographics-${option}`} className="text-sm">{option}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium mb-3 block">Peak hours</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {peakHoursOptions.slice(0, 6).map((option) => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`peak-${option}`}
+                      checked={descriptors.peakHours.includes(option)}
+                      onCheckedChange={(checked) => 
+                        handleCheckboxChange('peakHours', option, checked as boolean)
+                      }
+                    />
+                    <Label htmlFor={`peak-${option}`} className="text-sm">{option}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="customer-capacity" className="text-sm font-medium">Customer capacity</Label>
+                <input
+                  type="number"
+                  className="w-full mt-1 px-3 py-2 border rounded-md"
+                  placeholder="Max customers"
+                  value={descriptors.customerCapacity || ""}
+                  onChange={(e) => setDescriptors(prev => ({ 
+                    ...prev, 
+                    customerCapacity: parseInt(e.target.value) || 0 
+                  }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="visit-duration" className="text-sm font-medium">Average visit duration</Label>
+                <Select 
+                  value={descriptors.averageVisitDuration} 
+                  onValueChange={(value) => setDescriptors(prev => ({ ...prev, averageVisitDuration: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Typical visit length" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Under 15 minutes">Under 15 minutes</SelectItem>
+                    <SelectItem value="15-30 minutes">15-30 minutes</SelectItem>
+                    <SelectItem value="30-60 minutes">30-60 minutes</SelectItem>
+                    <SelectItem value="1-2 hours">1-2 hours</SelectItem>
+                    <SelectItem value="2+ hours">2+ hours</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Business Intelligence */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Globe className="h-5 w-5 text-indigo-600" />
+              <span>Business Intelligence</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium mb-3 block">Primary products/services</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {primaryProductsOptions.slice(0, 7).map((option) => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`products-${option}`}
+                      checked={descriptors.primaryProducts.includes(option)}
+                      onCheckedChange={(checked) => 
+                        handleCheckboxChange('primaryProducts', option, checked as boolean)
+                      }
+                    />
+                    <Label htmlFor={`products-${option}`} className="text-sm">{option}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium mb-3 block">Unique selling points</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {uniqueSellingPointsOptions.slice(0, 8).map((option) => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`usp-${option}`}
+                      checked={descriptors.uniqueSellingPoints.includes(option)}
+                      onCheckedChange={(checked) => 
+                        handleCheckboxChange('uniqueSellingPoints', option, checked as boolean)
+                      }
+                    />
+                    <Label htmlFor={`usp-${option}`} className="text-sm">{option}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="retention-rate" className="text-sm font-medium">Customer retention rate</Label>
+                <Select 
+                  value={descriptors.customerRetentionRate} 
+                  onValueChange={(value) => setDescriptors(prev => ({ ...prev, customerRetentionRate: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Estimated retention" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Under 25%">Under 25%</SelectItem>
+                    <SelectItem value="25-50%">25-50%</SelectItem>
+                    <SelectItem value="50-75%">50-75%</SelectItem>
+                    <SelectItem value="75%+">75%+</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="average-spend" className="text-sm font-medium">Average spend per customer</Label>
+                <Select 
+                  value={descriptors.averageSpendPerCustomer} 
+                  onValueChange={(value) => setDescriptors(prev => ({ ...prev, averageSpendPerCustomer: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Average transaction" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Under $15">Under $15</SelectItem>
+                    <SelectItem value="$15-$30">$15-$30</SelectItem>
+                    <SelectItem value="$30-$50">$30-$50</SelectItem>
+                    <SelectItem value="$50-$100">$50-$100</SelectItem>
+                    <SelectItem value="$100+">$100+</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Marketing Goals & Strategy */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Heart className="h-5 w-5 text-pink-600" />
+              <span>Marketing Strategy</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium mb-3 block">Marketing goals</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {marketingGoalsOptions.slice(0, 7).map((option) => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`goals-${option}`}
+                      checked={descriptors.marketingGoals.includes(option)}
+                      onCheckedChange={(checked) => 
+                        handleCheckboxChange('marketingGoals', option, checked as boolean)
+                      }
+                    />
+                    <Label htmlFor={`goals-${option}`} className="text-sm">{option}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium mb-3 block">Social media presence</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {socialMediaPresenceOptions.slice(0, 6).map((option) => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`social-${option}`}
+                      checked={descriptors.socialMediaPresence.includes(option)}
+                      onCheckedChange={(checked) => 
+                        handleCheckboxChange('socialMediaPresence', option, checked as boolean)
+                      }
+                    />
+                    <Label htmlFor={`social-${option}`} className="text-sm">{option}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="loyalty-interest" className="text-sm font-medium">Loyalty program interest</Label>
+                <Select 
+                  value={descriptors.loyaltyProgramInterest} 
+                  onValueChange={(value) => setDescriptors(prev => ({ ...prev, loyaltyProgramInterest: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Interest level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Very interested">Very interested</SelectItem>
+                    <SelectItem value="Somewhat interested">Somewhat interested</SelectItem>
+                    <SelectItem value="Not sure">Not sure</SelectItem>
+                    <SelectItem value="Not interested">Not interested</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="marketing-budget" className="text-sm font-medium">Monthly marketing budget</Label>
+                <Select 
+                  value={descriptors.marketingBudget} 
+                  onValueChange={(value) => setDescriptors(prev => ({ ...prev, marketingBudget: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Budget range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Under $100">Under $100</SelectItem>
+                    <SelectItem value="$100-$500">$100-$500</SelectItem>
+                    <SelectItem value="$500-$1000">$500-$1000</SelectItem>
+                    <SelectItem value="$1000-$2500">$1000-$2500</SelectItem>
+                    <SelectItem value="$2500+">$2500+</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="event-hosting"
+                checked={descriptors.eventHostingCapability}
+                onCheckedChange={(checked) => 
+                  setDescriptors(prev => ({ ...prev, eventHostingCapability: checked as boolean }))
+                }
+              />
+              <Label htmlFor="event-hosting" className="text-sm">Can host events or workshops</Label>
             </div>
           </CardContent>
         </Card>
