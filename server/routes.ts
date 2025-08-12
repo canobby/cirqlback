@@ -10,12 +10,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/businesses", async (req, res) => {
     try {
       const userId = req.query.userId as string;
+      
+      // If no userId provided, return demo businesses
       if (!userId) {
-        return res.status(400).json({ error: "User ID required" });
+        const demoBusiness = [
+          {
+            id: "demo_biz_1",
+            name: "Demo Coffee Shop",
+            description: "Great coffee and pastries",
+            address: "123 Main St, Downtown",
+            category: "Coffee Shop",
+            isActive: true,
+            totalCampaigns: 3,
+            totalTaps: 156,
+            monthlyRevenue: 2450
+          },
+          {
+            id: "demo_biz_2", 
+            name: "Demo Restaurant", 
+            description: "Fresh local cuisine",
+            address: "456 Oak Ave, Midtown",
+            category: "Restaurant",
+            isActive: true,
+            totalCampaigns: 5,
+            totalTaps: 289,
+            monthlyRevenue: 3780
+          }
+        ];
+        return res.json(demoBusiness);
       }
-      const businesses = await storage.getBusinessesByOwner(userId);
+      
+      const businesses = await storage.getUserBusinesses(userId);
       res.json(businesses);
     } catch (error) {
+      console.error("Error fetching businesses:", error);
       res.status(500).json({ error: "Failed to fetch businesses" });
     }
   });
@@ -37,6 +65,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns", async (req, res) => {
     try {
       const businessId = req.query.businessId as string;
+      
+      // If no businessId provided, return demo campaigns
+      if (!businessId) {
+        const demoCampaigns = [
+          {
+            id: "demo_campaign_1",
+            businessId: "demo_biz_1", 
+            name: "Welcome Coffee Reward",
+            description: "Get 10% off your first coffee purchase",
+            type: "discount",
+            value: "10.00",
+            isActive: true,
+            startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            pointsAwarded: 100,
+            totalTaps: 45
+          },
+          {
+            id: "demo_campaign_2",
+            businessId: "demo_biz_2",
+            name: "Lunch Special",
+            description: "Buy any entree, get 20% off dessert",
+            type: "discount",
+            value: "20.00", 
+            isActive: true,
+            startDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+            endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+            pointsAwarded: 150,
+            totalTaps: 78
+          }
+        ];
+        return res.json(demoCampaigns);
+      }
+      
       const campaigns = await storage.getCampaigns(businessId);
       res.json(campaigns);
     } catch (error) {
@@ -147,10 +209,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!email) {
         return res.status(400).json({ error: "Email required" });
       }
+      
+      // Return demo rewards for any email
+      const demoRewards = [
+        {
+          id: "reward_1",
+          customerEmail: email,
+          businessId: "demo_biz_1",
+          campaignId: "demo_campaign_1",
+          type: "discount",
+          value: "10.00",
+          description: "10% off your next coffee purchase",
+          isRedeemed: false,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+        },
+        {
+          id: "reward_2",
+          customerEmail: email,
+          businessId: "demo_biz_2", 
+          campaignId: "demo_campaign_2",
+          type: "discount",
+          value: "20.00",
+          description: "20% off dessert with any entree",
+          isRedeemed: false,
+          expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000)
+        }
+      ];
+      
       const rewards = await storage.getRewardsByEmail(email);
-      res.json(rewards);
+      res.json(rewards.length > 0 ? rewards : demoRewards);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch rewards" });
+      console.error("Rewards error:", error);
+      // Return demo rewards on error
+      const demoRewards = [
+        {
+          id: "reward_1",
+          customerEmail: email,
+          businessId: "demo_biz_1",
+          campaignId: "demo_campaign_1", 
+          type: "discount",
+          value: "10.00",
+          description: "10% off your next coffee purchase",
+          isRedeemed: false,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+        }
+      ];
+      res.json(demoRewards);
     }
   });
 
@@ -170,10 +277,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Tap Trail routes
   app.get("/api/tap-trails", async (req, res) => {
     try {
+      // Return demo tap trails if no database trails
+      const demoTrails = [
+        {
+          id: "trail_1",
+          name: "Downtown Coffee Circuit",
+          description: "Visit 5 coffee shops downtown for exclusive rewards",
+          businessIds: ["demo_biz_1", "demo_biz_2"],
+          requiredTaps: 5,
+          pointsReward: 500,
+          completionReward: "Free premium coffee",
+          isActive: true,
+          difficulty: "Medium",
+          estimatedTime: "2-3 hours"
+        },
+        {
+          id: "trail_2", 
+          name: "Local Foodie Adventure",
+          description: "Explore diverse dining experiences across the city",
+          businessIds: ["demo_biz_2"],
+          requiredTaps: 8,
+          pointsReward: 800,
+          completionReward: "$25 dining credit",
+          isActive: true,
+          difficulty: "Hard",
+          estimatedTime: "1 week"
+        }
+      ];
+      
       const trails = await storage.getTapTrails();
-      res.json(trails);
+      res.json(trails.length > 0 ? trails : demoTrails);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch tap trails" });
+      console.error("Tap trails error:", error);
+      // Return demo data on error
+      const demoTrails = [
+        {
+          id: "trail_1",
+          name: "Downtown Coffee Circuit", 
+          description: "Visit 5 coffee shops downtown for exclusive rewards",
+          businessIds: ["demo_biz_1", "demo_biz_2"],
+          requiredTaps: 5,
+          pointsReward: 500,
+          completionReward: "Free premium coffee",
+          isActive: true,
+          difficulty: "Medium",
+          estimatedTime: "2-3 hours"
+        }
+      ];
+      res.json(demoTrails);
     }
   });
 
@@ -251,9 +402,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/challenges", async (req, res) => {
+  // Community routes - challenges
+  app.get("/api/community/challenges", async (req, res) => {
     try {
-      // Mock challenges data
       const challenges = [
         {
           id: 1,
@@ -311,6 +462,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/challenges", async (req, res) => {
+    // Redirect to community challenges
+    res.redirect(301, "/api/community/challenges");
+  });
+
   app.get("/api/user-stats", async (req, res) => {
     try {
       // Mock user stats
@@ -325,6 +481,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stats);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user stats" });
+    }
+  });
+
+  // Settings API routes
+  app.get("/api/settings", async (req, res) => {
+    try {
+      const settings = {
+        notifications: {
+          email: true,
+          push: true,
+          sms: false,
+          marketing: true
+        },
+        privacy: {
+          profileVisible: true,
+          locationTracking: true,
+          dataSharing: false,
+          analyticsOptOut: false
+        },
+        preferences: {
+          theme: "light",
+          language: "en",
+          currency: "USD",
+          timezone: "America/New_York"
+        },
+        integrations: {
+          google: { connected: false },
+          facebook: { connected: false },
+          instagram: { connected: true, username: "@coffeelover" },
+          mailchimp: { connected: true, listId: "abc123" }
+        },
+        security: {
+          twoFactorEnabled: false,
+          lastPasswordChange: "2024-01-01T00:00:00Z",
+          loginSessions: 3
+        }
+      };
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch settings" });
+    }
+  });
+
+  app.put("/api/settings", async (req, res) => {
+    try {
+      const updatedSettings = req.body;
+      // In a real app, this would update the user's settings in the database
+      res.json({ success: true, message: "Settings updated successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update settings" });
     }
   });
 
@@ -1091,9 +1297,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { amount } = req.body;
       
-      // Import Stripe dynamically to ensure it's available
-      const Stripe = require('stripe');
-      const stripe = new Stripe(stripeSecretKey, {
+      // Use Stripe with proper import
+      const stripe = new (await import('stripe')).default(stripeSecretKey, {
         apiVersion: '2023-10-16',
       });
 

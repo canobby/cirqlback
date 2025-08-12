@@ -41,6 +41,7 @@ export interface IStorage {
   getBusinesses(): Promise<Business[]>;
   getBusiness(id: string): Promise<Business | undefined>;
   getBusinessesByOwner(ownerId: string): Promise<Business[]>;
+  getUserBusinesses(userId: string): Promise<Business[]>;
   createBusiness(business: InsertBusiness): Promise<Business>;
   updateBusiness(id: string, updates: Partial<Business>): Promise<Business>;
   
@@ -127,6 +128,10 @@ export class DatabaseStorage implements IStorage {
 
   async getBusinessesByOwner(ownerId: string): Promise<Business[]> {
     return await db.select().from(businesses).where(eq(businesses.ownerId, ownerId));
+  }
+
+  async getUserBusinesses(userId: string): Promise<Business[]> {
+    return await db.select().from(businesses).where(eq(businesses.ownerId, userId));
   }
 
   async createBusiness(business: InsertBusiness): Promise<Business> {
