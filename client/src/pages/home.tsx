@@ -15,9 +15,9 @@ export default function Home() {
               <img 
                 src={cirqlbackLogo} 
                 alt="Cirqlback" 
-                className="h-12 w-auto mr-4 filter brightness-0 invert"
+                className="h-16 w-auto mr-4"
               />
-              <div className="text-2xl font-bold">Cirqlback</div>
+              <div className="text-3xl font-bold">Cirqlback</div>
             </div>
             <h1 className="text-4xl font-bold mb-4">NFC-Powered Local Marketing</h1>
             <p className="text-xl opacity-90 mb-6">
