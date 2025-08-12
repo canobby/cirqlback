@@ -894,6 +894,189 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Global search endpoint
+  app.get("/api/search", async (req, res) => {
+    try {
+      const { q } = req.query;
+      
+      if (!q || typeof q !== 'string' || q.trim().length === 0) {
+        return res.json({ results: [] });
+      }
+
+      const query = q.toLowerCase().trim();
+      
+      // Comprehensive search across all platform entities
+      const searchResults = [];
+
+      // Business searches
+      const businesses = [
+        { id: "biz1", name: "Joe's Coffee Shop", description: "Premium coffee and pastries downtown", address: "123 Main St" },
+        { id: "biz2", name: "Fitness First Gym", description: "Full-service fitness center", address: "456 Oak Ave" },
+        { id: "biz3", name: "Taco Libre", description: "Authentic Mexican cuisine", address: "789 Pine St" }
+      ];
+
+      businesses.forEach(business => {
+        if (business.name.toLowerCase().includes(query) || 
+            business.description.toLowerCase().includes(query) ||
+            business.address.toLowerCase().includes(query)) {
+          searchResults.push({
+            id: business.id,
+            type: 'business',
+            title: business.name,
+            description: business.description,
+            url: `/merchant?business=${business.id}`,
+            badge: 'Active',
+            metadata: { address: business.address }
+          });
+        }
+      });
+
+      // Campaign searches
+      const campaigns = [
+        { id: "camp1", name: "Weekend Coffee Special", description: "10% off all weekend coffee orders", businessName: "Joe's Coffee Shop" },
+        { id: "camp2", name: "Loyalty Rewards Program", description: "Earn points with every purchase", businessName: "Fitness First Gym" },
+        { id: "camp3", name: "Happy Hour Tacos", description: "Buy one get one free during happy hour", businessName: "Taco Libre" }
+      ];
+
+      campaigns.forEach(campaign => {
+        if (campaign.name.toLowerCase().includes(query) || 
+            campaign.description.toLowerCase().includes(query) ||
+            campaign.businessName.toLowerCase().includes(query)) {
+          searchResults.push({
+            id: campaign.id,
+            type: 'campaign',
+            title: campaign.name,
+            description: `${campaign.description} - ${campaign.businessName}`,
+            url: `/merchant?campaign=${campaign.id}`,
+            badge: 'Running'
+          });
+        }
+      });
+
+      // Customer segments
+      const customerSegments = [
+        { id: "seg1", name: "Frequent Visitors", description: "Customers who visit 5+ times per month", count: 847 },
+        { id: "seg2", name: "High-Value Customers", description: "Customers spending $100+ monthly", count: 234 },
+        { id: "seg3", name: "New Customers", description: "First-time visitors in last 30 days", count: 456 }
+      ];
+
+      customerSegments.forEach(segment => {
+        if (segment.name.toLowerCase().includes(query) || 
+            segment.description.toLowerCase().includes(query)) {
+          searchResults.push({
+            id: segment.id,
+            type: 'customer',
+            title: segment.name,
+            description: `${segment.description} (${segment.count} customers)`,
+            url: `/marketing?segment=${segment.id}`,
+            badge: `${segment.count} users`
+          });
+        }
+      });
+
+      // Location searches
+      const locations = [
+        { id: "loc1", name: "Downtown District", description: "High-traffic business district", businessCount: 12 },
+        { id: "loc2", name: "Shopping Mall", description: "Indoor shopping center", businessCount: 8 },
+        { id: "loc3", name: "University Area", description: "Near campus with student traffic", businessCount: 15 }
+      ];
+
+      locations.forEach(location => {
+        if (location.name.toLowerCase().includes(query) || 
+            location.description.toLowerCase().includes(query)) {
+          searchResults.push({
+            id: location.id,
+            type: 'location',
+            title: location.name,
+            description: `${location.description} (${location.businessCount} businesses)`,
+            url: `/map?location=${location.id}`,
+            badge: `${location.businessCount} businesses`
+          });
+        }
+      });
+
+      // AR Experience searches
+      const arExperiences = [
+        { id: "ar1", name: "Golden Coffee Bean Discovery", description: "Rare collectible AR experience", business: "Joe's Coffee Shop" },
+        { id: "ar2", name: "Strength Badge Unlock", description: "Achievement progress visualization", business: "Fitness First Gym" },
+        { id: "ar3", name: "Taco Trail Completion", description: "Multi-restaurant challenge completion", business: "Taco Libre" }
+      ];
+
+      arExperiences.forEach(ar => {
+        if (ar.name.toLowerCase().includes(query) || 
+            ar.description.toLowerCase().includes(query) ||
+            ar.business.toLowerCase().includes(query)) {
+          searchResults.push({
+            id: ar.id,
+            type: 'ar-experience',
+            title: ar.name,
+            description: `${ar.description} - ${ar.business}`,
+            url: `/community?ar=${ar.id}`,
+            badge: 'AR Experience'
+          });
+        }
+      });
+
+      // Analytics searches
+      if (query.includes('analytic') || query.includes('report') || query.includes('metric') || query.includes('dashboard')) {
+        searchResults.push(
+          {
+            id: 'analytics-overview',
+            type: 'analytics',
+            title: 'Analytics Overview',
+            description: 'Real-time business performance metrics and insights',
+            url: '/analytics',
+            badge: 'Dashboard'
+          },
+          {
+            id: 'marketing-analytics',
+            type: 'analytics',
+            title: 'Marketing Analytics',
+            description: 'Campaign performance and customer engagement metrics',
+            url: '/marketing?tab=analytics',
+            badge: 'Marketing'
+          }
+        );
+      }
+
+      // Rewards searches
+      if (query.includes('reward') || query.includes('point') || query.includes('loyalty')) {
+        searchResults.push({
+          id: 'rewards-system',
+          type: 'reward',
+          title: 'Loyalty Rewards System',
+          description: 'Manage customer rewards and loyalty programs',
+          url: '/customer',
+          badge: 'Rewards'
+        });
+      }
+
+      // Sort results by relevance (exact matches first, then partial matches)
+      searchResults.sort((a, b) => {
+        const aExact = a.title.toLowerCase() === query;
+        const bExact = b.title.toLowerCase() === query;
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+        
+        const aStartsWith = a.title.toLowerCase().startsWith(query);
+        const bStartsWith = b.title.toLowerCase().startsWith(query);
+        if (aStartsWith && !bStartsWith) return -1;
+        if (!aStartsWith && bStartsWith) return 1;
+        
+        return 0;
+      });
+
+      res.json({ 
+        results: searchResults.slice(0, 10), // Limit to 10 results
+        query: q,
+        total: searchResults.length 
+      });
+    } catch (error) {
+      console.error("Search error:", error);
+      res.status(500).json({ error: "Failed to perform search" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates

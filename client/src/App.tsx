@@ -16,6 +16,7 @@ import HowItWorksPage from "@/pages/how-it-works";
 import MapPage from "@/pages/map";
 import ARExperience from "@/pages/ar-experience";
 import Marketing from "@/pages/marketing";
+import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -35,6 +36,7 @@ function Router() {
           <Route path="/map" component={MapPage} />
           <Route path="/ar/:tapId" component={ARExperience} />
           <Route path="/marketing" component={Marketing} />
+          <Route path="/settings" component={SettingsPage} />
           <Route component={NotFound} />
         </Switch>
       </main>

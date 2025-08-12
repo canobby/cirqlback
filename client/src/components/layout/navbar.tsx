@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Settings } from "lucide-react";
 import NotificationCenter from "@/components/notifications/notification-center";
+import GlobalSearch from "@/components/search/global-search";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 
 export default function Navbar() {
@@ -121,7 +122,13 @@ export default function Navbar() {
           </div>
           
           <div className="flex items-center space-x-4">
+            <GlobalSearch />
             <NotificationCenter />
+            <Link href="/settings">
+              <Button variant="ghost" size="sm" className="hidden md:flex">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </Link>
             <Button className="gradient-bg border-0 text-white font-semibold">
               Login
             </Button>
