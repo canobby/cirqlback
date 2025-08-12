@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import cirqlbackLogo from "@assets/cirqlback-logo-new.png";
+import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 
 export default function Footer() {
   return (
@@ -12,7 +12,7 @@ export default function Footer() {
               <img 
                 src={cirqlbackLogo} 
                 alt="Cirqlback" 
-                className="h-10 w-auto mr-3"
+                className="h-5 w-auto mr-3 logo-transparent"
               />
               <span className="text-xl font-bold gradient-text">Cirqlback</span>
             </div>

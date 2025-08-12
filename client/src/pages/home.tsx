@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Store, Smartphone, BarChart3, Users, Coffee, BookOpen, UtensilsCrossed, CheckCircle, Wifi, Share2, MapPin } from "lucide-react";
-import cirqlbackLogo from "@assets/cirqlback-logo-new.png";
+import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 
 export default function Home() {
   return (
@@ -15,7 +15,7 @@ export default function Home() {
               <img 
                 src={cirqlbackLogo} 
                 alt="Cirqlback" 
-                className="h-16 w-auto mr-4"
+                className="h-8 w-auto mr-4 logo-transparent"
               />
               <div className="text-3xl font-bold">Cirqlback</div>
             </div>
