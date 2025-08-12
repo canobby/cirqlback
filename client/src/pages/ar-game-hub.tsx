@@ -209,9 +209,12 @@ export default function ARGameHub() {
                     <div className="text-sm text-orange-700">{challenge.reward}</div>
                   </div>
 
-                  <Button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                  <Button 
+                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                    onClick={() => window.open(`/ar-experience/${challenge.id}`, '_blank')}
+                  >
                     <Camera className="h-4 w-4 mr-2" />
-                    Start AR Challenge
+                    Start AR Game
                   </Button>
                 </CardContent>
               </Card>

@@ -49,9 +49,34 @@ export default function ARExperience() {
   const [arScene, setARScene] = useState<ARScene | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [shareClip, setShareClip] = useState<string | null>(null);
+  const [gameScore, setGameScore] = useState(0);
+  const [gameActive, setGameActive] = useState(false);
+  const [collectibles, setCollectibles] = useState<Array<{id: string, x: number, y: number, collected: boolean}>>([]);
 
+  // Initialize camera for AR
   useEffect(() => {
-    // Simulate loading AR scene based on tap ID
+    const initializeCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          setCameraActive(true);
+        }
+      } catch (error) {
+        console.error('Camera access denied:', error);
+        toast({
+          title: "Camera Required",
+          description: "Please allow camera access for AR experience",
+          variant: "destructive"
+        });
+      }
+    };
+
+    initializeCamera();
+    
+    // Load AR scene based on tap ID
     const loadARScene = () => {
       const mockScene: ARScene = {
         id: params?.tapId || "scene1",
@@ -86,6 +111,14 @@ export default function ARExperience() {
     };
 
     loadARScene();
+    
+    return () => {
+      // Cleanup camera stream
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
   }, [params?.tapId]);
 
   const startCamera = async () => {
@@ -98,13 +131,11 @@ export default function ARExperience() {
         videoRef.current.srcObject = stream;
         setCameraActive(true);
         
-        // Simulate AR animation trigger after camera starts
+        // Auto-start AR mini-game after camera initializes
         setTimeout(() => {
-          setShowRewards(true);
-          toast({
-            title: "AR Reward Unlocked!",
-            description: "Watch your rewards appear in augmented reality!",
-          });
+          if (!gameActive && !showRewards) {
+            startARGame();
+          }
         }, 2000);
       }
     } catch (error) {
@@ -132,6 +163,49 @@ export default function ARExperience() {
         description: "Ready to share your magical moment!",
       });
     }, 5000);
+  };
+
+  const startARGame = () => {
+    setGameActive(true);
+    setGameScore(0);
+    
+    // Spawn random collectibles for AR game
+    const newCollectibles = Array.from({length: 5}, (_, i) => ({
+      id: `collectible_${i}`,
+      x: Math.random() * 80 + 10, // 10-90% position
+      y: Math.random() * 60 + 20, // 20-80% position  
+      collected: false
+    }));
+    
+    setCollectibles(newCollectibles);
+    
+    toast({
+      title: "AR Game Started!",
+      description: "Tap the floating collectibles to earn rewards!"
+    });
+  };
+
+  const collectItem = (collectibleId: string) => {
+    setCollectibles(prev => 
+      prev.map(item => 
+        item.id === collectibleId ? {...item, collected: true} : item
+      )
+    );
+    
+    setGameScore(prev => prev + 100);
+    
+    // Check if all collected
+    const remaining = collectibles.filter(item => !item.collected && item.id !== collectibleId);
+    if (remaining.length === 0) {
+      setTimeout(() => {
+        setGameActive(false);
+        setShowRewards(true);
+        toast({
+          title: "Game Complete!",
+          description: `Final Score: ${gameScore + 100}! Rewards unlocked!`
+        });
+      }, 500);
+    }
   };
 
   const shareToSocial = (platform: string) => {
@@ -208,9 +282,55 @@ export default function ARExperience() {
               className="w-full h-full object-cover"
             />
             
+            {/* AR Interactive Game Elements */}
+            {gameActive && (
+              <div className="absolute inset-0">
+                {collectibles.map((collectible) => (
+                  !collectible.collected && (
+                    <button
+                      key={collectible.id}
+                      onClick={() => collectItem(collectible.id)}
+                      style={{
+                        position: 'absolute',
+                        left: `${collectible.x}%`,
+                        top: `${collectible.y}%`,
+                        transform: 'translate(-50%, -50%)'
+                      }}
+                      className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-bounce opacity-90 flex items-center justify-center hover:scale-110 transition-transform shadow-lg z-10"
+                    >
+                      <Sparkles className="h-8 w-8 text-white" />
+                    </button>
+                  )
+                ))}
+              </div>
+            )}
+
+            {/* AR Game UI Overlay */}
+            <div className="absolute top-4 left-4 bg-black/70 text-white p-3 rounded-lg z-20">
+              <div className="flex items-center space-x-2">
+                <Trophy className="h-5 w-5" />
+                <span className="font-semibold">Score: {gameScore}</span>
+              </div>
+              {gameActive && (
+                <div className="text-sm text-green-300 mt-1">
+                  Collect: {collectibles.filter(c => !c.collected).length} remaining
+                </div>
+              )}
+            </div>
+
+            {/* Start Game Button */}
+            {!gameActive && !showRewards && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20">
+                <Button onClick={startARGame} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                  <Play className="h-4 w-4 mr-2" />
+                  Start AR Mini Game
+                </Button>
+              </div>
+            )}
+
             {/* AR Overlay Elements */}
             {showRewards && (
-              <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-0 pointer-events-none z-10">
                 {/* Animated AR Rewards */}
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
                   <div className="relative">
