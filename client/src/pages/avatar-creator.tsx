@@ -17,6 +17,7 @@ import {
   Eye,
   Shirt,
   Camera,
+  Zap,
   Trophy,
   Download,
   Share2,
@@ -1545,6 +1546,65 @@ export default function AvatarCreator() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Community-Focused Challenges */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Heart className="h-5 w-5 text-purple-500" />
+                  <span>Community-Focused Challenges</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="border rounded-lg p-3 bg-gradient-to-r from-purple-50 to-pink-50">
+                    <h3 className="font-semibold mb-1">Local Heritage Trail</h3>
+                    <p className="text-sm text-gray-600 mb-2">Discover businesses celebrating diverse cultural traditions</p>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-purple-600">234 participants</span>
+                      <Badge variant="outline" className="text-purple-600 border-purple-300">Cultural Exploration</Badge>
+                    </div>
+                    <div className="text-xs text-gray-500 mb-2">Featured: Casa Maria's Tacos • Seoul Garden • Nonna's Deli</div>
+                    <Button size="sm" className="w-full bg-gradient-to-r from-purple-500 to-pink-500">
+                      Join Heritage Trail
+                    </Button>
+                  </div>
+                  
+                  <div className="border rounded-lg p-3 bg-gradient-to-r from-green-50 to-blue-50">
+                    <h3 className="font-semibold mb-1">Accessibility Champions</h3>
+                    <p className="text-sm text-gray-600 mb-2">Support businesses leading in accessibility and inclusion</p>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-green-600">156 participants</span>
+                      <Badge variant="outline" className="text-green-600 border-green-300">Accessibility Focus</Badge>
+                    </div>
+                    <div className="text-xs text-gray-500 mb-2">Featured: Sunshine Cafe • Quiet Corner • Helping Hands Market</div>
+                    <Button size="sm" className="w-full bg-gradient-to-r from-green-500 to-blue-500">
+                      Join Champions Challenge
+                    </Button>
+                  </div>
+                  
+                  <div className="border rounded-lg p-3 bg-gradient-to-r from-orange-50 to-yellow-50">
+                    <h3 className="font-semibold mb-1">Local Entrepreneur Spotlight</h3>
+                    <p className="text-sm text-gray-600 mb-2">Support homegrown businesses building our community</p>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-orange-600">289 participants</span>
+                      <Badge variant="outline" className="text-orange-600 border-orange-300">Entrepreneur Support</Badge>
+                    </div>
+                    <div className="text-xs text-gray-500 mb-2">Featured: Sarah's Bakery • Veterans Coffee • Rainbow Market</div>
+                    <Button size="sm" className="w-full bg-gradient-to-r from-orange-500 to-yellow-500">
+                      Support Local Entrepreneurs
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="bg-purple-50 p-3 rounded-lg">
+                  <p className="text-sm text-purple-700">
+                    <strong>Community Impact:</strong> These challenges connect you with businesses that share your values 
+                    while supporting diversity, accessibility, and local entrepreneurship in your community.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Flash Events */}
             <Card>

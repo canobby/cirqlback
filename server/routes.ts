@@ -246,7 +246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const demoRewards = [
         {
           id: "reward_1",
-          customerEmail: email,
+          customerEmail: req.query.email as string || "demo@example.com",
           businessId: "demo_biz_1",
           campaignId: "demo_campaign_1", 
           type: "discount",
@@ -1232,6 +1232,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Business Descriptors API routes (for inclusive community support)
+  app.get("/api/business/descriptors", async (req, res) => {
+    try {
+      const businessId = req.query.businessId || "demo_business_1";
+      
+      // In a real implementation, this would fetch from database
+      const descriptors = {
+        businessDescriptors: ["Women-owned business", "Local entrepreneur"],
+        culturalBackground: "Hispanic/Latino heritage",
+        communityFocus: ["Youth programs", "Local artist support"],
+        accessibilityFeatures: ["Wheelchair accessible", "Service animal friendly"],
+        sustainabilityPractices: ["Locally sourced ingredients", "Eco-friendly packaging"]
+      };
+      
+      res.json(descriptors);
+    } catch (error) {
+      console.error("Error fetching business descriptors:", error);
+      res.status(500).json({ error: "Failed to fetch business descriptors" });
+    }
+  });
+
+  app.put("/api/business/descriptors", async (req, res) => {
+    try {
+      const { businessDescriptors, culturalBackground, communityFocus, accessibilityFeatures, sustainabilityPractices } = req.body;
+      const businessId = req.body.businessId || "demo_business_1";
+      
+      // In a real implementation, this would update the database
+      res.json({
+        success: true,
+        message: "Business descriptors updated successfully",
+        descriptors: {
+          businessDescriptors,
+          culturalBackground,
+          communityFocus,
+          accessibilityFeatures,
+          sustainabilityPractices
+        }
+      });
+    } catch (error) {
+      console.error("Error updating business descriptors:", error);
+      res.status(500).json({ error: "Failed to update business descriptors" });
+    }
+  });
+
+  // AI-powered inclusive challenge generation
+  app.get("/api/challenges/community-focused", async (req, res) => {
+    try {
+      const challenges = [
+        {
+          id: "community_1",
+          title: "Local Heritage Trail",
+          description: "Discover businesses celebrating diverse cultural traditions",
+          type: "cultural_exploration",
+          participants: 234,
+          businesses: [
+            { name: "Casa Maria's Authentic Tacos", cultural: "Hispanic/Latino heritage" },
+            { name: "Seoul Garden Korean BBQ", cultural: "Asian heritage" },
+            { name: "Nonna's Italian Deli", cultural: "European heritage" }
+          ],
+          rewards: "Cultural appreciation badges + community celebration invite",
+          focusArea: "Cultural diversity celebration",
+          inclusiveAspect: "Highlighting businesses from different cultural backgrounds"
+        },
+        {
+          id: "community_2", 
+          title: "Accessibility Champions Challenge",
+          description: "Support businesses leading in accessibility and inclusion",
+          type: "accessibility_focus",
+          participants: 156,
+          businesses: [
+            { name: "Sunshine Cafe", features: "Full wheelchair access + braille menus" },
+            { name: "Quiet Corner Bookstore", features: "Sensory-friendly environment" },
+            { name: "Helping Hands Market", features: "ASL interpretation + large print" }
+          ],
+          rewards: "Accessibility advocate badge + priority business partnerships",
+          focusArea: "Accessibility and inclusion",
+          inclusiveAspect: "Promoting businesses that prioritize accessibility"
+        },
+        {
+          id: "community_3",
+          title: "Local Entrepreneur Spotlight",
+          description: "Support homegrown businesses building our community",
+          type: "entrepreneur_support",
+          participants: 289,
+          businesses: [
+            { name: "Sarah's Sustainable Bakery", owner: "Women-owned, zero waste focus" },
+            { name: "Veterans Coffee Co.", owner: "Veteran-owned, community gathering space" },
+            { name: "Rainbow Community Market", owner: "LGBTQ+ owned, local employment focus" }
+          ],
+          rewards: "Community builder badge + featured business networking",
+          focusArea: "Local entrepreneurship",
+          inclusiveAspect: "Supporting diverse business ownership"
+        }
+      ];
+      
+      res.json(challenges);
+    } catch (error) {
+      console.error("Error fetching community challenges:", error);
+      res.status(500).json({ error: "Failed to fetch community challenges" });
+    }
+  });
+
   // Cirql Platform API routes
   app.post("/api/cirql/tap", async (req, res) => {
     try {
@@ -1864,7 +1966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Use Stripe with proper import
       const stripe = new (await import('stripe')).default(stripeSecretKey, {
-        apiVersion: '2023-10-16',
+        apiVersion: '2024-06-20',
       });
 
       // Create real payment intent with Stripe

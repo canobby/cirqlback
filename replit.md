@@ -50,6 +50,7 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **Epic Team vs Team Battles**: Live competitive battles between teams with real-time scoring, champion rewards, and team challenge systems
 - **Family Plans & Corporate Challenges**: Family group rewards (up to 10 members), corporate employee challenges, and workplace team building through local business discovery
 - **Mega Flash Events**: City-wide flash mobs requiring 500+ simultaneous users, massive rewards, and real-time community engagement
+- **Inclusive Business Support**: Subtle integration supporting minority groups, LGBTQ+, women-owned businesses through optional business descriptors and AI-powered challenge grouping - equal treatment while enabling community connection
 - **How It Works Page**: Comprehensive educational page with diagrams and explanations for business growth
 - **Advanced Analytics Dashboard**: Real-time metrics, AI-powered insights, and performance tracking
 - **Community Hub**: Gamified challenges, leaderboards, social feeds, and group rewards

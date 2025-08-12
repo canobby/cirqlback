@@ -64,6 +64,12 @@ export const businesses = pgTable("businesses", {
   isActive: boolean("is_active").default(true),
   totalTaps: integer("total_taps").default(0),
   totalRewardsGiven: integer("total_rewards_given").default(0),
+  // Business descriptors for inclusive challenge grouping (collected during account setup)
+  businessDescriptors: text("business_descriptors").array().default(sql`'{}'`),
+  culturalBackground: varchar("cultural_background"),
+  communityFocus: text("community_focus").array().default(sql`'{}'`),
+  accessibilityFeatures: text("accessibility_features").array().default(sql`'{}'`),
+  sustainabilityPractices: text("sustainability_practices").array().default(sql`'{}'`),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
