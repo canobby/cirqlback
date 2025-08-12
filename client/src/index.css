@@ -10,11 +10,11 @@
   --card-foreground: hsl(210 25% 7.8431%);
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(210 25% 7.8431%);
-  --primary: hsl(248.7 83.5% 59.4%);
+  --primary: hsl(280 100% 70%);
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(152.2 81.1% 36.3%);
+  --secondary: hsl(120 60% 50%);
   --secondary-foreground: hsl(0 0% 100%);
-  --accent: hsl(42.0 92.8% 56.3%);
+  --accent: hsl(50 100% 60%);
   --accent-foreground: hsl(0 0% 0%);
   --muted: hsl(240 1.9608% 90%);
   --muted-foreground: hsl(210 25% 7.8431%);
@@ -23,17 +23,17 @@
   --border: hsl(201.4286 30.4348% 90.9804%);
   --input: hsl(200 23.0769% 97.4510%);
   --ring: hsl(202.8169 89.1213% 53.1373%);
-  --chart-1: hsl(248.7 83.5% 59.4%);
-  --chart-2: hsl(152.2 81.1% 36.3%);
-  --chart-3: hsl(42.0 92.8% 56.3%);
+  --chart-1: hsl(280 100% 70%);
+  --chart-2: hsl(120 60% 50%);
+  --chart-3: hsl(50 100% 60%);
   --chart-4: hsl(147.1429 78.5047% 41.9608%);
   --chart-5: hsl(341.4894 75.2000% 50.9804%);
   --sidebar: hsl(180 6.6667% 97.0588%);
   --sidebar-foreground: hsl(210 25% 7.8431%);
-  --sidebar-primary: hsl(248.7 83.5% 59.4%);
+  --sidebar-primary: hsl(280 100% 70%);
   --sidebar-primary-foreground: hsl(0 0% 100%);
   --sidebar-accent: hsl(211.5789 51.3514% 92.7451%);
-  --sidebar-accent-foreground: hsl(248.7 83.5% 59.4%);
+  --sidebar-accent-foreground: hsl(280 100% 70%);
   --sidebar-border: hsl(205.0000 25.0000% 90.5882%);
   --sidebar-ring: hsl(202.8169 89.1213% 53.1373%);
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
@@ -59,11 +59,11 @@
   --card-foreground: hsl(0 0% 85.0980%);
   --popover: hsl(0 0% 0%);
   --popover-foreground: hsl(200 6.6667% 91.1765%);
-  --primary: hsl(248.7 83.5% 59.4%);
+  --primary: hsl(280 100% 70%);
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(152.2 81.1% 36.3%);
+  --secondary: hsl(120 60% 50%);
   --secondary-foreground: hsl(0 0% 100%);
-  --accent: hsl(42.0 92.8% 56.3%);
+  --accent: hsl(50 100% 60%);
   --accent-foreground: hsl(0 0% 0%);
   --muted: hsl(0 0% 9.4118%);
   --muted-foreground: hsl(210 3.3898% 46.2745%);
@@ -95,7 +95,7 @@
 
 @layer components {
   .gradient-bg {
-    @apply bg-gradient-to-r from-primary to-secondary;
+    background: linear-gradient(135deg, hsl(320 100% 70%) 0%, hsl(280 100% 70%) 25%, hsl(240 100% 70%) 50%, hsl(120 60% 50%) 75%, hsl(50 100% 60%) 100%);
   }
   
   .stats-card {

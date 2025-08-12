@@ -17,10 +17,11 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
-                <CircleX className="text-white h-6 w-6" />
-              </div>
-              <span className="ml-3 text-xl font-bold text-gray-900">Cirqlback</span>
+              <img 
+                src="/attached_assets/066CD1BA-FD9A-40FE-8568-177951876A13_1754965785754.png" 
+                alt="Cirqlback" 
+                className="h-8 w-auto"
+              />
             </Link>
           </div>
           
