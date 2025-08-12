@@ -250,7 +250,7 @@ export default function Home() {
       {/* Interactive Tour */}
       <GuidedTour
         tourId="home-tour"
-        autoStart={true}
+        autoStart={false}
         steps={[
           {
             id: "hero",
