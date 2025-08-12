@@ -31,7 +31,7 @@ export default function Home() {
                 </Button>
               </Link>
               <Link href="/merchant">
-                <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-primary">
+                <Button size="lg" className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-200">
                   <Store className="mr-2 h-5 w-5" />
                   Merchant Dashboard
                 </Button>
