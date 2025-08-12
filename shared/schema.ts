@@ -522,6 +522,48 @@ export type InsertAvatarAsset = typeof avatarAssets.$inferInsert;
 export type AvatarAchievement = typeof avatarAchievements.$inferSelect;
 export type AvatarInteraction = typeof avatarInteractions.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
+
+// Campaign Templates and Collaboration System
+export const campaignTemplates = pgTable("campaign_templates", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name").notNull(),
+  category: varchar("category").notNull(),
+  description: text("description").notNull(),
+  businessTypes: text("business_types").array(),
+  collaborationType: varchar("collaboration_type").notNull(), // 'solo', 'partner', 'network'
+  rewards: jsonb("rewards").notNull(),
+  duration: varchar("duration").notNull(),
+  difficulty: varchar("difficulty").notNull(),
+  estimatedROI: varchar("estimated_roi").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const campaignPartners = pgTable("campaign_partners", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").references(() => campaigns.id).notNull(),
+  businessId: varchar("business_id").notNull(),
+  businessName: varchar("business_name").notNull(),
+  businessCategory: varchar("business_category").notNull(),
+  joinedAt: timestamp("joined_at").defaultNow(),
+  status: varchar("status").default("active"), // 'active', 'pending', 'declined'
+  contribution: jsonb("contribution"), // What this partner contributes
+});
+
+export const campaignParticipations = pgTable("campaign_participations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").references(() => campaigns.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  businessId: varchar("business_id"), // Which partner business they interacted with
+  progress: jsonb("progress").notNull(), // Track completion status
+  rewardsEarned: jsonb("rewards_earned").default(sql`'[]'::jsonb`),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type CampaignTemplate = typeof campaignTemplates.$inferSelect;
+export type CampaignPartner = typeof campaignPartners.$inferSelect;
+export type CampaignParticipation = typeof campaignParticipations.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Business = typeof businesses.$inferSelect;

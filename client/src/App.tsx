@@ -37,6 +37,7 @@ import ViralCampaigns from "@/pages/viral-campaigns";
 import ARGameHub from "@/pages/ar-game-hub";
 import ARExperience from "@/pages/ar-experience";
 import BusinessSettings from "@/pages/business-settings";
+import CampaignBuilder from "@/pages/campaign-builder";
 
 function Router() {
   const [location] = useLocation();
@@ -79,6 +80,7 @@ function Router() {
           <Route path="/ar-experience/:id" component={ARExperience} />
           <Route path="/ar/:tapId" component={ARExperience} />
           <Route path="/business-settings" component={BusinessSettings} />
+          <Route path="/campaign-builder" component={CampaignBuilder} />
           <Route component={NotFound} />
         </Switch>
       </main>
