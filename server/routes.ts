@@ -242,7 +242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(rewards.length > 0 ? rewards : demoRewards);
     } catch (error) {
       console.error("Rewards error:", error);
-      // Return demo rewards on error
+      // Return demo rewards on error  
       const demoRewards = [
         {
           id: "reward_1",
