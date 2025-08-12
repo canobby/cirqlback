@@ -17,6 +17,7 @@ import MapPage from "@/pages/map";
 import ARExperience from "@/pages/ar-experience";
 import Marketing from "@/pages/marketing";
 import SettingsPage from "@/pages/settings";
+import Checkout from "@/pages/checkout";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -37,6 +38,7 @@ function Router() {
           <Route path="/ar/:tapId" component={ARExperience} />
           <Route path="/marketing" component={Marketing} />
           <Route path="/settings" component={SettingsPage} />
+          <Route path="/checkout" component={Checkout} />
           <Route component={NotFound} />
         </Switch>
       </main>

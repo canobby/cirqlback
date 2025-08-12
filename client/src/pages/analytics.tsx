@@ -39,6 +39,11 @@ export default function Analytics() {
 
   const { data: businesses = [] } = useQuery({
     queryKey: ["/api/businesses"],
+    queryFn: async () => {
+      const response = await fetch("/api/businesses");
+      if (!response.ok) throw new Error('Failed to fetch businesses');
+      return response.json();
+    },
   });
 
   if (isLoading) {

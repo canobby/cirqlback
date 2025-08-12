@@ -1,28 +1,16 @@
 import { useState, useEffect } from "react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Search, Building2, Target, Users, MapPin, Zap, BarChart3, Gift } from "lucide-react";
 import { useLocation } from "wouter";
-import { 
-  Search, 
-  Store, 
-  Users, 
-  Target, 
-  MapPin, 
-  Gift,
-  BarChart3,
-  Camera,
-  X,
-  Command
-} from "lucide-react";
 
 interface SearchResult {
   id: string;
-  type: 'business' | 'campaign' | 'customer' | 'location' | 'reward' | 'analytics' | 'ar-experience';
+  type: string;
   title: string;
   description: string;
   url: string;
@@ -31,19 +19,18 @@ interface SearchResult {
 }
 
 export default function GlobalSearch() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
 
-  // Keyboard shortcut (Cmd/Ctrl + K)
+  // Keyboard shortcut to open search (Cmd/Ctrl + K)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setIsOpen(true);
-      }
-      if (e.key === 'Escape') {
-        setIsOpen(false);
+        setOpen(true);
       }
     };
 
@@ -51,220 +38,152 @@ export default function GlobalSearch() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const { data: searchResults = [], isLoading } = useQuery({
-    queryKey: ["/api/search", query],
-    queryFn: async () => {
-      if (!query.trim()) return [];
-      const response = await apiRequest("GET", `/api/search?q=${encodeURIComponent(query)}`);
-      return response.results || [];
-    },
-    enabled: query.length > 2,
-  });
+  // Search functionality
+  useEffect(() => {
+    const searchTimeout = setTimeout(async () => {
+      if (query.trim().length < 2) {
+        setResults([]);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        setResults(data.results || []);
+      } catch (error) {
+        console.error("Search error:", error);
+        setResults([]);
+      }
+      setLoading(false);
+    }, 300);
+
+    return () => clearTimeout(searchTimeout);
+  }, [query]);
+
+  const handleResultClick = (result: SearchResult) => {
+    setOpen(false);
+    setQuery("");
+    setLocation(result.url);
+  };
 
   const getResultIcon = (type: string) => {
     switch (type) {
-      case 'business': return Store;
+      case 'business': return Building2;
       case 'campaign': return Target;
       case 'customer': return Users;
       case 'location': return MapPin;
-      case 'reward': return Gift;
+      case 'ar-experience': return Zap;
       case 'analytics': return BarChart3;
-      case 'ar-experience': return Camera;
+      case 'reward': return Gift;
       default: return Search;
     }
   };
 
-  const getResultBadgeColor = (type: string) => {
+  const getResultColor = (type: string) => {
     switch (type) {
-      case 'business': return 'bg-blue-100 text-blue-800';
-      case 'campaign': return 'bg-green-100 text-green-800';
-      case 'customer': return 'bg-purple-100 text-purple-800';
-      case 'location': return 'bg-orange-100 text-orange-800';
-      case 'reward': return 'bg-pink-100 text-pink-800';
-      case 'analytics': return 'bg-indigo-100 text-indigo-800';
-      case 'ar-experience': return 'bg-violet-100 text-violet-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'business': return 'text-blue-500';
+      case 'campaign': return 'text-purple-500';
+      case 'customer': return 'text-green-500';
+      case 'location': return 'text-orange-500';
+      case 'ar-experience': return 'text-pink-500';
+      case 'analytics': return 'text-indigo-500';
+      case 'reward': return 'text-yellow-500';
+      default: return 'text-gray-500';
     }
   };
 
-  const handleResultClick = (result: SearchResult) => {
-    setLocation(result.url);
-    setIsOpen(false);
-    setQuery("");
-  };
-
-  const popularSearches = [
-    { query: "coffee shops", type: "business" },
-    { query: "loyalty campaigns", type: "campaign" },
-    { query: "downtown locations", type: "location" },
-    { query: "AR experiences", type: "ar-experience" }
-  ];
-
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button 
-          variant="outline" 
-          className="relative h-9 w-9 p-0 xl:h-10 xl:w-60 xl:justify-start xl:px-3 xl:py-2"
-        >
+        <Button variant="outline" className="relative h-9 w-9 p-0 xl:h-10 xl:w-60 xl:justify-start xl:px-3 xl:py-2">
           <Search className="h-4 w-4 xl:mr-2" />
-          <span className="hidden xl:inline-flex">Search platform...</span>
-          <kbd className="pointer-events-none absolute right-1.5 top-2 hidden h-6 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground xl:flex">
+          <span className="hidden xl:inline-flex">Search...</span>
+          <kbd className="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 xl:flex">
             <span className="text-xs">⌘</span>K
           </kbd>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <Search className="h-5 w-5 mr-2" />
-            Search Platform
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search businesses, campaigns, customers, analytics..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="pl-10 pr-10"
-                autoFocus
-              />
-              {query && (
-                <button
-                  onClick={() => setQuery("")}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="max-h-96 overflow-y-auto">
-            {query.length > 2 ? (
-              <div className="space-y-2">
-                {isLoading ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="animate-pulse flex items-center space-x-3 p-3">
-                        <div className="w-8 h-8 bg-gray-200 rounded"></div>
-                        <div className="flex-1 space-y-1">
-                          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : searchResults.length > 0 ? (
-                  searchResults.map((result: SearchResult) => {
-                    const Icon = getResultIcon(result.type);
-                    return (
-                      <Card
-                        key={result.id}
-                        className="cursor-pointer hover:bg-gray-50 transition-colors"
-                        onClick={() => handleResultClick(result)}
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex items-center space-x-3">
-                            <div className="flex-shrink-0">
-                              <Icon className="h-5 w-5 text-gray-500" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2">
-                                <h4 className="text-sm font-medium text-gray-900 truncate">
-                                  {result.title}
-                                </h4>
-                                <Badge className={`text-xs ${getResultBadgeColor(result.type)}`}>
-                                  {result.type}
-                                </Badge>
-                                {result.badge && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    {result.badge}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-600 truncate">
-                                {result.description}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Search className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                    <p>No results found for "{query}"</p>
-                    <p className="text-sm mt-1">Try different keywords or browse popular searches below</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Popular Searches</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {popularSearches.map((search, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        className="justify-start h-auto p-3"
-                        onClick={() => setQuery(search.query)}
-                      >
-                        <div className="text-left">
-                          <p className="text-sm font-medium">{search.query}</p>
-                          <p className="text-xs text-gray-500 capitalize">{search.type}</p>
-                        </div>
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Quick Actions</h4>
-                  <div className="space-y-1">
-                    {[
-                      { label: "Create new campaign", url: "/merchant", icon: Target },
-                      { label: "View analytics dashboard", url: "/analytics", icon: BarChart3 },
-                      { label: "Explore community", url: "/community", icon: Users },
-                      { label: "Browse business map", url: "/map", icon: MapPin }
-                    ].map((action, index) => {
-                      const Icon = action.icon;
-                      return (
-                        <button
-                          key={index}
-                          onClick={() => {
-                            setLocation(action.url);
-                            setIsOpen(false);
-                          }}
-                          className="w-full text-left p-2 hover:bg-gray-50 rounded flex items-center space-x-2"
-                        >
-                          <Icon className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm">{action.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+      <DialogContent className="max-w-2xl p-0">
+        <Command className="rounded-lg border-0 shadow-md">
+          <CommandInput 
+            placeholder="Search businesses, campaigns, customers, and more..." 
+            value={query}
+            onValueChange={setQuery}
+          />
+          <CommandList>
+            {loading && (
+              <div className="flex items-center justify-center py-6">
+                <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
               </div>
             )}
-          </div>
+            
+            {!loading && query.length >= 2 && results.length === 0 && (
+              <CommandEmpty>No results found for "{query}"</CommandEmpty>
+            )}
 
-          <div className="border-t pt-3">
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>Use ↑↓ to navigate, ↵ to select, ESC to close</span>
-              <div className="flex items-center space-x-2">
-                <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">⌘K</kbd>
-                <span>to search</span>
-              </div>
-            </div>
-          </div>
-        </div>
+            {!loading && results.length > 0 && (
+              <CommandGroup heading="Results">
+                {results.map((result) => {
+                  const Icon = getResultIcon(result.type);
+                  const iconColor = getResultColor(result.type);
+                  
+                  return (
+                    <CommandItem
+                      key={result.id}
+                      value={result.title}
+                      onSelect={() => handleResultClick(result)}
+                      className="flex items-center space-x-3 px-4 py-3 cursor-pointer"
+                    >
+                      <div className={`flex-shrink-0 ${iconColor}`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <p className="text-sm font-medium truncate">{result.title}</p>
+                          {result.badge && (
+                            <Badge variant="secondary" className="text-xs">
+                              {result.badge}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {result.description}
+                        </p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {result.type.replace('-', ' ')}
+                        </Badge>
+                      </div>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            )}
+
+            {query.length < 2 && (
+              <CommandGroup heading="Quick Actions">
+                <CommandItem onSelect={() => handleResultClick({ id: 'analytics', type: 'analytics', title: 'Analytics Dashboard', description: 'View real-time business metrics', url: '/analytics' })}>
+                  <BarChart3 className="mr-2 h-4 w-4 text-blue-500" />
+                  <span>Analytics Dashboard</span>
+                </CommandItem>
+                <CommandItem onSelect={() => handleResultClick({ id: 'merchant', type: 'business', title: 'Merchant Tools', description: 'Manage campaigns and rewards', url: '/merchant' })}>
+                  <Building2 className="mr-2 h-4 w-4 text-purple-500" />
+                  <span>Merchant Tools</span>
+                </CommandItem>
+                <CommandItem onSelect={() => handleResultClick({ id: 'community', type: 'community', title: 'Community Hub', description: 'Challenges and leaderboards', url: '/community' })}>
+                  <Users className="mr-2 h-4 w-4 text-green-500" />
+                  <span>Community Hub</span>
+                </CommandItem>
+                <CommandItem onSelect={() => handleResultClick({ id: 'map', type: 'location', title: 'Business Map', description: 'Find nearby participating businesses', url: '/map' })}>
+                  <MapPin className="mr-2 h-4 w-4 text-orange-500" />
+                  <span>Business Map</span>
+                </CommandItem>
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
       </DialogContent>
     </Dialog>
   );

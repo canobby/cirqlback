@@ -1077,6 +1077,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment processing endpoint (requires Stripe keys)
+  app.post("/api/create-payment-intent", async (req, res) => {
+    try {
+      if (!process.env.STRIPE_SECRET_KEY) {
+        return res.status(400).json({ 
+          error: "Payment processing not configured. Please add STRIPE_SECRET_KEY to environment variables." 
+        });
+      }
+
+      const { amount } = req.body;
+      
+      // Mock payment intent creation (would use actual Stripe SDK when keys are provided)
+      const paymentIntent = {
+        id: `pi_mock_${Date.now()}`,
+        client_secret: `pi_mock_${Date.now()}_secret_mock`,
+        amount: Math.round(amount * 100), // Convert to cents
+        currency: "usd",
+        status: "requires_payment_method"
+      };
+
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id 
+      });
+    } catch (error: any) {
+      console.error("Payment intent creation error:", error);
+      res.status(500).json({ error: "Failed to create payment intent: " + error.message });
+    }
+  });
+
+  // Business data endpoint for analytics
+  app.get("/api/businesses", async (req, res) => {
+    try {
+      const businesses = [
+        { id: "biz1", name: "Joe's Coffee Shop", type: "Coffee", status: "active" },
+        { id: "biz2", name: "Fitness First Gym", type: "Fitness", status: "active" },
+        { id: "biz3", name: "Taco Libre", type: "Restaurant", status: "active" }
+      ];
+      res.json(businesses);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch businesses" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates
