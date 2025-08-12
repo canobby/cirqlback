@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Store, Smartphone, BarChart3, Users, Coffee, BookOpen, UtensilsCrossed, CheckCircle, Wifi, Share2, MapPin } from "lucide-react";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
+import { GuidedTour } from "@/components/interactive/guided-tour";
 
 export default function Home() {
   return (
@@ -25,15 +26,17 @@ export default function Home() {
             </p>
             <div className="flex flex-wrap gap-4">
               <Link href="/tap">
-                <Button variant="secondary" size="lg" className="bg-white text-primary hover:bg-gray-50">
+                <Button variant="secondary" size="lg" className="bg-white text-primary hover:bg-gray-50 hover-tooltip">
                   <Smartphone className="mr-2 h-5 w-5" />
                   Try Cirql Tap Demo
+                  <div className="tooltip-content">Experience how customers tap Cirql tags to unlock rewards</div>
                 </Button>
               </Link>
               <Link href="/how-it-works">
-                <Button size="lg" className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-200">
+                <Button size="lg" className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-200 hover-tooltip">
                   <Store className="mr-2 h-5 w-5" />
                   How It Works
+                  <div className="tooltip-content">Learn about the complete platform features</div>
                 </Button>
               </Link>
             </div>
@@ -49,7 +52,7 @@ export default function Home() {
       </div>
 
       {/* Customer Experience Section */}
-      <section className="mb-12">
+      <section className="mb-12" data-tour="customer-section">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold gradient-text mb-4">Complete Customer Experience</h2>
           <p className="text-xl text-muted-foreground">Cirql taps unlock rewards, local discovery maps, team challenges, and exclusive business content</p>
@@ -142,13 +145,15 @@ export default function Home() {
 
                     {/* Action Buttons */}
                     <div className="space-y-3">
-                      <Button className="w-full bg-primary text-white">
+                      <Button className="w-full bg-primary text-white hover-tooltip">
                         <Share2 className="mr-2 h-4 w-4" />
                         Share Referral Link
+                        <div className="tooltip-content">Earn rewards for referring friends to participating businesses</div>
                       </Button>
-                      <Button variant="outline" className="w-full">
+                      <Button variant="outline" className="w-full hover-tooltip">
                         <MapPin className="mr-2 h-4 w-4" />
                         Find Nearby Shops
+                        <div className="tooltip-content">Discover local businesses on the interactive map</div>
                       </Button>
                     </div>
                   </div>
@@ -165,7 +170,7 @@ export default function Home() {
       </section>
 
       {/* Business Showcase */}
-      <section className="mb-12">
+      <section className="mb-12" data-tour="business-section">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold gradient-text mb-4">Complete Business Solutions</h2>
           <p className="text-xl text-muted-foreground">From Cirql campaigns to full websites - everything your business needs to thrive</p>
@@ -242,6 +247,45 @@ export default function Home() {
           <p className="text-sm text-muted-foreground mt-4">Complete platform setup • Professional website included • Cirql tags starter pack</p>
         </div>
       </section>
+      {/* Interactive Tour */}
+      <GuidedTour
+        tourId="home-tour"
+        autoStart={true}
+        steps={[
+          {
+            id: "hero",
+            target: ".gradient-bg",
+            title: "Welcome to Cirqlback!",
+            description: "This is the main platform overview. Start your journey here.",
+            tip: "Click 'Try Cirql Tap Demo' to experience customer interactions",
+            position: "bottom"
+          },
+          {
+            id: "customer-section",
+            target: "[data-tour='customer-section']",
+            title: "Customer Experience",
+            description: "See how customers discover and engage with local businesses",
+            tip: "Customers tap tags to unlock rewards and find nearby businesses",
+            position: "top"
+          },
+          {
+            id: "business-section",
+            target: "[data-tour='business-section']",
+            title: "Business Tools",
+            description: "Complete marketing suite for business owners",
+            tip: "Businesses get website hosting, campaigns, and analytics",
+            position: "top"
+          },
+          {
+            id: "community-section",
+            target: "[data-tour='community-section']",
+            title: "Community Features",
+            description: "Team challenges and social engagement features",
+            tip: "Users can form teams and complete multi-business challenges",
+            position: "top"
+          }
+        ]}
+      />
     </main>
   );
 }
