@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,12 @@ import {
   Calendar,
   Target,
   Medal,
-  Gamepad2
+  Gamepad2,
+  UserPlus,
+  Send,
+  Group,
+  Swords,
+  PartyPopper
 } from "lucide-react";
 
 interface AvatarAsset {
@@ -114,6 +119,40 @@ interface StreakBonus {
   multiplier: number;
   reward: string;
   nextReward: string;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  members: TeamMember[];
+  captain: string;
+  totalPoints: number;
+  level: number;
+  achievements: string[];
+  activeChallenge?: string;
+  inviteCode: string;
+}
+
+interface TeamMember {
+  id: string;
+  name: string;
+  avatar: string;
+  points: number;
+  joinedAt: string;
+  status: 'active' | 'invited' | 'pending';
+}
+
+interface TeamChallenge {
+  id: string;
+  title: string;
+  description: string;
+  type: 'cooperative' | 'competitive';
+  requiredMembers: number;
+  timeLimit: string;
+  rewards: string[];
+  progress: number;
+  target: number;
+  participants: number;
 }
 
 export default function AvatarCreator() {
@@ -355,6 +394,57 @@ export default function AvatarCreator() {
     }
   ];
 
+  // Team and social gamification data
+  const userTeams: Team[] = [
+    {
+      id: "team_1",
+      name: "Downtown Explorers",
+      members: [
+        { id: "user_1", name: "You", avatar: "avatar_1", points: 1250, joinedAt: "2 weeks ago", status: "active" },
+        { id: "user_2", name: "Sarah_M", avatar: "avatar_2", points: 980, joinedAt: "1 week ago", status: "active" },
+        { id: "user_3", name: "Mike_K", avatar: "avatar_3", points: 1100, joinedAt: "3 days ago", status: "active" }
+      ],
+      captain: "user_1",
+      totalPoints: 3330,
+      level: 8,
+      achievements: ["Team Explorer", "Social Butterfly", "Challenge Winner"],
+      activeChallenge: "challenge_1",
+      inviteCode: "DTE2024"
+    }
+  ];
+
+  const teamChallenges: TeamChallenge[] = [
+    {
+      id: "challenge_1",
+      title: "Weekend Warriors",
+      description: "Visit 15 businesses as a team this weekend",
+      type: "cooperative",
+      requiredMembers: 3,
+      timeLimit: "2 days left",
+      rewards: ["Team badge: Weekend Warriors", "500 coins each", "Exclusive team avatar effect"],
+      progress: 8,
+      target: 15,
+      participants: 47
+    },
+    {
+      id: "challenge_2", 
+      title: "Rival Teams Battle",
+      description: "Compete against other teams for the most Cirql taps",
+      type: "competitive",
+      requiredMembers: 4,
+      timeLimit: "5 days left",
+      rewards: ["Champion team crown", "1000 coins each", "Featured on leaderboard"],
+      progress: 23,
+      target: 50,
+      participants: 12
+    }
+  ];
+
+  const invitations = [
+    { from: "Alex_R", teamName: "Coffee Connoisseurs", message: "Join our coffee shop hopping team!", sent: "1 hour ago" },
+    { from: "Emma_L", teamName: "Fitness Fanatics", message: "Let's earn rewards at gyms together!", sent: "3 hours ago" }
+  ];
+
   const avatar = avatarPreview || (userAvatar as UserAvatar) || defaultAvatar;
 
   const handleAssetSelect = (asset: AvatarAsset) => {
@@ -468,11 +558,12 @@ export default function AvatarCreator() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 max-w-3xl mx-auto">
+          <TabsList className="grid w-full grid-cols-6 max-w-4xl mx-auto">
             <TabsTrigger value="customize">Customize</TabsTrigger>
             <TabsTrigger value="shop">Shop</TabsTrigger>
             <TabsTrigger value="achievements">Rewards</TabsTrigger>
             <TabsTrigger value="games">Games</TabsTrigger>
+            <TabsTrigger value="teams">Teams</TabsTrigger>
             <TabsTrigger value="showcase">Showcase</TabsTrigger>
           </TabsList>
 
@@ -924,13 +1015,245 @@ export default function AvatarCreator() {
                       </div>
                     </div>
                   ))}
-                  <Button className="w-full" variant="outline" className="border-purple-300 text-purple-600 hover:bg-purple-50">
+                  <Button className="w-full border-purple-300 text-purple-600 hover:bg-purple-50" variant="outline">
                     <ArrowUpDown className="h-4 w-4 mr-2" />
                     Browse All Trades
                   </Button>
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="teams" className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold mb-4">Team & Social Hub</h2>
+              <p className="text-gray-600">Invite friends, form teams, and compete together for amazing rewards</p>
+            </div>
+
+            {/* Friend Invitations Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <UserPlus className="h-5 w-5 text-green-500" />
+                    <span>Invite Friends</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg">
+                    <h3 className="font-semibold mb-2">Referral Rewards</h3>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      <li>• You get 200 coins per friend who joins</li>
+                      <li>• Friend gets 100 bonus coins to start</li>
+                      <li>• Unlock team challenges with 3+ friends</li>
+                      <li>• Special "Social Champion" badge at 10 referrals</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex space-x-2">
+                      <input 
+                        type="email" 
+                        placeholder="Friend's email address"
+                        className="flex-1 px-3 py-2 border rounded-md"
+                      />
+                      <Button className="bg-gradient-to-r from-green-500 to-emerald-500">
+                        <Send className="h-4 w-4 mr-1" />
+                        Invite
+                      </Button>
+                    </div>
+                    
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600 mb-2">Or share your invite code:</p>
+                      <div className="bg-gray-100 p-2 rounded font-mono text-center">
+                        CIRQL-{Math.random().toString(36).substring(2, 8).toUpperCase()}
+                      </div>
+                      <Button variant="outline" size="sm" className="mt-2">
+                        <Share2 className="h-4 w-4 mr-1" />
+                        Share Code
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Group className="h-5 w-5 text-blue-500" />
+                      <span>My Teams</span>
+                    </div>
+                    <Badge variant="outline" className="text-blue-600 border-blue-300">
+                      {userTeams.length} Active
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {userTeams.map((team) => (
+                    <div key={team.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-semibold">{team.name}</h3>
+                          <p className="text-sm text-gray-600">{team.members.length} members</p>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant="outline" className="text-purple-600 border-purple-300 mb-1">
+                            Level {team.level}
+                          </Badge>
+                          <p className="text-xs text-gray-500">{team.totalPoints} total points</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2 mb-3">
+                        {team.members.slice(0, 4).map((member, idx) => (
+                          <div key={idx} className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                            {member.name[0]}
+                          </div>
+                        ))}
+                        {team.members.length > 4 && (
+                          <div className="text-sm text-gray-500">+{team.members.length - 4} more</div>
+                        )}
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-orange-600">
+                          {team.activeChallenge ? "Active Challenge" : "No active challenge"}
+                        </span>
+                        <Button size="sm" variant="outline">
+                          <Group className="h-4 w-4 mr-1" />
+                          Manage
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <Button className="w-full" variant="outline">
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Create New Team
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Team Challenges Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Swords className="h-5 w-5 text-orange-500" />
+                    <span>Team Challenges</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {teamChallenges.map((challenge) => (
+                    <div key={challenge.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold">{challenge.title}</h3>
+                        <Badge variant={challenge.type === 'cooperative' ? 'default' : 'destructive'}>
+                          {challenge.type}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">{challenge.description}</p>
+                      
+                      <div className="space-y-2 mb-3">
+                        <div className="flex justify-between text-sm">
+                          <span>Progress</span>
+                          <span>{challenge.progress}/{challenge.target}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-orange-400 to-red-400 h-2 rounded-full"
+                            style={{ width: `${(challenge.progress / challenge.target) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-orange-600">{challenge.timeLimit}</span>
+                        <Button size="sm" className="bg-gradient-to-r from-orange-500 to-red-500">
+                          <Swords className="h-4 w-4 mr-1" />
+                          Join Challenge
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <PartyPopper className="h-5 w-5 text-pink-500" />
+                    <span>Social Events</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-gradient-to-r from-pink-50 to-purple-50 p-4 rounded-lg">
+                    <h3 className="font-semibold mb-2">Weekend Social Hour</h3>
+                    <p className="text-sm text-gray-600 mb-3">Join other Cirqlback users for a fun meetup at downtown businesses!</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-purple-600">Sat 2PM - Central Plaza</span>
+                      <Button size="sm" variant="outline" className="border-pink-300 text-pink-600">
+                        <PartyPopper className="h-4 w-4 mr-1" />
+                        Join Event
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="border rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Flash Mob Challenge</h3>
+                    <p className="text-sm text-gray-600 mb-3">100+ users tap the same business within 1 hour for massive rewards!</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-green-600">Active: Coffee Central</span>
+                      <Button size="sm" className="bg-gradient-to-r from-green-500 to-emerald-500">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        Go There!
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="border rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Monthly Leaderboard</h3>
+                    <p className="text-sm text-gray-600 mb-3">Top teams win exclusive avatar items and business vouchers</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-blue-600">Your team rank: #12</span>
+                      <Button size="sm" variant="outline">
+                        <Trophy className="h-4 w-4 mr-1" />
+                        View Rankings
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Pending Invitations */}
+            {invitations.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Send className="h-5 w-5 text-yellow-500" />
+                    <span>Pending Invitations</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {invitations.map((invite, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
+                      <div>
+                        <p className="font-medium">{invite.from} invited you to join "{invite.teamName}"</p>
+                        <p className="text-sm text-gray-600">"{invite.message}"</p>
+                        <p className="text-xs text-gray-500">{invite.sent}</p>
+                      </div>
+                      <div className="space-x-2">
+                        <Button size="sm" variant="outline">Decline</Button>
+                        <Button size="sm" className="bg-gradient-to-r from-green-500 to-emerald-500">Accept</Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="showcase" className="space-y-6">

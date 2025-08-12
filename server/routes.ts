@@ -937,6 +937,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team and Social API routes
+  app.post("/api/teams/invite", async (req, res) => {
+    try {
+      const { email, teamId, message } = req.body;
+      const userId = req.body.userId || "demo_user_1";
+      
+      // Send invitation logic here
+      res.json({
+        success: true,
+        message: `Invitation sent to ${email}!`,
+        rewardCoins: 200,
+        inviteCode: `CIRQL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+      });
+    } catch (error) {
+      console.error("Error sending invitation:", error);
+      res.status(500).json({ error: "Failed to send invitation" });
+    }
+  });
+
+  app.get("/api/teams/user/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      const teams = [
+        {
+          id: "team_1",
+          name: "Downtown Explorers",
+          members: [
+            { id: "user_1", name: "You", avatar: "avatar_1", points: 1250, joinedAt: "2 weeks ago", status: "active" },
+            { id: "user_2", name: "Sarah_M", avatar: "avatar_2", points: 980, joinedAt: "1 week ago", status: "active" },
+            { id: "user_3", name: "Mike_K", avatar: "avatar_3", points: 1100, joinedAt: "3 days ago", status: "active" }
+          ],
+          captain: "user_1",
+          totalPoints: 3330,
+          level: 8,
+          achievements: ["Team Explorer", "Social Butterfly", "Challenge Winner"],
+          activeChallenge: "challenge_1",
+          inviteCode: "DTE2024"
+        }
+      ];
+      
+      res.json(teams);
+    } catch (error) {
+      console.error("Error fetching user teams:", error);
+      res.status(500).json({ error: "Failed to fetch teams" });
+    }
+  });
+
+  app.post("/api/teams/create", async (req, res) => {
+    try {
+      const { name, description } = req.body;
+      const userId = req.body.userId || "demo_user_1";
+      
+      const newTeam = {
+        id: `team_${Date.now()}`,
+        name,
+        description,
+        captain: userId,
+        members: [
+          { id: userId, name: "You", avatar: "avatar_1", points: 0, joinedAt: "now", status: "active" }
+        ],
+        totalPoints: 0,
+        level: 1,
+        achievements: [],
+        inviteCode: `CIRQL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+      };
+      
+      res.json({
+        success: true,
+        team: newTeam,
+        message: "Team created successfully!"
+      });
+    } catch (error) {
+      console.error("Error creating team:", error);
+      res.status(500).json({ error: "Failed to create team" });
+    }
+  });
+
+  app.post("/api/teams/accept-invitation/:inviteId", async (req, res) => {
+    try {
+      const { inviteId } = req.params;
+      const userId = req.body.userId || "demo_user_1";
+      
+      res.json({
+        success: true,
+        message: "Successfully joined the team!",
+        welcomeBonus: 100,
+        teamName: "Coffee Connoisseurs"
+      });
+    } catch (error) {
+      console.error("Error accepting team invitation:", error);
+      res.status(500).json({ error: "Failed to accept invitation" });
+    }
+  });
+
   // Cirql Platform API routes
   app.post("/api/cirql/tap", async (req, res) => {
     try {

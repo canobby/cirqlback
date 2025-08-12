@@ -45,6 +45,8 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **Visual Campaign Routes**: Interactive trail system showing optimal business-to-business paths with challenge completion indicators and reward maximization suggestions
 - **Badge System**: Comprehensive peer-visible badges for both customers and businesses showcasing achievements, loyalty levels, and platform contributions
 - **AR Video Integration**: Immersive augmented reality experiences that transform simple Cirql taps into interactive mini-games with collectible rewards, progress visualization, and social sharing capabilities
+- **Team-Based Social Gamification**: Complete friend invitation system, team formation, cooperative/competitive challenges, social events, and viral growth mechanics to maximize user acquisition and business traffic
+- **Advanced Avatar Gamification Hub**: AR treasure hunts, social competitions, peer-to-peer trading system, and streak bonuses with full backend API support
 - **How It Works Page**: Comprehensive educational page with diagrams and explanations for business growth
 - **Advanced Analytics Dashboard**: Real-time metrics, AI-powered insights, and performance tracking
 - **Community Hub**: Gamified challenges, leaderboards, social feeds, and group rewards
