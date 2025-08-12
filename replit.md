@@ -26,7 +26,7 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **WebSocket Integration**: Real-time communication for live analytics and notifications
 - **Modular Route Structure**: Organized API endpoints for businesses, campaigns, NFC tags, customer interactions, account management, and subscriptions
 - **Middleware Pipeline**: Request logging, error handling, and JSON parsing
-- **Unified API System**: Single authentication layer for both Cirql and InSpektAI functionality
+- **Multi-Platform API System**: Single authentication layer providing access to separate platform services
 - **Usage Analytics**: Real-time API request tracking and rate limiting based on subscription tier
 
 ### Data Layer
@@ -56,14 +56,14 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **Progressive Web App**: Offline functionality, push notifications, location services, and native app experience
 - **Blockchain & Web3**: NFT loyalty rewards, CIRQ token ecosystem, DAO governance, DeFi staking, and crypto payments
 - **User Authentication & Subscriptions**: Complete account management with subscription tiers, API key generation, and usage tracking
-- **Unified API Access**: Single API key provides access to both Cirql functionality and InSpektAI platform integration
+- **Multi-Platform API Access**: Single API key provides access to multiple separate platforms (Cirql, InSpektAI) with platform-specific functionality
 
 ### Authentication & Session Management
 - **Session-based Authentication**: Uses connect-pg-simple for PostgreSQL session storage
 - **User Types**: Support for merchants, customers, and admin roles
 - **Business Associations**: Users can manage multiple business profiles
 - **Subscription Management**: Three-tier system (Free $0, Premium $99, Enterprise $299) with feature restrictions
-- **API Key System**: Unified authentication for both Cirql and InSpektAI platform access
+- **API Key System**: Single key authentication for accessing multiple separate platforms (Cirql, InSpektAI)
 - **Usage Tracking**: Real-time monitoring of API requests, success rates, and response times
 - **Account Dashboard**: Complete profile management, billing, and usage analytics interface
 

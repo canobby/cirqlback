@@ -80,7 +80,7 @@ export default function Account() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-xl font-semibold">{profile?.subscriptionTier?.charAt(0).toUpperCase() + profile?.subscriptionTier?.slice(1)} Plan</h3>
-                    <p className="text-gray-600">Full access to Cirql and InSpektAI features</p>
+                    <p className="text-gray-600">Access to multiple platform services</p>
                   </div>
                   <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
                     {profile?.subscriptionStatus?.charAt(0).toUpperCase() + profile?.subscriptionStatus?.slice(1)}
@@ -149,10 +149,10 @@ export default function Account() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <h4 className="font-medium text-yellow-800 mb-2">🔗 Unified API Access</h4>
+                  <h4 className="font-medium text-yellow-800 mb-2">🔑 Multi-Platform API Access</h4>
                   <p className="text-sm text-yellow-700">
-                    Your API key provides access to both Cirql functionality and InSpektAI platform features. 
-                    Use the same key for NFC tag management, customer analytics, and AI-powered insights.
+                    Your API key provides access to multiple platforms. Use the same key across different services
+                    by specifying the platform in your API requests.
                   </p>
                 </div>
 
@@ -189,25 +189,28 @@ export default function Account() {
                 <Separator />
 
                 <div className="space-y-3">
-                  <h4 className="font-medium">API Endpoints</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <span className="font-mono">POST /api/cirql/tap</span>
-                      <Badge variant="outline">Cirql</Badge>
+                  <h4 className="font-medium">Platform Access</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-3 border rounded-lg">
+                      <h5 className="font-medium text-purple-800 mb-2">Cirql Platform</h5>
+                      <div className="space-y-1 text-sm">
+                        <div className="font-mono text-xs">POST /api/cirql/tap</div>
+                        <div className="font-mono text-xs">GET /api/cirql/analytics</div>
+                        <div className="font-mono text-xs">POST /api/cirql/campaigns</div>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <span className="font-mono">GET /api/cirql/analytics</span>
-                      <Badge variant="outline">Cirql</Badge>
-                    </div>
-                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <span className="font-mono">POST /api/inspekt/analyze</span>
-                      <Badge variant="outline">InSpektAI</Badge>
-                    </div>
-                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <span className="font-mono">GET /api/inspekt/insights</span>
-                      <Badge variant="outline">InSpektAI</Badge>
+                    <div className="p-3 border rounded-lg">
+                      <h5 className="font-medium text-blue-800 mb-2">InSpektAI Platform</h5>
+                      <div className="space-y-1 text-sm">
+                        <div className="font-mono text-xs">POST /api/inspekt/analyze</div>
+                        <div className="font-mono text-xs">GET /api/inspekt/insights</div>
+                        <div className="font-mono text-xs">POST /api/inspekt/reports</div>
+                      </div>
                     </div>
                   </div>
+                  <p className="text-xs text-gray-500">
+                    Use the same API key for both platforms. Include platform context in your requests.
+                  </p>
                 </div>
               </CardContent>
             </Card>

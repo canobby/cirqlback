@@ -399,10 +399,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "premium",
           name: "Premium",
-          description: "Full access to Cirql and InSpektAI",
+          description: "Access to multiple platform services",
           price: 99,
           billingInterval: "monthly",
-          features: ["Unlimited Businesses", "Unlimited Campaigns", "50,000 API requests", "AI Insights", "Priority Support"],
+          features: ["Unlimited Businesses", "Unlimited Campaigns", "50,000 API requests", "Multi-platform Access", "Priority Support"],
           maxBusinesses: null,
           maxCampaigns: null,
           apiRequestsPerMonth: 50000,
@@ -454,11 +454,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Unified API routes for both Cirql and InSpektAI functionality
+  // Cirql Platform API routes
   app.post("/api/cirql/tap", async (req, res) => {
     try {
+      // API key authentication would happen here
       const { tagId, customerEmail } = req.body;
       const response = {
+        platform: "cirql",
         success: true,
         reward: {
           type: "discount",
@@ -470,13 +472,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       res.json(response);
     } catch (error) {
-      res.status(500).json({ error: "Failed to process tap" });
+      res.status(500).json({ error: "Failed to process Cirql tap" });
     }
   });
 
+  app.get("/api/cirql/analytics", async (req, res) => {
+    try {
+      const analytics = {
+        platform: "cirql",
+        totalTaps: 15234,
+        activeCampaigns: 127,
+        rewardsGiven: 8945,
+        conversionRate: 18.7
+      };
+      res.json(analytics);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch Cirql analytics" });
+    }
+  });
+
+  // InSpektAI Platform API routes
   app.get("/api/inspekt/insights", async (req, res) => {
     try {
+      // Same API key, different platform functionality
       const insights = {
+        platform: "inspektai",
         customerSegments: [
           { name: "Frequent Visitors", size: 234, growthRate: 12.5 },
           { name: "Deal Seekers", size: 189, growthRate: 8.3 },
@@ -494,7 +514,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       res.json(insights);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch AI insights" });
+      res.status(500).json({ error: "Failed to fetch InSpektAI insights" });
+    }
+  });
+
+  app.post("/api/inspekt/analyze", async (req, res) => {
+    try {
+      const { data, analysisType } = req.body;
+      const analysis = {
+        platform: "inspektai",
+        analysisId: "analysis_" + Math.random().toString(36).substring(2, 18),
+        status: "completed",
+        results: {
+          confidence: 94.2,
+          insights: ["High customer satisfaction detected", "Peak traffic on weekends"],
+          recommendations: ["Increase weekend staffing", "Launch customer retention program"]
+        }
+      };
+      res.json(analysis);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to process InSpektAI analysis" });
     }
   });
 
