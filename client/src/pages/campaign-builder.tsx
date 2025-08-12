@@ -313,7 +313,7 @@ export default function CampaignBuilder() {
         });
       }
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Generation Failed",
         description: "Failed to generate AI campaign. Please try again.",
@@ -334,7 +334,7 @@ export default function CampaignBuilder() {
   };
 
   const generateAISuggestion = () => {
-    generateCampaignMutation.mutate();
+    generateCampaignMutation.mutate(aiSuggestion || "Generate a creative campaign idea");
   };
 
   const addPartnerBusiness = (business: {id: string, name: string, category: string}) => {
@@ -541,11 +541,11 @@ export default function CampaignBuilder() {
             </div>
 
             {/* Real AI Suggestions Display */}
-            {aiSuggestions?.suggestions && aiSuggestions.suggestions.length > 0 && (
+            {(aiSuggestions as any)?.suggestions && (aiSuggestions as any).suggestions.length > 0 && (
               <div className="space-y-4">
                 <h3 className="font-semibold text-xl text-center text-purple-800">AI Campaign Suggestions</h3>
                 <div className="grid gap-6">
-                  {aiSuggestions.suggestions.map((suggestion: any, index: number) => (
+                  {(aiSuggestions as any).suggestions.map((suggestion: any, index: number) => (
                     <Card key={index} className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between">
