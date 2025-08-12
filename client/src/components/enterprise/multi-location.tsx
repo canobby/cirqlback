@@ -144,12 +144,14 @@ export default function MultiLocationManager() {
       </Card>
 
       <Tabs defaultValue="locations" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="locations">Locations</TabsTrigger>
-          <TabsTrigger value="franchise">Franchise</TabsTrigger>
-          <TabsTrigger value="whitelabel">White Label</TabsTrigger>
-          <TabsTrigger value="analytics">Global Analytics</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList className="grid grid-cols-4 min-w-max lg:w-full">
+            <TabsTrigger value="locations" className="px-2 text-xs lg:px-3 lg:text-sm">Locations</TabsTrigger>
+            <TabsTrigger value="franchise" className="px-2 text-xs lg:px-3 lg:text-sm">Franchise</TabsTrigger>
+            <TabsTrigger value="whitelabel" className="px-2 text-xs lg:px-3 lg:text-sm">White Label</TabsTrigger>
+            <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Global Analytics</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="locations" className="space-y-6">
           <div className="grid md:grid-cols-2 gap-6">

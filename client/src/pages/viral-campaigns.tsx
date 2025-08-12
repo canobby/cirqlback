@@ -293,28 +293,30 @@ export default function ViralCampaigns() {
 
         {/* Viral Campaign Tabs */}
         <Tabs defaultValue="active-campaigns" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto">
-            <TabsTrigger value="active-campaigns" className="flex items-center gap-2">
-              <Flame className="h-4 w-4" />
-              Active Campaigns
-            </TabsTrigger>
-            <TabsTrigger value="templates" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Viral Templates
-            </TabsTrigger>
-            <TabsTrigger value="social-platforms" className="flex items-center gap-2">
-              <Share2 className="h-4 w-4" />
-              Social Platforms
-            </TabsTrigger>
-            <TabsTrigger value="viral-mechanics" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Viral Mechanics
-            </TabsTrigger>
-            <TabsTrigger value="upcoming" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Upcoming Events
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="grid grid-cols-5 min-w-max lg:w-full">
+              <TabsTrigger value="active-campaigns" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Flame className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Active</span>
+              </TabsTrigger>
+              <TabsTrigger value="templates" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Sparkles className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Templates</span>
+              </TabsTrigger>
+              <TabsTrigger value="social-platforms" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Share2 className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Social</span>
+              </TabsTrigger>
+              <TabsTrigger value="viral-mechanics" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Zap className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Mechanics</span>
+              </TabsTrigger>
+              <TabsTrigger value="upcoming" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Calendar className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Upcoming</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Active Campaigns */}
           <TabsContent value="active-campaigns" className="space-y-6">

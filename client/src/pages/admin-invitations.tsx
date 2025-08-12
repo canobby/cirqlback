@@ -474,24 +474,26 @@ export default function AdminInvitations() {
         </div>
 
         <Tabs defaultValue="admins" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="admins">
-              <Users className="h-4 w-4 mr-2" />
-              Administrators
-            </TabsTrigger>
-            <TabsTrigger value="invitations">
-              <Mail className="h-4 w-4 mr-2" />
-              Pending Invitations
-            </TabsTrigger>
-            <TabsTrigger value="training">
-              <Award className="h-4 w-4 mr-2" />
-              Training Progress
-            </TabsTrigger>
-            <TabsTrigger value="communications">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Communications
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="grid grid-cols-4 min-w-max lg:w-full">
+              <TabsTrigger value="admins" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Users className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Admins</span>
+              </TabsTrigger>
+              <TabsTrigger value="invitations" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Mail className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Invitations</span>
+              </TabsTrigger>
+              <TabsTrigger value="training" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <Award className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Training</span>
+              </TabsTrigger>
+              <TabsTrigger value="communications" className="px-2 text-xs lg:px-3 lg:text-sm flex items-center gap-1">
+                <MessageSquare className="h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Communications</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="admins">
             <div className="grid gap-4">

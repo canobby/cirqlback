@@ -127,12 +127,14 @@ export default function ViralCampaigns() {
       </Card>
 
       <Tabs defaultValue="active" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="active">Active Campaigns</TabsTrigger>
-          <TabsTrigger value="create">Create Campaign</TabsTrigger>
-          <TabsTrigger value="templates">Viral Templates</TabsTrigger>
-          <TabsTrigger value="analytics">Performance</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList className="grid grid-cols-4 min-w-max lg:w-full">
+            <TabsTrigger value="active" className="px-2 text-xs lg:px-3 lg:text-sm">Active</TabsTrigger>
+            <TabsTrigger value="create" className="px-2 text-xs lg:px-3 lg:text-sm">Create</TabsTrigger>
+            <TabsTrigger value="templates" className="px-2 text-xs lg:px-3 lg:text-sm">Templates</TabsTrigger>
+            <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Performance</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="active" className="space-y-4">
           {campaigns.map((campaign) => (

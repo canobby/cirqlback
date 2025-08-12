@@ -93,11 +93,13 @@ export default function PricingOptimizer() {
       </Card>
 
       <Tabs defaultValue="recommendations" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="recommendations">AI Recommendations</TabsTrigger>
-          <TabsTrigger value="strategies">Pricing Strategies</TabsTrigger>
-          <TabsTrigger value="analytics">Advanced Analytics</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList className="grid grid-cols-3 min-w-max lg:w-full">
+            <TabsTrigger value="recommendations" className="px-2 text-xs lg:px-3 lg:text-sm">AI Recommendations</TabsTrigger>
+            <TabsTrigger value="strategies" className="px-2 text-xs lg:px-3 lg:text-sm">Pricing Strategies</TabsTrigger>
+            <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Advanced Analytics</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="recommendations" className="space-y-4">
           {recommendations.map((rec, index) => (
