@@ -544,6 +544,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Map API routes
+  app.get("/api/map/businesses", async (req, res) => {
+    try {
+      const businesses = [
+        {
+          id: "1",
+          name: "Brew & Bean Coffee",
+          address: "123 Main St, Downtown",
+          lat: 40.7589,
+          lng: -73.9851,
+          category: "cafe",
+          rating: 4.8,
+          activeCampaigns: 3,
+          isPartner: true,
+          visibilityLevel: "featured",
+          referralCount: 12,
+          description: "Artisan coffee shop with daily rewards"
+        },
+        {
+          id: "2", 
+          name: "Pizza Corner",
+          address: "456 Oak Ave, Midtown",
+          lat: 40.7614,
+          lng: -73.9776,
+          category: "restaurant",
+          rating: 4.5,
+          activeCampaigns: 2,
+          isPartner: true,
+          visibilityLevel: "priority",
+          referralCount: 8,
+          description: "Authentic Italian pizza with loyalty rewards"
+        },
+        {
+          id: "3",
+          name: "Tech Repair Plus",
+          address: "789 Broadway, Tech District", 
+          lat: 40.7505,
+          lng: -73.9934,
+          category: "services",
+          rating: 4.9,
+          activeCampaigns: 1,
+          isPartner: true,
+          visibilityLevel: "champion",
+          referralCount: 127,
+          description: "Phone and laptop repair with instant discounts"
+        },
+        {
+          id: "4",
+          name: "Green Leaf Wellness",
+          address: "321 Health St, Wellness Zone",
+          lat: 40.7282,
+          lng: -73.9942,
+          category: "wellness",
+          rating: 4.7,
+          activeCampaigns: 4,
+          isPartner: true,
+          visibilityLevel: "spotlight",
+          referralCount: 34,
+          description: "Natural health products and consultations"
+        },
+        {
+          id: "5",
+          name: "Urban Fitness Studio",
+          address: "555 Gym Street, Fitness District",
+          lat: 40.7350,
+          lng: -73.9900,
+          category: "fitness",
+          rating: 4.6,
+          activeCampaigns: 2,
+          isPartner: true,
+          visibilityLevel: "featured",
+          referralCount: 7,
+          description: "Modern fitness studio with member rewards"
+        }
+      ];
+      res.json(businesses);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch businesses" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates

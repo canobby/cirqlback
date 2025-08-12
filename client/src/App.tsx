@@ -13,6 +13,7 @@ import Analytics from "@/pages/analytics";
 import Account from "@/pages/account";
 import TapPage from "@/pages/tap";
 import HowItWorksPage from "@/pages/how-it-works";
+import MapPage from "@/pages/map";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -29,6 +30,7 @@ function Router() {
           <Route path="/account" component={Account} />
           <Route path="/tap" component={TapPage} />
           <Route path="/how-it-works" component={HowItWorksPage} />
+          <Route path="/map" component={MapPage} />
           <Route component={NotFound} />
         </Switch>
       </main>

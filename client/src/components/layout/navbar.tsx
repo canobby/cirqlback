@@ -69,6 +69,18 @@ export default function Navbar() {
                   Community
                 </Button>
               </Link>
+              <Link href="/map">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/map") 
+                      ? "text-primary bg-primary/10 border border-primary/20" 
+                      : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                  }`}
+                >
+                  Map
+                </Button>
+              </Link>
               <Link href="/analytics">
                 <Button 
                   variant="ghost" 

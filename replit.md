@@ -41,6 +41,7 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **Campaign Management**: Merchants can create discount, loyalty, and reward campaigns
 - **Cirql Tag Management**: Interface for assigning campaigns to physical Cirql tags (user-friendly term for NFC)
 - **Customer Cirql Tap Interface**: Mobile-optimized experience for claiming rewards via "Cirql tap"
+- **Interactive Business Map**: Dual-view map showing participating businesses for customers and visibility rewards earned through referral program for businesses
 - **How It Works Page**: Comprehensive educational page with diagrams and explanations for business growth
 - **Advanced Analytics Dashboard**: Real-time metrics, AI-powered insights, and performance tracking
 - **Community Hub**: Gamified challenges, leaderboards, social feeds, and group rewards
