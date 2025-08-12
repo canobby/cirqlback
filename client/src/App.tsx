@@ -34,6 +34,7 @@ import Partnerships from "@/pages/partnerships";
 import TeamChallenges from "@/pages/team-challenges";
 import ArTreasureHunts from "@/pages/ar-treasure-hunts";
 import ViralCampaigns from "@/pages/viral-campaigns";
+import ARGameHub from "@/pages/ar-game-hub";
 
 function Router() {
   const [location] = useLocation();
@@ -71,6 +72,7 @@ function Router() {
           <Route path="/team-challenges" component={TeamChallenges} />
           <Route path="/ar-treasure-hunts" component={ArTreasureHunts} />
           <Route path="/viral-campaigns" component={ViralCampaigns} />
+          <Route path="/ar-game-hub" component={ARGameHub} />
           <Route component={NotFound} />
         </Switch>
       </main>
