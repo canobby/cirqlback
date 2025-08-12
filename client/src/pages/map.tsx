@@ -82,6 +82,14 @@ export default function InteractiveDiscoveryMap() {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("local"); // "local" or "global"
   const [partnershipMode, setPartnershipMode] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(5); // 1-10 scale
+  const [privacySettings, setPrivacySettings] = useState({
+    showLocation: true,
+    showName: true,
+    showActivity: false,
+    allowMessages: false,
+    showRewards: false
+  });
   const { toast } = useToast();
 
   // Mock data for businesses
@@ -267,17 +275,31 @@ export default function InteractiveDiscoveryMap() {
     const matchesType = filterType === "all" || business.type === filterType;
     const matchesSearch = business.name.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // In local mode, show only nearby businesses (simulated with first 2 businesses)
-    // In global mode, show all subscribed merchants regardless of location
-    const matchesLocation = viewMode === "global" || ["biz1", "biz2"].includes(business.id);
+    // Dynamic filtering based on zoom level - higher zoom shows more distant merchants
+    let matchesZoom = true;
+    if (viewMode === "local") {
+      // Zoom 1-3: Only very local (first 2 businesses)
+      // Zoom 4-6: Regional (first 3 businesses) 
+      // Zoom 7-10: All merchants
+      if (zoomLevel <= 3) {
+        matchesZoom = ["biz1", "biz2"].includes(business.id);
+      } else if (zoomLevel <= 6) {
+        matchesZoom = ["biz1", "biz2", "biz3"].includes(business.id);
+      }
+      // else show all (zoomLevel 7-10)
+    }
     
-    return matchesType && matchesSearch && matchesLocation;
+    return matchesType && matchesSearch && matchesZoom;
   });
 
   const filteredCustomers = visibleCustomers.filter(customer => {
     const matchesSearch = customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          customer.status.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+    
+    // Only show customers who have visibility enabled and respect privacy settings
+    const respectsPrivacy = customer.isVisible && customer.preferences.showLocation;
+    
+    return matchesSearch && respectsPrivacy;
   });
 
   return (
@@ -302,10 +324,76 @@ export default function InteractiveDiscoveryMap() {
                 />
                 {isVisible ? <Eye className="h-4 w-4 text-green-600" /> : <EyeOff className="h-4 w-4 text-gray-400" />}
               </div>
-              <Button variant="outline">
-                <Settings className="h-4 w-4 mr-2" />
-                Privacy Settings
-              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Privacy Settings
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Privacy & Visibility Settings</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="show-location">Show my location on map</Label>
+                      <Switch
+                        id="show-location"
+                        checked={privacySettings.showLocation}
+                        onCheckedChange={(checked) => 
+                          setPrivacySettings(prev => ({ ...prev, showLocation: checked }))
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="show-name">Show my name to others</Label>
+                      <Switch
+                        id="show-name"
+                        checked={privacySettings.showName}
+                        onCheckedChange={(checked) => 
+                          setPrivacySettings(prev => ({ ...prev, showName: checked }))
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="show-activity">Show my recent activity</Label>
+                      <Switch
+                        id="show-activity"
+                        checked={privacySettings.showActivity}
+                        onCheckedChange={(checked) => 
+                          setPrivacySettings(prev => ({ ...prev, showActivity: checked }))
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="allow-messages">Allow messages from other customers</Label>
+                      <Switch
+                        id="allow-messages"
+                        checked={privacySettings.allowMessages}
+                        onCheckedChange={(checked) => 
+                          setPrivacySettings(prev => ({ ...prev, allowMessages: checked }))
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="show-rewards">Show my reward count</Label>
+                      <Switch
+                        id="show-rewards"
+                        checked={privacySettings.showRewards}
+                        onCheckedChange={(checked) => 
+                          setPrivacySettings(prev => ({ ...prev, showRewards: checked }))
+                        }
+                      />
+                    </div>
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        Your privacy is important. These settings control what information other customers can see about you on the map.
+                      </p>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>
@@ -362,23 +450,46 @@ export default function InteractiveDiscoveryMap() {
                         <SelectValue placeholder="View mode" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="local">Nearby Only</SelectItem>
+                        <SelectItem value="local">Dynamic by Zoom</SelectItem>
                         <SelectItem value="global">All Cirqlback Merchants</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
-                  <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
-                    <Switch
-                      id="partnership-mode"
-                      checked={partnershipMode}
-                      onCheckedChange={setPartnershipMode}
-                    />
-                    <Label htmlFor="partnership-mode" className="text-sm font-medium">
-                      Partnership Network Mode
-                    </Label>
-                    <div className="text-xs text-purple-600 ml-2">
-                      Connect with merchants anywhere for cross-campaigns
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="partnership-mode"
+                          checked={partnershipMode}
+                          onCheckedChange={setPartnershipMode}
+                        />
+                        <Label htmlFor="partnership-mode" className="text-sm font-medium">
+                          Partnership Network Mode
+                        </Label>
+                      </div>
+                      <div className="text-xs text-purple-600 mt-1">
+                        Connect with merchants anywhere for cross-campaigns
+                      </div>
+                    </div>
+                    
+                    <div className="p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
+                      <Label className="text-sm font-medium">Map Zoom Level</Label>
+                      <div className="flex items-center space-x-2 mt-2">
+                        <span className="text-xs text-gray-500">Local</span>
+                        <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={zoomLevel}
+                          onChange={(e) => setZoomLevel(parseInt(e.target.value))}
+                          className="flex-1"
+                        />
+                        <span className="text-xs text-gray-500">Global</span>
+                      </div>
+                      <div className="text-xs text-blue-600 mt-1">
+                        Level {zoomLevel}: {zoomLevel <= 3 ? "Very Local" : zoomLevel <= 6 ? "Regional" : "All Merchants"}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -750,15 +861,27 @@ export default function InteractiveDiscoveryMap() {
           {selectedCustomer && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Badge variant="outline">
-                  {selectedCustomer.rewardsEarned} rewards earned
-                </Badge>
+                {selectedCustomer.preferences.showActivity ? (
+                  <Badge variant="outline">
+                    {privacySettings.showRewards ? `${selectedCustomer.rewardsEarned} rewards earned` : "Rewards hidden"}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-gray-400">
+                    Activity hidden
+                  </Badge>
+                )}
                 <span className="text-sm text-gray-500">{selectedCustomer.lastActive}</span>
               </div>
               
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-700">{selectedCustomer.status}</p>
-              </div>
+              {selectedCustomer.preferences.showActivity ? (
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-700">{selectedCustomer.status}</p>
+                </div>
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-lg border-dashed border-2">
+                  <p className="text-sm text-gray-500 italic">This customer has chosen to keep their activity private</p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

@@ -11,6 +11,12 @@ Terminology: Uses "Cirql tags" instead of "NFC tags" and "Cirql tap" instead of 
 Color Palette: Comprehensive design system based on new logo gradient colors - purple (hsl(260 95% 55%)), pink (hsl(320 100% 60%)), orange (hsl(30 100% 55%)), blue (hsl(200 100% 55%)), and green (hsl(120 70% 45%)) - implemented across all UI components, cards, buttons, and brand elements.
 
 ## Recent Changes (August 12, 2025)
+- **MAJOR: DYNAMIC MAP WITH COMPREHENSIVE PRIVACY CONTROLS COMPLETED**
+  * **FLEXIBLE LOCATION SYSTEM** - Map dynamically shows merchants based on zoom level rather than fixed city categories
+  * **PRIVACY-FIRST DESIGN** - Comprehensive customer privacy controls for visibility, personal information sharing, and messaging
+  * **ZOOM-BASED DISCOVERY** - Level 1-3: Very Local, 4-6: Regional, 7-10: All merchants - no geographic restrictions
+  * **GLOBAL NETWORKING CAPABILITY** - Customers and merchants can connect for campaigns regardless of proximity
+  * **ENHANCED PRIVACY SETTINGS** - Individual controls for location, name, activity, messaging, and reward visibility
 - **MAJOR: AI FUNCTIONALITY AUDIT & PLACEHOLDER RESOLUTION COMPLETED**
   * **AI COMPONENTS ASSESSMENT** - Identified that AI features currently use mock/sample data requiring OpenAI integration
   * **MAP DISPLAY ENHANCEMENT** - Converted static placeholder to interactive visual map with positioned markers, animations, and controls
