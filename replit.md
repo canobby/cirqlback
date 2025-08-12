@@ -15,22 +15,27 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 
 ### Frontend Architecture
 - **React with TypeScript**: Single-page application using React 18+ with TypeScript for type safety
-- **Wouter Router**: Lightweight client-side routing for navigation between pages
+- **Wouter Router**: Lightweight client-side routing for navigation between pages including account management
 - **Tailwind CSS + shadcn/ui**: Utility-first CSS framework with a comprehensive component library
 - **TanStack Query**: Data fetching, caching, and synchronization for server state management
 - **Vite**: Fast build tool and development server with hot module replacement
+- **Account Management UI**: Complete subscription dashboard with API key management, usage statistics, and billing interface
 
 ### Backend Architecture
 - **Express.js**: Node.js web framework handling REST API endpoints
 - **WebSocket Integration**: Real-time communication for live analytics and notifications
-- **Modular Route Structure**: Organized API endpoints for businesses, campaigns, NFC tags, and customer interactions
+- **Modular Route Structure**: Organized API endpoints for businesses, campaigns, NFC tags, customer interactions, account management, and subscriptions
 - **Middleware Pipeline**: Request logging, error handling, and JSON parsing
+- **Unified API System**: Single authentication layer for both Cirql and InSpektAI functionality
+- **Usage Analytics**: Real-time API request tracking and rate limiting based on subscription tier
 
 ### Data Layer
 - **Drizzle ORM**: Type-safe database toolkit for schema definition and queries
 - **PostgreSQL**: Primary database with Neon serverless hosting
-- **Schema Design**: Comprehensive tables for users, businesses, campaigns, NFC tags, taps, rewards, and referrals
+- **Schema Design**: Comprehensive tables for users, businesses, campaigns, NFC tags, taps, rewards, referrals, subscriptions, and API usage
 - **Data Relationships**: Well-defined foreign key relationships between entities
+- **Subscription Tables**: subscription_plans, user_subscriptions, api_usage for complete billing and usage management
+- **API Tracking**: Detailed logging of all API requests with endpoint, method, response time, and status code tracking
 
 ### Key Features
 - **Campaign Management**: Merchants can create discount, loyalty, and reward campaigns
@@ -50,11 +55,17 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 - **Multi-Location Management**: Franchise operations, regional analytics, white-label branding, and global expansion tools
 - **Progressive Web App**: Offline functionality, push notifications, location services, and native app experience
 - **Blockchain & Web3**: NFT loyalty rewards, CIRQ token ecosystem, DAO governance, DeFi staking, and crypto payments
+- **User Authentication & Subscriptions**: Complete account management with subscription tiers, API key generation, and usage tracking
+- **Unified API Access**: Single API key provides access to both Cirql functionality and InSpektAI platform integration
 
 ### Authentication & Session Management
 - **Session-based Authentication**: Uses connect-pg-simple for PostgreSQL session storage
 - **User Types**: Support for merchants, customers, and admin roles
 - **Business Associations**: Users can manage multiple business profiles
+- **Subscription Management**: Three-tier system (Free $0, Premium $99, Enterprise $299) with feature restrictions
+- **API Key System**: Unified authentication for both Cirql and InSpektAI platform access
+- **Usage Tracking**: Real-time monitoring of API requests, success rates, and response times
+- **Account Dashboard**: Complete profile management, billing, and usage analytics interface
 
 ## External Dependencies
 

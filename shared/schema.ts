@@ -35,6 +35,12 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").default("customer"), // customer, merchant, admin
+  subscriptionTier: varchar("subscription_tier").default("free"), // free, basic, premium, enterprise
+  subscriptionStatus: varchar("subscription_status").default("active"), // active, cancelled, expired
+  stripeCustomerId: varchar("stripe_customer_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  apiKey: varchar("api_key").unique(), // for API access to both Cirql and InSpektAI
+  apiKeyCreatedAt: timestamp("api_key_created_at"),
   totalPoints: integer("total_points").default(0),
   availablePoints: integer("available_points").default(0),
   tier: varchar("tier").default("Bronze"), // Bronze, Silver, Gold, Platinum
@@ -163,6 +169,55 @@ export const userTrailProgress = pgTable("user_trail_progress", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Subscription Plans table
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(), // Free, Basic, Premium, Enterprise
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  billingInterval: varchar("billing_interval").notNull(), // monthly, yearly
+  features: jsonb("features"), // array of features
+  maxBusinesses: integer("max_businesses"),
+  maxCampaigns: integer("max_campaigns"),
+  maxNfcTags: integer("max_nfc_tags"),
+  apiRequestsPerMonth: integer("api_requests_per_month"),
+  hasAdvancedAnalytics: boolean("has_advanced_analytics").default(false),
+  hasAiInsights: boolean("has_ai_insights").default(false),
+  hasPrioritySupport: boolean("has_priority_support").default(false),
+  stripeProductId: varchar("stripe_product_id"),
+  stripePriceId: varchar("stripe_price_id"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// API Usage Tracking table
+export const apiUsage = pgTable("api_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  endpoint: varchar("endpoint").notNull(),
+  method: varchar("method").notNull(),
+  requestsCount: integer("requests_count").default(1),
+  responseTime: integer("response_time"), // in milliseconds
+  statusCode: integer("status_code"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+  month: varchar("month").notNull(), // YYYY-MM for monthly aggregation
+});
+
+// User Subscriptions table
+export const userSubscriptions = pgTable("user_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  planId: varchar("plan_id").references(() => subscriptionPlans.id).notNull(),
+  status: varchar("status").notNull(), // active, cancelled, past_due, unpaid
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const userRelations = relations(users, ({ many, one }) => ({
   businesses: many(businesses),
@@ -170,6 +225,8 @@ export const userRelations = relations(users, ({ many, one }) => ({
   referralsMade: many(referrals, { relationName: "referrer" }),
   referralsReceived: many(referrals, { relationName: "referee" }),
   trailProgress: many(userTrailProgress),
+  subscriptions: many(userSubscriptions),
+  apiUsage: many(apiUsage),
 }));
 
 export const businessRelations = relations(businesses, ({ many, one }) => ({
@@ -219,6 +276,19 @@ export const tapTrailRelations = relations(tapTrails, ({ many }) => ({
 export const userTrailProgressRelations = relations(userTrailProgress, ({ one }) => ({
   user: one(users, { fields: [userTrailProgress.userId], references: [users.id] }),
   trail: one(tapTrails, { fields: [userTrailProgress.trailId], references: [tapTrails.id] }),
+}));
+
+export const subscriptionPlanRelations = relations(subscriptionPlans, ({ many }) => ({
+  subscriptions: many(userSubscriptions),
+}));
+
+export const userSubscriptionRelations = relations(userSubscriptions, ({ one }) => ({
+  user: one(users, { fields: [userSubscriptions.userId], references: [users.id] }),
+  plan: one(subscriptionPlans, { fields: [userSubscriptions.planId], references: [subscriptionPlans.id] }),
+}));
+
+export const apiUsageRelations = relations(apiUsage, ({ one }) => ({
+  user: one(users, { fields: [apiUsage.userId], references: [users.id] }),
 }));
 
 // Zod schemas for validation
@@ -277,6 +347,22 @@ export const insertUserTrailProgressSchema = createInsertSchema(userTrailProgres
   completedAt: true,
 });
 
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions).omit({ 
+  id: true, 
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertApiUsageSchema = createInsertSchema(apiUsage).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
@@ -305,3 +391,12 @@ export type InsertTapTrail = z.infer<typeof insertTapTrailSchema>;
 
 export type UserTrailProgress = typeof userTrailProgress.$inferSelect;
 export type InsertUserTrailProgress = z.infer<typeof insertUserTrailProgressSchema>;
+
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema>;
+
+export type ApiUsage = typeof apiUsage.$inferSelect;
+export type InsertApiUsage = z.infer<typeof insertApiUsageSchema>;

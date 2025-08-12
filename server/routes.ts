@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { insertBusinessSchema, insertCampaignSchema, insertNfcTagSchema, insertTapSchema, insertRewardSchema, insertTapTrailSchema, insertReferralSchema } from "@shared/schema";
+import { insertBusinessSchema, insertCampaignSchema, insertNfcTagSchema, insertTapSchema, insertRewardSchema, insertTapTrailSchema, insertReferralSchema, insertSubscriptionPlanSchema, insertUserSubscriptionSchema, insertApiUsageSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -343,6 +343,158 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.redirect(customerUrl);
     } catch (error) {
       res.status(500).json({ error: "Failed to process campaign interaction" });
+    }
+  });
+
+  // User account and subscription routes
+  app.get("/api/account/profile", async (req, res) => {
+    try {
+      // Mock user profile
+      const profile = {
+        id: "user_123",
+        email: "chris@example.com",
+        firstName: "Chris",
+        lastName: "Johnson",
+        role: "premium",
+        subscriptionTier: "premium",
+        subscriptionStatus: "active",
+        apiKey: "cirql_live_sk_1234567890abcdef",
+        apiKeyCreatedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.post("/api/account/generate-api-key", async (req, res) => {
+    try {
+      // Generate new API key
+      const newApiKey = "cirql_live_sk_" + Math.random().toString(36).substring(2, 18);
+      res.json({ apiKey: newApiKey, createdAt: new Date() });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate API key" });
+    }
+  });
+
+  app.get("/api/subscription/plans", async (req, res) => {
+    try {
+      const plans = [
+        {
+          id: "free",
+          name: "Free",
+          description: "Perfect for trying out Cirql",
+          price: 0,
+          billingInterval: "monthly",
+          features: ["1 Business", "5 Campaigns", "1,000 API requests", "Basic analytics"],
+          maxBusinesses: 1,
+          maxCampaigns: 5,
+          apiRequestsPerMonth: 1000,
+          hasAdvancedAnalytics: false,
+          hasAiInsights: false,
+          hasPrioritySupport: false
+        },
+        {
+          id: "premium",
+          name: "Premium",
+          description: "Full access to Cirql and InSpektAI",
+          price: 99,
+          billingInterval: "monthly",
+          features: ["Unlimited Businesses", "Unlimited Campaigns", "50,000 API requests", "AI Insights", "Priority Support"],
+          maxBusinesses: null,
+          maxCampaigns: null,
+          apiRequestsPerMonth: 50000,
+          hasAdvancedAnalytics: true,
+          hasAiInsights: true,
+          hasPrioritySupport: true
+        }
+      ];
+      res.json(plans);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch subscription plans" });
+    }
+  });
+
+  app.get("/api/account/usage", async (req, res) => {
+    try {
+      const usage = {
+        currentPeriod: {
+          start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          end: new Date(),
+          apiRequests: 12457,
+          apiRequestsLimit: 50000
+        },
+        recentActivity: [
+          {
+            endpoint: "/api/cirql/tap",
+            method: "POST",
+            timestamp: new Date(Date.now() - 2 * 60 * 1000),
+            statusCode: 200,
+            responseTime: 145
+          },
+          {
+            endpoint: "/api/inspekt/insights",
+            method: "GET", 
+            timestamp: new Date(Date.now() - 5 * 60 * 1000),
+            statusCode: 200,
+            responseTime: 234
+          }
+        ],
+        monthlyStats: {
+          successRate: 98.2,
+          avgResponseTime: 145,
+          totalRequests: 12457
+        }
+      };
+      res.json(usage);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch usage statistics" });
+    }
+  });
+
+  // Unified API routes for both Cirql and InSpektAI functionality
+  app.post("/api/cirql/tap", async (req, res) => {
+    try {
+      const { tagId, customerEmail } = req.body;
+      const response = {
+        success: true,
+        reward: {
+          type: "discount",
+          value: "20% off",
+          description: "Great choice! Enjoy 20% off your next purchase.",
+          code: "CIRQL20"
+        },
+        pointsEarned: 50
+      };
+      res.json(response);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to process tap" });
+    }
+  });
+
+  app.get("/api/inspekt/insights", async (req, res) => {
+    try {
+      const insights = {
+        customerSegments: [
+          { name: "Frequent Visitors", size: 234, growthRate: 12.5 },
+          { name: "Deal Seekers", size: 189, growthRate: 8.3 },
+          { name: "Premium Customers", size: 67, growthRate: 15.7 }
+        ],
+        recommendations: [
+          "Launch a loyalty program for Frequent Visitors to increase retention",
+          "Create limited-time offers targeting Deal Seekers during off-peak hours"
+        ],
+        trendAnalysis: {
+          peakHours: ["11:00-13:00", "17:00-19:00"],
+          seasonalTrends: "Holiday season showing 40% increase in engagement",
+          conversionRate: 23.4
+        }
+      };
+      res.json(insights);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch AI insights" });
     }
   });
 

@@ -10,6 +10,7 @@ import Customer from "@/pages/customer";
 import Merchant from "@/pages/merchant";
 import Community from "@/pages/community";
 import Analytics from "@/pages/analytics";
+import Account from "@/pages/account";
 import TapPage from "@/pages/tap";
 import HowItWorksPage from "@/pages/how-it-works";
 import NotFound from "@/pages/not-found";
@@ -25,6 +26,7 @@ function Router() {
           <Route path="/merchant" component={Merchant} />
           <Route path="/community" component={Community} />
           <Route path="/analytics" component={Analytics} />
+          <Route path="/account" component={Account} />
           <Route path="/tap" component={TapPage} />
           <Route path="/how-it-works" component={HowItWorksPage} />
           <Route component={NotFound} />
