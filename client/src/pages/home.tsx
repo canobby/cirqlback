@@ -26,14 +26,14 @@ export default function Home() {
             </p>
             <div className="responsive-button-group">
               <Link href="/tap">
-                <Button variant="secondary" size="lg" className="bg-white text-primary hover:bg-gray-50 hover-tooltip w-full sm:w-auto">
-                  <Smartphone className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                  <span className="text-sm sm:text-base">Try Cirql Tap Demo</span>
+                <Button variant="secondary" size="lg" className="bg-white text-gray-900 hover:bg-gray-100 font-medium shadow-sm hover-tooltip w-full sm:w-auto">
+                  <Smartphone className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-gray-700" />
+                  <span className="text-sm sm:text-base text-gray-900">Try Cirql Tap Demo</span>
                   <div className="tooltip-content">Experience how customers tap Cirql tags to unlock rewards</div>
                 </Button>
               </Link>
               <Link href="/how-it-works">
-                <Button size="lg" className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-200 hover-tooltip w-full sm:w-auto">
+                <Button size="lg" className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-gray-900 transition-all duration-200 font-medium hover-tooltip w-full sm:w-auto">
                   <Store className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                   <span className="text-sm sm:text-base">How It Works</span>
                   <div className="tooltip-content">Learn about the complete platform features</div>
@@ -145,12 +145,12 @@ export default function Home() {
 
                     {/* Action Buttons */}
                     <div className="space-y-3">
-                      <Button className="w-full bg-primary text-white hover-tooltip">
+                      <Button className="w-full bg-purple-600 text-white hover:bg-purple-700 font-medium hover-tooltip">
                         <Share2 className="mr-2 h-4 w-4" />
                         Share Referral Link
                         <div className="tooltip-content">Earn rewards for referring friends to participating businesses</div>
                       </Button>
-                      <Button variant="outline" className="w-full hover-tooltip">
+                      <Button variant="outline" className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 hover-tooltip">
                         <MapPin className="mr-2 h-4 w-4" />
                         Find Nearby Shops
                         <div className="tooltip-content">Discover local businesses on the interactive map</div>

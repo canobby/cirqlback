@@ -144,24 +144,32 @@ export function SalesDataInput({ businessId, businessName = "Your Business" }: S
     },
   });
 
-  const onSubmitSalesData = (data: SalesDataFormValues) => {
+  const onSubmitSalesData = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
     // Prevent form submission if already loading
     if (addSalesData.isPending) return;
     
     try {
-      addSalesData.mutate(data);
+      const formData = salesForm.getValues();
+      addSalesData.mutate(formData);
     } catch (error) {
       console.error("Error submitting sales data:", error);
       toast({ title: "Error", description: "Failed to submit sales data", variant: "destructive" });
     }
   };
 
-  const onSubmitBusinessGoal = (data: BusinessGoalFormValues) => {
+  const onSubmitBusinessGoal = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
     // Prevent form submission if already loading
     if (addBusinessGoal.isPending) return;
     
     try {
-      addBusinessGoal.mutate(data);
+      const formData = goalForm.getValues();
+      addBusinessGoal.mutate(formData);
     } catch (error) {
       console.error("Error submitting business goal:", error);
       toast({ title: "Error", description: "Failed to submit business goal", variant: "destructive" });
@@ -293,7 +301,7 @@ export function SalesDataInput({ businessId, businessName = "Your Business" }: S
             </CardHeader>
             <CardContent>
               <Form {...salesForm}>
-                <form onSubmit={salesForm.handleSubmit(onSubmitSalesData)} className="space-y-6">
+                <form onSubmit={onSubmitSalesData} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={salesForm.control}
@@ -505,7 +513,7 @@ export function SalesDataInput({ businessId, businessName = "Your Business" }: S
             </CardHeader>
             <CardContent>
               <Form {...goalForm}>
-                <form onSubmit={goalForm.handleSubmit(onSubmitBusinessGoal)} className="space-y-6">
+                <form onSubmit={onSubmitBusinessGoal} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={goalForm.control}
