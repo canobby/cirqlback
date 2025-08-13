@@ -122,6 +122,9 @@ export const businesses = pgTable("businesses", {
   eventHostingCapability: boolean("event_hosting_capability").default(false),
   loyaltyProgramInterest: varchar("loyalty_program_interest"),
   marketingBudget: varchar("marketing_budget"),
+  // Real Sales Data Fields
+  enableSalesTracking: boolean("enable_sales_tracking").default(false),
+  salesDataSource: varchar("sales_data_source").default("manual"), // manual, pos_integration, csv_upload
   // Business Website Hosting
   websiteEnabled: boolean("website_enabled").default(false),
   customDomain: varchar("custom_domain"),
@@ -1315,3 +1318,69 @@ export type InsertBusinessRecommendation = z.infer<typeof insertBusinessRecommen
 export type InsertCustomerJourneyMap = z.infer<typeof insertCustomerJourneyMapSchema>;
 export type InsertTrafficPatternAnalysis = z.infer<typeof insertTrafficPatternAnalysisSchema>;
 export type InsertCampaignSuccessFactor = z.infer<typeof insertCampaignSuccessFactorSchema>;
+
+// REAL SALES DATA INPUT SYSTEM
+
+// Real Sales Data Input System
+export const salesData = pgTable("sales_data", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").notNull().references(() => businesses.id),
+  date: varchar("date").notNull(), // Using varchar for date to avoid import issues
+  totalSales: decimal("total_sales", { precision: 10, scale: 2 }).notNull(),
+  cirqlDrivenSales: decimal("cirql_driven_sales", { precision: 10, scale: 2 }).default("0.00"),
+  customerCount: integer("customer_count").default(0),
+  newCustomers: integer("new_customers").default(0),
+  returningCustomers: integer("returning_customers").default(0),
+  averageTicket: decimal("average_ticket", { precision: 10, scale: 2 }).default("0.00"),
+  notes: text("notes"),
+  inputMethod: varchar("input_method").default("manual"), // manual, pos_integration, csv_upload
+  verificationStatus: varchar("verification_status").default("unverified"), // unverified, verified, disputed
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Monthly Sales Summaries
+export const monthlySalesSummary = pgTable("monthly_sales_summary", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").notNull().references(() => businesses.id),
+  month: integer("month").notNull(), // 1-12
+  year: integer("year").notNull(),
+  totalSales: decimal("total_sales", { precision: 10, scale: 2 }).notNull(),
+  cirqlDrivenSales: decimal("cirql_driven_sales", { precision: 10, scale: 2 }).default("0.00"),
+  cirqlROI: decimal("cirql_roi", { precision: 5, scale: 2 }).default("0.00"), // Return on Investment percentage
+  totalCustomers: integer("total_customers").default(0),
+  newCustomersFromCirql: integer("new_customers_from_cirql").default(0),
+  retentionRate: decimal("retention_rate", { precision: 5, scale: 2 }).default("0.00"),
+  averageTicketGrowth: decimal("average_ticket_growth", { precision: 5, scale: 2 }).default("0.00"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Business Performance Goals
+export const businessGoals = pgTable("business_goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").notNull().references(() => businesses.id),
+  goalType: varchar("goal_type").notNull(), // revenue, customers, retention, avg_ticket
+  targetValue: decimal("target_value", { precision: 10, scale: 2 }).notNull(),
+  currentValue: decimal("current_value", { precision: 10, scale: 2 }).default("0.00"),
+  timeframe: varchar("timeframe").notNull(), // monthly, quarterly, yearly
+  startDate: varchar("start_date").notNull(),
+  endDate: varchar("end_date").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Sales Data Insert Schemas
+export const insertSalesDataSchema = createInsertSchema(salesData);
+export const insertMonthlySalesSummarySchema = createInsertSchema(monthlySalesSummary);
+export const insertBusinessGoalsSchema = createInsertSchema(businessGoals);
+
+// Sales Data Types
+export type SalesData = typeof salesData.$inferSelect;
+export type MonthlySalesSummary = typeof monthlySalesSummary.$inferSelect;
+export type BusinessGoals = typeof businessGoals.$inferSelect;
+
+export type InsertSalesData = z.infer<typeof insertSalesDataSchema>;
+export type InsertMonthlySalesSummary = z.infer<typeof insertMonthlySalesSummarySchema>;
+export type InsertBusinessGoals = z.infer<typeof insertBusinessGoalsSchema>;

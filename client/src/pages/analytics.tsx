@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { SalesDataInput } from "@/components/analytics/sales-data-input";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 import { 
   TrendingUp, 
@@ -23,7 +24,8 @@ import {
   RefreshCw,
   Brain,
   Lightbulb,
-  Loader2
+  Loader2,
+  Database
 } from "lucide-react";
 
 export default function AnalyticsDashboard() {
@@ -253,11 +255,15 @@ export default function AnalyticsDashboard() {
 
         {/* Main Analytics Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
             <TabsTrigger value="customers">Customers</TabsTrigger>
             <TabsTrigger value="locations">Locations</TabsTrigger>
+            <TabsTrigger value="real-data" className="flex items-center gap-1">
+              <Database className="h-4 w-4" />
+              Real Data
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -735,6 +741,16 @@ export default function AnalyticsDashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="real-data" className="space-y-6">
+            <SalesDataInput 
+              businessId={selectedBusiness !== "all" ? selectedBusiness : "default-business-id"} 
+              businessName={selectedBusiness !== "all" ? 
+                businesses.find((b: any) => b.id === selectedBusiness)?.name || "Selected Business" :
+                "Your Business"
+              }
+            />
           </TabsContent>
         </Tabs>
         {/* AI Insights Section */}

@@ -14,6 +14,9 @@ import {
   avatarAchievements,
   userAvatarAchievements,
   avatarInteractions,
+  salesData,
+  monthlySalesSummary,
+  businessGoals,
   type User,
   type UpsertUser,
   type Business,
@@ -38,6 +41,12 @@ import {
   type InsertAvatarAsset,
   type AvatarAchievement,
   type AvatarInteraction,
+  type SalesData,
+  type InsertSalesData,
+  type MonthlySalesSummary,
+  type InsertMonthlySalesSummary,
+  type BusinessGoals,
+  type InsertBusinessGoals,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, count } from "drizzle-orm";
@@ -112,6 +121,13 @@ export interface IStorage {
   getAvatarAchievements(): Promise<AvatarAchievement[]>;
   getUserAvatarAchievements(userId: string): Promise<any[]>;
   recordAvatarInteraction(interaction: Omit<AvatarInteraction, 'id' | 'createdAt'>): Promise<void>;
+
+  // Sales Data Input System
+  addSalesData(data: InsertSalesData): Promise<SalesData>;
+  getSalesData(businessId: string): Promise<SalesData[]>;
+  getRealVsPlatformComparison(businessId: string): Promise<any>;
+  addBusinessGoal(goal: InsertBusinessGoals): Promise<BusinessGoals>;
+  getBusinessGoals(businessId: string): Promise<BusinessGoals[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -640,6 +656,97 @@ export class DatabaseStorage implements IStorage {
       ...interaction,
       createdAt: new Date()
     });
+  }
+
+  // Sales Data Input System Implementation
+  async addSalesData(data: InsertSalesData): Promise<SalesData> {
+    const [salesRecord] = await db
+      .insert(salesData)
+      .values({
+        id: crypto.randomUUID(),
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    return salesRecord;
+  }
+
+  async getSalesData(businessId: string): Promise<SalesData[]> {
+    return await db
+      .select()
+      .from(salesData)
+      .where(eq(salesData.businessId, businessId))
+      .orderBy(desc(salesData.date));
+  }
+
+  async getRealVsPlatformComparison(businessId: string): Promise<any> {
+    // Get recent sales data
+    const recentSales = await this.getSalesData(businessId);
+    
+    // Get platform tap data for comparison
+    const recentTaps = await db
+      .select()
+      .from(taps)
+      .where(eq(taps.businessId, businessId));
+    
+    if (recentSales.length === 0) {
+      return {
+        realData: { totalSales: 0, cirqlDrivenSales: 0, cirqlROI: 0 },
+        platformEstimates: { totalTaps: recentTaps.length, estimatedRevenue: recentTaps.length * 15, estimatedCustomers: recentTaps.length },
+        insights: { 
+          isOutperforming: false, 
+          recommendedActions: ["Start inputting daily sales data for accurate comparisons"] 
+        },
+        accuracy: { hasRealData: false }
+      };
+    }
+
+    const totalRealSales = recentSales.reduce((sum, sale) => sum + parseFloat(sale.totalSales), 0);
+    const totalCirqlSales = recentSales.reduce((sum, sale) => sum + parseFloat(sale.cirqlDrivenSales || "0"), 0);
+    const cirqlROI = totalRealSales > 0 ? (totalCirqlSales / totalRealSales) * 100 : 0;
+
+    return {
+      realData: {
+        totalSales: totalRealSales,
+        cirqlDrivenSales: totalCirqlSales,
+        cirqlROI: cirqlROI
+      },
+      platformEstimates: {
+        totalTaps: recentTaps.length,
+        estimatedRevenue: recentTaps.length * 15,
+        estimatedCustomers: recentTaps.length
+      },
+      insights: {
+        isOutperforming: cirqlROI > 20,
+        recommendedActions: [
+          cirqlROI < 10 ? "Consider optimizing Cirql tag placement" : "Great ROI performance!",
+          recentTaps.length > 50 ? "High tap engagement" : "Increase marketing campaigns"
+        ]
+      },
+      accuracy: { hasRealData: true }
+    };
+  }
+
+  async addBusinessGoal(goal: InsertBusinessGoals): Promise<BusinessGoals> {
+    const [goalRecord] = await db
+      .insert(businessGoals)
+      .values({
+        id: crypto.randomUUID(),
+        ...goal,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    return goalRecord;
+  }
+
+  async getBusinessGoals(businessId: string): Promise<BusinessGoals[]> {
+    return await db
+      .select()
+      .from(businessGoals)
+      .where(eq(businessGoals.businessId, businessId))
+      .orderBy(desc(businessGoals.createdAt));
   }
 }
 
