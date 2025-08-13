@@ -3100,14 +3100,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add new sales data entry
   app.post("/api/sales-data", async (req, res) => {
     try {
-      const validatedData = insertSalesDataSchema.parse(req.body);
+      // Parse and prepare the data manually to avoid schema issues
+      const {
+        businessId,
+        date,
+        totalSales,
+        cirqlDrivenSales = "0",
+        customerCount = 0,
+        newCustomers = 0,
+        returningCustomers = 0,
+        notes = ""
+      } = req.body;
+
+      // Calculate average ticket if we have customer count and sales
+      const averageTicket = customerCount > 0 ? 
+        (parseFloat(totalSales) / customerCount).toFixed(2) : "0.00";
+
+      // Prepare data for insertion
+      const insertData = {
+        businessId,
+        date: date, // Keep as string since schema expects varchar
+        totalSales: totalSales.toString(),
+        cirqlDrivenSales: cirqlDrivenSales.toString(),
+        customerCount,
+        newCustomers,
+        returningCustomers,
+        averageTicket,
+        notes,
+        inputMethod: "manual",
+        verificationStatus: "unverified"
+      };
       
-      // Calculate metrics
-      if (validatedData.customerCount && validatedData.totalSales) {
-        validatedData.averageTicket = (parseFloat(validatedData.totalSales) / validatedData.customerCount).toFixed(2);
-      }
-      
-      const result = await db.insert(salesData).values(validatedData).returning();
+      const result = await db.insert(salesData).values(insertData).returning();
       res.json(result[0]);
     } catch (error) {
       console.error("Error adding sales data:", error);

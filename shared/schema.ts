@@ -1326,12 +1326,12 @@ export const salesData = pgTable("sales_data", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   businessId: varchar("business_id").notNull().references(() => businesses.id),
   date: varchar("date").notNull(), // Using varchar for date to avoid import issues
-  totalSales: decimal("total_sales", { precision: 10, scale: 2 }).notNull(),
-  cirqlDrivenSales: decimal("cirql_driven_sales", { precision: 10, scale: 2 }).default("0.00"),
+  totalSales: varchar("total_sales").notNull(), // Changed to varchar to match database
+  cirqlDrivenSales: varchar("cirql_driven_sales").default("0"),
   customerCount: integer("customer_count").default(0),
   newCustomers: integer("new_customers").default(0),
   returningCustomers: integer("returning_customers").default(0),
-  averageTicket: decimal("average_ticket", { precision: 10, scale: 2 }).default("0.00"),
+  averageTicket: varchar("average_ticket").default("0.00"),
   notes: text("notes"),
   inputMethod: varchar("input_method").default("manual"), // manual, pos_integration, csv_upload
   verificationStatus: varchar("verification_status").default("unverified"), // unverified, verified, disputed
