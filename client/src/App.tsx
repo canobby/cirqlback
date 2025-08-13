@@ -56,6 +56,8 @@ import TermsOfServicePage from "@/pages/terms-of-service";
 import NfcWriterPage from "@/pages/nfc-writer";
 import CampaignSetupWizard from "@/pages/campaign-setup-wizard";
 import NFCSetupWizard from "@/pages/nfc-setup-wizard";
+import MerchantBento from "@/pages/merchant-bento";
+import CampaignSetupBento from "@/pages/campaign-setup-bento";
 
 function Router() {
   const [location] = useLocation();
@@ -113,6 +115,8 @@ function Router() {
         <Route path="/business-intelligence" component={BusinessIntelligenceSuite} />
         <Route path="/nfc-writer" component={NfcWriterPage} />
         <Route path="/campaign-setup-wizard" component={CampaignSetupWizard} />
+        <Route path="/campaign-setup-bento" component={CampaignSetupBento} />
+        <Route path="/merchant-bento" component={MerchantBento} />
         <Route path="/nfc-setup-wizard" component={NFCSetupWizard} />
           
           {/* Footer Pages */}

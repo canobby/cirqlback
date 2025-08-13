@@ -30,9 +30,20 @@ export default function Merchant() {
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8 text-center">
-        <h1 className="text-4xl font-bold gradient-text mb-4">AI-Powered Business Intelligence Hub</h1>
-        <p className="text-xl text-gray-600">Complete business ecosystem with AI partnership recommendations, multi-merchant reward pools, predictive customer analytics, 22+ platform integrations, automated marketing orchestration, and comprehensive export capabilities</p>
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-4xl font-bold gradient-text mb-2">AI-Powered Business Intelligence Hub</h1>
+            <p className="text-xl text-gray-600">Complete business ecosystem with AI partnership recommendations, multi-merchant reward pools, predictive customer analytics, 22+ platform integrations, automated marketing orchestration, and comprehensive export capabilities</p>
+          </div>
+          <Button 
+            onClick={() => window.location.href = '/merchant-bento'}
+            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            Try Bento Layout
+          </Button>
+        </div>
       </div>
 
       {/* Enhanced Business Header */}
@@ -109,7 +120,7 @@ export default function Merchant() {
                   Set up discounts, loyalty points, or referral rewards in minutes
                 </p>
                 <Button 
-                  onClick={() => window.location.href = '/campaign-setup-wizard'}
+                  onClick={() => window.location.href = '/campaign-setup-bento'}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                 >
                   <Zap className="h-4 w-4 mr-2" />
