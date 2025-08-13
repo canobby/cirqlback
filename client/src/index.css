@@ -221,11 +221,35 @@
     background-clip: text;
   }
 
-  /* Ensure button text is always visible with proper contrast */
+  /* Force white text on all dark buttons */
   .button-text-fix {
-    color: currentColor !important;
+    color: white !important;
     text-shadow: none !important;
     opacity: 1 !important;
+  }
+
+  /* Override all button variants that have dark backgrounds */
+  .bg-primary,
+  .bg-secondary, 
+  .bg-destructive,
+  [class*="bg-blue"],
+  [class*="bg-green"],
+  [class*="bg-purple"],
+  [class*="bg-pink"],
+  [class*="bg-orange"],
+  [class*="bg-gray-"] {
+    color: white !important;
+  }
+
+  /* Specific button overrides */
+  button[class*="bg-primary"],
+  button[class*="bg-secondary"],
+  button[class*="bg-blue"],
+  button[class*="bg-green"],
+  button[class*="bg-purple"],
+  button[class*="bg-pink"],
+  button[class*="bg-orange"] {
+    color: white !important;
   }
 
   /* Fix ghost button text visibility */
@@ -245,7 +269,7 @@
 
   .outline-button-fix:hover {
     background-color: var(--accent) !important;
-    color: var(--accent-foreground) !important;
+    color: white !important;
   }
   
   /* Ensure buttons don't overlap */
