@@ -53,6 +53,7 @@ import ContactPage from "@/pages/contact";
 import HelpCenterPage from "@/pages/help-center";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TermsOfServicePage from "@/pages/terms-of-service";
+import NfcWriterPage from "@/pages/nfc-writer";
 
 function Router() {
   const [location] = useLocation();
@@ -108,6 +109,7 @@ function Router() {
           <Route path="/profile-setup" component={ProfileSetup} />
         <Route path="/export-hub" component={ExportHub} />
         <Route path="/business-intelligence" component={BusinessIntelligenceSuite} />
+        <Route path="/nfc-writer" component={NfcWriterPage} />
           
           {/* Footer Pages */}
           <Route path="/contact" component={ContactPage} />

@@ -86,6 +86,7 @@ export interface IStorage {
   getNFCTagByIdentifier(identifier: string): Promise<NfcTag | undefined>;
   createNFCTag(tag: InsertNfcTag): Promise<NfcTag>;
   updateNFCTag(id: string, updates: Partial<NfcTag>): Promise<NfcTag>;
+  deleteNFCTag(id: string): Promise<boolean>;
   
   // Tap operations
   processTap(tap: InsertTap): Promise<{ success: boolean; reward?: Reward; message: string }>;

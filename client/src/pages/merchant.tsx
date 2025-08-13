@@ -12,7 +12,7 @@ import ViralCampaigns from "@/components/marketing/viral-campaigns";
 import StatsCard from "@/components/ui/stats-card";
 import WebNFCInterface from "@/components/nfc/web-nfc-interface";
 import NFCStatusIndicator from "@/components/nfc/nfc-status-indicator";
-import { Store, Users, Share2, TrendingUp, Coffee, BookOpen, UtensilsCrossed, DollarSign, Zap } from "lucide-react";
+import { Store, Users, Share2, TrendingUp, Coffee, BookOpen, UtensilsCrossed, DollarSign, Zap, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PlatformSync from "@/components/global/platform-sync";
 import { GuidedTour } from "@/components/interactive/guided-tour";
@@ -142,6 +142,25 @@ export default function Merchant() {
         </TabsContent>
 
         <TabsContent value="nfc-wizard" className="space-y-6">
+          <div className="mb-4">
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-blue-900">Advanced NFC Tag Writer</h3>
+                    <p className="text-blue-700 text-sm">Program physical NFC tags with Web NFC API integration</p>
+                  </div>
+                  <Button 
+                    onClick={() => window.location.href = '/nfc-writer'} 
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Smartphone className="mr-2 h-4 w-4" />
+                    Open Tag Writer
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
           <NfcWritingWizard businessId={selectedBusiness} />
         </TabsContent>
 
