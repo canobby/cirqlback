@@ -94,6 +94,18 @@ export default function Navbar() {
                   Account
                 </Button>
               </Link>
+              <Link href="/business-intelligence">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/business-intelligence") 
+                      ? "text-indigo-600 bg-indigo-50 border border-indigo-200" 
+                      : "text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50"
+                  }`}
+                >
+                  Business Intelligence
+                </Button>
+              </Link>
               <Link href="/test-system">
                 <Button 
                   variant="ghost" 
