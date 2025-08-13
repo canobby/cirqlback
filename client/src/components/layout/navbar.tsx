@@ -107,6 +107,18 @@ export default function Navbar() {
                   Map
                 </Button>
               </Link>
+              <Link href="/partnerships">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/partnerships") 
+                      ? "text-orange-600 bg-orange-50 border border-orange-200" 
+                      : "text-muted-foreground hover:text-orange-600 hover:bg-orange-50"
+                  }`}
+                >
+                  Partnerships
+                </Button>
+              </Link>
               <Link href="/communication">
                 <Button 
                   variant="ghost" 

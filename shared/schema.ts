@@ -808,6 +808,97 @@ export const crossBusinessRewards = pgTable("cross_business_rewards", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Multi-Merchant Reward Cost-Sharing System
+export const rewardPoolCampaigns = pgTable("reward_pool_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  totalPoolValue: decimal("total_pool_value", { precision: 10, scale: 2 }),
+  status: varchar("status").default("active"), // active, completed, cancelled
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  settlementMethod: varchar("settlement_method").notNull(), // financial_compensation, product_exchange, service_credits, mixed
+  autoSettlement: boolean("auto_settlement").default(true),
+  settlementSchedule: varchar("settlement_schedule").default("monthly"), // weekly, monthly, campaign_end
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by").references(() => businesses.id),
+});
+
+export const merchantPoolParticipants = pgTable("merchant_pool_participants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").references(() => rewardPoolCampaigns.id),
+  businessId: varchar("business_id").references(() => businesses.id),
+  agreedContribution: decimal("agreed_contribution", { precision: 10, scale: 2 }).notNull(),
+  contributionType: varchar("contribution_type").notNull(), // cash, products, services, discount_value
+  contributionDescription: text("contribution_description"),
+  currentBalance: decimal("current_balance", { precision: 10, scale: 2 }).default("0"),
+  totalRewardsGiven: decimal("total_rewards_given", { precision: 10, scale: 2 }).default("0"),
+  settlementPreference: varchar("settlement_preference").notNull(), // receive_cash, provide_products, service_credits
+  joinedAt: timestamp("joined_at").defaultNow(),
+  status: varchar("status").default("active"), // active, pending, withdrawn
+  autoApproveRewards: boolean("auto_approve_rewards").default(false),
+  maxDailyRewardValue: decimal("max_daily_reward_value", { precision: 10, scale: 2 }),
+});
+
+export const poolRewardTransactions = pgTable("pool_reward_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").references(() => rewardPoolCampaigns.id),
+  rewardingBusinessId: varchar("rewarding_business_id").references(() => businesses.id), // business giving the reward
+  rewardValue: decimal("reward_value", { precision: 10, scale: 2 }).notNull(),
+  rewardType: varchar("reward_type").notNull(), // discount, free_item, service, points
+  rewardDescription: text("reward_description"),
+  customerId: varchar("customer_id").references(() => users.id),
+  tapId: varchar("tap_id").references(() => taps.id),
+  timestamp: timestamp("timestamp").defaultNow(),
+  status: varchar("status").default("pending"), // pending, approved, settled
+  settlementAmount: decimal("settlement_amount", { precision: 10, scale: 2 }),
+  settlementMethod: varchar("settlement_method"), // cash_payment, product_credit, service_exchange
+  settlementDate: timestamp("settlement_date"),
+  notes: text("notes"),
+});
+
+export const poolSettlements = pgTable("pool_settlements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").references(() => rewardPoolCampaigns.id),
+  settlementPeriod: varchar("settlement_period").notNull(), // 2024-01, week-1-2024, etc
+  totalPoolRewards: decimal("total_pool_rewards", { precision: 10, scale: 2 }).notNull(),
+  averageRewardPerMerchant: decimal("average_reward_per_merchant", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status").default("pending"), // pending, processing, completed, failed
+  createdAt: timestamp("created_at").defaultNow(),
+  processedAt: timestamp("processed_at"),
+  processingNotes: text("processing_notes"),
+});
+
+export const merchantSettlementDetails = pgTable("merchant_settlement_details", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  settlementId: varchar("settlement_id").references(() => poolSettlements.id),
+  businessId: varchar("business_id").references(() => businesses.id),
+  rewardsGiven: decimal("rewards_given", { precision: 10, scale: 2 }).notNull(),
+  rewardsReceived: decimal("rewards_received", { precision: 10, scale: 2 }).notNull(),
+  netBalance: decimal("net_balance", { precision: 10, scale: 2 }).notNull(), // positive = owed money, negative = owes money
+  settlementType: varchar("settlement_type").notNull(), // payment_due, credit_due, balanced
+  paymentMethod: varchar("payment_method"), // stripe_transfer, bank_transfer, platform_credit, product_exchange
+  paymentReference: varchar("payment_reference"),
+  status: varchar("status").default("pending"), // pending, processing, completed, failed
+  processedAt: timestamp("processed_at"),
+  failureReason: text("failure_reason"),
+});
+
+export const rewardPoolInvoices = pgTable("reward_pool_invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  settlementDetailId: varchar("settlement_detail_id").references(() => merchantSettlementDetails.id),
+  invoiceNumber: varchar("invoice_number").unique().notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  status: varchar("status").default("pending"), // pending, sent, paid, overdue, cancelled
+  sentAt: timestamp("sent_at"),
+  paidAt: timestamp("paid_at"),
+  paymentMethod: varchar("payment_method"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // COMMUNITY & SOCIAL FEATURES
 
 // Teams
@@ -1091,3 +1182,136 @@ export type ViralCampaign = typeof viralCampaigns.$inferSelect;
 export type WeatherTrigger = typeof weatherTriggers.$inferSelect;
 export type LocalEvent = typeof localEvents.$inferSelect;
 export type EventBusinessCampaign = typeof eventBusinessCampaigns.$inferSelect;
+
+// Multi-Merchant Pool System Types
+export const insertRewardPoolCampaignSchema = createInsertSchema(rewardPoolCampaigns);
+export const insertMerchantPoolParticipantSchema = createInsertSchema(merchantPoolParticipants);
+export const insertPoolRewardTransactionSchema = createInsertSchema(poolRewardTransactions);
+export const insertPoolSettlementSchema = createInsertSchema(poolSettlements);
+export const insertMerchantSettlementDetailSchema = createInsertSchema(merchantSettlementDetails);
+export const insertRewardPoolInvoiceSchema = createInsertSchema(rewardPoolInvoices);
+
+export type RewardPoolCampaign = typeof rewardPoolCampaigns.$inferSelect;
+export type MerchantPoolParticipant = typeof merchantPoolParticipants.$inferSelect;
+export type PoolRewardTransaction = typeof poolRewardTransactions.$inferSelect;
+export type PoolSettlement = typeof poolSettlements.$inferSelect;
+export type MerchantSettlementDetail = typeof merchantSettlementDetails.$inferSelect;
+export type RewardPoolInvoice = typeof rewardPoolInvoices.$inferSelect;
+
+export type InsertRewardPoolCampaign = z.infer<typeof insertRewardPoolCampaignSchema>;
+export type InsertMerchantPoolParticipant = z.infer<typeof insertMerchantPoolParticipantSchema>;
+export type InsertPoolRewardTransaction = z.infer<typeof insertPoolRewardTransactionSchema>;
+export type InsertPoolSettlement = z.infer<typeof insertPoolSettlementSchema>;
+export type InsertMerchantSettlementDetail = z.infer<typeof insertMerchantSettlementDetailSchema>;
+export type InsertRewardPoolInvoice = z.infer<typeof insertRewardPoolInvoiceSchema>;
+
+// Business Pairing & Recommendation System
+export const businessPairingScores = pgTable("business_pairing_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessAId: varchar("business_a_id").references(() => businesses.id).notNull(),
+  businessBId: varchar("business_b_id").references(() => businesses.id).notNull(),
+  compatibilityScore: real("compatibility_score").notNull(), // 0-100 overall compatibility
+  customerOverlapScore: real("customer_overlap_score").notNull(), // shared customer base
+  geographicScore: real("geographic_score").notNull(), // location proximity benefit
+  complementaryScore: real("complementary_score").notNull(), // business type synergy
+  trafficPatternScore: real("traffic_pattern_score").notNull(), // timing compatibility
+  costEfficiencyScore: real("cost_efficiency_score").notNull(), // reward cost optimization
+  historicalSuccessScore: real("historical_success_score"), // past campaign performance
+  seasonalCompatibility: jsonb("seasonal_compatibility"), // month-by-month scores
+  sharedCustomerCount: integer("shared_customer_count").default(0),
+  averageDistanceBetween: real("average_distance_between"), // kilometers
+  lastCalculated: timestamp("last_calculated").defaultNow(),
+  isRecommended: boolean("is_recommended").default(false),
+});
+
+export const businessRecommendations = pgTable("business_recommendations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  forBusinessId: varchar("for_business_id").references(() => businesses.id).notNull(),
+  recommendedBusinessId: varchar("recommended_business_id").references(() => businesses.id).notNull(),
+  recommendationType: varchar("recommendation_type").notNull(), // campaign_partner, cross_promotion, pool_participant, referral_partner
+  confidenceScore: real("confidence_score").notNull(), // 0-100 AI confidence
+  expectedBenefit: varchar("expected_benefit").notNull(), // increased_traffic, cost_savings, customer_acquisition, revenue_boost
+  estimatedTrafficIncrease: real("estimated_traffic_increase"), // percentage
+  estimatedCostSavings: decimal("estimated_cost_savings", { precision: 10, scale: 2 }),
+  estimatedRevenueBoost: decimal("estimated_revenue_boost", { precision: 10, scale: 2 }),
+  recommendationReason: text("recommendation_reason"),
+  campaignSuggestions: jsonb("campaign_suggestions"), // specific campaign ideas
+  optimalCampaignTiming: jsonb("optimal_campaign_timing"), // best months/days/times
+  suggestedContributionSplit: jsonb("suggested_contribution_split"), // cost-sharing recommendation
+  targetCustomerSegment: varchar("target_customer_segment"),
+  isViewed: boolean("is_viewed").default(false),
+  isAccepted: boolean("is_accepted").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // recommendations have expiry
+});
+
+export const customerJourneyMaps = pgTable("customer_journey_maps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerId: varchar("customer_id").references(() => users.id).notNull(),
+  visitSequence: jsonb("visit_sequence").notNull(), // ordered list of business visits
+  totalJourneyValue: decimal("total_journey_value", { precision: 10, scale: 2 }),
+  journeyDuration: integer("journey_duration"), // minutes between first and last visit
+  journeyDate: timestamp("journey_date").notNull(),
+  businessesVisited: integer("businesses_visited"),
+  avgTimePerBusiness: real("avg_time_per_business"), // minutes
+  totalDistanceTraveled: real("total_distance_traveled"), // kilometers
+  journeyEfficiency: real("journey_efficiency"), // value per minute
+  identifiedPatterns: jsonb("identified_patterns"), // AI-detected patterns
+  crossSellingOpportunities: jsonb("cross_selling_opportunities"), // missed opportunities
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const trafficPatternAnalysis = pgTable("traffic_pattern_analysis", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  dayOfWeek: integer("day_of_week").notNull(), // 0=Sunday, 6=Saturday
+  hourOfDay: integer("hour_of_day").notNull(), // 0-23
+  month: integer("month").notNull(), // 1-12
+  avgCustomerCount: real("avg_customer_count"),
+  avgSpendPerCustomer: decimal("avg_spend_per_customer", { precision: 10, scale: 2 }),
+  peakTrafficScore: real("peak_traffic_score"), // 0-100 relative to other times
+  customerDemographics: jsonb("customer_demographics"), // age, interests during this time
+  seasonalMultiplier: real("seasonal_multiplier"), // adjustment for time of year
+  weatherCorrelation: real("weather_correlation"), // -1 to 1 weather impact
+  eventCorrelation: real("event_correlation"), // local events impact
+  lastUpdated: timestamp("last_updated").defaultNow(),
+});
+
+export const campaignSuccessFactors = pgTable("campaign_success_factors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").references(() => campaigns.id).notNull(),
+  businessCombination: jsonb("business_combination").notNull(), // participating business types
+  campaignType: varchar("campaign_type").notNull(),
+  successScore: real("success_score").notNull(), // 0-100 overall success
+  customerAcquisitionRate: real("customer_acquisition_rate"),
+  customerRetentionRate: real("customer_retention_rate"),
+  crossBusinessVisitRate: real("cross_business_visit_rate"), // % who visited partner businesses
+  avgCustomerLifetimeValue: decimal("avg_customer_lifetime_value", { precision: 10, scale: 2 }),
+  costPerAcquisition: decimal("cost_per_acquisition", { precision: 10, scale: 2 }),
+  roiMultiplier: real("roi_multiplier"),
+  keySuccessFactors: jsonb("key_success_factors"), // what made it successful
+  failurePoints: jsonb("failure_points"), // what didn't work
+  optimalTiming: jsonb("optimal_timing"), // best timing factors identified
+  customerFeedbackScore: real("customer_feedback_score"), // 1-5 rating
+  merchantSatisfactionScore: real("merchant_satisfaction_score"), // 1-5 rating
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Business Pairing System Types
+export const insertBusinessPairingScoreSchema = createInsertSchema(businessPairingScores);
+export const insertBusinessRecommendationSchema = createInsertSchema(businessRecommendations);
+export const insertCustomerJourneyMapSchema = createInsertSchema(customerJourneyMaps);
+export const insertTrafficPatternAnalysisSchema = createInsertSchema(trafficPatternAnalysis);
+export const insertCampaignSuccessFactorSchema = createInsertSchema(campaignSuccessFactors);
+
+export type BusinessPairingScore = typeof businessPairingScores.$inferSelect;
+export type BusinessRecommendation = typeof businessRecommendations.$inferSelect;
+export type CustomerJourneyMap = typeof customerJourneyMaps.$inferSelect;
+export type TrafficPatternAnalysis = typeof trafficPatternAnalysis.$inferSelect;
+export type CampaignSuccessFactor = typeof campaignSuccessFactors.$inferSelect;
+
+export type InsertBusinessPairingScore = z.infer<typeof insertBusinessPairingScoreSchema>;
+export type InsertBusinessRecommendation = z.infer<typeof insertBusinessRecommendationSchema>;
+export type InsertCustomerJourneyMap = z.infer<typeof insertCustomerJourneyMapSchema>;
+export type InsertTrafficPatternAnalysis = z.infer<typeof insertTrafficPatternAnalysisSchema>;
+export type InsertCampaignSuccessFactor = z.infer<typeof insertCampaignSuccessFactorSchema>;
