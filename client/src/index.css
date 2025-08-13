@@ -220,6 +220,33 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  /* Ensure button text is always visible with proper contrast */
+  .button-text-fix {
+    color: currentColor !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+  }
+
+  /* Fix ghost button text visibility */
+  .ghost-button-fix {
+    color: var(--foreground) !important;
+  }
+
+  .ghost-button-fix:hover {
+    color: var(--accent-foreground) !important;
+  }
+
+  /* Ensure outline buttons have visible text */
+  .outline-button-fix {
+    color: var(--foreground) !important;
+    border-color: var(--border) !important;
+  }
+
+  .outline-button-fix:hover {
+    background-color: var(--accent) !important;
+    color: var(--accent-foreground) !important;
+  }
   
   /* Ensure buttons don't overlap */
   .nav-button-spacing {
@@ -544,5 +571,32 @@
     transform: translateX(-50%);
     border: 4px solid transparent;
     border-top-color: rgba(0, 0, 0, 0.9);
+  }
+
+  /* Test system specific responsive fixes */
+  .test-system-container {
+    @apply w-full max-w-none overflow-x-hidden;
+  }
+
+  .test-system-tabs {
+    @apply w-full overflow-x-auto;
+  }
+
+  .test-system-card {
+    @apply w-full max-w-full break-words;
+  }
+
+  /* Fix element overflow on mobile */
+  .mobile-overflow-fix {
+    @apply max-w-full overflow-x-hidden break-words;
+  }
+
+  .mobile-text-overflow {
+    @apply truncate sm:text-clip;
+  }
+
+  /* Container fixes for mobile */
+  .mobile-container-fix {
+    @apply px-2 sm:px-4 lg:px-6 max-w-full;
   }
 }

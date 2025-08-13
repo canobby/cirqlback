@@ -248,8 +248,8 @@ export default function TestSystem() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900 responsive-container py-4 sm:py-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="test-system-container min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900 mobile-container-fix py-4 sm:py-6">
+      <div className="max-w-7xl mx-auto space-y-6 mobile-overflow-fix">
         <div className="text-center space-y-2">
           <h1 className="responsive-heading font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent">
             Cirqlback Testing System
@@ -260,39 +260,43 @@ export default function TestSystem() {
         </div>
 
         {/* Current Testing Status */}
-        <Card className="border-l-4 border-l-purple-500">
+        <Card className="test-system-card border-l-4 border-l-purple-500 mobile-overflow-fix">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+              <div className="flex items-center space-x-2 mobile-overflow-fix">
                 <UserCheck className="h-5 w-5 text-purple-600" />
-                <CardTitle className="text-lg">Current Testing Role</CardTitle>
+                <CardTitle className="text-lg mobile-text-overflow">Current Testing Role</CardTitle>
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-wrap gap-2 w-full lg:w-auto">
                 <Button 
                   onClick={() => setShowCommunication(!showCommunication)}
                   variant={showCommunication ? "default" : "outline"}
                   size="sm"
-                  className={showCommunication ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white" : ""}
+                  className={`mobile-optimized ${showCommunication ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white" : ""}`}
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
-                  Partner Communication
+                  <span className="hidden sm:inline">Partner Communication</span>
+                  <span className="sm:hidden">Chat</span>
                 </Button>
                 <Button 
                   onClick={() => setShowSoloTesting(!showSoloTesting)}
                   variant={showSoloTesting ? "default" : "outline"}
                   size="sm"
-                  className={showSoloTesting ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white" : "border-purple-200 hover:bg-purple-50"}
+                  className={`mobile-optimized ${showSoloTesting ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white" : "border-purple-200 hover:bg-purple-50"}`}
                 >
                   <Play className="h-4 w-4 mr-2" />
-                  Solo Testing Mode
+                  <span className="hidden sm:inline">Solo Testing Mode</span>
+                  <span className="sm:hidden">Solo</span>
                 </Button>
                 <Button
                   onClick={enableCompetition}
                   variant={competitionMode ? "destructive" : "default"}
                   size="sm"
+                  className="mobile-optimized"
                 >
                   <Trophy className="h-4 w-4 mr-2" />
-                  {competitionMode ? "Disable Competition" : "Enable Competition"}
+                  <span className="hidden sm:inline">{competitionMode ? "Disable Competition" : "Enable Competition"}</span>
+                  <span className="sm:hidden">{competitionMode ? "Disable" : "Enable"}</span>
                 </Button>
               </div>
             </div>
@@ -319,18 +323,18 @@ export default function TestSystem() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="setup" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 responsive-tabs">
-            <TabsTrigger value="setup" className="text-xs sm:text-sm">Test Setup</TabsTrigger>
-            <TabsTrigger value="customer" className="text-xs sm:text-sm">Customer Journey</TabsTrigger>
-            <TabsTrigger value="business" className="text-xs sm:text-sm">Business Journey</TabsTrigger>
-            <TabsTrigger value="admin" className="text-xs sm:text-sm">Admin Journey</TabsTrigger>
+        <Tabs defaultValue="setup" className="test-system-tabs w-full">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 responsive-tabs mobile-overflow-fix">
+            <TabsTrigger value="setup" className="text-xs sm:text-sm mobile-optimized">Test Setup</TabsTrigger>
+            <TabsTrigger value="customer" className="text-xs sm:text-sm mobile-optimized">Customer Journey</TabsTrigger>
+            <TabsTrigger value="business" className="text-xs sm:text-sm mobile-optimized">Business Journey</TabsTrigger>
+            <TabsTrigger value="admin" className="text-xs sm:text-sm mobile-optimized">Admin Journey</TabsTrigger>
           </TabsList>
 
           <TabsContent value="setup" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="responsive-grid-2 mobile-overflow-fix">
               {/* Create Test Users */}
-              <Card>
+              <Card className="test-system-card mobile-overflow-fix">
                 <CardHeader>
                   <CardTitle>Create Test Users</CardTitle>
                   <CardDescription>Add new users for testing different scenarios</CardDescription>
@@ -376,7 +380,7 @@ export default function TestSystem() {
               </Card>
 
               {/* Existing Test Users */}
-              <Card>
+              <Card className="test-system-card mobile-overflow-fix">
                 <CardHeader>
                   <CardTitle>Test Users</CardTitle>
                   <CardDescription>Switch between different user personas</CardDescription>
