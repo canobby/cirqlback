@@ -9,6 +9,7 @@ No Tesla references: User prefers to avoid any Tesla/Elon Musk references in pla
 Logo: Official Cirqlback logo (modern circular gradient with arrow design featuring orange, green, blue, purple, and pink gradient flow) locked in and implemented throughout platform with transparency.
 Terminology: Uses "Cirql tags" instead of "NFC tags" and "Cirql tap" instead of "NFC tap" for user-friendly, non-technical language.
 Color Palette: Comprehensive design system based on new logo gradient colors - purple (hsl(260 95% 55%)), pink (hsl(320 100% 60%)), orange (hsl(30 100% 55%)), blue (hsl(200 100% 55%)), and green (hsl(120 70% 45%)) - implemented across all UI components, cards, buttons, and brand elements.
+**Locked-In Features**: All confirmed features, changes, and billing items are documented in LOCKED_IN_FEATURES_LIST.md and must not be forgotten or overlooked in future development.
 
 ## System Architecture
 
