@@ -50,6 +50,8 @@ interface TestCampaign {
 }
 
 export default function TestSystem() {
+  const { toast } = useToast();
+  const [selectedTestType, setSelectedTestType] = useState<string>("system-overview");
   const [testUsers, setTestUsers] = useState<TestUser[]>([
     {
       id: "user_1",
@@ -143,7 +145,6 @@ export default function TestSystem() {
   const [competitionMode, setCompetitionMode] = useState(false);
   const [showCommunication, setShowCommunication] = useState(false);
   const [showSoloTesting, setShowSoloTesting] = useState(false);
-  const { toast } = useToast();
 
   const createTestUser = () => {
     if (!newUserName || !newUserEmail) {
@@ -677,94 +678,39 @@ export default function TestSystem() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Competition Leaderboard */}
-            {competitionMode && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Competition Leaderboard</CardTitle>
-                  <CardDescription>Track testing competition between partners</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {testUsers
-                      .filter(u => u.role === "customer")
-                      .sort((a, b) => b.points - a.points)
-                      .map((user, index) => (
-                        <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className={`text-lg font-bold ${
-                              index === 0 ? "text-yellow-500" : 
-                              index === 1 ? "text-gray-400" : 
-                              index === 2 ? "text-orange-500" : "text-gray-600"
-                            }`}>
-                              #{index + 1}
-                            </div>
-                            <div>
-                              <div className="font-medium">{user.name}</div>
-                              <div className="text-sm text-gray-500">{user.tier} • {user.challengesCompleted} challenges</div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-lg font-bold">{user.points}</div>
-                            <div className="text-xs text-gray-500">points</div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </TabsContent>
         </Tabs>
 
-        {/* Communication Panel */}
+        {/* Communication Hub Modal */}
         {showCommunication && (
-          <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg text-blue-800">Testing Partnership Communication</CardTitle>
-                <Button 
-                  onClick={() => setShowCommunication(false)}
-                  variant="outline" 
-                  size="sm"
-                >
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[80vh] overflow-auto mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Partner Communication Hub</h2>
+                <Button variant="outline" onClick={() => setShowCommunication(false)}>
+                  <MessageSquare className="h-4 w-4 mr-2" />
                   Close
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="h-96">
-                <CommunicationHub context="testing" channelId="testing-main" />
-              </div>
-            </CardContent>
-          </Card>
+              <CommunicationHub />
+            </div>
+          </div>
         )}
 
-        {/* Solo Testing Simulator */}
+        {/* Solo Testing Modal */}
         {showSoloTesting && (
-          <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg text-purple-800">Solo Communication Testing</CardTitle>
-                <Button 
-                  onClick={() => setShowSoloTesting(false)}
-                  variant="outline" 
-                  size="sm"
-                >
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-6xl w-full max-h-[80vh] overflow-auto mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Solo Testing Simulator</h2>
+                <Button variant="outline" onClick={() => setShowSoloTesting(false)}>
+                  <Play className="h-4 w-4 mr-2" />
                   Close
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent className="p-2">
-              <SoloTestingSimulator onMessageReceived={(message) => {
-                toast({
-                  title: `Message from ${message.sender === "you" ? "You" : "Testing Partner"}`,
-                  description: message.content.substring(0, 100) + "...",
-                });
-              }} />
-            </CardContent>
-          </Card>
+              <SoloTestingSimulator />
+            </div>
+          </div>
         )}
       </div>
     </div>

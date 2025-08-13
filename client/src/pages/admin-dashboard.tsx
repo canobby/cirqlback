@@ -681,7 +681,7 @@ export default function AdminDashboard() {
                   </div>
                 )}
                 
-                {aiPlatformInsights?.insights && (
+                {aiPlatformInsights && (
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Platform Health Score */}
@@ -689,7 +689,7 @@ export default function AdminDashboard() {
                         <h4 className="font-semibold text-blue-800 mb-3">Platform Health Score</h4>
                         <div className="flex items-center space-x-4">
                           <div className="text-3xl font-bold text-green-600">
-                            {aiPlatformInsights.insights.healthScore || "95"}%
+                            {aiPlatformInsights.healthScore || "95"}%
                           </div>
                           <div className="text-sm text-gray-600">
                             <p>Excellent performance across all metrics</p>
@@ -701,7 +701,7 @@ export default function AdminDashboard() {
                       {/* Growth Predictions */}
                       <div className="p-4 bg-white rounded-lg border">
                         <h4 className="font-semibold text-blue-800 mb-3">AI Predictions</h4>
-                        {aiPlatformInsights.insights.predictions?.map((prediction: any, index: number) => (
+                        {aiPlatformInsights.predictions?.map((prediction: any, index: number) => (
                           <div key={index} className="mb-2">
                             <p className="text-sm font-medium">{prediction.title}</p>
                             <p className="text-xs text-gray-600">{prediction.description}</p>
@@ -714,7 +714,7 @@ export default function AdminDashboard() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <div className="space-y-3">
                         <h4 className="font-semibold text-blue-800">Strategic Recommendations</h4>
-                        {aiPlatformInsights.insights.recommendations?.map((rec: any, index: number) => (
+                        {aiPlatformInsights.recommendations?.map((rec: any, index: number) => (
                           <div key={index} className="p-3 bg-white rounded-lg border-l-4 border-blue-500">
                             <p className="font-medium text-gray-800">{rec.title}</p>
                             <p className="text-sm text-gray-600 mt-1">{rec.description}</p>
@@ -736,7 +736,7 @@ export default function AdminDashboard() {
 
                       <div className="space-y-3">
                         <h4 className="font-semibold text-blue-800">Risk Analysis</h4>
-                        {aiPlatformInsights.insights.risks?.map((risk: any, index: number) => (
+                        {aiPlatformInsights.risks?.map((risk: any, index: number) => (
                           <div key={index} className="p-3 bg-white rounded-lg border-l-4 border-orange-500">
                             <p className="font-medium text-gray-800">{risk.title}</p>
                             <p className="text-sm text-gray-600 mt-1">{risk.description}</p>
