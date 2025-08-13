@@ -257,13 +257,13 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
                 </Select>
                 
                 {selectedCampaign && (
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-blue-900">{selectedCampaign.name}</h4>
-                    <p className="text-blue-700 text-sm mt-1">{selectedCampaign.description}</p>
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                    <h4 className="font-medium text-blue-900 dark:text-blue-100">{selectedCampaign.name}</h4>
+                    <p className="text-blue-700 dark:text-blue-200 text-sm mt-1">{selectedCampaign.description}</p>
                     <div className="flex items-center mt-2 space-x-4">
-                      <Badge variant="outline">{selectedCampaign.type}</Badge>
+                      <Badge variant="outline" className="text-blue-800 dark:text-blue-200">{selectedCampaign.type}</Badge>
                       {selectedCampaign.value && (
-                        <span className="text-blue-700 font-medium">
+                        <span className="text-blue-700 dark:text-blue-200 font-medium">
                           {selectedCampaign.type === 'discount' ? `${selectedCampaign.value}% off` : `${selectedCampaign.pointsAwarded} points`}
                         </span>
                       )}
@@ -275,9 +275,12 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
 
             <div className="flex justify-end">
               <Button 
-                onClick={() => setCurrentStep('configure-tag')}
+                onClick={() => {
+                  console.log('Button clicked, campaignId:', tagConfiguration.campaignId);
+                  setCurrentStep('configure-tag');
+                }}
                 disabled={!tagConfiguration.campaignId}
-                className="bg-primary text-white hover:bg-primary/90"
+                className="bg-blue-600 text-white hover:bg-blue-700 font-medium px-6 py-2"
               >
                 Continue to Configuration
               </Button>
@@ -308,7 +311,7 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
                   value={tagConfiguration.location}
                   onChange={(e) => setTagConfiguration(prev => ({ ...prev, location: e.target.value }))}
                 />
-                <p className="text-sm text-gray-500">Where will this tag be placed in your business?</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Where will this tag be placed in your business?</p>
               </div>
 
               <div className="space-y-2">
@@ -319,7 +322,7 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
                   value={tagConfiguration.customLabel}
                   onChange={(e) => setTagConfiguration(prev => ({ ...prev, customLabel: e.target.value }))}
                 />
-                <p className="text-sm text-gray-500">A friendly name for internal reference</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">A friendly name for internal reference</p>
               </div>
             </div>
 
@@ -347,8 +350,8 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
 
             <Alert>
               <Zap className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Pro Tip:</strong> Place tags where customers naturally look or interact - near checkout, 
+              <AlertDescription className="text-gray-800 dark:text-gray-200">
+                <strong className="text-gray-900 dark:text-white">Pro Tip:</strong> Place tags where customers naturally look or interact - near checkout, 
                 on tables, or by entrance doors for maximum visibility and engagement.
               </AlertDescription>
             </Alert>
@@ -358,9 +361,12 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
                 Back
               </Button>
               <Button 
-                onClick={() => setCurrentStep('write-tag')}
+                onClick={() => {
+                  console.log('Continue to Writing clicked, location:', tagConfiguration.location);
+                  setCurrentStep('write-tag');
+                }}
                 disabled={!tagConfiguration.location.trim()}
-                className="bg-primary text-white hover:bg-primary/90"
+                className="bg-blue-600 text-white hover:bg-blue-700 font-medium px-6 py-2"
               >
                 Continue to Writing
               </Button>
