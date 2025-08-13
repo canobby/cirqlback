@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { SimpleSalesInput } from "@/components/analytics/simple-sales-input";
+import { BasicSalesForm } from "@/components/analytics/basic-sales-form";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 import { 
   TrendingUp, 
@@ -744,7 +744,7 @@ export default function AnalyticsDashboard() {
           </TabsContent>
 
           <TabsContent value="real-data" className="space-y-6">
-            <SimpleSalesInput />
+            <BasicSalesForm />
           </TabsContent>
         </Tabs>
         {/* AI Insights Section */}
