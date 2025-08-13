@@ -145,11 +145,27 @@ export function SalesDataInput({ businessId, businessName = "Your Business" }: S
   });
 
   const onSubmitSalesData = (data: SalesDataFormValues) => {
-    addSalesData.mutate(data);
+    // Prevent form submission if already loading
+    if (addSalesData.isPending) return;
+    
+    try {
+      addSalesData.mutate(data);
+    } catch (error) {
+      console.error("Error submitting sales data:", error);
+      toast({ title: "Error", description: "Failed to submit sales data", variant: "destructive" });
+    }
   };
 
   const onSubmitBusinessGoal = (data: BusinessGoalFormValues) => {
-    addBusinessGoal.mutate(data);
+    // Prevent form submission if already loading
+    if (addBusinessGoal.isPending) return;
+    
+    try {
+      addBusinessGoal.mutate(data);
+    } catch (error) {
+      console.error("Error submitting business goal:", error);
+      toast({ title: "Error", description: "Failed to submit business goal", variant: "destructive" });
+    }
   };
 
   return (
@@ -249,7 +265,14 @@ export function SalesDataInput({ businessId, businessName = "Your Business" }: S
       )}
 
       {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={(value) => {
+        try {
+          setActiveTab(value);
+        } catch (error) {
+          console.error("Tab change error:", error);
+          setActiveTab("input");
+        }
+      }}>
         <TabsList className="grid grid-cols-3 w-full">
           <TabsTrigger value="input">Sales Input</TabsTrigger>
           <TabsTrigger value="history">Sales History</TabsTrigger>

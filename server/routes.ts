@@ -3111,7 +3111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result[0]);
     } catch (error) {
       console.error("Error adding sales data:", error);
-      res.json({ success: true, message: "Sales data saved successfully" });
+      res.status(500).json({ error: "Failed to add sales data", details: error.message });
     }
   });
   
