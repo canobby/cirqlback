@@ -61,6 +61,8 @@ import CampaignSetupBento from "@/pages/campaign-setup-bento";
 import CustomerBento from "@/pages/customer-bento";
 import AnalyticsBento from "@/pages/analytics-bento";
 import HomeBento from "@/pages/home-bento";
+import NFCSetupWizardBento from "@/pages/nfc-setup-wizard-bento";
+import MapBento from "@/pages/map-bento";
 
 function Router() {
   const [location] = useLocation();
@@ -124,6 +126,8 @@ function Router() {
         <Route path="/analytics-bento" component={AnalyticsBento} />
         <Route path="/home-bento" component={HomeBento} />
         <Route path="/nfc-setup-wizard" component={NFCSetupWizard} />
+        <Route path="/nfc-setup-wizard-bento" component={NFCSetupWizardBento} />
+        <Route path="/map-bento" component={MapBento} />
           
           {/* Footer Pages */}
           <Route path="/contact" component={ContactPage} />

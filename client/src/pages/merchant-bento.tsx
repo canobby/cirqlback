@@ -86,7 +86,7 @@ export default function MerchantBento() {
                 </Button>
                 
                 <Button 
-                  onClick={() => window.location.href = '/nfc-setup-wizard'}
+                  onClick={() => window.location.href = '/nfc-setup-wizard-bento'}
                   className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
                 >
