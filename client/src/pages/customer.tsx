@@ -26,7 +26,7 @@ export default function Customer() {
             Advanced Community & Rewards Hub
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Join team challenges, explore AR treasure hunts, earn exponential viral rewards, discover cross-business partnerships, and unlock personalized AI-powered experiences!
+            Join team challenges, explore AR treasure hunts, earn exponential viral rewards, discover AI-powered cross-business partnerships with reward cost-sharing, and unlock personalized experiences across multiple merchant locations!
           </p>
         </div>
 

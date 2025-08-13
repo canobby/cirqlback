@@ -256,6 +256,32 @@ export default function Navbar() {
                   Community Hub
                 </Button>
               </Link>
+              <Link href="/partnerships">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/partnerships") 
+                      ? "text-orange-600 bg-orange-50" 
+                      : "text-gray-700 hover:text-orange-600"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Business Partnerships
+                </Button>
+              </Link>
+              <Link href="/multi-merchant-pools">
+                <Button 
+                  variant="ghost" 
+                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
+                    isActive("/multi-merchant-pools") 
+                      ? "text-blue-600 bg-blue-50" 
+                      : "text-gray-700 hover:text-blue-600"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Merchant Pools
+                </Button>
+              </Link>
               <Link href="/map">
                 <Button 
                   variant="ghost" 

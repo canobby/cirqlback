@@ -22,7 +22,7 @@ export default function Home() {
             </div>
             <h1 className="text-4xl font-bold mb-4">Turn Every Business Visit Into an Adventure</h1>
             <p className="text-xl opacity-90 mb-6">
-              The addictive local discovery platform that makes exploring your neighborhood as exciting as Pokemon Go. Tap Cirql tags, collect rare treasures, complete daily quests, compete with friends, and unlock real rewards at amazing local businesses. One simple tap creates an endless circle of discovery and rewards.
+              The addictive local discovery platform that makes exploring your neighborhood as exciting as Pokemon Go. Tap Cirql tags, collect rare treasures, complete daily quests, compete with friends, and unlock real rewards at amazing local businesses. AI-powered partnerships and smart reward pools help merchants collaborate while customers enjoy seamless adventures across multiple locations.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link href="/tap">
@@ -231,7 +231,7 @@ export default function Home() {
       <section className="text-center py-16">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-4xl font-bold gradient-text mb-6">Ready to Launch Your Complete Business Platform?</h2>
-          <p className="text-xl text-muted-foreground mb-8">Get Cirql tags, professional website, discovery maps, team challenges, and marketing suite - all integrated seamlessly</p>
+          <p className="text-xl text-muted-foreground mb-8">Get Cirql tags, professional website, AI partnership recommendations, multi-merchant reward pools, discovery maps, team challenges, and marketing suite - all integrated seamlessly</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/merchant">
               <Button size="lg" className="bg-primary text-white hover:bg-primary/90">
@@ -244,7 +244,7 @@ export default function Home() {
               Schedule Demo
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground mt-4">Complete platform setup • Professional website included • Cirql tags starter pack</p>
+          <p className="text-sm text-muted-foreground mt-4">Complete platform setup • AI partnership recommendations • Professional website included • Cirql tags starter pack</p>
         </div>
       </section>
       {/* Interactive Tour */}

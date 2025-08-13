@@ -36,8 +36,8 @@ const platformSections = [
     description: "AI-powered business intelligence and growth automation",
     pages: [
       { path: "/campaign-builder", name: "Campaign Builder", icon: Zap, description: "Pre-made templates with seasonal rotation and cross-business collaboration" },
-      { path: "/ai-insights", name: "AI Business Intelligence", icon: Gamepad2, description: "Customer health scoring, predictive pricing, and market intelligence" },
-      { path: "/partnerships", name: "Cross-Business Network", icon: UserCircle, description: "AI-powered partnership discovery and revenue sharing analytics" },
+      { path: "/ai-insights", name: "AI Business Intelligence", icon: BarChart3, description: "Customer health scoring, predictive pricing, and market intelligence" },
+      { path: "/partnerships", name: "Smart Business Partnerships", icon: Users, description: "AI-powered partnership recommendations with compatibility scoring and campaign collaboration" },
       { path: "/team-challenges", name: "Team Challenges", icon: Zap, description: "Multi-tier team system with corporate integration and social gamification" },
       { path: "/ar-treasure-hunts", name: "AR Treasure Hunts", icon: Zap, description: "City-wide AR adventures with immersive storytelling and achievement rewards" },
       { path: "/viral-campaigns", name: "Viral Growth Engine", icon: Zap, description: "Exponential referral systems with social proof automation and network effects" },
@@ -57,7 +57,8 @@ const platformSections = [
     description: "AI-powered analytics, predictive marketing, and growth automation",
     pages: [
       { path: "/analytics", name: "Predictive Analytics Dashboard", icon: BarChart3, description: "AI-powered customer health scoring, churn prediction, and revenue optimization" },
-      { path: "/marketing", name: "Viral Marketing Suite", icon: BookOpen, description: "Cross-business campaigns, automated win-back strategies, and exponential growth mechanics" },
+      { path: "/marketing", name: "Viral Marketing Suite", icon: Zap, description: "Cross-business campaigns, automated win-back strategies, and exponential growth mechanics" },
+      { path: "/multi-merchant-pools", name: "Multi-Merchant Reward Pools", icon: Users, description: "Collaborative reward cost-sharing with automatic settlements and financial optimization" },
       { path: "/website-preview", name: "Complete Website Platform", icon: Globe, description: "Professional websites with integrated campaigns, AR showcases, and partnership displays" },
     ]
   },

@@ -53,12 +53,12 @@ export default function HowItWorksPage() {
     {
       icon: <TrendingUp className="h-6 w-6 text-green-500" />,
       title: "AI-Powered Business Intelligence",
-      description: "Get predictive customer analytics, cross-business partnerships, AR treasure hunts, viral campaigns, complete websites, and automated growth optimization"
+      description: "Get predictive customer analytics, AI partnership recommendations, multi-merchant reward pools with cost-sharing, AR treasure hunts, viral campaigns, complete websites, and automated growth optimization"
     },
     {
       icon: <Users className="h-6 w-6 text-blue-500" />,
-      title: "Comprehensive Ecosystem Integration",
-      description: "Connect AI-powered analytics, cross-business rewards, AR adventures, team competitions, viral growth mechanics, and complete digital presence seamlessly"
+      title: "Comprehensive Ecosystem Integration", 
+      description: "Connect AI-powered analytics, smart business partnerships with compatibility scoring, multi-merchant reward cost-sharing pools, AR adventures, team competitions, viral growth mechanics, and complete digital presence seamlessly"
     },
     {
       icon: <Target className="h-6 w-6 text-purple-500" />,
