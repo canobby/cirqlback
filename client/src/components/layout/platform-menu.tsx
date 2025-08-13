@@ -32,12 +32,13 @@ export default function PlatformMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button variant="outline" size="sm" className="gap-1 sm:gap-2 mobile-sm-touch px-2 sm:px-3">
           <Menu className="h-4 w-4" />
-          All Pages
+          <span className="hidden sm:inline">All Pages</span>
+          <span className="sm:hidden">Menu</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64" align="end">
+      <DropdownMenuContent className="w-56 sm:w-64" align="end">
         <DropdownMenuLabel>🏠 Core Platform</DropdownMenuLabel>
         <DropdownMenuItem asChild>
           <Link href="/" className="flex items-center gap-2 w-full">

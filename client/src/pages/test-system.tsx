@@ -248,13 +248,13 @@ export default function TestSystem() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900 responsive-container py-4 sm:py-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent">
+          <h1 className="responsive-heading font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent">
             Cirqlback Testing System
           </h1>
-          <p className="text-gray-600 dark:text-gray-300">
+          <p className="responsive-text text-gray-600 dark:text-gray-300">
             Experience the platform from customer, business, and admin perspectives
           </p>
         </div>
@@ -320,11 +320,11 @@ export default function TestSystem() {
         </Card>
 
         <Tabs defaultValue="setup" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="setup">Test Setup</TabsTrigger>
-            <TabsTrigger value="customer">Customer Journey</TabsTrigger>
-            <TabsTrigger value="business">Business Journey</TabsTrigger>
-            <TabsTrigger value="admin">Admin Journey</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 responsive-tabs">
+            <TabsTrigger value="setup" className="text-xs sm:text-sm">Test Setup</TabsTrigger>
+            <TabsTrigger value="customer" className="text-xs sm:text-sm">Customer Journey</TabsTrigger>
+            <TabsTrigger value="business" className="text-xs sm:text-sm">Business Journey</TabsTrigger>
+            <TabsTrigger value="admin" className="text-xs sm:text-sm">Admin Journey</TabsTrigger>
           </TabsList>
 
           <TabsContent value="setup" className="space-y-6">

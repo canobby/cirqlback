@@ -7,10 +7,10 @@ import { GuidedTour } from "@/components/interactive/guided-tour";
 
 export default function Home() {
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main className="max-w-7xl mx-auto responsive-container py-4 sm:py-6 lg:py-8">
       {/* Hero Section */}
-      <div className="gradient-bg rounded-2xl p-8 mb-8 text-white">
-        <div className="grid md:grid-cols-2 gap-8 items-center">
+      <div className="gradient-bg rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 text-white">
+        <div className="grid md:grid-cols-2 gap-6 sm:gap-8 items-center">
           <div>
             <div className="flex items-center mb-6">
               <img 
@@ -20,22 +20,22 @@ export default function Home() {
               />
               <div className="text-3xl font-bold">Cirqlback</div>
             </div>
-            <h1 className="text-4xl font-bold mb-4">Turn Every Business Visit Into an Adventure</h1>
-            <p className="text-xl opacity-90 mb-6">
+            <h1 className="responsive-heading font-bold mb-3 sm:mb-4">Turn Every Business Visit Into an Adventure</h1>
+            <p className="responsive-text opacity-90 mb-4 sm:mb-6">
               The addictive local discovery platform that makes exploring your neighborhood as exciting as Pokemon Go. Tap Cirql tags, collect rare treasures, complete daily quests, compete with friends, and unlock real rewards at amazing local businesses. AI-powered partnerships and smart reward pools help merchants collaborate while customers enjoy seamless adventures across multiple locations.
             </p>
-            <div className="flex flex-wrap gap-4">
+            <div className="responsive-button-group">
               <Link href="/tap">
-                <Button variant="secondary" size="lg" className="bg-white text-primary hover:bg-gray-50 hover-tooltip">
-                  <Smartphone className="mr-2 h-5 w-5" />
-                  Try Cirql Tap Demo
+                <Button variant="secondary" size="lg" className="bg-white text-primary hover:bg-gray-50 hover-tooltip w-full sm:w-auto">
+                  <Smartphone className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="text-sm sm:text-base">Try Cirql Tap Demo</span>
                   <div className="tooltip-content">Experience how customers tap Cirql tags to unlock rewards</div>
                 </Button>
               </Link>
               <Link href="/how-it-works">
-                <Button size="lg" className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-200 hover-tooltip">
-                  <Store className="mr-2 h-5 w-5" />
-                  How It Works
+                <Button size="lg" className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-200 hover-tooltip w-full sm:w-auto">
+                  <Store className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="text-sm sm:text-base">How It Works</span>
                   <div className="tooltip-content">Learn about the complete platform features</div>
                 </Button>
               </Link>
@@ -54,8 +54,8 @@ export default function Home() {
       {/* Customer Experience Section */}
       <section className="mb-12" data-tour="customer-section">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold gradient-text mb-4">Discover, Collect, Compete, Repeat</h2>
-          <p className="text-xl text-muted-foreground">Every Cirql tap starts an adventure. Find hidden treasures, build your collection, challenge friends, and unlock exclusive rewards. The more you explore, the more addictive it becomes - creating the perfect circle of discovery that keeps you coming back for more.</p>
+          <h2 className="responsive-heading font-bold gradient-text mb-3 sm:mb-4">Discover, Collect, Compete, Repeat</h2>
+          <p className="responsive-text text-muted-foreground">Every Cirql tap starts an adventure. Find hidden treasures, build your collection, challenge friends, and unlock exclusive rewards. The more you explore, the more addictive it becomes - creating the perfect circle of discovery that keeps you coming back for more.</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
