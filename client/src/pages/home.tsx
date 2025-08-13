@@ -20,9 +20,9 @@ export default function Home() {
               />
               <div className="text-3xl font-bold">Cirqlback</div>
             </div>
-            <h1 className="text-4xl font-bold mb-4">The Most Comprehensive Local Business Platform</h1>
+            <h1 className="text-4xl font-bold mb-4">Turn Every Business Visit Into an Adventure</h1>
             <p className="text-xl opacity-90 mb-6">
-              The most advanced local business ecosystem available - combining AI-powered analytics, cross-business partnerships, AR treasure hunts, team challenges, viral campaigns, complete websites, and predictive customer intelligence in one revolutionary unified platform
+              The addictive local discovery platform that makes exploring your neighborhood as exciting as Pokemon Go. Tap Cirql tags, collect rare treasures, complete daily quests, compete with friends, and unlock real rewards at amazing local businesses. One simple tap creates an endless circle of discovery and rewards.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link href="/tap">
@@ -54,8 +54,8 @@ export default function Home() {
       {/* Customer Experience Section */}
       <section className="mb-12" data-tour="customer-section">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold gradient-text mb-4">Advanced Customer Intelligence & Engagement</h2>
-          <p className="text-xl text-muted-foreground">AI-powered customer health scoring, predictive churn prevention, cross-business partnership networks, AR treasure hunt adventures, multi-tier team challenges, and exponential viral growth mechanics with complete website platforms</p>
+          <h2 className="text-3xl font-bold gradient-text mb-4">Discover, Collect, Compete, Repeat</h2>
+          <p className="text-xl text-muted-foreground">Every Cirql tap starts an adventure. Find hidden treasures, build your collection, challenge friends, and unlock exclusive rewards. The more you explore, the more addictive it becomes - creating the perfect circle of discovery that keeps you coming back for more.</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -71,15 +71,15 @@ export default function Home() {
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0 w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-white font-bold">2</div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">AI-Powered Rewards & Partnerships</h3>
-                  <p className="text-muted-foreground">Receive personalized rewards, cross-business benefits, and join AR treasure hunts with exponential viral multipliers</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Unlock Adventures & Rewards</h3>
+                  <p className="text-muted-foreground">Instantly discover collectible treasures, join AR quests, compete in challenges, and earn real discounts that make every visit exciting</p>
                 </div>
               </div>
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0 w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white font-bold">3</div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Team Challenges & Viral Growth</h3>
-                  <p className="text-muted-foreground">Form teams, compete in city-wide AR adventures, earn exponential referral rewards, and drive viral community engagement</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Build Your Legend</h3>
+                  <p className="text-muted-foreground">Level up, climb leaderboards, complete achievements, and become a local legend as you explore more businesses and master the art of discovery</p>
                 </div>
               </div>
             </div>

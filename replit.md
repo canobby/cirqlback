@@ -1,7 +1,7 @@
 # Cirqlback
 
 ## Overview
-Cirqlback is an NFC-powered local marketing and loyalty platform designed to connect customers with local businesses. It integrates business websites, AR gaming, team challenges, and customer rewards. The platform facilitates customer engagement through "Cirql tag" taps, which unlock rewards, AR experiences, team competitions, and access to business digital presences including hosted websites, marketing suites, and analytics. Its vision is to be a comprehensive local business platform that offers features for business growth, customer engagement, and community building, aiming for widespread adoption and a strong market presence.
+Cirqlback is the addictive local discovery platform that turns every business visit into an adventure. Like Pokemon Go for local businesses, customers tap "Cirql tags" to unlock collectible treasures, complete daily quests, compete with friends, and earn real rewards. The name "Cirqlback" represents the endless circle of discovery - one tap leads to another adventure, creating an addictive loop that brings customers back again and again. The platform combines gaming excitement with genuine business value, making neighborhood exploration irresistibly fun while driving meaningful engagement for local merchants.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
