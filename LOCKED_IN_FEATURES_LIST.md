@@ -120,6 +120,9 @@ This document tracks confirmed features, changes, and billing items that must be
 - [ ] Advanced customer profiling and segmentation
 
 ### User Requests to Track
+- [ ] **Multi-Language Support System**: Translate platform interface into multiple languages for global accessibility
+- [ ] **AI-Powered Live Voice Translation**: Real-time voice translation for customer-merchant interactions using OpenAI technology
+- [ ] **Relationship Building Features**: Enhanced communication tools to foster customer-merchant relationships through translation
 - [ ] Additional gaming platform integrations
 - [ ] Enhanced competitive features
 - [ ] Advanced reward crafting systems

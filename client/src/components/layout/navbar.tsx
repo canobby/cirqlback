@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Settings, Search, Bell } from "lucide-react";
+import { Menu, X, Settings, Search, Bell, MessageCircle } from "lucide-react";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 import NotificationCenter from "@/components/global/notification-center";
 import PlatformMenu from "./platform-menu";
+import { LanguageSelector } from '@/components/ui/language-selector';
 
 export default function Navbar() {
   const [location] = useLocation();
@@ -106,6 +107,19 @@ export default function Navbar() {
                   Map
                 </Button>
               </Link>
+              <Link href="/communication">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/communication") 
+                      ? "text-blue-600 bg-blue-50 border border-blue-200" 
+                      : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                  }`}
+                >
+                  <MessageCircle className="h-4 w-4 mr-1" />
+                  Translation
+                </Button>
+              </Link>
               <Link href="/account">
                 <Button 
                   variant="ghost" 
@@ -158,6 +172,7 @@ export default function Navbar() {
           </div>
           
           <div className="flex items-center space-x-4">
+            <LanguageSelector variant="button" size="sm" />
             <PlatformMenu />
             <Button variant="outline" size="sm" className="hidden md:flex">
               <Search className="h-4 w-4" />

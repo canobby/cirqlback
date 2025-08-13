@@ -10,8 +10,22 @@ import { insertBusinessSchema, insertCampaignSchema, insertNfcTagSchema, insertT
 import { z } from "zod";
 import crypto from "crypto";
 import { openaiService } from "./openai-service";
+import multer from 'multer';
+import { 
+  handleTextTranslation, 
+  handleVoiceTranslation, 
+  handleTextToSpeech 
+} from './translation-service';
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // Configure multer for file uploads
+  const upload = multer({ storage: multer.memoryStorage() });
+  
+  // Translation API Routes
+  app.post('/api/translate/text', handleTextTranslation);
+  app.post('/api/translate/voice', upload.single('audio'), handleVoiceTranslation);
+  app.post('/api/translate/text-to-speech', handleTextToSpeech);
   
   // Serve test page
   app.get('/test-quest', (req, res) => {
