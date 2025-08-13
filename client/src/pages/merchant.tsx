@@ -96,12 +96,60 @@ export default function Merchant() {
         />
       </div>
 
+      {/* Quick Setup Actions */}
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <Card className="card-hover border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-purple-800 dark:text-purple-200 mb-2">
+                  Create New Campaign
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                  Set up discounts, loyalty points, or referral rewards in minutes
+                </p>
+                <Button 
+                  onClick={() => window.location.href = '/campaign-setup-wizard'}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  Start Campaign Wizard
+                </Button>
+              </div>
+              <div className="text-6xl opacity-20">🎯</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="card-hover border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-green-50 dark:from-blue-950/20 dark:to-green-950/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-2">
+                  Program NFC Tag
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                  Quick physical tag setup with guided step-by-step process
+                </p>
+                <Button 
+                  onClick={() => window.location.href = '/nfc-setup-wizard'}
+                  className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white"
+                >
+                  <Smartphone className="h-4 w-4 mr-2" />
+                  Start NFC Wizard
+                </Button>
+              </div>
+              <div className="text-6xl opacity-20">📱</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Main Content Tabs */}
       <Tabs defaultValue="campaigns" className="space-y-6">
         <div className="overflow-x-auto">
-          <TabsList className="grid grid-cols-9 min-w-max lg:w-full">
+          <TabsList className="grid grid-cols-8 min-w-max lg:w-full">
             <TabsTrigger value="campaigns" className="px-2 text-xs lg:px-3 lg:text-sm" data-tour="campaigns-tab">Campaigns</TabsTrigger>
-            <TabsTrigger value="nfc-wizard" className="px-2 text-xs lg:px-3 lg:text-sm" data-tour="nfc-tab">Cirql Wizard</TabsTrigger>
             <TabsTrigger value="nfc-manager" className="px-2 text-xs lg:px-3 lg:text-sm">Tag Manager</TabsTrigger>
             <TabsTrigger value="nfc-guide" className="px-2 text-xs lg:px-3 lg:text-sm">Deployment</TabsTrigger>
             <TabsTrigger value="nfc-analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Tag Analytics</TabsTrigger>

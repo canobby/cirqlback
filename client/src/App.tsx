@@ -54,6 +54,8 @@ import HelpCenterPage from "@/pages/help-center";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TermsOfServicePage from "@/pages/terms-of-service";
 import NfcWriterPage from "@/pages/nfc-writer";
+import CampaignSetupWizard from "@/pages/campaign-setup-wizard";
+import NFCSetupWizard from "@/pages/nfc-setup-wizard";
 
 function Router() {
   const [location] = useLocation();
@@ -110,6 +112,8 @@ function Router() {
         <Route path="/export-hub" component={ExportHub} />
         <Route path="/business-intelligence" component={BusinessIntelligenceSuite} />
         <Route path="/nfc-writer" component={NfcWriterPage} />
+        <Route path="/campaign-setup-wizard" component={CampaignSetupWizard} />
+        <Route path="/nfc-setup-wizard" component={NFCSetupWizard} />
           
           {/* Footer Pages */}
           <Route path="/contact" component={ContactPage} />
