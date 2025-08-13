@@ -305,6 +305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.createCampaign(validatedData);
       res.json(campaign);
     } catch (error) {
+      console.error("Campaign creation error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
