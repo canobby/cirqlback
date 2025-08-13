@@ -164,7 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.updateUserSubscription(userId, {
         subscriptionTier,
         subscriptionStatus: subscriptionStatus || 'active',
-        ...(subscriptionTier !== 'starter' ? { starterExpiresAt: null } : {})
+        ...(subscriptionTier !== 'starter' ? { starterExpiresAt: undefined } : {})
       });
 
       res.json(user);
@@ -328,8 +328,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // NFC Tag routes
   app.get("/api/nfc-tags", async (req, res) => {
+    const businessId = req.query.businessId as string;
     try {
-      const businessId = req.query.businessId as string;
       if (!businessId) {
         // Return demo NFC tags for testing
         const demoTags = [
@@ -363,7 +363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const demoTags = [
         {
           id: "demo_tag_1",
-          businessId: businessId,
+          businessId: businessId || "demo_biz_1",
           campaignId: "demo_campaign_1",
           tagId: "CIRQL001",
           isActive: true,
@@ -390,8 +390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Return enhanced response with deployment information
         const response = {
-          id: tag.id,
-          tagIdentifier: tag.tagIdentifier,
+          ...tag,
           tagUrl: `${req.protocol}://${req.get('host')}/tap/${tag.id}`,
           qrCodeUrl: `${req.protocol}://${req.get('host')}/qr/${tag.id}`,
           deploymentInstructions: [
@@ -400,8 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `Place the tag at ${validatedData.location}`,
             "Test the tag by tapping it with your phone",
             "Add signage to encourage customer interaction"
-          ],
-          ...tag
+          ]
         };
         
         res.json(response);
@@ -3084,7 +3082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate ROI and insights
       const analytics = salesRecords.map(record => ({
         ...record,
-        cirqlROI: record.totalSales > 0 ? 
+        cirqlROI: parseFloat(record.totalSales) > 0 ? 
           (parseFloat(record.cirqlDrivenSales || "0") / parseFloat(record.totalSales)) * 100 : 0,
         isProfitable: parseFloat(record.cirqlDrivenSales || "0") > 0
       }));
@@ -3135,7 +3133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result[0]);
     } catch (error) {
       console.error("Error adding sales data:", error);
-      res.status(500).json({ error: "Failed to add sales data", details: error.message });
+      res.status(500).json({ error: "Failed to add sales data", details: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -3145,7 +3143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { businessId } = req.params;
       
       // Try to get real sales data
-      let realSales = [];
+      let realSales: any[] = [];
       try {
         realSales = await db.select()
           .from(salesData)
@@ -3164,8 +3162,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // Calculate comparison metrics
-      const totalRealSales = realSales.reduce((sum, record) => sum + parseFloat(record.totalSales), 0);
-      const totalCirqlSales = realSales.reduce((sum, record) => sum + parseFloat(record.cirqlDrivenSales || "0"), 0);
+      const totalRealSales = realSales.reduce((sum: number, record: any) => sum + parseFloat(record.totalSales), 0);
+      const totalCirqlSales = realSales.reduce((sum: number, record: any) => sum + parseFloat(record.cirqlDrivenSales || "0"), 0);
       
       const comparison = {
         realData: {
