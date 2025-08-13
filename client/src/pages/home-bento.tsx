@@ -1,0 +1,296 @@
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Zap, Users, Store, Globe, Smartphone, Target, 
+  ArrowRight, PlayCircle, Star, TrendingUp, 
+  Gift, Crown, Heart, Sparkles
+} from "lucide-react";
+
+export default function HomeBento() {
+  const stats = {
+    businesses: "2,500+",
+    customers: "50K+",
+    rewards: "1M+",
+    cities: "25+"
+  };
+
+  const features = [
+    {
+      icon: Smartphone,
+      title: "Tap & Earn",
+      description: "Simply tap NFC tags to unlock instant rewards",
+      gradient: "from-blue-500 to-cyan-500",
+      pattern: "📱"
+    },
+    {
+      icon: Target,
+      title: "Smart Campaigns",
+      description: "AI-powered marketing that drives real results",
+      gradient: "from-purple-500 to-pink-500",
+      pattern: "🎯"
+    },
+    {
+      icon: Globe,
+      title: "Local Discovery",
+      description: "Explore hidden gems in your neighborhood",
+      gradient: "from-green-500 to-emerald-500",
+      pattern: "🌍"
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-blue-50/30 dark:from-gray-950 dark:via-purple-950/30 dark:to-blue-950/30">
+      <div className="container max-w-7xl mx-auto px-4 py-8">
+        
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <div className="mb-4 flex items-center justify-center gap-4">
+            <Badge className="bg-purple-100 text-purple-700 border-purple-200">
+              <Sparkles className="w-3 h-3 mr-1" />
+              The Future of Local Discovery
+            </Badge>
+            <Button 
+              onClick={() => window.location.href = '/'}
+              variant="outline"
+              size="sm"
+              className="text-white"
+            >
+              Classic View
+            </Button>
+          </div>
+          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent mb-6">
+            Cirqlback
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 mb-8 max-w-3xl mx-auto">
+            Turn every business visit into an adventure. Like Pokemon Go for local businesses - tap, collect, compete, and earn real rewards.
+          </p>
+        </div>
+
+        {/* Bento Grid Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-8 gap-6 auto-rows-min mb-12">
+          
+          {/* Main CTA - Large Hero Block */}
+          <Card className="md:col-span-6 lg:col-span-5 bg-gradient-to-br from-purple-600 to-pink-600 border-0 text-white overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-20 translate-x-20"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16"></div>
+            <CardContent className="p-8 relative z-10">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-3xl font-bold mb-4">Start Your Adventure</h2>
+                  <p className="text-purple-100 text-lg mb-6">Join thousands discovering local businesses through gamified rewards</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Button 
+                      onClick={() => window.location.href = '/customer'}
+                      className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
+                      variant="outline"
+                    >
+                      <div className="flex items-center w-full">
+                        <div className="bg-white/20 p-2 rounded-lg mr-3">
+                          <Users className="h-5 w-5" />
+                        </div>
+                        <div className="text-left">
+                          <div className="font-semibold">I'm a Customer</div>
+                          <div className="text-sm text-purple-100">Discover & earn rewards</div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 ml-auto" />
+                      </div>
+                    </Button>
+                    
+                    <Button 
+                      onClick={() => window.location.href = '/merchant-bento'}
+                      className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
+                      variant="outline"
+                    >
+                      <div className="flex items-center w-full">
+                        <div className="bg-white/20 p-2 rounded-lg mr-3">
+                          <Store className="h-5 w-5" />
+                        </div>
+                        <div className="text-left">
+                          <div className="font-semibold">I'm a Business</div>
+                          <div className="text-sm text-purple-100">Attract more customers</div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 ml-auto" />
+                      </div>
+                    </Button>
+                  </div>
+                </div>
+                <div className="text-8xl opacity-20 hidden lg:block">🚀</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Platform Stats - Tall Block */}
+          <Card className="md:col-span-3 lg:col-span-3 md:row-span-2 bg-gradient-to-br from-green-500 to-emerald-600 border-0 text-white">
+            <CardContent className="p-6 h-full flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <TrendingUp className="h-8 w-8 text-green-100" />
+                <Badge className="bg-white/20 text-white border-white/30">Growing Fast</Badge>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-green-100 mb-6">Platform Impact</h3>
+                
+                <div className="space-y-6">
+                  <div>
+                    <div className="text-3xl font-bold mb-1">{stats.businesses}</div>
+                    <div className="text-green-100 text-sm">Active Businesses</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-3xl font-bold mb-1">{stats.customers}</div>
+                    <div className="text-green-100 text-sm">Happy Customers</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-3xl font-bold mb-1">{stats.rewards}</div>
+                    <div className="text-green-100 text-sm">Rewards Claimed</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-3xl font-bold mb-1">{stats.cities}</div>
+                    <div className="text-green-100 text-sm">Cities & Growing</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Feature Blocks */}
+          {features.map((feature, idx) => {
+            const Icon = feature.icon;
+            return (
+              <Card key={idx} className={`md:col-span-2 lg:col-span-${idx === 1 ? '3' : '2'} bg-gradient-to-br ${feature.gradient} border-0 text-white overflow-hidden relative`}>
+                <div className="absolute top-2 right-2 text-4xl opacity-20">
+                  {feature.pattern}
+                </div>
+                <CardContent className="p-6 relative z-10">
+                  <Icon className="h-8 w-8 mb-4 text-white" />
+                  <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
+                  <p className="text-white/90 text-sm">{feature.description}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {/* Demo Video */}
+          <Card className="md:col-span-3 lg:col-span-4 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900 dark:text-white">See It In Action</h3>
+                <Badge variant="secondary">2:30</Badge>
+              </div>
+              
+              <div className="aspect-video bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg flex items-center justify-center mb-4">
+                <Button 
+                  size="lg"
+                  className="bg-white/90 hover:bg-white text-purple-600 hover:text-purple-700"
+                >
+                  <PlayCircle className="h-6 w-6 mr-2" />
+                  Watch Demo
+                </Button>
+              </div>
+              
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
+                Discover how customers and businesses are transforming local commerce with Cirqlback
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Success Stories */}
+          <Card className="md:col-span-3 lg:col-span-4 bg-gradient-to-br from-orange-500 to-red-500 border-0 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Success Stories</h3>
+                <Crown className="h-6 w-6 text-orange-100" />
+              </div>
+              
+              <div className="space-y-4">
+                <div className="bg-white/10 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 text-yellow-300 fill-current" />
+                      ))}
+                    </div>
+                    <span className="ml-2 text-sm text-orange-100">Joe's Coffee</span>
+                  </div>
+                  <p className="text-sm text-orange-100">"Customer visits increased 40% in just 2 months!"</p>
+                </div>
+                
+                <div className="bg-white/10 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 text-yellow-300 fill-current" />
+                      ))}
+                    </div>
+                    <span className="ml-2 text-sm text-orange-100">Tech Store Plus</span>
+                  </div>
+                  <p className="text-sm text-orange-100">"Best marketing tool we've ever used. ROI is incredible."</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Links */}
+          <Card className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors">
+            <CardContent className="p-6 text-center">
+              <Gift className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+              <h3 className="font-medium text-gray-900 dark:text-white mb-1">Pricing</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-xs">Simple & transparent</p>
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors">
+            <CardContent className="p-6 text-center">
+              <Heart className="h-6 w-6 text-red-600 mx-auto mb-2" />
+              <h3 className="font-medium text-gray-900 dark:text-white mb-1">Support</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-xs">We're here to help</p>
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors">
+            <CardContent className="p-6 text-center">
+              <Zap className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
+              <h3 className="font-medium text-gray-900 dark:text-white mb-1">API</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-xs">Developer resources</p>
+            </CardContent>
+          </Card>
+
+        </div>
+
+        {/* Bottom CTA */}
+        <div className="text-center">
+          <Card className="max-w-4xl mx-auto bg-gradient-to-r from-indigo-600 to-purple-600 border-0 text-white">
+            <CardContent className="p-8">
+              <h2 className="text-3xl font-bold mb-4">Ready to Transform Your Business?</h2>
+              <p className="text-indigo-100 text-lg mb-6">
+                Join the revolution in local discovery. Start creating addictive customer experiences today.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  size="lg"
+                  className="bg-white text-indigo-600 hover:bg-gray-100"
+                  onClick={() => window.location.href = '/merchant-bento'}
+                >
+                  Start Free Trial
+                  <ArrowRight className="h-5 w-5 ml-2" />
+                </Button>
+                <Button 
+                  size="lg"
+                  variant="outline"
+                  className="border-white/30 text-white hover:bg-white/10"
+                  onClick={() => window.location.href = '/how-it-works'}
+                >
+                  Learn More
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+      </div>
+    </div>
+  );
+}
