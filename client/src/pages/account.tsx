@@ -66,8 +66,9 @@ export default function Account() {
 
         <Tabs defaultValue="subscription" className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="grid grid-cols-5 min-w-max lg:w-full">
+            <TabsList className="grid grid-cols-6 min-w-max lg:w-full">
               <TabsTrigger value="subscription" className="px-2 text-xs lg:px-3 lg:text-sm whitespace-nowrap">Subscription</TabsTrigger>
+              <TabsTrigger value="integrations" className="px-2 text-xs lg:px-3 lg:text-sm whitespace-nowrap">Integrations</TabsTrigger>
               <TabsTrigger value="referrals" className="px-2 text-xs lg:px-3 lg:text-sm whitespace-nowrap">Referrals</TabsTrigger>
               <TabsTrigger value="api" className="px-2 text-xs lg:px-3 lg:text-sm whitespace-nowrap">API Access</TabsTrigger>
               <TabsTrigger value="usage" className="px-2 text-xs lg:px-3 lg:text-sm whitespace-nowrap">Usage</TabsTrigger>
@@ -185,6 +186,59 @@ export default function Account() {
                       </div>
                     </div>
                   </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Integrations Tab */}
+          <TabsContent value="integrations" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Platform Integrations & Export Hub
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-semibold mb-2">Business Intelligence Suite</h4>
+                    <p className="text-sm text-gray-600 mb-3">AI-powered business management with predictive analytics</p>
+                    <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600">
+                      Open Intelligence Suite
+                    </Button>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-semibold mb-2">Export & Integration Hub</h4>
+                    <p className="text-sm text-gray-600 mb-3">22+ platform integrations and data export capabilities</p>
+                    <Button className="w-full bg-gradient-to-r from-green-600 to-blue-600">
+                      Open Export Hub
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                  {[
+                    { name: "QuickBooks", status: "Available", color: "blue" },
+                    { name: "Mailchimp", status: "Connected", color: "green" },
+                    { name: "Shopify", status: "Available", color: "blue" },
+                    { name: "HubSpot", status: "Available", color: "blue" },
+                    { name: "Google Analytics", status: "Connected", color: "green" },
+                    { name: "Stripe", status: "Available", color: "blue" },
+                    { name: "Square", status: "Available", color: "blue" },
+                    { name: "Zapier", status: "Premium", color: "purple" }
+                  ].map((integration, index) => (
+                    <div key={index} className="text-center p-3 border rounded-lg">
+                      <div className="text-sm font-medium">{integration.name}</div>
+                      <Badge className={`mt-1 text-xs ${
+                        integration.color === 'green' ? 'bg-green-600' :
+                        integration.color === 'purple' ? 'bg-purple-600' : 'bg-blue-600'
+                      }`}>
+                        {integration.status}
+                      </Badge>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>

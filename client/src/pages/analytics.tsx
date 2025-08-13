@@ -26,7 +26,7 @@ import {
   Loader2
 } from "lucide-react";
 
-export default function PredictiveAnalyticsDashboard() {
+export default function AnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState("7d");
   const [selectedBusiness, setSelectedBusiness] = useState("all");
   const [showAIInsights, setShowAIInsights] = useState(false);

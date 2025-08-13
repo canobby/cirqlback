@@ -32,7 +32,7 @@ export default function Merchant() {
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8 text-center">
         <h1 className="text-4xl font-bold gradient-text mb-4">AI-Powered Business Intelligence Hub</h1>
-        <p className="text-xl text-gray-600">Complete business ecosystem with predictive customer analytics, cross-business partnerships, AR treasure hunts, viral growth campaigns, automated pricing optimization, and comprehensive website platform</p>
+        <p className="text-xl text-gray-600">Complete business ecosystem with predictive customer analytics, 22+ platform integrations, automated marketing orchestration, real-time revenue optimization, and comprehensive export capabilities</p>
       </div>
 
       {/* Enhanced Business Header */}
