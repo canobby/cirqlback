@@ -4432,5 +4432,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // AR Games API Endpoints
+  app.post('/api/ar-games/join', async (req, res) => {
+    try {
+      const { gameId } = req.body;
+      
+      const joinResult = {
+        success: true,
+        gameId,
+        sessionId: `ar_session_${Date.now()}`,
+        arInstructions: {
+          message: "Point your camera at participating businesses to start!",
+          requiredPermissions: ["camera", "location"],
+          gameType: gameId.includes('treasure') ? 'treasure-hunt' : 'team-challenge'
+        },
+        rewards: {
+          basePoints: 250,
+          merchantBonus: 500
+        }
+      };
+      
+      res.json(joinResult);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to join AR game" });
+    }
+  });
+
+  app.post('/api/ar-games/join-mission', async (req, res) => {
+    try {
+      const { missionId } = req.body;
+      
+      const missionResult = {
+        success: true,
+        missionId,
+        businessLocation: {
+          lat: 40.7128,
+          lng: -74.0060,
+          address: "123 Main St, New York, NY"
+        },
+        arContent: {
+          modelUrl: "/ar-models/treasure-chest.glb", 
+          instructions: "Look for the golden treasure chest near the entrance!",
+          hints: ["Check behind the counter", "Look up high", "Near the window display"]
+        },
+        rewards: {
+          points: 800,
+          businessDiscount: "20% off your next visit",
+          exclusiveItem: "Golden Business Badge"
+        }
+      };
+      
+      res.json(missionResult);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to join mission" });
+    }
+  });
+
   return httpServer;
 }

@@ -67,6 +67,7 @@ function Router() {
           <Route path="/merchant" component={Merchant} />
           <Route path="/community" component={ViralCommunityHub} />
           <Route path="/cirql-quest" component={CirqlQuest} />
+          <Route path="/ar-game-hub" component={ARGameHub} />
           <Route path="/analytics" component={PredictiveAnalyticsDashboard} />
           <Route path="/account" component={Account} />
           <Route path="/tap" component={TapPage} />

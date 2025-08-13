@@ -138,12 +138,119 @@
         </div>
     </div>
 
+    <div class="quest-card">
+        <h2>🎮 AR Game Hub - Platform Choice</h2>
+        <p>Choose your gaming style! All paths lead to local merchant rewards.</p>
+        
+        <!-- Platform Style Selector -->
+        <div style="display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap;">
+            <button onclick="selectStyle('pokemon-go')" id="pokemon-btn" style="background: #2196f3;">🗺️ Pokemon Go Style</button>
+            <button onclick="selectStyle('minecraft')" id="minecraft-btn" style="background: #4caf50;">🏗️ Minecraft Style</button>
+            <button onclick="selectStyle('fortnite')" id="fortnite-btn" style="background: #9c27b0;">⚔️ Fortnite Style</button>
+            <button onclick="selectStyle('candy-crush')" id="candy-btn" style="background: #e91e63;">🍬 Candy Crush Style</button>
+        </div>
+        
+        <div id="game-content">
+            <div class="quest-card epic">
+                <h3>🗺️ Local Treasure Hunt (Pokemon Go Style)</h3>
+                <p>Find hidden AR treasures at partner businesses using your camera</p>
+                <p><strong>Difficulty:</strong> Easy | <strong>Time:</strong> 15-30 min | <strong>Players:</strong> 847 active</p>
+                <p><strong>Customer Reward:</strong> +250 points | <strong>Merchant Bonus:</strong> +500 points</p>
+                <button onclick="joinGame('treasure_hunt_1')">🚀 Join Game</button>
+            </div>
+        </div>
+        
+        <h3>🏪 Active Merchant Missions</h3>
+        <div style="margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+            <h4>☕ Joe's Coffee Shop - AR Treasure Hunt</h4>
+            <p>Find the hidden golden coffee bean in our AR experience</p>
+            <p>Participants: 23/50 | Time Left: 2 hours | Reward: +500 points</p>
+            <div style="background: #333; height: 8px; border-radius: 4px;">
+                <div style="background: #4caf50; height: 100%; width: 46%; border-radius: 4px;"></div>
+            </div>
+            <button onclick="joinMission('mission_1')" style="margin-top: 10px;">🎯 Join Mission</button>
+        </div>
+    </div>
+
+    <button onclick="testARAPI()">🔄 Test AR Games API</button>
     <button onclick="testAPI()">🔄 Test Quest API</button>
+    <button onclick="window.location.href='/ar-game-hub'">🚀 Go to Full AR Game Hub</button>
     <button onclick="window.location.href='/cirql-quest'">🚀 Go to Full Quest System</button>
 
     <script>
+        let selectedGameStyle = 'pokemon-go';
+        
+        function selectStyle(style) {
+            selectedGameStyle = style;
+            
+            // Update button styles
+            document.querySelectorAll('button[id$="-btn"]').forEach(btn => {
+                btn.style.opacity = '0.6';
+            });
+            document.getElementById(style + '-btn').style.opacity = '1';
+            
+            // Update game content based on style
+            const gameContent = document.getElementById('game-content');
+            const games = {
+                'pokemon-go': {
+                    title: '🗺️ Local Treasure Hunt',
+                    description: 'Find hidden AR treasures at partner businesses using your camera',
+                    difficulty: 'Easy', time: '15-30 min', players: 847
+                },
+                'minecraft': {
+                    title: '🏗️ Business Builder Challenge',
+                    description: 'Help businesses build virtual storefronts in AR space',
+                    difficulty: 'Medium', time: '30-45 min', players: 623
+                },
+                'fortnite': {
+                    title: '⚔️ Merchant Battle Royale',
+                    description: 'Team up with local businesses in competitive AR challenges',
+                    difficulty: 'Hard', time: '45-60 min', players: 392
+                },
+                'candy-crush': {
+                    title: '🍬 Business Puzzle Match',
+                    description: 'Match business logos and products in addictive puzzle games',
+                    difficulty: 'Easy', time: '10-20 min', players: 1234
+                }
+            };
+            
+            const game = games[style];
+            gameContent.innerHTML = `
+                <div class="quest-card epic">
+                    <h3>${game.title} (${style.replace('-', ' ').toUpperCase()} Style)</h3>
+                    <p>${game.description}</p>
+                    <p><strong>Difficulty:</strong> ${game.difficulty} | <strong>Time:</strong> ${game.time} | <strong>Players:</strong> ${game.players} active</p>
+                    <p><strong>Customer Reward:</strong> +250 points | <strong>Merchant Bonus:</strong> +500 points</p>
+                    <button onclick="joinGame('${style}_game')">🚀 Join Game</button>
+                </div>
+            `;
+        }
+        
+        function joinGame(gameId) {
+            alert(`🎮 Joining ${selectedGameStyle} style game! Point your camera at participating businesses to start the AR experience.`);
+        }
+        
+        function joinMission(missionId) {
+            alert('🎯 Mission joined! Visit Joe\'s Coffee Shop at 123 Main St. Look for the golden coffee bean AR treasure!');
+        }
+        
         function claimReward() {
             alert('🎉 Reward claimed! +150 Quest Points earned!');
+        }
+        
+        function testARAPI() {
+            fetch('/api/ar-games/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ gameId: 'treasure_hunt_1' })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert('✅ AR Games API working! Session: ' + data.sessionId + ', Type: ' + data.arInstructions.gameType);
+                })
+                .catch(error => {
+                    alert('❌ AR API Error: ' + error.message);
+                });
         }
         
         function testAPI() {
@@ -157,8 +264,11 @@
                 });
         }
         
-        // Auto-test API on load
-        setTimeout(testAPI, 1000);
+        // Auto-test APIs on load
+        setTimeout(() => {
+            testAPI();
+            setTimeout(testARAPI, 1000);
+        }, 1000);
     </script>
 </body>
 </html>

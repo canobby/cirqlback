@@ -1,222 +1,253 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
-import { 
-  Gamepad2, 
-  Trophy, 
-  Users, 
-  Zap, 
-  Heart, 
-  Star, 
-  Map, 
-  Gift,
-  Target,
-  Crown,
-  Swords,
-  Sparkles,
-  Camera,
-  Volume2
-} from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Smartphone, Gamepad2, Zap, Star, Crown, Gem, Award, Camera, MapPin, Target, Trophy, Clock, Users } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+
+interface ARGame {
+  id: string;
+  title: string;
+  description: string;
+  style: 'pokemon-go' | 'minecraft' | 'fortnite' | 'candy-crush';
+  difficulty: 'easy' | 'medium' | 'hard';
+  merchantReward: number;
+  customerReward: number;
+  estimatedTime: string;
+  playerCount: number;
+  isActive: boolean;
+}
+
+interface MerchantMission {
+  id: string;
+  businessName: string;
+  missionType: 'ar-treasure' | 'social-challenge' | 'team-quest' | 'mystery-box';
+  reward: number;
+  timeLimit: string;
+  participants: number;
+  maxParticipants: number;
+  description: string;
+}
 
 export default function ARGameHub() {
-  const [activeChallenge, setActiveChallenge] = useState(null);
-  const [avatarStats, setAvatarStats] = useState({
-    level: 12,
-    experience: 2450,
-    nextLevelXP: 3000,
-    energy: 85,
-    skills: {
-      cooking: { level: 7, xp: 1200 },
-      fitness: { level: 4, xp: 600 },
-      art: { level: 6, xp: 950 },
-      social: { level: 8, xp: 1400 },
-      explorer: { level: 9, xp: 1800 }
+  const [selectedStyle, setSelectedStyle] = useState<string>('pokemon-go');
+  const [activeGame, setActiveGame] = useState<ARGame | null>(null);
+  const queryClient = useQueryClient();
+
+  // Mock data for AR Games - these would integrate with real AR frameworks
+  const arGames: ARGame[] = [
+    {
+      id: 'treasure_hunt_1',
+      title: '🗺️ Local Treasure Hunt',
+      description: 'Find hidden AR treasures at partner businesses using your camera',
+      style: 'pokemon-go',
+      difficulty: 'easy',
+      merchantReward: 500,
+      customerReward: 250,
+      estimatedTime: '15-30 min',
+      playerCount: 847,
+      isActive: true
     },
-    inventory: [
-      { id: 1, name: "Golden Spatula", rarity: "legendary", effect: "+50% Cooking XP" },
-      { id: 2, name: "Friendship Badge", rarity: "epic", effect: "+30% Social XP" },
-      { id: 3, name: "Explorer's Compass", rarity: "rare", effect: "Reveals hidden collectibles" }
-    ],
-    badges: ["Master Chef", "Social Butterfly", "Trail Blazer", "Team Captain"]
+    {
+      id: 'build_challenge_1',
+      title: '🏗️ Business Builder Challenge',
+      description: 'Help businesses build virtual storefronts in AR space',
+      style: 'minecraft',
+      difficulty: 'medium',
+      merchantReward: 1000,
+      customerReward: 400,
+      estimatedTime: '30-45 min',
+      playerCount: 623,
+      isActive: true
+    },
+    {
+      id: 'battle_royale_1',
+      title: '⚔️ Merchant Battle Royale',
+      description: 'Team up with local businesses in competitive AR challenges',
+      style: 'fortnite',
+      difficulty: 'hard',
+      merchantReward: 2000,
+      customerReward: 800,
+      estimatedTime: '45-60 min',
+      playerCount: 392,
+      isActive: true
+    },
+    {
+      id: 'puzzle_match_1',
+      title: '🍬 Business Puzzle Match',
+      description: 'Match business logos and products in addictive puzzle games',
+      style: 'candy-crush',
+      difficulty: 'easy',
+      merchantReward: 300,
+      customerReward: 150,
+      estimatedTime: '10-20 min',
+      playerCount: 1234,
+      isActive: true
+    }
+  ];
+
+  const merchantMissions: MerchantMission[] = [
+    {
+      id: 'mission_1',
+      businessName: "Joe's Coffee Shop",
+      missionType: 'ar-treasure',
+      reward: 500,
+      timeLimit: '2 hours',
+      participants: 23,
+      maxParticipants: 50,
+      description: 'Find the hidden golden coffee bean in our AR experience'
+    },
+    {
+      id: 'mission_2', 
+      businessName: "Tech Repair Plus",
+      missionType: 'mystery-box',
+      reward: 800,
+      timeLimit: '1 day',
+      participants: 67,
+      maxParticipants: 100,
+      description: 'Solve tech puzzles to unlock exclusive repair discounts'
+    },
+    {
+      id: 'mission_3',
+      businessName: "Local Fitness Gym",
+      missionType: 'team-quest',
+      reward: 1200,
+      timeLimit: '3 days',
+      participants: 45,
+      maxParticipants: 80,
+      description: 'Complete fitness challenges with AR form tracking'
+    }
+  ];
+
+  const getStyleIcon = (style: string) => {
+    switch(style) {
+      case 'pokemon-go': return <MapPin className="w-5 h-5" />;
+      case 'minecraft': return <Gamepad2 className="w-5 h-5" />;
+      case 'fortnite': return <Target className="w-5 h-5" />;
+      case 'candy-crush': return <Gem className="w-5 h-5" />;
+      default: return <Camera className="w-5 h-5" />;
+    }
+  };
+
+  const getStyleColor = (style: string) => {
+    switch(style) {
+      case 'pokemon-go': return 'bg-blue-500';
+      case 'minecraft': return 'bg-green-500';
+      case 'fortnite': return 'bg-purple-500';
+      case 'candy-crush': return 'bg-pink-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch(difficulty) {
+      case 'easy': return 'bg-green-100 text-green-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'hard': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const joinGameMutation = useMutation({
+    mutationFn: async (gameId: string) => {
+      const response = await apiRequest("POST", "/api/ar-games/join", { gameId });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ar-games"] });
+    },
   });
 
-  const activeChallenges = [
-    {
-      id: 1,
-      type: "cooking_quest",
-      title: "The Great Pizza Challenge",
-      business: "Mario's Authentic Pizzeria",
-      difficulty: "Medium",
-      participants: 12,
-      maxParticipants: 20,
-      timeRemaining: "2h 15m",
-      reward: "Rare: Chef's Hat (+25% Cooking XP)",
-      description: "Master the art of pizza making in this immersive AR cooking experience",
-      skills: ["cooking", "social"],
-      arPreview: "🍕"
+  const joinMissionMutation = useMutation({
+    mutationFn: async (missionId: string) => {
+      const response = await apiRequest("POST", "/api/ar-games/join-mission", { missionId });
+      return response.json();
     },
-    {
-      id: 2,
-      type: "fitness_challenge",
-      title: "Strength Training Academy",
-      business: "PowerFit Gym",
-      difficulty: "Hard",
-      participants: 8,
-      maxParticipants: 15,
-      timeRemaining: "1h 45m",
-      reward: "Epic: Strength Bracelet (+40% Fitness XP)",
-      description: "Train with virtual personal trainers in this high-intensity AR workout",
-      skills: ["fitness", "social"],
-      arPreview: "💪"
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ar-games"] });
     },
-    {
-      id: 3,
-      type: "art_creation",
-      title: "Digital Mural Masterpiece",
-      business: "Creative Canvas Studio",
-      difficulty: "Easy",
-      participants: 15,
-      maxParticipants: 25,
-      timeRemaining: "3h 30m",
-      reward: "Common: Paint Palette (+15% Art XP)",
-      description: "Collaborate with others to create a stunning AR mural",
-      skills: ["art", "social"],
-      arPreview: "🎨"
-    }
-  ];
-
-  const socialFeatures = [
-    {
-      type: "team_battle",
-      title: "Coffee Shop Conquest",
-      description: "Teams compete to claim coffee shops across the city",
-      participants: 156,
-      reward: "Team Victory Crown",
-      status: "Live Battle"
-    },
-    {
-      type: "avatar_meetup",
-      title: "Downtown Social Hour",
-      description: "Meet friends' avatars for collaborative challenges",
-      participants: 43,
-      reward: "Social Interaction Bonus",
-      status: "Starting Soon"
-    },
-    {
-      type: "item_trade",
-      title: "Rare Collectible Exchange",
-      description: "Trade unique items found at different businesses",
-      participants: 89,
-      reward: "Trader's Badge",
-      status: "Active"
-    }
-  ];
-
-  const businessTransformations = [
-    {
-      business: "Joe's Coffee Shop",
-      transformation: "Enchanted Café",
-      description: "Magical brewing station with potion-making mini-games",
-      collectibles: ["Magic Beans", "Golden Spoon", "Aroma Crystal"],
-      arFeatures: ["Interactive brewing", "Spell casting", "Ingredient collection"]
-    },
-    {
-      business: "FitZone Gym",
-      transformation: "Warrior Training Ground",
-      description: "Epic fitness challenges with mythical creature battles",
-      collectibles: ["Strength Gem", "Endurance Stone", "Victory Medal"],
-      arFeatures: ["Battle simulations", "Power-up collection", "Team formations"]
-    },
-    {
-      business: "Artist's Corner",
-      transformation: "Creative Dimension",
-      description: "Interdimensional art studio with impossible physics",
-      collectibles: ["Color Essence", "Inspiration Orb", "Creative Spark"],
-      arFeatures: ["3D painting", "Reality manipulation", "Collaborative creation"]
-    }
-  ];
+  });
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 text-center">
-        <div className="flex items-center justify-center mb-4">
-          <img 
-            src={cirqlbackLogo} 
-            alt="Cirqlback" 
-            className="h-8 w-auto mr-4 logo-transparent"
-          />
-          <h1 className="text-4xl font-bold gradient-text">
-            Cirqlback AR Hub
-          </h1>
-        </div>
-        <p className="text-gray-600 text-lg max-w-3xl mx-auto">
-          Transform every Cirql tap into an immersive AR adventure. Build your avatar, join team battles, 
-          collect rare items, and turn local businesses into interactive game worlds - all connected to your loyalty progress.
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-bold mb-4">
+          🎮 AR Game Hub - Choose Your Style
+        </h1>
+        <p className="text-lg text-gray-600 mb-6">
+          Multiple gaming platforms tied to local merchants. Play your style, earn rewards!
         </p>
+        
+        {/* Platform Style Selector */}
+        <div className="flex justify-center gap-3 mb-6 flex-wrap">
+          {['pokemon-go', 'minecraft', 'fortnite', 'candy-crush'].map((style) => (
+            <Button
+              key={style}
+              variant={selectedStyle === style ? "default" : "outline"}
+              onClick={() => setSelectedStyle(style)}
+              className={`${selectedStyle === style ? getStyleColor(style) + ' text-white' : ''}`}
+            >
+              {getStyleIcon(style)}
+              <span className="ml-2 capitalize">{style.replace('-', ' ')}</span>
+            </Button>
+          ))}
+        </div>
       </div>
 
-      <Tabs defaultValue="challenges" className="space-y-6">
-        <div className="overflow-x-auto">
-          <TabsList className="grid grid-cols-5 min-w-max lg:w-full">
-            <TabsTrigger value="challenges" className="px-2 text-xs lg:px-3 lg:text-sm">Challenges</TabsTrigger>
-            <TabsTrigger value="avatar" className="px-2 text-xs lg:px-3 lg:text-sm">Avatar</TabsTrigger>
-            <TabsTrigger value="social" className="px-2 text-xs lg:px-3 lg:text-sm">Social</TabsTrigger>
-            <TabsTrigger value="transforms" className="px-2 text-xs lg:px-3 lg:text-sm">Business AR</TabsTrigger>
-            <TabsTrigger value="rewards" className="px-2 text-xs lg:px-3 lg:text-sm">Rewards</TabsTrigger>
-          </TabsList>
-        </div>
+      <Tabs defaultValue="ar-games" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="ar-games">🎯 AR Games</TabsTrigger>
+          <TabsTrigger value="merchant-missions">🏪 Merchant Missions</TabsTrigger>
+          <TabsTrigger value="leaderboards">🏆 Leaderboards</TabsTrigger>
+        </TabsList>
 
-        {/* Active Challenges */}
-        <TabsContent value="challenges" className="space-y-6">
+        <TabsContent value="ar-games" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {activeChallenges.map((challenge) => (
-              <Card key={challenge.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+            {arGames
+              .filter(game => selectedStyle === 'all' || game.style === selectedStyle)
+              .map((game) => (
+              <Card key={game.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="text-xs">
-                      {challenge.difficulty}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {getStyleIcon(game.style)}
+                      <CardTitle className="text-lg">{game.title}</CardTitle>
+                    </div>
+                    <Badge className={getDifficultyColor(game.difficulty)}>
+                      {game.difficulty}
                     </Badge>
-                    <span className="text-3xl">{challenge.arPreview}</span>
                   </div>
-                  <CardTitle className="text-lg">{challenge.title}</CardTitle>
-                  <p className="text-sm text-gray-600">{challenge.business}</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-sm text-gray-700">{challenge.description}</p>
+                  <p className="text-sm text-gray-600">{game.description}</p>
                   
-                  <div className="flex flex-wrap gap-1">
-                    {challenge.skills.map(skill => (
-                      <Badge key={skill} variant="secondary" className="text-xs">
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Participants:</span>
-                      <span>{challenge.participants}/{challenge.maxParticipants}</span>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      <span>{game.estimatedTime}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Time Remaining:</span>
-                      <span className="text-orange-600 font-semibold">{challenge.timeRemaining}</span>
+                    <div className="flex items-center gap-1">
+                      <Users className="w-4 h-4" />
+                      <span>{game.playerCount} active</span>
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-3 rounded-lg">
-                    <div className="text-xs font-semibold text-orange-800 mb-1">Reward:</div>
-                    <div className="text-sm text-orange-700">{challenge.reward}</div>
+                  <div className="border-t pt-3">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span>Customer Reward: <strong>+{game.customerReward}</strong></span>
+                      <span>Merchant Bonus: <strong>+{game.merchantReward}</strong></span>
+                    </div>
                   </div>
 
                   <Button 
-                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                    onClick={() => window.location.href = `/ar-experience/${challenge.id}`}
+                    className="w-full" 
+                    onClick={() => joinGameMutation.mutate(game.id)}
+                    disabled={joinGameMutation.isPending}
                   >
-                    <Camera className="h-4 w-4 mr-2" />
-                    Start AR Game
+                    {joinGameMutation.isPending ? 'Joining...' : '🚀 Join Game'}
                   </Button>
                 </CardContent>
               </Card>
@@ -224,211 +255,77 @@ export default function ARGameHub() {
           </div>
         </TabsContent>
 
-        {/* Avatar Progress */}
-        <TabsContent value="avatar" className="space-y-6">
+        <TabsContent value="merchant-missions" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Star className="h-5 w-5 mr-2 text-yellow-500" />
-                  Avatar Level & Experience
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-600">Level {avatarStats.level}</div>
-                  <div className="bg-purple-200 rounded-full h-3 mt-2">
-                    <div 
-                      className="bg-purple-600 h-3 rounded-full transition-all"
-                      style={{ width: `${(avatarStats.experience / avatarStats.nextLevelXP) * 100}%` }}
-                    ></div>
-                  </div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    {avatarStats.experience} / {avatarStats.nextLevelXP} XP
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {Object.entries(avatarStats.skills).map(([skill, data]) => (
-                    <div key={skill} className="text-center bg-gray-50 p-3 rounded-lg">
-                      <div className="text-sm font-semibold capitalize text-gray-700">{skill}</div>
-                      <div className="text-lg font-bold text-purple-600">Level {data.level}</div>
-                      <div className="bg-gray-200 rounded-full h-2 mt-1">
-                        <div 
-                          className="bg-gradient-to-r from-purple-400 to-blue-400 h-2 rounded-full"
-                          style={{ width: `${(data.xp % 200) / 200 * 100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Gift className="h-5 w-5 mr-2 text-green-500" />
-                  Inventory & Badges
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-semibold mb-2">Active Items</h4>
-                  <div className="space-y-2">
-                    {avatarStats.inventory.map(item => (
-                      <div key={item.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <div>
-                          <div className="font-medium text-sm">{item.name}</div>
-                          <div className="text-xs text-gray-600">{item.effect}</div>
-                        </div>
-                        <Badge variant={item.rarity === "legendary" ? "default" : "secondary"}>
-                          {item.rarity}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold mb-2">Achievement Badges</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {avatarStats.badges.map(badge => (
-                      <Badge key={badge} className="text-xs">
-                        <Crown className="h-3 w-3 mr-1" />
-                        {badge}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Social Features */}
-        <TabsContent value="social" className="space-y-6">
-          <div className="grid gap-6">
-            {socialFeatures.map((feature, index) => (
-              <Card key={index}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-gradient-to-r from-pink-500 to-purple-500 p-2 rounded-lg">
-                        {feature.type === "team_battle" && <Swords className="h-5 w-5 text-white" />}
-                        {feature.type === "avatar_meetup" && <Users className="h-5 w-5 text-white" />}
-                        {feature.type === "item_trade" && <Gift className="h-5 w-5 text-white" />}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-lg">{feature.title}</h3>
-                        <p className="text-gray-600">{feature.description}</p>
-                      </div>
-                    </div>
-                    <Badge variant={feature.status === "Live Battle" ? "destructive" : "default"}>
-                      {feature.status}
-                    </Badge>
-                  </div>
-                  
+            {merchantMissions.map((mission) => (
+              <Card key={mission.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 text-sm text-gray-600">
-                      <span className="flex items-center">
-                        <Users className="h-4 w-4 mr-1" />
-                        {feature.participants} participants
-                      </span>
-                      <span className="flex items-center">
-                        <Trophy className="h-4 w-4 mr-1" />
-                        {feature.reward}
-                      </span>
-                    </div>
-                    
-                    <Button variant="outline" className="ml-4">
-                      Join Now
-                    </Button>
+                    <CardTitle className="text-lg">{mission.businessName}</CardTitle>
+                    <Badge variant="secondary">+{mission.reward} points</Badge>
                   </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-gray-600">{mission.description}</p>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Participants: {mission.participants}/{mission.maxParticipants}</span>
+                      <span>Time Left: {mission.timeLimit}</span>
+                    </div>
+                    <Progress 
+                      value={(mission.participants / mission.maxParticipants) * 100} 
+                      className="h-2"
+                    />
+                  </div>
+
+                  <Button 
+                    className="w-full" 
+                    onClick={() => joinMissionMutation.mutate(mission.id)}
+                    disabled={joinMissionMutation.isPending || mission.participants >= mission.maxParticipants}
+                  >
+                    {mission.participants >= mission.maxParticipants 
+                      ? '🔒 Mission Full' 
+                      : joinMissionMutation.isPending 
+                        ? 'Joining...' 
+                        : '🎯 Join Mission'
+                    }
+                  </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
         </TabsContent>
 
-        {/* Business Transformations */}
-        <TabsContent value="transforms" className="space-y-6">
-          <div className="grid gap-6">
-            {businessTransformations.map((transform, index) => (
-              <Card key={index} className="overflow-hidden">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="font-semibold text-lg text-purple-600">{transform.transformation}</h3>
-                      <p className="text-gray-600">{transform.business}</p>
-                      <p className="text-sm text-gray-700 mt-2">{transform.description}</p>
-                    </div>
-                    <Sparkles className="h-6 w-6 text-purple-500" />
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-semibold mb-2 text-sm">Collectible Items</h4>
-                      <div className="flex flex-wrap gap-1">
-                        {transform.collectibles.map(item => (
-                          <Badge key={item} variant="outline" className="text-xs">
-                            {item}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h4 className="font-semibold mb-2 text-sm">AR Features</h4>
-                      <div className="flex flex-wrap gap-1">
-                        {transform.arFeatures.map(feature => (
-                          <Badge key={feature} variant="secondary" className="text-xs">
-                            {feature}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center mt-4 pt-4 border-t">
-                    <Button variant="outline" size="sm">
-                      <Map className="h-4 w-4 mr-2" />
-                      View on Map
-                    </Button>
-                    <Button size="sm" className="bg-gradient-to-r from-purple-600 to-blue-600">
-                      <Camera className="h-4 w-4 mr-2" />
-                      Experience AR
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Rewards & Items */}
-        <TabsContent value="rewards" className="space-y-6">
+        <TabsContent value="leaderboards" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Daily Rewards</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-yellow-500" />
+                  Top AR Gamers
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg">
-                  <div className="font-semibold text-green-800">Today's Bonus Available!</div>
-                  <div className="text-sm text-green-700 mt-1">
-                    Visit any local business to claim +50 XP and mystery item
-                  </div>
-                  <Button size="sm" className="mt-2 bg-green-600 hover:bg-green-700">
-                    Claim Reward
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-7 gap-1">
-                  {[1,2,3,4,5,6,7].map(day => (
-                    <div key={day} className={`text-center p-2 rounded text-xs ${day <= 3 ? 'bg-green-100 text-green-800' : 'bg-gray-100'}`}>
-                      Day {day}
-                      {day <= 3 && <div className="text-xs">✓</div>}
+              <CardContent>
+                <div className="space-y-3">
+                  {[
+                    { rank: 1, name: 'ARMaster2024', points: 15420, games: 67 },
+                    { rank: 2, name: 'LocalHero', points: 12890, games: 54 },
+                    { rank: 3, name: 'QuestKing', points: 11230, games: 48 },
+                    { rank: 4, name: 'You', points: 8450, games: 32 }
+                  ].map((player) => (
+                    <div key={player.rank} className={`flex items-center justify-between p-3 rounded-lg ${player.name === 'You' ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-lg">#{player.rank}</span>
+                        <div>
+                          <p className="font-medium">{player.name}</p>
+                          <p className="text-sm text-gray-600">{player.games} games completed</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold">{player.points.toLocaleString()}</p>
+                        <p className="text-sm text-gray-600">AR Points</p>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -437,57 +334,63 @@ export default function ARGameHub() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Streak Bonuses</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-purple-500" />
+                  Top Merchants
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-600">🔥 7 Day Streak</div>
-                  <div className="text-sm text-gray-600">Keep visiting to maintain your streak!</div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Current Streak Bonus:</span>
-                    <span className="font-semibold text-orange-600">+35% XP</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Next Milestone (10 days):</span>
-                    <span className="text-purple-600">Rare Item Guaranteed</span>
-                  </div>
+              <CardContent>
+                <div className="space-y-3">
+                  {[
+                    { rank: 1, name: "Joe's Coffee Shop", engagement: 94, missions: 12 },
+                    { rank: 2, name: 'TechRepair Plus', engagement: 89, missions: 8 },
+                    { rank: 3, name: 'Local Fitness Gym', engagement: 82, missions: 6 },
+                    { rank: 4, name: 'BookStore Corner', engagement: 76, missions: 4 }
+                  ].map((merchant) => (
+                    <div key={merchant.rank} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-lg">#{merchant.rank}</span>
+                        <div>
+                          <p className="font-medium">{merchant.name}</p>
+                          <p className="text-sm text-gray-600">{merchant.missions} active missions</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold">{merchant.engagement}%</p>
+                        <p className="text-sm text-gray-600">Engagement</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
           </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Collectibles Showcase</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { name: "Dragon Coffee Bean", rarity: "legendary", found: true },
-                  { name: "Artist's Inspiration", rarity: "epic", found: true },
-                  { name: "Friendship Gem", rarity: "rare", found: false },
-                  { name: "Golden Dumbbell", rarity: "epic", found: false }
-                ].map((item, index) => (
-                  <div key={index} className={`text-center p-3 rounded-lg border-2 ${item.found ? 'border-purple-200 bg-purple-50' : 'border-gray-200 bg-gray-50'}`}>
-                    <div className={`text-2xl mb-2 ${item.found ? '' : 'opacity-30'}`}>
-                      {item.rarity === "legendary" ? "🏆" : item.rarity === "epic" ? "💎" : "⭐"}
-                    </div>
-                    <div className={`text-xs font-semibold ${item.found ? 'text-purple-800' : 'text-gray-500'}`}>
-                      {item.name}
-                    </div>
-                    <Badge variant={item.found ? "default" : "outline"} className="text-xs mt-1">
-                      {item.rarity}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Quick Stats */}
+      <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="text-center p-4">
+          <Zap className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
+          <p className="text-2xl font-bold">847</p>
+          <p className="text-sm text-gray-600">Active Players</p>
+        </Card>
+        <Card className="text-center p-4">
+          <Target className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+          <p className="text-2xl font-bold">23</p>
+          <p className="text-sm text-gray-600">Live Missions</p>
+        </Card>
+        <Card className="text-center p-4">
+          <Crown className="w-8 h-8 mx-auto mb-2 text-purple-500" />
+          <p className="text-2xl font-bold">156</p>
+          <p className="text-sm text-gray-600">Partner Businesses</p>
+        </Card>
+        <Card className="text-center p-4">
+          <Award className="w-8 h-8 mx-auto mb-2 text-green-500" />
+          <p className="text-2xl font-bold">$12.5K</p>
+          <p className="text-sm text-gray-600">Rewards Distributed</p>
+        </Card>
+      </div>
     </div>
   );
 }

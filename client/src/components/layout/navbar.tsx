@@ -82,6 +82,18 @@ export default function Navbar() {
                   Cirql Quest
                 </Button>
               </Link>
+              <Link href="/ar-game-hub">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/ar-game-hub") 
+                      ? "text-green-600 bg-green-50 border border-green-200" 
+                      : "text-muted-foreground hover:text-green-600 hover:bg-green-50"
+                  }`}
+                >
+                  AR Games
+                </Button>
+              </Link>
               <Link href="/map">
                 <Button 
                   variant="ghost" 

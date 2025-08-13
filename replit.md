@@ -27,6 +27,8 @@ Key features include comprehensive NFC system integration for tag writing, manag
 
 **Cirql Quest Gamification System**: Pokemon Go-like customer experience featuring collectible quest items, daily challenges, achievement systems, global leaderboards, item crafting/fusion mechanics, and addictive progression loops. Players collect rare items (common to legendary) through business visits, complete daily quests for rewards, compete on global leaderboards, and unlock achievements. The system creates customer addiction through collecting, building, crafting, and competing while driving continuous engagement with local businesses.
 
+**AR Game Hub with Platform Choice**: Multi-platform gaming system allowing customers to choose their preferred gaming style (Pokemon Go, Minecraft, Fortnite, Candy Crush) while maintaining merchant integration. Features AR treasure hunts, business builder challenges, merchant battle royales, and puzzle matching games. Each style provides unique experiences while driving customers to local businesses through missions, rewards, and return visits. System includes real-time AR instructions, business location integration, and progressive rewards tied to merchant goals.
+
 AI functionality is integrated for insights, predictive analytics, and pricing optimization, with full OpenAI integration. It supports session-based authentication for business owners, customers, and admins, with multi-business profile management and a three-tier business subscription system.
 
 ### System Design Choices
