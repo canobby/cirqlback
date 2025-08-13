@@ -48,6 +48,10 @@ import CommunicationPage from "@/pages/communication";
 import ProfileSetup from "@/pages/profile-setup";
 import ExportHub from "@/pages/export-hub";
 import BusinessIntelligenceSuite from "@/pages/business-intelligence-suite";
+import ContactPage from "@/pages/contact";
+import HelpCenterPage from "@/pages/help-center";
+import PrivacyPolicyPage from "@/pages/privacy-policy";
+import TermsOfServicePage from "@/pages/terms-of-service";
 
 function Router() {
   const [location] = useLocation();
@@ -102,6 +106,13 @@ function Router() {
           <Route path="/profile-setup" component={ProfileSetup} />
         <Route path="/export-hub" component={ExportHub} />
         <Route path="/business-intelligence" component={BusinessIntelligenceSuite} />
+          
+          {/* Footer Pages */}
+          <Route path="/contact" component={ContactPage} />
+          <Route path="/help-center" component={HelpCenterPage} />
+          <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+          <Route path="/terms-of-service" component={TermsOfServicePage} />
+          
           <Route component={NotFound} />
         </Switch>
       </main>

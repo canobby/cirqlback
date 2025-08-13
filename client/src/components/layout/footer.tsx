@@ -48,10 +48,10 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider mb-4 text-foreground">Support</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors">Help Center</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">Documentation</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-accent transition-colors">Contact Us</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors">System Status</a></li>
+              <li><Link href="/help-center" className="text-muted-foreground hover:text-primary transition-colors">Help Center</Link></li>
+              <li><Link href="/user-guide" className="text-muted-foreground hover:text-secondary transition-colors">Documentation</Link></li>
+              <li><Link href="/contact" className="text-muted-foreground hover:text-accent transition-colors">Contact Us</Link></li>
+              <li><Link href="/platform-overview" className="text-muted-foreground hover:text-primary transition-colors">System Status</Link></li>
             </ul>
           </div>
         </div>
@@ -61,9 +61,9 @@ export default function Footer() {
             © 2024 Cirqlback. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
-            <a href="#" className="text-muted-foreground hover:text-primary text-sm transition-colors">Privacy Policy</a>
-            <a href="#" className="text-muted-foreground hover:text-secondary text-sm transition-colors">Terms of Service</a>
-            <a href="#" className="text-muted-foreground hover:text-accent text-sm transition-colors">Cookie Policy</a>
+            <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary text-sm transition-colors">Privacy Policy</Link>
+            <Link href="/terms-of-service" className="text-muted-foreground hover:text-secondary text-sm transition-colors">Terms of Service</Link>
+            <Link href="/help-center" className="text-muted-foreground hover:text-accent text-sm transition-colors">Cookie Policy</Link>
           </div>
         </div>
       </div>
