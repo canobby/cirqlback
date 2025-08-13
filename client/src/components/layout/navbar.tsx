@@ -1,15 +1,13 @@
-import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Settings, Search, Bell, MessageCircle } from "lucide-react";
-import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
+import { Search, Settings } from "lucide-react";
+import PlatformMenu from "@/components/layout/platform-menu";
 import NotificationCenter from "@/components/global/notification-center";
-import PlatformMenu from "./platform-menu";
-import { LanguageSelector } from '@/components/ui/language-selector';
+import { LanguageSelector } from "@/components/ui/language-selector";
+import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 
 export default function Navbar() {
   const [location] = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => {
     if (path === "/" && location === "/") return true;
@@ -19,7 +17,7 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+      <div className="max-w-7xl mx-auto responsive-container">
         <div className="flex justify-between items-center h-16 sm:h-20">
           <div className="flex items-center min-w-0">
             <Link href="/" className="flex items-center hover:opacity-80 transition-opacity flex-shrink-0">
@@ -50,7 +48,7 @@ export default function Navbar() {
               <Link href="/merchant">
                 <Button 
                   variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                  className={`px-2 lg:px-3 py-2 text-xs lg:text-sm font-medium transition-all duration-200 mobile-button-size ${
                     isActive("/merchant") 
                       ? "text-secondary bg-secondary/10 border border-secondary/20" 
                       : "text-muted-foreground hover:text-secondary hover:bg-secondary/5"
@@ -59,107 +57,22 @@ export default function Navbar() {
                   Merchant
                 </Button>
               </Link>
-              <Link href="/community">
+              <Link href="/analytics">
                 <Button 
                   variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/community") 
+                  className={`px-2 lg:px-3 py-2 text-xs lg:text-sm font-medium transition-all duration-200 mobile-button-size ${
+                    isActive("/analytics") 
                       ? "text-accent bg-accent/10 border border-accent/20" 
                       : "text-muted-foreground hover:text-accent hover:bg-accent/5"
                   }`}
                 >
-                  Community
-                </Button>
-              </Link>
-              <Link href="/cirql-quest">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/cirql-quest") 
-                      ? "text-purple-600 bg-purple-50 border border-purple-200" 
-                      : "text-muted-foreground hover:text-purple-600 hover:bg-purple-50"
-                  }`}
-                >
-                  Cirql Quest
-                </Button>
-              </Link>
-              <Link href="/ar-game-hub">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/ar-game-hub") 
-                      ? "text-green-600 bg-green-50 border border-green-200" 
-                      : "text-muted-foreground hover:text-green-600 hover:bg-green-50"
-                  }`}
-                >
-                  AR Games
-                </Button>
-              </Link>
-              <Link href="/map">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/map") 
-                      ? "text-primary bg-primary/10 border border-primary/20" 
-                      : "text-muted-foreground hover:text-primary hover:bg-primary/5"
-                  }`}
-                >
-                  Map
-                </Button>
-              </Link>
-              <Link href="/partnerships">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/partnerships") 
-                      ? "text-orange-600 bg-orange-50 border border-orange-200" 
-                      : "text-muted-foreground hover:text-orange-600 hover:bg-orange-50"
-                  }`}
-                >
-                  Partnerships
-                </Button>
-              </Link>
-              <Link href="/communication">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/communication") 
-                      ? "text-blue-600 bg-blue-50 border border-blue-200" 
-                      : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
-                  }`}
-                >
-                  <MessageCircle className="h-4 w-4 mr-1" />
-                  Translation
-                </Button>
-              </Link>
-              <Link href="/account">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/account") 
-                      ? "text-purple-600 bg-purple-50 border border-purple-200" 
-                      : "text-muted-foreground hover:text-purple-600 hover:bg-purple-50"
-                  }`}
-                >
-                  Account
-                </Button>
-              </Link>
-              <Link href="/business-intelligence">
-                <Button 
-                  variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive("/business-intelligence") 
-                      ? "text-indigo-600 bg-indigo-50 border border-indigo-200" 
-                      : "text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50"
-                  }`}
-                >
-                  Business Intelligence
+                  Analytics
                 </Button>
               </Link>
               <Link href="/test-system">
                 <Button 
                   variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                  className={`px-2 lg:px-3 py-2 text-xs lg:text-sm font-medium transition-all duration-200 mobile-button-size ${
                     isActive("/test-system") 
                       ? "text-blue-600 bg-blue-50 border border-blue-200" 
                       : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
@@ -171,7 +84,7 @@ export default function Navbar() {
               <Link href="/admin-dashboard">
                 <Button 
                   variant="ghost" 
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                  className={`px-2 lg:px-3 py-2 text-xs lg:text-sm font-medium transition-all duration-200 mobile-button-size ${
                     isActive("/admin-dashboard") 
                       ? "text-red-600 bg-red-50 border border-red-200" 
                       : "text-muted-foreground hover:text-red-600 hover:bg-red-50"
@@ -187,6 +100,7 @@ export default function Navbar() {
             <div className="hidden sm:block">
               <LanguageSelector variant="button" size="sm" />
             </div>
+            {/* Single unified navigation menu */}
             <PlatformMenu />
             <Button variant="outline" size="sm" className="hidden lg:flex mobile-sm-touch">
               <Search className="h-4 w-4" />
@@ -200,223 +114,8 @@ export default function Navbar() {
             <Button className="gradient-bg border-0 text-white font-semibold text-xs sm:text-sm px-3 sm:px-4 py-2 mobile-sm-touch">
               Login
             </Button>
-            
-            {/* Mobile menu button */}
-            <div className="md:hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="text-gray-500 hover:text-gray-700 mobile-sm-touch"
-              >
-                {mobileMenuOpen ? <X className="h-5 w-5 sm:h-6 sm:w-6" /> : <Menu className="h-5 w-5 sm:h-6 sm:w-6" />}
-              </Button>
-            </div>
           </div>
         </div>
-        
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 bg-white shadow-lg">
-            <div className="px-3 pt-3 pb-4 space-y-2 max-h-96 overflow-y-auto mobile-card-padding">
-              <Link href="/customer">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start mobile-menu-item mobile-touch-spacing ${
-                    isActive("/customer") 
-                      ? "text-primary bg-primary/10" 
-                      : "text-gray-700 hover:text-primary"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Customer Dashboard
-                </Button>
-              </Link>
-              <Link href="/merchant">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start mobile-menu-item mobile-touch-spacing ${
-                    isActive("/merchant") 
-                      ? "text-secondary bg-secondary/10" 
-                      : "text-gray-700 hover:text-secondary"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Merchant Dashboard
-                </Button>
-              </Link>
-              <Link href="/community">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/community") 
-                      ? "text-accent bg-accent/10" 
-                      : "text-gray-700 hover:text-accent"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Community Hub
-                </Button>
-              </Link>
-              <Link href="/partnerships">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/partnerships") 
-                      ? "text-orange-600 bg-orange-50" 
-                      : "text-gray-700 hover:text-orange-600"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Business Partnerships
-                </Button>
-              </Link>
-              <Link href="/multi-merchant-pools">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/multi-merchant-pools") 
-                      ? "text-blue-600 bg-blue-50" 
-                      : "text-gray-700 hover:text-blue-600"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Merchant Pools
-                </Button>
-              </Link>
-              <Link href="/map">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/map") 
-                      ? "text-primary bg-primary/10" 
-                      : "text-gray-700 hover:text-primary"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Discovery Map
-                </Button>
-              </Link>
-              <Link href="/avatar">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/avatar") 
-                      ? "text-pink-600 bg-pink-50" 
-                      : "text-gray-700 hover:text-pink-600"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Avatar Creator
-                </Button>
-              </Link>
-              <Link href="/ar-game-hub">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/ar-game-hub") 
-                      ? "text-purple-600 bg-purple-50" 
-                      : "text-gray-700 hover:text-purple-600"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  AR Gaming Hub
-                </Button>
-              </Link>
-              <Link href="/team-challenges">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/team-challenges") 
-                      ? "text-blue-600 bg-blue-50" 
-                      : "text-gray-700 hover:text-blue-600"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Team Challenges
-                </Button>
-              </Link>
-              <Link href="/partnerships">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/partnerships") 
-                      ? "text-orange-600 bg-orange-50" 
-                      : "text-gray-700 hover:text-orange-600"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Partnerships
-                </Button>
-              </Link>
-              <Link href="/analytics">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/analytics") 
-                      ? "text-primary bg-primary/10" 
-                      : "text-gray-700 hover:text-primary"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Analytics
-                </Button>
-              </Link>
-              <Link href="/account">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/account") 
-                      ? "text-purple-600 bg-purple-50" 
-                      : "text-gray-700 hover:text-purple-600"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Account Settings
-                </Button>
-              </Link>
-              <Link href="/test-system">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/test-system") 
-                      ? "text-blue-600 bg-blue-50" 
-                      : "text-gray-700 hover:text-blue-600"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Test System
-                </Button>
-              </Link>
-              <Link href="/admin-dashboard">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/admin-dashboard") 
-                      ? "text-red-600 bg-red-50" 
-                      : "text-gray-700 hover:text-red-600"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Admin Dashboard
-                </Button>
-              </Link>
-              <Link href="/how-it-works">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start px-3 py-2 text-sm font-medium ${
-                    isActive("/how-it-works") 
-                      ? "text-secondary bg-secondary/10" 
-                      : "text-gray-700 hover:text-secondary"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  How It Works
-                </Button>
-              </Link>
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   );

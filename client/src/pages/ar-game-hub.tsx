@@ -35,7 +35,65 @@ interface MerchantMission {
 export default function ARGameHub() {
   const [selectedStyle, setSelectedStyle] = useState<string>('pokemon-go');
   const [activeGame, setActiveGame] = useState<ARGame | null>(null);
+  const [gameSession, setGameSession] = useState<any>(null);
   const queryClient = useQueryClient();
+
+  // Join game mutation for backend integration
+  // Game joining mutation that triggers AR game session
+  const joinGameMutation = useMutation({
+    mutationFn: async (gameId: string) => {
+      return apiRequest("POST", `/api/ar-games/${gameId}/join`);
+    },
+    onSuccess: (data, gameId) => {
+      const game = arGames.find(g => g.id === gameId);
+      if (game) {
+        startARGame(game);
+      }
+    }
+  });
+
+  // Start AR Game Session
+  const startARGame = (game: ARGame) => {
+    const session = {
+      gameId: game.id,
+      style: game.style,
+      startTime: new Date(),
+      instructions: getGameInstructions(game),
+      merchantTargets: getMerchantTargets(game),
+      rewards: game.customerReward
+    };
+    
+    setGameSession(session);
+    setActiveGame(game);
+    
+    // Show game session with detailed instructions
+    console.log('AR Game Session Started:', session);
+  };
+
+  // Get game-specific instructions
+  const getGameInstructions = (game: ARGame) => {
+    switch (game.style) {
+      case 'pokemon-go':
+        return `📱 Use your phone camera to find AR treasures hidden at local businesses. Look for glowing orbs and tap to collect rewards!`;
+      case 'minecraft':
+        return `🏗️ Help businesses build their virtual storefronts! Use AR tools to place blocks and complete construction challenges.`;
+      case 'fortnite':
+        return `⚔️ Join team battles at merchant locations! Complete missions, eliminate competition, and claim victory royales for rewards.`;
+      case 'candy-crush':
+        return `🍭 Match colored gems at business locations! Line up 3+ matching items to clear levels and unlock merchant discounts.`;
+      default:
+        return `🎯 Complete location-based challenges at participating businesses to earn rewards!`;
+    }
+  };
+
+  // Get merchant targets for the game
+  const getMerchantTargets = (game: ARGame) => {
+    return [
+      { name: "Corner Coffee Shop", distance: "0.2 miles", challenge: "Find the golden coffee bean" },
+      { name: "Downtown Boutique", distance: "0.4 miles", challenge: "Collect fashion tokens" },
+      { name: "Tech Repair Hub", distance: "0.6 miles", challenge: "Solve the digital puzzle" }
+    ];
+  };
 
   // Mock data for AR Games - these would integrate with real AR frameworks
   const arGames: ARGame[] = [
@@ -151,28 +209,68 @@ export default function ARGameHub() {
     }
   };
 
-  const joinGameMutation = useMutation({
-    mutationFn: async (gameId: string) => {
-      const response = await apiRequest("POST", "/api/ar-games/join", { gameId });
+  // Join mission mutation for merchant missions
+  const joinMissionMutation = useMutation({
+    mutationFn: async (missionId: string) => {
+      const response = await apiRequest("POST", "/api/merchant-missions/join", { missionId });
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/ar-games"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/merchant-missions"] });
     },
   });
 
-  const joinMissionMutation = useMutation({
-    mutationFn: async (missionId: string) => {
-      const response = await apiRequest("POST", "/api/ar-games/join-mission", { missionId });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/ar-games"] });
-    },
-  });
+
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
+      {/* Active Game Session Display */}
+      {gameSession && (
+        <Card className="mb-8 border-2 border-green-500 bg-green-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-green-800">
+              <Gamepad2 className="h-6 w-6" />
+              🎮 {activeGame?.title} - Game Active!
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-white p-4 rounded-lg">
+              <h4 className="font-semibold mb-2">Game Instructions:</h4>
+              <p className="text-sm text-gray-700">{gameSession.instructions}</p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              {gameSession.merchantTargets.map((target: any, idx: number) => (
+                <div key={idx} className="bg-white p-3 rounded border">
+                  <h5 className="font-medium text-sm">{target.name}</h5>
+                  <p className="text-xs text-gray-600">{target.distance}</p>
+                  <p className="text-xs text-blue-600">{target.challenge}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-4">
+              <Button 
+                onClick={() => setGameSession(null)} 
+                variant="outline" 
+                size="sm"
+              >
+                Pause Game
+              </Button>
+              <Button 
+                onClick={() => {
+                  alert(`🎯 Game completed! You earned ${gameSession.rewards} points!`);
+                  setGameSession(null);
+                  setActiveGame(null);
+                }} 
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+              >
+                Complete Game (+{gameSession.rewards} pts)
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold mb-4">
           🎮 AR Game Hub - Choose Your Style
@@ -247,7 +345,7 @@ export default function ARGameHub() {
                     onClick={() => joinGameMutation.mutate(game.id)}
                     disabled={joinGameMutation.isPending}
                   >
-                    {joinGameMutation.isPending ? 'Joining...' : '🚀 Join Game'}
+                    {joinGameMutation.isPending ? 'Starting...' : '🚀 Start Game'}
                   </Button>
                 </CardContent>
               </Card>
