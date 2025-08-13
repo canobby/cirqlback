@@ -14,15 +14,15 @@ import { CalendarIcon, TrendingUp, TrendingDown, DollarSign, Users, PlusCircle, 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
-// Form schemas
+// Simplified form schema to prevent crashes
 const salesDataSchema = z.object({
   businessId: z.string().min(1, "Business ID is required"),
   date: z.string().min(1, "Date is required"),
   totalSales: z.string().min(1, "Total sales amount is required"),
-  cirqlDrivenSales: z.string().optional(),
-  customerCount: z.number().min(0, "Customer count must be positive").optional(),
-  newCustomers: z.number().min(0, "New customer count must be positive").optional(),
-  returningCustomers: z.number().min(0, "Returning customer count must be positive").optional(),
+  cirqlDrivenSales: z.string().default("0"),
+  customerCount: z.number().min(0).optional(),
+  newCustomers: z.number().min(0).optional(),
+  returningCustomers: z.number().min(0).optional(),
   notes: z.string().optional(),
 });
 
@@ -94,13 +94,22 @@ export function SalesDataInput({ businessId, businessName = "Your Business" }: S
     },
   });
 
-  // Mutations
+  // Mutations with simplified data handling
   const addSalesData = useMutation({
     mutationFn: async (data: SalesDataFormValues) => {
+      // Ensure all required fields are present
+      const sanitizedData = {
+        ...data,
+        cirqlDrivenSales: data.cirqlDrivenSales || "0",
+        customerCount: data.customerCount || 0,
+        newCustomers: data.newCustomers || 0,
+        returningCustomers: data.returningCustomers || 0,
+      };
+      
       const response = await fetch("/api/sales-data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(sanitizedData),
       });
       if (!response.ok) throw new Error("Failed to add sales data");
       return response.json();

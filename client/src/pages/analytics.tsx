@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { SalesDataInput } from "@/components/analytics/sales-data-input";
+import { SimpleSalesInput } from "@/components/analytics/simple-sales-input";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 import { 
   TrendingUp, 
@@ -744,13 +744,7 @@ export default function AnalyticsDashboard() {
           </TabsContent>
 
           <TabsContent value="real-data" className="space-y-6">
-            <SalesDataInput 
-              businessId={selectedBusiness !== "all" ? selectedBusiness : "default-business-id"} 
-              businessName={selectedBusiness !== "all" ? 
-                businesses.find((b: any) => b.id === selectedBusiness)?.name || "Selected Business" :
-                "Your Business"
-              }
-            />
+            <SimpleSalesInput />
           </TabsContent>
         </Tabs>
         {/* AI Insights Section */}
