@@ -24,7 +24,7 @@ import {
   Award,
   Gamepad2,
   Flame,
-  Lightning,
+  Bolt,
   Heart,
   Diamond
 } from "lucide-react";
@@ -204,7 +204,7 @@ export default function CirqlQuest() {
                           {item.category === 'charm' && <Sparkles className="h-6 w-6 text-white" />}
                           {item.category === 'power' && <Sword className="h-6 w-6 text-white" />}
                           {item.category === 'luck' && <Star className="h-6 w-6 text-white" />}
-                          {item.category === 'speed' && <Lightning className="h-6 w-6 text-white" />}
+                          {item.category === 'speed' && <Bolt className="h-6 w-6 text-white" />}
                         </div>
                         <h4 className="font-semibold text-xs">{item.name}</h4>
                         <Badge className={`text-xs mt-1 bg-gradient-to-r ${getRarityColor(item.type)}`}>
@@ -413,7 +413,7 @@ export default function CirqlQuest() {
                   {selectedItem.category === 'charm' && <Sparkles className="h-4 w-4 text-white" />}
                   {selectedItem.category === 'power' && <Sword className="h-4 w-4 text-white" />}
                   {selectedItem.category === 'luck' && <Star className="h-4 w-4 text-white" />}
-                  {selectedItem.category === 'speed' && <Lightning className="h-4 w-4 text-white" />}
+                  {selectedItem.category === 'speed' && <Bolt className="h-4 w-4 text-white" />}
                 </div>
                 {selectedItem.name}
               </CardTitle>
