@@ -19,13 +19,13 @@
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(220 13% 9%);
   
-  /* Primary Brand Colors from Logo */
-  --primary: var(--cirq-purple);
+  /* Primary Brand Colors from Logo - Enhanced for better contrast */
+  --primary: hsl(260 85% 60%); /* Lighter purple for better contrast */
   --primary-foreground: hsl(0 0% 100%);
   --secondary: var(--cirq-pink);
   --secondary-foreground: hsl(0 0% 100%);
   --accent: var(--cirq-orange);
-  --accent-foreground: hsl(0 0% 100%);
+  --accent-foreground: hsl(220 13% 9%);
   
   /* Supporting Colors */
   --muted: hsl(220 13% 95%);
@@ -78,7 +78,7 @@
   --popover-foreground: hsl(220 9% 95%);
   
   /* Brand colors remain vibrant in dark mode */
-  --primary: var(--cirq-purple);
+  --primary: hsl(260 90% 65%); /* Lighter purple for dark mode */
   --primary-foreground: hsl(0 0% 100%);
   --secondary: var(--cirq-pink);
   --secondary-foreground: hsl(0 0% 100%);

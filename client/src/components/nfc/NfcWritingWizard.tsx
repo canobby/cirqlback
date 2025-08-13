@@ -357,7 +357,7 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
             </Alert>
 
             <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setCurrentStep('select-campaign')}>
+              <Button variant="outline" onClick={() => setCurrentStep('select-campaign')} className="outline-button-fix">
                 Back
               </Button>
               <Button 
@@ -366,7 +366,7 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
                   setCurrentStep('write-tag');
                 }}
                 disabled={!tagConfiguration.location.trim()}
-                className="bg-blue-600 text-white hover:bg-blue-700 font-medium px-6 py-2"
+                className="bg-blue-600 text-white hover:bg-blue-700 font-medium px-6 py-2 button-text-fix"
               >
                 Continue to Writing
               </Button>
@@ -400,10 +400,10 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
               </div>
               
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2 text-lg">
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-lg">
                   {isWriting ? "Writing Cirql Tag..." : "Ready to Write Your Cirql Tag"}
                 </h4>
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-300">
                   {isWriting 
                     ? "Please hold your NFC tag near your device until writing completes" 
                     : "Make sure you have a blank NFC tag ready, then click the button below"
@@ -414,7 +414,7 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
               {isWriting && (
                 <div className="space-y-2">
                   <Progress value={writeProgress} className="w-full max-w-md mx-auto" />
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     {writeProgress < 20 && "Initializing NFC connection..."}
                     {writeProgress >= 20 && writeProgress < 40 && "Validating tag compatibility..."}
                     {writeProgress >= 40 && writeProgress < 60 && "Writing campaign data..."}
@@ -428,7 +428,7 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
                 <div className="space-y-4">
                   <Button 
                     onClick={handleWriteTag}
-                    className="bg-primary text-white hover:bg-primary/90"
+                    className="bg-blue-600 text-white hover:bg-blue-700 font-medium px-8 py-3 shadow-lg"
                     size="lg"
                     disabled={writeTagMutation.isPending}
                   >
@@ -451,7 +451,7 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
             </div>
 
             <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setCurrentStep('configure-tag')} disabled={isWriting}>
+              <Button variant="outline" onClick={() => setCurrentStep('configure-tag')} disabled={isWriting} className="outline-button-fix">
                 Back
               </Button>
             </div>
@@ -494,12 +494,13 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
                 </div>
 
                 <div className="space-y-3">
-                  <h5 className="font-medium text-gray-900">Quick Actions</h5>
+                  <h5 className="font-medium text-gray-900 dark:text-gray-100">Quick Actions</h5>
                   <div className="flex flex-wrap gap-2">
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => copyToClipboard(writtenTag.tagUrl, "Tag URL")}
+                      className="outline-button-fix"
                     >
                       <Copy className="mr-1 h-3 w-3" />
                       Copy URL
@@ -508,6 +509,7 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
                       variant="outline" 
                       size="sm"
                       onClick={() => window.open(writtenTag.qrCodeUrl, '_blank')}
+                      className="outline-button-fix"
                     >
                       <QrCode className="mr-1 h-3 w-3" />
                       QR Code
@@ -516,6 +518,7 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
                       variant="outline" 
                       size="sm"
                       onClick={() => copyToClipboard(writtenTag.tagIdentifier, "Tag ID")}
+                      className="outline-button-fix"
                     >
                       <Share2 className="mr-1 h-3 w-3" />
                       Share Tag
@@ -552,19 +555,19 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 justify-between pt-6 border-t">
               <div className="flex gap-2">
-                <Button variant="outline" onClick={resetWizard}>
+                <Button variant="outline" onClick={resetWizard} className="outline-button-fix">
                   Create Another Tag
                 </Button>
-                <Button variant="outline" onClick={onComplete}>
+                <Button variant="outline" onClick={onComplete} className="outline-button-fix">
                   Return to Dashboard
                 </Button>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline">
+                <Button variant="outline" className="outline-button-fix">
                   <ExternalLink className="mr-1 h-4 w-4" />
                   View Tag Details
                 </Button>
-                <Button className="bg-primary text-white hover:bg-primary/90">
+                <Button className="bg-green-600 text-white hover:bg-green-700 font-medium button-text-fix">
                   <Download className="mr-1 h-4 w-4" />
                   Download Resources
                 </Button>
