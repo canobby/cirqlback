@@ -14,8 +14,10 @@ export function useWebSocket() {
 
   const connect = () => {
     try {
+      // Simplified WebSocket connection for Replit environment
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      const host = window.location.hostname;
+      const wsUrl = `${protocol}//${host}/ws`;
       
       ws.current = new WebSocket(wsUrl);
       setConnectionStatus('connecting');

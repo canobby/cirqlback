@@ -7,11 +7,12 @@ import { useEffect } from "react";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 
-import NotificationCenter from "@/components/global/notification-center";
+// import NotificationCenter from "@/components/global/notification-center";
 import Home from "@/pages/home";
 import Customer from "@/pages/customer";
 import Merchant from "@/pages/merchant";
 import ViralCommunityHub from "@/pages/community";
+import CirqlQuest from "@/pages/cirql-quest";
 import PredictiveAnalyticsDashboard from "@/pages/analytics";
 import Account from "@/pages/account";
 import TapPage from "@/pages/tap";
@@ -65,6 +66,7 @@ function Router() {
           <Route path="/customer" component={Customer} />
           <Route path="/merchant" component={Merchant} />
           <Route path="/community" component={ViralCommunityHub} />
+          <Route path="/cirql-quest" component={CirqlQuest} />
           <Route path="/analytics" component={PredictiveAnalyticsDashboard} />
           <Route path="/account" component={Account} />
           <Route path="/tap" component={TapPage} />

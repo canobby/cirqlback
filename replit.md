@@ -25,6 +25,8 @@ Key features include comprehensive NFC system integration for tag writing, manag
 
 **Export & Integration Hub**: Premium feature providing extensive platform integrations with 22+ major business tools including QuickBooks, Xero, Mailchimp, HubSpot, Salesforce, Shopify, Square, Toast POS, Stripe, Google Analytics, social media platforms, and communication tools. Features marketing automation, customer communication hubs, A/B testing suites, and competitive intelligence capabilities.
 
+**Cirql Quest Gamification System**: Pokemon Go-like customer experience featuring collectible quest items, daily challenges, achievement systems, global leaderboards, item crafting/fusion mechanics, and addictive progression loops. Players collect rare items (common to legendary) through business visits, complete daily quests for rewards, compete on global leaderboards, and unlock achievements. The system creates customer addiction through collecting, building, crafting, and competing while driving continuous engagement with local businesses.
+
 AI functionality is integrated for insights, predictive analytics, and pricing optimization, with full OpenAI integration. It supports session-based authentication for business owners, customers, and admins, with multi-business profile management and a three-tier business subscription system.
 
 ### System Design Choices

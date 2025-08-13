@@ -70,6 +70,18 @@ export default function Navbar() {
                   Community
                 </Button>
               </Link>
+              <Link href="/cirql-quest">
+                <Button 
+                  variant="ghost" 
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive("/cirql-quest") 
+                      ? "text-purple-600 bg-purple-50 border border-purple-200" 
+                      : "text-muted-foreground hover:text-purple-600 hover:bg-purple-50"
+                  }`}
+                >
+                  Cirql Quest
+                </Button>
+              </Link>
               <Link href="/map">
                 <Button 
                   variant="ghost" 
