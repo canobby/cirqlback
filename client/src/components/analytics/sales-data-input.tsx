@@ -144,14 +144,18 @@ export function SalesDataInput({ businessId, businessName = "Your Business" }: S
     },
   });
 
-  const onSubmitSalesData = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
+  const onSubmitSalesData = async () => {
     // Prevent form submission if already loading
     if (addSalesData.isPending) return;
     
     try {
+      // Validate form data
+      const isValid = await salesForm.trigger();
+      if (!isValid) {
+        toast({ title: "Validation Error", description: "Please check all required fields", variant: "destructive" });
+        return;
+      }
+
       const formData = salesForm.getValues();
       addSalesData.mutate(formData);
     } catch (error) {
@@ -160,14 +164,18 @@ export function SalesDataInput({ businessId, businessName = "Your Business" }: S
     }
   };
 
-  const onSubmitBusinessGoal = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    // Prevent form submission if already loading
+  const onSubmitBusinessGoal = async () => {
+    // Prevent form submission if already loading  
     if (addBusinessGoal.isPending) return;
     
     try {
+      // Validate form data
+      const isValid = await goalForm.trigger();
+      if (!isValid) {
+        toast({ title: "Validation Error", description: "Please check all required fields", variant: "destructive" });
+        return;
+      }
+
       const formData = goalForm.getValues();
       addBusinessGoal.mutate(formData);
     } catch (error) {
@@ -301,7 +309,7 @@ export function SalesDataInput({ businessId, businessName = "Your Business" }: S
             </CardHeader>
             <CardContent>
               <Form {...salesForm}>
-                <form onSubmit={onSubmitSalesData} className="space-y-6">
+                <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={salesForm.control}
@@ -438,13 +446,14 @@ export function SalesDataInput({ businessId, businessName = "Your Business" }: S
                   />
 
                   <Button 
-                    type="submit" 
+                    type="button" 
+                    onClick={onSubmitSalesData}
                     disabled={addSalesData.isPending}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium"
                   >
                     {addSalesData.isPending ? "Saving..." : "Add Sales Data"}
                   </Button>
-                </form>
+                </div>
               </Form>
             </CardContent>
           </Card>
@@ -513,7 +522,7 @@ export function SalesDataInput({ businessId, businessName = "Your Business" }: S
             </CardHeader>
             <CardContent>
               <Form {...goalForm}>
-                <form onSubmit={onSubmitBusinessGoal} className="space-y-6">
+                <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={goalForm.control}
@@ -587,13 +596,14 @@ export function SalesDataInput({ businessId, businessName = "Your Business" }: S
                   </div>
 
                   <Button 
-                    type="submit" 
+                    type="button" 
+                    onClick={onSubmitBusinessGoal}
                     disabled={addBusinessGoal.isPending}
-                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-medium"
                   >
                     {addBusinessGoal.isPending ? "Setting Goal..." : "Set Performance Goal"}
                   </Button>
-                </form>
+                </div>
               </Form>
             </CardContent>
           </Card>
