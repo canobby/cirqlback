@@ -39,6 +39,14 @@ export default function Home() {
                   <div className="tooltip-content">Learn about the complete platform features</div>
                 </Button>
               </Link>
+              <Button 
+                onClick={() => window.location.href = '/home-bento'}
+                size="lg" 
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium w-full sm:w-auto"
+              >
+                <Store className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-sm sm:text-base">Try Bento Layout</span>
+              </Button>
             </div>
           </div>
           <div className="text-center">

@@ -128,9 +128,17 @@ export default function NFCSetupWizard() {
         
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
-            NFC Tag Setup Wizard
-          </h1>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+              NFC Tag Setup Wizard
+            </h1>
+            <Button 
+              onClick={() => window.location.href = '/nfc-setup-wizard-bento'}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+            >
+              Try Bento Layout
+            </Button>
+          </div>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
             Program your physical tag in 4 simple steps
           </p>

@@ -152,6 +152,12 @@ export default function AnalyticsDashboard() {
               <p className="text-gray-600 mt-1">AI-powered predictive analytics with customer health scoring, churn prediction, partnership revenue tracking, AR engagement, team challenges, and viral campaign performance across the complete ecosystem</p>
             </div>
             <div className="flex items-center space-x-4">
+              <Button 
+                onClick={() => window.location.href = '/analytics-bento'}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              >
+                Try Bento Layout
+              </Button>
               <Select value={selectedBusiness} onValueChange={setSelectedBusiness}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Select business" />
@@ -302,7 +308,7 @@ export default function AnalyticsDashboard() {
                   </div>
                 )}
                 
-                {aiAnalytics?.analytics && (
+                {aiAnalytics && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Predictions */}
@@ -311,7 +317,7 @@ export default function AnalyticsDashboard() {
                           <TrendingUp className="h-4 w-4 mr-2" />
                           Predictions
                         </h4>
-                        {aiAnalytics.analytics.predictions?.map((prediction: any, index: number) => (
+                        {aiAnalytics.predictions?.map((prediction: any, index: number) => (
                           <div key={index} className="p-3 bg-white rounded-lg border">
                             <p className="font-medium text-gray-800">{prediction.title}</p>
                             <p className="text-sm text-gray-600 mt-1">{prediction.description}</p>
@@ -334,7 +340,7 @@ export default function AnalyticsDashboard() {
                           <Lightbulb className="h-4 w-4 mr-2" />
                           AI Recommendations
                         </h4>
-                        {aiAnalytics.analytics.recommendations?.map((rec: any, index: number) => (
+                        {aiAnalytics.recommendations?.map((rec: any, index: number) => (
                           <div key={index} className="p-3 bg-white rounded-lg border">
                             <p className="font-medium text-gray-800">{rec.title}</p>
                             <p className="text-sm text-gray-600 mt-1">{rec.description}</p>
@@ -358,14 +364,14 @@ export default function AnalyticsDashboard() {
                     </div>
 
                     {/* Key Insights */}
-                    {aiAnalytics.analytics.keyInsights && (
+                    {aiAnalytics.keyInsights && (
                       <div className="mt-6 p-4 bg-purple-100 rounded-lg">
                         <h4 className="font-semibold text-purple-800 mb-3 flex items-center">
                           <Eye className="h-4 w-4 mr-2" />
                           Key Business Insights
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {aiAnalytics.analytics.keyInsights.map((insight: any, index: number) => (
+                          {aiAnalytics.keyInsights.map((insight: any, index: number) => (
                             <div key={index} className="flex items-start space-x-3">
                               <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
                               <p className="text-sm text-purple-700">{insight}</p>
