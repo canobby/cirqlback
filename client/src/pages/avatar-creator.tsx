@@ -132,7 +132,10 @@ export default function AvatarCreator() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("customize");
   const [selectedCategory, setSelectedCategory] = useState("hair");
-  const [avatar, setAvatar] = useState(mockAvatar);
+  const [avatar, setAvatar] = useState({
+    ...mockAvatar,
+    accessories: 'acc_1' // Set initial accessory instead of empty array
+  });
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
 
   const handleAssetSelect = (asset: any) => {
@@ -225,9 +228,9 @@ export default function AvatarCreator() {
                           {assetCategories.outfit.find(o => o.id === avatar.outfit)?.preview}
                         </span>
                       )}
-                      {avatar.accessories && (
+                      {avatar.accessories && avatar.accessories.length > 0 && (
                         <span className="text-2xl">
-                          {assetCategories.accessories.find(a => a.id === avatar.accessories)?.preview}
+                          {assetCategories.accessories.find(a => avatar.accessories.includes(a.id))?.preview}
                         </span>
                       )}
                     </div>
@@ -236,12 +239,12 @@ export default function AvatarCreator() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Experience</span>
-                      <span className="text-sm text-purple-600">{avatar.xp} / {avatar.xpToNext}</span>
+                      <span className="text-sm text-purple-600">{avatar.experience} / {avatar.nextLevelXP}</span>
                     </div>
                     <div className="bg-purple-200 rounded-full h-2">
                       <div 
                         className="bg-purple-600 h-2 rounded-full transition-all"
-                        style={{ width: `${(avatar.xp / avatar.xpToNext) * 100}%` }}
+                        style={{ width: `${(avatar.experience / avatar.nextLevelXP) * 100}%` }}
                       ></div>
                     </div>
                   </div>
