@@ -78,21 +78,16 @@ function Router() {
       <main className="flex-1">
         <Switch>
           <Route path="/" component={HomeBento} />
-          <Route path="/home-classic" component={Home} />
           <Route path="/customer" component={CustomerBento} />
-          <Route path="/customer-classic" component={Customer} />
           <Route path="/merchant" component={MerchantBento} />
-          <Route path="/merchant-classic" component={Merchant} />
           <Route path="/community" component={ViralCommunityHub} />
           <Route path="/cirql-quest" component={CirqlQuest} />
           <Route path="/ar-game-hub" component={ARGameHub} />
           <Route path="/analytics" component={AnalyticsBento} />
-          <Route path="/analytics-classic" component={PredictiveAnalyticsDashboard} />
           <Route path="/account" component={Account} />
           <Route path="/tap" component={TapPage} />
           <Route path="/how-it-works" component={HowItWorksPage} />
           <Route path="/map" component={MapBento} />
-          <Route path="/map-classic" component={InteractiveDiscoveryMap} />
           <Route path="/marketing" component={ViralMarketingSuite} />
           <Route path="/settings" component={SettingsPage} />
           <Route path="/checkout" component={Checkout} />
@@ -125,15 +120,11 @@ function Router() {
         <Route path="/business-intelligence" component={BusinessIntelligenceSuite} />
         <Route path="/nfc-writer" component={NfcWriterPage} />
         <Route path="/campaign-setup-wizard" component={CampaignSetupBento} />
-        <Route path="/campaign-setup-classic" component={CampaignSetupWizard} />
-        <Route path="/campaign-setup-bento" component={CampaignSetupBento} />
         <Route path="/merchant-bento" component={MerchantBento} />
         <Route path="/customer-bento" component={CustomerBento} />
         <Route path="/analytics-bento" component={AnalyticsBento} />
         <Route path="/home-bento" component={HomeBento} />
         <Route path="/nfc-setup-wizard" component={NFCSetupWizardBento} />
-        <Route path="/nfc-setup-classic" component={NFCSetupWizard} />
-        <Route path="/nfc-setup-wizard-bento" component={NFCSetupWizardBento} />
         <Route path="/map-bento" component={MapBento} />
           
           {/* Footer Pages */}

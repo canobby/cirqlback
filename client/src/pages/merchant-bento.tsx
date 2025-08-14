@@ -37,13 +37,7 @@ export default function MerchantBento() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Button 
-                onClick={() => window.location.href = '/merchant-classic'}
-                variant="outline"
-                className="border-gray-300 text-gray-700 hover:bg-gray-100"
-              >
-                Classic View
-              </Button>
+
               <Badge className="bg-green-100 text-green-700 border-green-200">
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                 Live

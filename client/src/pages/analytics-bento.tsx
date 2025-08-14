@@ -51,14 +51,7 @@ export default function AnalyticsBento() {
                 <Download className="w-4 h-4 mr-2" />
                 Export
               </Button>
-              <Button 
-                onClick={() => window.location.href = '/analytics-classic'}
-                variant="outline" 
-                size="sm" 
-                className="border-gray-300 text-gray-700 hover:bg-gray-100"
-              >
-                Classic View
-              </Button>
+
               <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh

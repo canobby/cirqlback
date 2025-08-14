@@ -50,14 +50,7 @@ export default function HomeBento() {
               <Sparkles className="w-3 h-3 mr-1" />
               The Future of Local Discovery
             </Badge>
-            <Button 
-              onClick={() => window.location.href = '/home-classic'}
-              variant="outline"
-              size="sm"
-              className="text-gray-700 border-gray-300 hover:bg-gray-100"
-            >
-              Classic View
-            </Button>
+
           </div>
           <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent mb-6">
             Cirqlback
@@ -116,7 +109,60 @@ export default function HomeBento() {
                     </Button>
                   </div>
                 </div>
-                <div className="text-8xl opacity-20 hidden lg:block">🚀</div>
+                {/* Mobile Interface Mockup */}
+                <div className="hidden lg:block">
+                  <div className="w-64 h-[480px] bg-white rounded-[2rem] border-4 border-gray-200 shadow-2xl overflow-hidden relative">
+                    <div className="h-full bg-gradient-to-b from-gray-50 to-white">
+                      {/* Status Bar */}
+                      <div className="flex justify-between items-center px-4 pt-3 pb-2 text-xs text-gray-800">
+                        <span>9:41</span>
+                        <div className="flex space-x-1">
+                          <div className="w-3 h-1.5 bg-gray-400 rounded-full"></div>
+                          <div className="w-4 h-1.5 bg-gray-400 rounded-full"></div>
+                          <div className="w-4 h-1.5 bg-green-500 rounded-full"></div>
+                        </div>
+                      </div>
+
+                      {/* App Content */}
+                      <div className="px-4 py-3">
+                        <div className="text-center mb-4">
+                          <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-3 animate-pulse">
+                            <Gift className="text-white h-8 w-8" />
+                          </div>
+                          <h3 className="text-lg font-bold text-gray-800 mb-1">Reward Unlocked!</h3>
+                          <p className="text-gray-600 text-sm">Joe's Coffee Shop</p>
+                        </div>
+
+                        {/* Reward Card */}
+                        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-4 text-white mb-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <h4 className="text-base font-semibold">Free Coffee</h4>
+                              <p className="text-purple-100 text-sm">Today Only</p>
+                            </div>
+                            <div className="text-2xl">☕</div>
+                          </div>
+                          <div className="flex items-center text-sm">
+                            <span className="bg-white/20 px-2 py-1 rounded text-xs mr-2">+150 pts</span>
+                            <span className="text-purple-100">Expires in 2 hours</span>
+                          </div>
+                        </div>
+
+                        {/* Points Display */}
+                        <div className="flex justify-between items-center bg-gray-100 rounded-lg p-3">
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-gray-800">2,847</div>
+                            <div className="text-xs text-gray-600">Total Points</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-gray-800">Level 12</div>
+                            <div className="text-xs text-gray-600">Explorer</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -272,7 +318,7 @@ export default function HomeBento() {
                 <Button 
                   size="lg"
                   className="bg-white text-indigo-600 hover:bg-gray-100"
-                  onClick={() => window.location.href = '/merchant-bento'}
+                  onClick={() => window.location.href = '/merchant'}
                 >
                   Start Free Trial
                   <ArrowRight className="h-5 w-5 ml-2" />

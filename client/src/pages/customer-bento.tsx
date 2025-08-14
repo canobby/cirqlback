@@ -40,14 +40,7 @@ export default function CustomerBento() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Button 
-                onClick={() => window.location.href = '/customer-classic'}
-                variant="outline"
-                size="sm"
-                className="border-gray-300 text-gray-700 hover:bg-gray-100"
-              >
-                Classic View
-              </Button>
+
               <Badge className="bg-blue-100 text-blue-700 border-blue-200">
                 <Star className="w-3 h-3 mr-1" />
                 Level {userStats.level}
