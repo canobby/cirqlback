@@ -311,11 +311,11 @@ export default function HomeBento() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button 
                   size="lg"
-                  className="bg-white text-gray-900 hover:bg-gray-100 hover:text-gray-800 font-semibold"
+                  className="bg-white text-black hover:bg-gray-50 hover:text-black font-bold shadow-lg"
                   onClick={() => window.location.href = '/merchant'}
                 >
                   Start Free Trial
-                  <ArrowRight className="h-5 w-5 ml-2" />
+                  <ArrowRight className="h-5 w-5 ml-2 text-black" />
                 </Button>
                 <Button 
                   size="lg"
