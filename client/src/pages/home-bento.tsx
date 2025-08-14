@@ -45,13 +45,7 @@ export default function HomeBento() {
         
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <div className="mb-4 flex items-center justify-center gap-4">
-            <Badge className="bg-purple-100 text-purple-700 border-purple-200">
-              <Sparkles className="w-3 h-3 mr-1" />
-              The Future of Local Discovery
-            </Badge>
-
-          </div>
+          <div className="mb-6"></div>
           <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent mb-6">
             Cirqlback
           </h1>
