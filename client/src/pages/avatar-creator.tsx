@@ -28,7 +28,8 @@ import {
   Calendar,
   Target,
   Medal,
-  Gamepad2
+  Gamepad2,
+  MessageCircle
 } from "lucide-react";
 
 // Mock data for avatar customization
