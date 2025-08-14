@@ -213,29 +213,7 @@ export default function HomeBento() {
             );
           })}
 
-          {/* Demo Video */}
-          <Card className="md:col-span-3 lg:col-span-4 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white">See It In Action</h3>
-                <Badge variant="secondary">2:30</Badge>
-              </div>
-              
-              <div className="aspect-video bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg flex items-center justify-center mb-4">
-                <Button 
-                  size="lg"
-                  className="bg-white/90 hover:bg-white text-purple-600 hover:text-purple-700"
-                >
-                  <PlayCircle className="h-6 w-6 mr-2" />
-                  Watch Demo
-                </Button>
-              </div>
-              
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Discover how customers and businesses are transforming local commerce with Cirqlback
-              </p>
-            </CardContent>
-          </Card>
+
 
           {/* Success Stories */}
           <Card className="md:col-span-3 lg:col-span-4 bg-gradient-to-br from-orange-500 to-red-500 border-0 text-white">
