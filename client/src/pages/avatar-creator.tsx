@@ -1,553 +1,467 @@
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  User, 
-  Palette, 
-  Sparkles, 
-  Crown, 
-  Star, 
-  Gift,
-  Save,
-  Eye,
-  Shirt,
-  Camera,
-  Zap,
-  Trophy,
-  Download,
-  Share2,
-  Heart,
-  Coins,
-  MapPin,
-  Users,
-  ArrowUpDown,
-  Flame,
-  Calendar,
-  Target,
-  Medal,
-  Gamepad2,
-  MessageCircle
-} from "lucide-react";
+import { Link } from "wouter";
+import { ArrowLeft } from "lucide-react";
 
-// Enhanced avatar customization data
-const assetCategories = {
-  hair: [
-    { id: 'hair_1', name: 'Classic Bob', rarity: 'common', cost: 0, owned: true, preview: '👩‍🦰' },
-    { id: 'hair_2', name: 'Wavy Locks', rarity: 'rare', cost: 150, owned: true, preview: '👱‍♀️' },
-    { id: 'hair_3', name: 'Pixel Punk', rarity: 'epic', cost: 300, owned: false, preview: '👩‍🦵' },
-    { id: 'hair_4', name: 'Royal Crown', rarity: 'legendary', cost: 500, owned: false, preview: '👸' },
-    { id: 'hair_5', name: 'Spiky Style', rarity: 'rare', cost: 180, owned: true, preview: '👨‍🦱' },
-    { id: 'hair_6', name: 'Long Braids', rarity: 'epic', cost: 320, owned: false, preview: '👩‍🦳' },
-  ],
-  eyes: [
-    { id: 'eyes_1', name: 'Bright Blue', rarity: 'common', cost: 0, owned: true, preview: '👁️‍🗨️' },
-    { id: 'eyes_2', name: 'Emerald Glow', rarity: 'rare', cost: 100, owned: true, preview: '🟢' },
-    { id: 'eyes_3', name: 'Galaxy Eyes', rarity: 'epic', cost: 250, owned: false, preview: '🌌' },
-    { id: 'eyes_4', name: 'Fire Eyes', rarity: 'legendary', cost: 400, owned: false, preview: '🔥' },
-    { id: 'eyes_5', name: 'Ice Blue', rarity: 'rare', cost: 120, owned: true, preview: '❄️' },
-  ],
-  outfit: [
-    { id: 'outfit_1', name: 'Casual Wear', rarity: 'common', cost: 0, owned: true, preview: '👕' },
-    { id: 'outfit_2', name: 'Business Suit', rarity: 'rare', cost: 200, owned: true, preview: '👔' },
-    { id: 'outfit_3', name: 'Hero Costume', rarity: 'epic', cost: 400, owned: false, preview: '🦸' },
-    { id: 'outfit_4', name: 'Royal Robes', rarity: 'legendary', cost: 600, owned: false, preview: '🤴' },
-    { id: 'outfit_5', name: 'Ninja Gear', rarity: 'epic', cost: 350, owned: false, preview: '🥷' },
-    { id: 'outfit_6', name: 'Space Suit', rarity: 'legendary', cost: 750, owned: false, preview: '👨‍🚀' },
-  ],
+// Avatar customization system inspired by popular games
+const avatarAssets = {
+  body: {
+    skinTone: [
+      { id: 'skin_1', name: 'Fair', color: '#FDBCB4', cost: 0, owned: true },
+      { id: 'skin_2', name: 'Light', color: '#EDB98A', cost: 0, owned: true },
+      { id: 'skin_3', name: 'Medium', color: '#C67F3C', cost: 0, owned: true },
+      { id: 'skin_4', name: 'Tan', color: '#8B4A2B', cost: 0, owned: true },
+      { id: 'skin_5', name: 'Dark', color: '#58311A', cost: 0, owned: true },
+    ]
+  },
+  hair: {
+    style: [
+      { id: 'hair_1', name: 'Short & Clean', style: 'modern', cost: 0, owned: true },
+      { id: 'hair_2', name: 'Flowing Waves', style: 'elegant', cost: 150, owned: true },
+      { id: 'hair_3', name: 'Edgy Spikes', style: 'punk', cost: 200, owned: false },
+      { id: 'hair_4', name: 'Long & Straight', style: 'classic', cost: 100, owned: true },
+      { id: 'hair_5', name: 'Curly Afro', style: 'natural', cost: 120, owned: false },
+      { id: 'hair_6', name: 'Buzz Cut', style: 'minimal', cost: 0, owned: true },
+    ],
+    color: [
+      { id: 'color_1', name: 'Natural Black', color: '#2C1B18', cost: 0, owned: true },
+      { id: 'color_2', name: 'Chocolate Brown', color: '#8B4513', cost: 0, owned: true },
+      { id: 'color_3', name: 'Golden Blonde', color: '#DAA520', cost: 80, owned: false },
+      { id: 'color_4', name: 'Auburn Red', color: '#A0522D', cost: 100, owned: false },
+      { id: 'color_5', name: 'Platinum Silver', color: '#C0C0C0', cost: 250, owned: false },
+      { id: 'color_6', name: 'Electric Blue', color: '#4169E1', cost: 300, owned: false },
+    ]
+  },
+  clothing: {
+    style: [
+      { id: 'outfit_1', name: 'Casual Explorer', theme: 'adventure', cost: 0, owned: true },
+      { id: 'outfit_2', name: 'Business Professional', theme: 'corporate', cost: 200, owned: true },
+      { id: 'outfit_3', name: 'Street Fashion', theme: 'urban', cost: 180, owned: false },
+      { id: 'outfit_4', name: 'Athletic Gear', theme: 'sporty', cost: 150, owned: false },
+      { id: 'outfit_5', name: 'Formal Elegance', theme: 'luxury', cost: 400, owned: false },
+      { id: 'outfit_6', name: 'Creative Artist', theme: 'artistic', cost: 220, owned: false },
+    ],
+    color: [
+      { id: 'outfit_color_1', name: 'Classic Black', color: '#2F2F2F', cost: 0, owned: true },
+      { id: 'outfit_color_2', name: 'Navy Blue', color: '#1E3A8A', cost: 50, owned: true },
+      { id: 'outfit_color_3', name: 'Forest Green', color: '#059669', cost: 75, owned: false },
+      { id: 'outfit_color_4', name: 'Burgundy', color: '#991B1B', cost: 100, owned: false },
+      { id: 'outfit_color_5', name: 'Royal Purple', color: '#7C3AED', cost: 120, owned: false },
+    ]
+  },
   accessories: [
-    { id: 'acc_1', name: 'Classic Glasses', rarity: 'common', cost: 50, owned: true, preview: '🤓' },
-    { id: 'acc_2', name: 'Magic Pendant', rarity: 'rare', cost: 180, owned: false, preview: '🔮' },
-    { id: 'acc_3', name: 'Dragon Wings', rarity: 'legendary', cost: 600, owned: false, preview: '🐲' },
-    { id: 'acc_4', name: 'Crown Jewels', rarity: 'legendary', cost: 800, owned: false, preview: '👑' },
-    { id: 'acc_5', name: 'Energy Sword', rarity: 'epic', cost: 450, owned: false, preview: '⚔️' },
-    { id: 'acc_6', name: 'Wizard Hat', rarity: 'rare', cost: 200, owned: true, preview: '🧙‍♂️' },
+    { id: 'acc_1', name: 'Modern Glasses', style: 'intellectual', cost: 80, owned: true },
+    { id: 'acc_2', name: 'Sleek Watch', style: 'professional', cost: 150, owned: false },
+    { id: 'acc_3', name: 'Statement Necklace', style: 'fashionable', cost: 120, owned: false },
+    { id: 'acc_4', name: 'Baseball Cap', style: 'casual', cost: 60, owned: false },
+    { id: 'acc_5', name: 'Designer Earrings', style: 'luxury', cost: 200, owned: false },
   ]
 };
 
-const mockAvatar = {
+const defaultAvatar = {
   id: 'avatar_1',
-  name: 'My Avatar',
+  name: 'CirqlHero',
   level: 12,
   experience: 2450,
   nextLevelXP: 3000,
   coins: 850,
-  hair: 'hair_1',
-  eyes: 'eyes_1', 
-  outfit: 'outfit_1',
-  accessories: [],
-  badges: ['first_tap', 'social_butterfly', 'explorer'],
-  achievements: [
-    { id: 'ach_1', title: 'First Steps', description: 'Complete your first Cirql tap', completed: true },
-    { id: 'ach_2', title: 'Social Star', description: 'Share 5 AR experiences', completed: true },
-    { id: 'ach_3', title: 'Explorer', description: 'Visit 10 different businesses', completed: false, progress: 7, target: 10 },
-  ]
-};
-
-const mockTreasureHunts = [
-  {
-    id: 'hunt_1',
-    name: 'Downtown Discovery',
-    description: 'Find all 8 hidden collectibles in the downtown district',
-    difficulty: 'Easy' as const,
-    timeLimit: '3 days',
-    participants: 124,
-    reward: '200 coins + Rare Hair Style',
-    locations: [
-      { name: 'Coffee Corner', discovered: true },
-      { name: 'Book Nook', discovered: true },
-      { name: 'Pizza Palace', discovered: false },
-      { name: 'Flower Shop', discovered: false },
-    ]
-  },
-  {
-    id: 'hunt_2', 
-    name: 'Culinary Quest',
-    description: 'Complete AR cooking challenges at 5 restaurants',
-    difficulty: 'Medium' as const,
-    timeLimit: '1 week',
-    participants: 89,
-    reward: '500 coins + Chef Hat + Recipe Collection',
-    locations: [
-      { name: 'Italiano Bistro', discovered: true },
-      { name: 'Sushi Zen', discovered: false },
-      { name: 'Taco Fiesta', discovered: false },
-    ]
-  }
-];
-
-const getRarityColor = (rarity: string) => {
-  switch (rarity) {
-    case 'common': return 'bg-gray-100 text-gray-800';
-    case 'rare': return 'bg-blue-100 text-blue-800';
-    case 'epic': return 'bg-purple-100 text-purple-800';
-    case 'legendary': return 'bg-yellow-100 text-yellow-800';
-    default: return 'bg-gray-100 text-gray-800';
-  }
+  skinTone: 'skin_1',
+  hairStyle: 'hair_1',
+  hairColor: 'color_1',
+  outfitStyle: 'outfit_1',
+  outfitColor: 'outfit_color_1',
+  accessories: ['acc_1']
 };
 
 export default function AvatarCreator() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("customize");
-  const [selectedCategory, setSelectedCategory] = useState("hair");
-  const [avatar, setAvatar] = useState({
-    ...mockAvatar,
-    accessories: 'acc_1' // Set initial accessory instead of empty array
-  });
-  const [selectedAsset, setSelectedAsset] = useState<any>(null);
+  const [avatar, setAvatar] = useState(defaultAvatar);
+  const [selectedCategory, setSelectedCategory] = useState("body");
+  const [selectedSubCategory, setSelectedSubCategory] = useState("skinTone");
 
-  const handleAssetSelect = (asset: any) => {
+  const handleAssetSelect = (asset: any, categoryKey: string) => {
     if (!asset.owned && asset.cost > avatar.coins) {
       toast({
-        title: "Insufficient Coins",
-        description: `You need ${asset.cost} coins to purchase this item. Complete more quests to earn coins!`,
+        title: "Need More Coins",
+        description: `You need ${asset.cost} coins to unlock this ${categoryKey}.`,
         variant: "destructive"
       });
       return;
     }
 
     if (!asset.owned) {
-      // Purchase and equip the asset
+      // Purchase and equip
       setAvatar(prev => ({
         ...prev,
         coins: prev.coins - asset.cost,
-        [selectedCategory]: asset.id
+        [categoryKey]: asset.id
       }));
       
-      // Mark asset as owned in the data
-      const categoryAssets = assetCategories[selectedCategory as keyof typeof assetCategories];
-      const assetIndex = categoryAssets.findIndex((a: any) => a.id === asset.id);
-      if (assetIndex !== -1) {
-        categoryAssets[assetIndex].owned = true;
-      }
-      
       toast({
-        title: "🎉 Asset Purchased & Equipped!",
-        description: `${asset.name} is now part of your avatar collection.`,
+        title: "Unlocked & Applied",
+        description: `${asset.name} added to your avatar.`,
       });
     } else {
-      // Equip the asset
+      // Just equip
       setAvatar(prev => ({
         ...prev,
-        [selectedCategory]: asset.id
+        [categoryKey]: asset.id
       }));
-      toast({
-        title: "✨ Avatar Updated!",
-        description: `${asset.name} equipped successfully. Looking great!`,
-      });
     }
   };
 
+  const getAvatarPreview = () => {
+    const skinTone = avatarAssets.body.skinTone.find(s => s.id === avatar.skinTone);
+    const hairColor = avatarAssets.hair.color.find(c => c.id === avatar.hairColor);
+    const outfitColor = avatarAssets.clothing.color.find(c => c.id === avatar.outfitColor);
+    
+    return {
+      skinColor: skinTone?.color || '#FDBCB4',
+      hairColor: hairColor?.color || '#2C1B18',
+      outfitColor: outfitColor?.color || '#2F2F2F'
+    };
+  };
+
+  const avatarPreview = getAvatarPreview();
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50 to-blue-50 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 bg-clip-text text-transparent">
-            Avatar Creator
-          </h1>
-          <p className="text-gray-600">Customize your AR avatar and explore gamified experiences</p>
+        <div className="flex items-center justify-between">
+          <Link href="/customer-bento">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Hub
+            </Button>
+          </Link>
+          <div className="text-center">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-green-600 bg-clip-text text-transparent">
+              Create Your Avatar
+            </h1>
+            <p className="text-gray-600 text-lg">Design your unique Cirqlback character</p>
+          </div>
+          <div className="w-24"></div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="customize">Customize</TabsTrigger>
-            <TabsTrigger value="achievements">Achievements</TabsTrigger>
-            <TabsTrigger value="treasures">Treasure Hunts</TabsTrigger>
-            <TabsTrigger value="social">Social Hub</TabsTrigger>
-          </TabsList>
+        {/* Main Creator Interface */}
+        <div className="grid lg:grid-cols-3 gap-8">
+          
+          {/* Avatar Preview */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-4">
+              <CardHeader>
+                <CardTitle className="text-center">Preview</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Large Avatar Display */}
+                <div className="relative mx-auto w-64 h-80 bg-gradient-to-b from-gray-100 to-gray-200 rounded-2xl overflow-hidden">
+                  {/* Background */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-blue-200 to-purple-200"></div>
+                  
+                  {/* Avatar Body */}
+                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2">
+                    {/* Head */}
+                    <div 
+                      className="w-20 h-20 rounded-full mx-auto mb-2"
+                      style={{ backgroundColor: avatarPreview.skinColor }}
+                    ></div>
+                    
+                    {/* Hair */}
+                    <div 
+                      className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2 w-24 h-12 rounded-full"
+                      style={{ backgroundColor: avatarPreview.hairColor }}
+                    ></div>
+                    
+                    {/* Body */}
+                    <div 
+                      className="w-32 h-40 rounded-t-3xl mx-auto"
+                      style={{ backgroundColor: avatarPreview.outfitColor }}
+                    ></div>
+                  </div>
+                </div>
 
-          {/* Customize Tab */}
-          <TabsContent value="customize" className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-3">
-              {/* Avatar Preview */}
-              <Card className="lg:col-span-1">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <User className="h-5 w-5 mr-2" />
-                    Avatar Preview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg p-8 text-center">
-                    <div className="w-32 h-32 mx-auto bg-gradient-to-br from-purple-400 to-blue-400 rounded-full flex flex-col items-center justify-center text-white text-2xl font-bold">
-                      <div className="text-4xl mb-1">
-                        {avatar.hair && assetCategories.hair.find(h => h.id === avatar.hair)?.preview || '👤'}
-                      </div>
-                      <div className="text-sm">
-                        {avatar.eyes && assetCategories.eyes.find(e => e.id === avatar.eyes)?.preview || '👁️'}
-                      </div>
-                    </div>
-                    <h3 className="text-lg font-semibold mt-4">{avatar.name}</h3>
-                    <p className="text-sm text-gray-600">Level {avatar.level}</p>
-                    <div className="flex justify-center gap-2 mt-2">
-                      {avatar.outfit && (
-                        <span className="text-2xl">
-                          {assetCategories.outfit.find(o => o.id === avatar.outfit)?.preview}
-                        </span>
-                      )}
-                      {avatar.accessories && avatar.accessories.length > 0 && (
-                        <span className="text-2xl">
-                          {assetCategories.accessories.find(a => avatar.accessories.includes(a.id))?.preview}
-                        </span>
-                      )}
-                    </div>
+                {/* Avatar Stats */}
+                <div className="space-y-3">
+                  <div className="text-center">
+                    <h3 className="font-bold text-lg">{avatar.name}</h3>
+                    <p className="text-gray-600">Level {avatar.level}</p>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Experience</span>
+                    <span className="text-sm text-purple-600">{avatar.experience} / {avatar.nextLevelXP}</span>
+                  </div>
+                  <div className="bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all"
+                      style={{ width: `${(avatar.experience / avatar.nextLevelXP) * 100}%` }}
+                    ></div>
                   </div>
 
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Experience</span>
-                      <span className="text-sm text-purple-600">{avatar.experience} / {avatar.nextLevelXP}</span>
-                    </div>
-                    <div className="bg-purple-200 rounded-full h-2">
-                      <div 
-                        className="bg-purple-600 h-2 rounded-full transition-all"
-                        style={{ width: `${(avatar.experience / avatar.nextLevelXP) * 100}%` }}
-                      ></div>
-                    </div>
+                  <div className="flex items-center justify-center gap-2 bg-yellow-50 p-3 rounded-lg">
+                    <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
+                    <span className="font-semibold">{avatar.coins} Coins</span>
                   </div>
-
-                  <div className="flex items-center justify-between bg-yellow-50 p-3 rounded-lg">
-                    <div className="flex items-center">
-                      <Coins className="h-4 w-4 text-yellow-600 mr-2" />
-                      <span className="font-semibold text-yellow-800">Coins</span>
-                    </div>
-                    <span className="text-lg font-bold text-yellow-600">{avatar.coins}</span>
-                  </div>
-
+                  
                   <div className="flex gap-2">
-                    <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600">
-                      <Save className="h-4 w-4 mr-2" />
+                    <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white">
                       Save Avatar
                     </Button>
-                    <Button variant="outline" size="icon">
-                      <Share2 className="h-4 w-4" />
+                    <Button variant="outline" className="px-4">
+                      Share
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Customization Options */}
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Palette className="h-5 w-5 mr-2" />
-                    Customization Options
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Category Tabs */}
-                  <div className="flex gap-2 flex-wrap">
-                    {Object.keys(assetCategories).map(category => (
-                      <Button
-                        key={category}
-                        variant={selectedCategory === category ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedCategory(category)}
-                        className="capitalize"
-                      >
-                        {category}
-                      </Button>
-                    ))}
-                  </div>
-
-                  {/* Assets Grid */}
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {assetCategories[selectedCategory as keyof typeof assetCategories]?.map(asset => (
-                      <Card key={asset.id} className="border-2 hover:border-purple-300 transition-colors cursor-pointer"
-                            onClick={() => handleAssetSelect(asset)}>
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-semibold">{asset.name}</h4>
-                            <Badge className={getRarityColor(asset.rarity)}>
-                              {asset.rarity}
-                            </Badge>
-                          </div>
-                          
-                          <div className="text-4xl text-center my-3">
-                            {asset.preview}
-                          </div>
-                          
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center text-sm text-gray-600">
-                              <Coins className="h-3 w-3 mr-1" />
-                              {asset.cost === 0 ? 'Free' : `${asset.cost} coins`}
-                            </div>
-                            <div className="flex items-center">
-                              {asset.owned ? (
-                                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                                  <Crown className="h-3 w-3 mr-1" />
-                                  Owned
-                                </Badge>
-                              ) : (
-                                <Button size="sm" variant="outline">
-                                  {asset.cost <= avatar.coins ? 'Purchase' : 'Locked'}
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Achievements Tab */}
-          <TabsContent value="achievements" className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
-                    Achievements
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {avatar.achievements.map(achievement => (
-                    <div key={achievement.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1">
-                        <h4 className="font-semibold">{achievement.title}</h4>
-                        <p className="text-sm text-gray-600">{achievement.description}</p>
-                        {!achievement.completed && achievement.progress && (
-                          <div className="mt-2">
-                            <div className="flex justify-between text-xs text-gray-500 mb-1">
-                              <span>Progress</span>
-                              <span>{achievement.progress} / {achievement.target}</span>
-                            </div>
-                            <div className="bg-gray-200 rounded-full h-1">
-                              <div 
-                                className="bg-blue-500 h-1 rounded-full"
-                                style={{ width: `${(achievement.progress / achievement.target) * 100}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="ml-4">
-                        {achievement.completed ? (
-                          <Badge className="bg-green-100 text-green-800">
-                            <Medal className="h-3 w-3 mr-1" />
-                            Complete
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">
-                            In Progress
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Star className="h-5 w-5 mr-2 text-purple-500" />
-                    Badge Collection
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-4">
-                    {avatar.badges.map(badge => (
-                      <div key={badge} className="text-center p-3 bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg">
-                        <div className="w-12 h-12 mx-auto bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white mb-2">
-                          <Star className="h-6 w-6" />
-                        </div>
-                        <p className="text-xs font-semibold capitalize">{badge.replace('_', ' ')}</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Treasure Hunts Tab */}
-          <TabsContent value="treasures" className="space-y-6">
-            <div className="grid gap-6">
-              {mockTreasureHunts.map(hunt => (
-                <Card key={hunt.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="flex items-center">
-                          <MapPin className="h-5 w-5 mr-2 text-orange-500" />
-                          {hunt.name}
-                        </CardTitle>
-                        <p className="text-gray-600 mt-1">{hunt.description}</p>
-                      </div>
-                      <Badge className={hunt.difficulty === 'Easy' ? 'bg-green-100 text-green-800' : 
-                                      hunt.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                                      'bg-red-100 text-red-800'}>
-                        {hunt.difficulty}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <h4 className="font-semibold">Locations to Discover</h4>
-                        <div className="space-y-1">
-                          {hunt.locations.map((location, idx) => (
-                            <div key={idx} className="flex items-center text-sm">
-                              <div className={`w-2 h-2 rounded-full mr-2 ${location.discovered ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                              <span className={location.discovered ? 'text-green-700' : 'text-gray-600'}>
-                                {location.name}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="text-sm text-gray-600">
-                          <div className="flex justify-between">
-                            <span>Time Remaining:</span>
-                            <span className="font-semibold text-orange-600">{hunt.timeLimit}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Participants:</span>
-                            <span>{hunt.participants}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-3 rounded-lg">
-                          <div className="text-xs font-semibold text-orange-800 mb-1">Reward:</div>
-                          <div className="text-sm text-orange-700">{hunt.reward}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Button className="w-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600">
-                      <Camera className="h-4 w-4 mr-2" />
-                      Start AR Treasure Hunt
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          {/* Social Hub Tab */}
-          <TabsContent value="social" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Users className="h-5 w-5 mr-2 text-blue-500" />
-                  Social Features & Team Battles
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50">
-                      <CardContent className="p-4">
-                        <div className="flex items-center space-x-3 mb-3">
-                          <Gamepad2 className="h-5 w-5 text-blue-500" />
-                          <span className="font-medium">Team Battles</span>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">
-                          Form teams and compete in real-time multiplayer AR challenges
-                        </p>
-                        <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700">
-                          <Zap className="h-4 w-4 mr-2" />
-                          Join Battle
-                        </Button>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
-                      <CardContent className="p-4">
-                        <div className="flex items-center space-x-3 mb-3">
-                          <Users className="h-5 w-5 text-purple-500" />
-                          <span className="font-medium">Friend System</span>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">
-                          Connect with friends, share achievements, and play together
-                        </p>
-                        <Button size="sm" className="w-full bg-purple-600 hover:bg-purple-700">
-                          <MessageCircle className="h-4 w-4 mr-2" />
-                          Find Friends
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-3">
-                          <Trophy className="h-5 w-5 text-green-500" />
-                          <span className="font-medium">Leaderboards</span>
-                        </div>
-                        <Badge className="bg-green-100 text-green-800">Live</Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-3">
-                        Compete for top rankings in various AR game categories
-                      </p>
-                      <div className="flex space-x-2">
-                        <Button size="sm" variant="outline" className="flex-1">
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Rankings
-                        </Button>
-                        <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700">
-                          <Crown className="h-4 w-4 mr-2" />
-                          Compete Now
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+
+          {/* Customization Panel */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Category Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Customize Your Avatar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-3 mb-6">
+                  <Button 
+                    variant={selectedCategory === "body" ? "default" : "outline"}
+                    onClick={() => {
+                      setSelectedCategory("body");
+                      setSelectedSubCategory("skinTone");
+                    }}
+                    className="h-16 flex-col gap-2"
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-br from-orange-300 to-yellow-300 rounded-full"></div>
+                    Body
+                  </Button>
+                  
+                  <Button 
+                    variant={selectedCategory === "hair" ? "default" : "outline"}
+                    onClick={() => {
+                      setSelectedCategory("hair");
+                      setSelectedSubCategory("style");
+                    }}
+                    className="h-16 flex-col gap-2"
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-br from-amber-600 to-yellow-600 rounded-full"></div>
+                    Hair
+                  </Button>
+                  
+                  <Button 
+                    variant={selectedCategory === "clothing" ? "default" : "outline"}
+                    onClick={() => {
+                      setSelectedCategory("clothing");
+                      setSelectedSubCategory("style");
+                    }}
+                    className="h-16 flex-col gap-2"
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full"></div>
+                    Clothing
+                  </Button>
+                </div>
+
+                {/* Sub-category selection for hair and clothing */}
+                {(selectedCategory === "hair" || selectedCategory === "clothing") && (
+                  <div className="flex gap-2 mb-4">
+                    <Button
+                      variant={selectedSubCategory === "style" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedSubCategory("style")}
+                    >
+                      Style
+                    </Button>
+                    <Button
+                      variant={selectedSubCategory === "color" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedSubCategory("color")}
+                    >
+                      Color
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Options Grid */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {selectedCategory === "body" && avatarAssets.body.skinTone.map(item => (
+                    <div 
+                      key={item.id}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        avatar.skinTone === item.id ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-300'
+                      }`}
+                      onClick={() => handleAssetSelect(item, 'skinTone')}
+                    >
+                      <div 
+                        className="w-16 h-16 rounded-full mx-auto mb-3"
+                        style={{ backgroundColor: item.color }}
+                      ></div>
+                      <h4 className="text-center font-medium">{item.name}</h4>
+                      <p className="text-center text-xs text-gray-500 mt-1">
+                        {item.cost === 0 ? 'Free' : `${item.cost} coins`}
+                      </p>
+                    </div>
+                  ))}
+
+                  {selectedCategory === "hair" && selectedSubCategory === "style" && avatarAssets.hair.style.map(item => (
+                    <div 
+                      key={item.id}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        avatar.hairStyle === item.id ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-300'
+                      }`}
+                      onClick={() => handleAssetSelect(item, 'hairStyle')}
+                    >
+                      <div className="w-16 h-8 bg-gray-800 rounded-t-full mx-auto mb-3"></div>
+                      <h4 className="text-center font-medium">{item.name}</h4>
+                      <p className="text-center text-xs text-gray-500 mt-1">
+                        {item.cost === 0 ? 'Free' : `${item.cost} coins`}
+                      </p>
+                      {!item.owned && item.cost > avatar.coins && (
+                        <p className="text-center text-xs text-red-500 mt-1">Need more coins</p>
+                      )}
+                    </div>
+                  ))}
+
+                  {selectedCategory === "hair" && selectedSubCategory === "color" && avatarAssets.hair.color.map(item => (
+                    <div 
+                      key={item.id}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        avatar.hairColor === item.id ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-300'
+                      }`}
+                      onClick={() => handleAssetSelect(item, 'hairColor')}
+                    >
+                      <div 
+                        className="w-16 h-8 rounded-t-full mx-auto mb-3"
+                        style={{ backgroundColor: item.color }}
+                      ></div>
+                      <h4 className="text-center font-medium">{item.name}</h4>
+                      <p className="text-center text-xs text-gray-500 mt-1">
+                        {item.cost === 0 ? 'Free' : `${item.cost} coins`}
+                      </p>
+                      {!item.owned && item.cost > avatar.coins && (
+                        <p className="text-center text-xs text-red-500 mt-1">Need more coins</p>
+                      )}
+                    </div>
+                  ))}
+
+                  {selectedCategory === "clothing" && selectedSubCategory === "style" && avatarAssets.clothing.style.map(item => (
+                    <div 
+                      key={item.id}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        avatar.outfitStyle === item.id ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-300'
+                      }`}
+                      onClick={() => handleAssetSelect(item, 'outfitStyle')}
+                    >
+                      <div className="w-16 h-20 bg-gray-600 rounded mx-auto mb-3"></div>
+                      <h4 className="text-center font-medium">{item.name}</h4>
+                      <p className="text-center text-xs text-purple-600 mt-1">{item.theme}</p>
+                      <p className="text-center text-xs text-gray-500 mt-1">
+                        {item.cost === 0 ? 'Free' : `${item.cost} coins`}
+                      </p>
+                      {!item.owned && item.cost > avatar.coins && (
+                        <p className="text-center text-xs text-red-500 mt-1">Need more coins</p>
+                      )}
+                    </div>
+                  ))}
+
+                  {selectedCategory === "clothing" && selectedSubCategory === "color" && avatarAssets.clothing.color.map(item => (
+                    <div 
+                      key={item.id}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        avatar.outfitColor === item.id ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-300'
+                      }`}
+                      onClick={() => handleAssetSelect(item, 'outfitColor')}
+                    >
+                      <div 
+                        className="w-16 h-20 rounded mx-auto mb-3"
+                        style={{ backgroundColor: item.color }}
+                      ></div>
+                      <h4 className="text-center font-medium">{item.name}</h4>
+                      <p className="text-center text-xs text-gray-500 mt-1">
+                        {item.cost === 0 ? 'Free' : `${item.cost} coins`}
+                      </p>
+                      {!item.owned && item.cost > avatar.coins && (
+                        <p className="text-center text-xs text-red-500 mt-1">Need more coins</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Accessories Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Accessories</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {avatarAssets.accessories.map(item => (
+                    <div 
+                      key={item.id}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        avatar.accessories.includes(item.id) ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-purple-300'
+                      }`}
+                      onClick={() => {
+                        if (avatar.accessories.includes(item.id)) {
+                          // Remove accessory
+                          setAvatar(prev => ({
+                            ...prev,
+                            accessories: prev.accessories.filter(acc => acc !== item.id)
+                          }));
+                        } else {
+                          // Add accessory (if owned or affordable)
+                          if (item.owned || item.cost <= avatar.coins) {
+                            setAvatar(prev => ({
+                              ...prev,
+                              accessories: [...prev.accessories, item.id],
+                              coins: item.owned ? prev.coins : prev.coins - item.cost
+                            }));
+                            if (!item.owned) {
+                              toast({
+                                title: "Accessory Purchased",
+                                description: `${item.name} added to your collection.`,
+                              });
+                            }
+                          } else {
+                            toast({
+                              title: "Need More Coins",
+                              description: `You need ${item.cost} coins for ${item.name}.`,
+                              variant: "destructive"
+                            });
+                          }
+                        }
+                      }}
+                    >
+                      <div className="w-16 h-10 bg-gradient-to-r from-purple-400 to-blue-400 rounded mx-auto mb-3"></div>
+                      <h4 className="text-center font-medium">{item.name}</h4>
+                      <p className="text-center text-xs text-purple-600 mt-1">{item.style}</p>
+                      <p className="text-center text-xs text-gray-500 mt-1">
+                        {item.cost === 0 ? 'Free' : `${item.cost} coins`}
+                      </p>
+                      {avatar.accessories.includes(item.id) && (
+                        <Badge className="w-full mt-2 bg-green-100 text-green-800">
+                          Equipped
+                        </Badge>
+                      )}
+                      {!item.owned && item.cost > avatar.coins && (
+                        <p className="text-center text-xs text-red-500 mt-1">Need more coins</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
