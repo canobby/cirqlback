@@ -64,13 +64,6 @@ export default function HomeBento() {
               Turn every business visit into an adventure. Like Pokemon Go for local businesses - 
               <span className="font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"> tap, collect, compete, and earn real rewards.</span>
             </p>
-            
-            <div className="flex flex-wrap justify-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <span className="bg-white/60 dark:bg-gray-800/60 px-3 py-1 rounded-full border border-purple-200 dark:border-purple-700">🎮 Gamified</span>
-              <span className="bg-white/60 dark:bg-gray-800/60 px-3 py-1 rounded-full border border-pink-200 dark:border-pink-700">🏆 Competitive</span>
-              <span className="bg-white/60 dark:bg-gray-800/60 px-3 py-1 rounded-full border border-orange-200 dark:border-orange-700">💎 Rewarding</span>
-              <span className="bg-white/60 dark:bg-gray-800/60 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-700">🚀 Addictive</span>
-            </div>
           </div>
         </div>
 
