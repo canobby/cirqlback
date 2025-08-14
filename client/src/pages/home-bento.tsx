@@ -265,7 +265,10 @@ export default function HomeBento() {
           </Card>
 
           {/* Quick Links */}
-          <Card className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors">
+          <Card 
+            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors cursor-pointer"
+            onClick={() => window.location.href = '/trial-discount'}
+          >
             <CardContent className="p-6 text-center">
               <Gift className="h-6 w-6 text-purple-600 mx-auto mb-2" />
               <h3 className="font-medium text-gray-900 dark:text-white mb-1">Pricing</h3>
@@ -273,7 +276,10 @@ export default function HomeBento() {
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors">
+          <Card 
+            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors cursor-pointer"
+            onClick={() => window.location.href = '/help-center'}
+          >
             <CardContent className="p-6 text-center">
               <Heart className="h-6 w-6 text-red-600 mx-auto mb-2" />
               <h3 className="font-medium text-gray-900 dark:text-white mb-1">Support</h3>
@@ -281,7 +287,10 @@ export default function HomeBento() {
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors">
+          <Card 
+            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors cursor-pointer"
+            onClick={() => window.location.href = '/platform'}
+          >
             <CardContent className="p-6 text-center">
               <Zap className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
               <h3 className="font-medium text-gray-900 dark:text-white mb-1">API</h3>
@@ -302,7 +311,7 @@ export default function HomeBento() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button 
                   size="lg"
-                  className="bg-white text-indigo-600 hover:bg-gray-100"
+                  className="bg-white text-gray-900 hover:bg-gray-100 hover:text-gray-800 font-semibold"
                   onClick={() => window.location.href = '/merchant'}
                 >
                   Start Free Trial
@@ -311,7 +320,7 @@ export default function HomeBento() {
                 <Button 
                   size="lg"
                   variant="outline"
-                  className="border-white/30 text-white hover:bg-white/10"
+                  className="border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold transition-all"
                   onClick={() => window.location.href = '/how-it-works'}
                 >
                   Learn More
