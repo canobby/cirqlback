@@ -32,28 +32,38 @@ import {
   MessageCircle
 } from "lucide-react";
 
-// Mock data for avatar customization
+// Enhanced avatar customization data
 const assetCategories = {
   hair: [
-    { id: 'hair_1', name: 'Classic Bob', rarity: 'common', cost: 0, owned: true },
-    { id: 'hair_2', name: 'Wavy Locks', rarity: 'rare', cost: 150, owned: false },
-    { id: 'hair_3', name: 'Pixel Punk', rarity: 'epic', cost: 300, owned: false },
-    { id: 'hair_4', name: 'Royal Crown', rarity: 'legendary', cost: 500, owned: false },
+    { id: 'hair_1', name: 'Classic Bob', rarity: 'common', cost: 0, owned: true, preview: '👩‍🦰' },
+    { id: 'hair_2', name: 'Wavy Locks', rarity: 'rare', cost: 150, owned: true, preview: '👱‍♀️' },
+    { id: 'hair_3', name: 'Pixel Punk', rarity: 'epic', cost: 300, owned: false, preview: '👩‍🦵' },
+    { id: 'hair_4', name: 'Royal Crown', rarity: 'legendary', cost: 500, owned: false, preview: '👸' },
+    { id: 'hair_5', name: 'Spiky Style', rarity: 'rare', cost: 180, owned: true, preview: '👨‍🦱' },
+    { id: 'hair_6', name: 'Long Braids', rarity: 'epic', cost: 320, owned: false, preview: '👩‍🦳' },
   ],
   eyes: [
-    { id: 'eyes_1', name: 'Bright Blue', rarity: 'common', cost: 0, owned: true },
-    { id: 'eyes_2', name: 'Emerald Glow', rarity: 'rare', cost: 100, owned: false },
-    { id: 'eyes_3', name: 'Galaxy Eyes', rarity: 'epic', cost: 250, owned: false },
+    { id: 'eyes_1', name: 'Bright Blue', rarity: 'common', cost: 0, owned: true, preview: '👁️‍🗨️' },
+    { id: 'eyes_2', name: 'Emerald Glow', rarity: 'rare', cost: 100, owned: true, preview: '🟢' },
+    { id: 'eyes_3', name: 'Galaxy Eyes', rarity: 'epic', cost: 250, owned: false, preview: '🌌' },
+    { id: 'eyes_4', name: 'Fire Eyes', rarity: 'legendary', cost: 400, owned: false, preview: '🔥' },
+    { id: 'eyes_5', name: 'Ice Blue', rarity: 'rare', cost: 120, owned: true, preview: '❄️' },
   ],
   outfit: [
-    { id: 'outfit_1', name: 'Casual Wear', rarity: 'common', cost: 0, owned: true },
-    { id: 'outfit_2', name: 'Business Suit', rarity: 'rare', cost: 200, owned: false },
-    { id: 'outfit_3', name: 'Hero Costume', rarity: 'epic', cost: 400, owned: false },
+    { id: 'outfit_1', name: 'Casual Wear', rarity: 'common', cost: 0, owned: true, preview: '👕' },
+    { id: 'outfit_2', name: 'Business Suit', rarity: 'rare', cost: 200, owned: true, preview: '👔' },
+    { id: 'outfit_3', name: 'Hero Costume', rarity: 'epic', cost: 400, owned: false, preview: '🦸' },
+    { id: 'outfit_4', name: 'Royal Robes', rarity: 'legendary', cost: 600, owned: false, preview: '🤴' },
+    { id: 'outfit_5', name: 'Ninja Gear', rarity: 'epic', cost: 350, owned: false, preview: '🥷' },
+    { id: 'outfit_6', name: 'Space Suit', rarity: 'legendary', cost: 750, owned: false, preview: '👨‍🚀' },
   ],
   accessories: [
-    { id: 'acc_1', name: 'Classic Glasses', rarity: 'common', cost: 50, owned: false },
-    { id: 'acc_2', name: 'Magic Pendant', rarity: 'rare', cost: 180, owned: false },
-    { id: 'acc_3', name: 'Dragon Wings', rarity: 'legendary', cost: 600, owned: false },
+    { id: 'acc_1', name: 'Classic Glasses', rarity: 'common', cost: 50, owned: true, preview: '🤓' },
+    { id: 'acc_2', name: 'Magic Pendant', rarity: 'rare', cost: 180, owned: false, preview: '🔮' },
+    { id: 'acc_3', name: 'Dragon Wings', rarity: 'legendary', cost: 600, owned: false, preview: '🐲' },
+    { id: 'acc_4', name: 'Crown Jewels', rarity: 'legendary', cost: 800, owned: false, preview: '👑' },
+    { id: 'acc_5', name: 'Energy Sword', rarity: 'epic', cost: 450, owned: false, preview: '⚔️' },
+    { id: 'acc_6', name: 'Wizard Hat', rarity: 'rare', cost: 200, owned: true, preview: '🧙‍♂️' },
   ]
 };
 
@@ -129,22 +139,30 @@ export default function AvatarCreator() {
     if (!asset.owned && asset.cost > avatar.coins) {
       toast({
         title: "Insufficient Coins",
-        description: `You need ${asset.cost} coins to purchase this item.`,
+        description: `You need ${asset.cost} coins to purchase this item. Complete more quests to earn coins!`,
         variant: "destructive"
       });
       return;
     }
 
     if (!asset.owned) {
-      // Purchase the asset
+      // Purchase and equip the asset
       setAvatar(prev => ({
         ...prev,
         coins: prev.coins - asset.cost,
         [selectedCategory]: asset.id
       }));
+      
+      // Mark asset as owned in the data
+      const categoryAssets = assetCategories[selectedCategory as keyof typeof assetCategories];
+      const assetIndex = categoryAssets.findIndex((a: any) => a.id === asset.id);
+      if (assetIndex !== -1) {
+        categoryAssets[assetIndex].owned = true;
+      }
+      
       toast({
-        title: "Asset Purchased!",
-        description: `${asset.name} has been added to your collection.`,
+        title: "🎉 Asset Purchased & Equipped!",
+        description: `${asset.name} is now part of your avatar collection.`,
       });
     } else {
       // Equip the asset
@@ -153,8 +171,8 @@ export default function AvatarCreator() {
         [selectedCategory]: asset.id
       }));
       toast({
-        title: "Avatar Updated!",
-        description: `${asset.name} equipped successfully.`,
+        title: "✨ Avatar Updated!",
+        description: `${asset.name} equipped successfully. Looking great!`,
       });
     }
   };
@@ -191,22 +209,39 @@ export default function AvatarCreator() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg p-8 text-center">
-                    <div className="w-32 h-32 mx-auto bg-gradient-to-br from-purple-400 to-blue-400 rounded-full flex items-center justify-center text-white text-4xl font-bold">
-                      {avatar.name.charAt(0)}
+                    <div className="w-32 h-32 mx-auto bg-gradient-to-br from-purple-400 to-blue-400 rounded-full flex flex-col items-center justify-center text-white text-2xl font-bold">
+                      <div className="text-4xl mb-1">
+                        {avatar.hair && assetCategories.hair.find(h => h.id === avatar.hair)?.preview || '👤'}
+                      </div>
+                      <div className="text-sm">
+                        {avatar.eyes && assetCategories.eyes.find(e => e.id === avatar.eyes)?.preview || '👁️'}
+                      </div>
                     </div>
                     <h3 className="text-lg font-semibold mt-4">{avatar.name}</h3>
                     <p className="text-sm text-gray-600">Level {avatar.level}</p>
+                    <div className="flex justify-center gap-2 mt-2">
+                      {avatar.outfit && (
+                        <span className="text-2xl">
+                          {assetCategories.outfit.find(o => o.id === avatar.outfit)?.preview}
+                        </span>
+                      )}
+                      {avatar.accessories && (
+                        <span className="text-2xl">
+                          {assetCategories.accessories.find(a => a.id === avatar.accessories)?.preview}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Experience</span>
-                      <span className="text-sm text-purple-600">{avatar.experience} / {avatar.nextLevelXP}</span>
+                      <span className="text-sm text-purple-600">{avatar.xp} / {avatar.xpToNext}</span>
                     </div>
                     <div className="bg-purple-200 rounded-full h-2">
                       <div 
                         className="bg-purple-600 h-2 rounded-full transition-all"
-                        style={{ width: `${(avatar.experience / avatar.nextLevelXP) * 100}%` }}
+                        style={{ width: `${(avatar.xp / avatar.xpToNext) * 100}%` }}
                       ></div>
                     </div>
                   </div>
@@ -266,6 +301,10 @@ export default function AvatarCreator() {
                             <Badge className={getRarityColor(asset.rarity)}>
                               {asset.rarity}
                             </Badge>
+                          </div>
+                          
+                          <div className="text-4xl text-center my-3">
+                            {asset.preview}
                           </div>
                           
                           <div className="flex justify-between items-center">
