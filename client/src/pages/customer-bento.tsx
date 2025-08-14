@@ -73,6 +73,7 @@ export default function CustomerBento() {
                 <Button 
                   className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
+                  onClick={() => window.location.href = '/map'}
                 >
                   <div className="flex items-center w-full">
                     <div className="bg-white/20 p-2 rounded-lg mr-3">
@@ -89,6 +90,7 @@ export default function CustomerBento() {
                 <Button 
                   className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
+                  onClick={() => window.location.href = '/tap'}
                 >
                   <div className="flex items-center w-full">
                     <div className="bg-white/20 p-2 rounded-lg mr-3">
@@ -217,7 +219,10 @@ export default function CustomerBento() {
           </Card>
 
           {/* Quick Actions */}
-          <Card className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors">
+          <Card 
+            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors cursor-pointer"
+            onClick={() => window.location.href = '/profile'}
+          >
             <CardContent className="p-6 text-center">
               <Heart className="h-6 w-6 text-red-600 mx-auto mb-2" />
               <h3 className="font-medium text-gray-900 dark:text-white mb-1">Favorites</h3>
@@ -225,7 +230,10 @@ export default function CustomerBento() {
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors">
+          <Card 
+            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors cursor-pointer"
+            onClick={() => window.location.href = '/calendar'}
+          >
             <CardContent className="p-6 text-center">
               <Calendar className="h-6 w-6 text-blue-600 mx-auto mb-2" />
               <h3 className="font-medium text-gray-900 dark:text-white mb-1">Events</h3>
@@ -233,7 +241,10 @@ export default function CustomerBento() {
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors">
+          <Card 
+            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors cursor-pointer"
+            onClick={() => window.location.href = '/community'}
+          >
             <CardContent className="p-6 text-center">
               <Users className="h-6 w-6 text-green-600 mx-auto mb-2" />
               <h3 className="font-medium text-gray-900 dark:text-white mb-1">Community</h3>

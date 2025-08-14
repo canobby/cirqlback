@@ -185,7 +185,7 @@ export default function MerchantBento() {
                 size="sm" 
                 variant="outline"
                 onClick={() => window.location.href = '/analytics'}
-                className="text-white"
+                className="text-gray-700 border-gray-300 hover:bg-gray-100"
               >
                 View Details
               </Button>
@@ -204,7 +204,7 @@ export default function MerchantBento() {
                 size="sm" 
                 variant="outline"
                 onClick={() => window.location.href = '/nfc-writer'}
-                className="text-white"
+                className="text-gray-700 border-gray-300 hover:bg-gray-100"
               >
                 Tag Manager
               </Button>
@@ -212,7 +212,10 @@ export default function MerchantBento() {
           </Card>
 
           {/* Additional Tools Row */}
-          <Card className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors">
+          <Card 
+            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors cursor-pointer"
+            onClick={() => window.location.href = '/communication'}
+          >
             <CardContent className="p-6 text-center">
               <MessageSquare className="h-6 w-6 text-green-600 mx-auto mb-2" />
               <h3 className="font-medium text-gray-900 dark:text-white mb-1">Communication</h3>
@@ -220,7 +223,10 @@ export default function MerchantBento() {
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-yellow-300 dark:hover:border-yellow-600 transition-colors">
+          <Card 
+            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-yellow-300 dark:hover:border-yellow-600 transition-colors cursor-pointer"
+            onClick={() => window.location.href = '/campaign-setup-wizard'}
+          >
             <CardContent className="p-6 text-center">
               <Calendar className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
               <h3 className="font-medium text-gray-900 dark:text-white mb-1">Campaigns</h3>
@@ -228,7 +234,10 @@ export default function MerchantBento() {
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors">
+          <Card 
+            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors cursor-pointer"
+            onClick={() => window.location.href = '/settings'}
+          >
             <CardContent className="p-6 text-center">
               <Settings className="h-6 w-6 text-purple-600 mx-auto mb-2" />
               <h3 className="font-medium text-gray-900 dark:text-white mb-1">Settings</h3>

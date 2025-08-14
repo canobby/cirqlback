@@ -69,7 +69,7 @@ export default function AnalyticsBento() {
                 variant={timeRange === range ? "default" : "outline"}
                 size="sm"
                 onClick={() => setTimeRange(range)}
-                className={timeRange === range ? "bg-purple-600 text-white" : "text-white"}
+                className={timeRange === range ? "bg-purple-600 text-white" : "text-gray-700 border-gray-300 hover:bg-gray-100"}
               >
                 {range.charAt(0).toUpperCase() + range.slice(1)}
               </Button>
@@ -285,7 +285,11 @@ export default function AnalyticsBento() {
                 </div>
               </div>
               
-              <Button className="w-full mt-4 bg-white/20 hover:bg-white/30 text-white border-white/30" variant="outline">
+              <Button 
+                className="w-full mt-4 bg-white/20 hover:bg-white/30 text-white border-white/30" 
+                variant="outline"
+                onClick={() => window.location.href = '/analytics'}
+              >
                 View Full Activity Log
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>

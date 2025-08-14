@@ -56,12 +56,12 @@ export default function NFCSetupWizardBento() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-between mb-6">
             <Button 
-              onClick={() => setLocation('/nfc-setup-wizard')}
+              onClick={() => setLocation('/merchant')}
               variant="outline"
               size="sm"
-              className="text-white"
+              className="text-gray-700 border-gray-300 hover:bg-gray-100"
             >
-              Classic View
+              Back to Merchant
             </Button>
             <div></div>
           </div>
