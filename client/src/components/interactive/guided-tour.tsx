@@ -205,7 +205,7 @@ export function GuidedTour({
         className="fixed z-50 w-80 shadow-xl border-2 border-primary/20"
         style={{ position: 'fixed' }}
       >
-        <CardContent className="p-4">
+        <CardContent className="p-4 bg-white dark:bg-gray-800">
           <div className="flex justify-between items-start mb-3">
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">
@@ -223,13 +223,13 @@ export function GuidedTour({
             </Button>
           </div>
 
-          <h3 className="font-semibold text-sm mb-2">{currentStepData.title}</h3>
-          <p className="text-xs text-muted-foreground mb-3">
+          <h3 className="font-semibold text-sm mb-2 text-gray-900 dark:text-white">{currentStepData.title}</h3>
+          <p className="text-xs text-gray-700 dark:text-gray-300 mb-3">
             {currentStepData.description}
           </p>
 
           {currentStepData.tip && (
-            <div className="bg-blue-50 p-2 rounded text-xs text-blue-800 mb-3 border-l-2 border-blue-400">
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded text-xs text-blue-800 dark:text-blue-200 mb-3 border-l-2 border-blue-400">
               <span className="font-medium">💡 Tip: </span>
               {currentStepData.tip}
             </div>

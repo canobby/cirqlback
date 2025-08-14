@@ -428,6 +428,26 @@
     display: none;
   }
   
+  /* Tour guide text visibility fixes */
+  .tour-highlight {
+    position: relative;
+    z-index: 30;
+    border: 2px solid var(--cirq-purple);
+    border-radius: 0.5rem;
+    box-shadow: 0 0 0 4px hsl(var(--cirq-purple) / 0.3), var(--shadow-lg);
+    animation: pulse-highlight 2s infinite;
+    background-color: rgba(255, 255, 255, 0.95) !important;
+  }
+  
+  .tour-highlight * {
+    color: #1f2937 !important;
+  }
+  
+  @keyframes pulse-highlight {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+  }
+  
   /* Touch-friendly hover states for mobile */
   @media (pointer: coarse) {
     .hover:hover {
