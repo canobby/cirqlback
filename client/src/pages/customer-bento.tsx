@@ -2,11 +2,6 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  MapPin, Gift, Trophy, Users, Zap, Star, Calendar, 
-  Camera, Gamepad2, Target, Coins, Crown, ArrowRight,
-  Smartphone, Heart, Share2, TrendingUp
-} from "lucide-react";
 
 export default function CustomerBento() {
   const [userStats] = useState({
@@ -40,13 +35,12 @@ export default function CustomerBento() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-
               <Badge className="bg-blue-100 text-blue-700 border-blue-200">
-                <Star className="w-3 h-3 mr-1" />
+                <div className="w-3 h-3 mr-1 bg-blue-500 rounded-full"></div>
                 Level {userStats.level}
               </Badge>
               <Badge className="bg-green-100 text-green-700 border-green-200">
-                <Coins className="w-3 h-3 mr-1" />
+                <div className="w-3 h-3 mr-1 bg-yellow-500 rounded-full"></div>
                 {userStats.totalPoints} pts
               </Badge>
             </div>
@@ -66,151 +60,154 @@ export default function CustomerBento() {
                   <h2 className="text-3xl font-bold mb-2">Discover Local Gems</h2>
                   <p className="text-blue-100 text-lg">23 businesses nearby with active rewards</p>
                 </div>
-                <MapPin className="h-12 w-12 text-blue-100" />
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <div className="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center">
+                    <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
+                  </div>
+                </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Button 
                   className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
-                  onClick={() => window.location.href = '/map'}
+                  onClick={() => window.location.href = '/map-bento'}
                 >
                   <div className="flex items-center w-full">
                     <div className="bg-white/20 p-2 rounded-lg mr-3">
-                      <MapPin className="h-5 w-5" />
+                      <div className="w-5 h-5 bg-green-300 rounded-full flex items-center justify-center">
+                        <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                      </div>
                     </div>
                     <div className="text-left">
-                      <div className="font-semibold">Explore Map</div>
+                      <div className="font-semibold">View Map</div>
                       <div className="text-sm text-blue-100">Find nearby rewards</div>
                     </div>
-                    <ArrowRight className="h-4 w-4 ml-auto" />
+                    <div className="w-4 h-4 ml-auto bg-white/30 rounded-full"></div>
                   </div>
                 </Button>
                 
                 <Button 
                   className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
-                  onClick={() => window.location.href = '/tap'}
+                  onClick={() => window.location.href = '/nfc-setup-wizard-bento'}
                 >
                   <div className="flex items-center w-full">
                     <div className="bg-white/20 p-2 rounded-lg mr-3">
-                      <Camera className="h-5 w-5" />
+                      <div className="w-5 h-5 bg-yellow-300 rounded-lg flex items-center justify-center">
+                        <div className="w-2 h-2 bg-yellow-600 rounded"></div>
+                      </div>
                     </div>
                     <div className="text-left">
-                      <div className="font-semibold">Scan Tag</div>
-                      <div className="text-sm text-blue-100">Tap & earn rewards</div>
+                      <div className="font-semibold">Tap to Earn</div>
+                      <div className="text-sm text-blue-100">Quick reward scan</div>
                     </div>
-                    <ArrowRight className="h-4 w-4 ml-auto" />
+                    <div className="w-4 h-4 ml-auto bg-white/30 rounded-full"></div>
                   </div>
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Points Balance - Tall Block */}
-          <Card className="md:col-span-3 lg:col-span-3 md:row-span-2 bg-gradient-to-br from-purple-500 to-pink-500 border-0 text-white">
-            <CardContent className="p-6 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <Coins className="h-8 w-8 text-purple-100" />
-                <Badge className="bg-white/20 text-white border-white/30">+{userStats.streak} day streak</Badge>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-medium text-purple-100 mb-2">Total Points</h3>
-                <div className="text-4xl font-bold mb-4">{userStats.totalPoints.toLocaleString()}</div>
-                
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between items-center">
-                    <span className="text-purple-100">Today</span>
-                    <span className="font-semibold">+450 pts</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-purple-100">This week</span>
-                    <span className="font-semibold">+1,250 pts</span>
-                  </div>
+          {/* Stats Dashboard */}
+          <Card className="md:col-span-3 lg:col-span-3 md:row-span-2 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+            <CardContent className="p-6 h-full">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Your Progress</h3>
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
+                  <div className="w-4 h-4 bg-white rounded-full"></div>
                 </div>
               </div>
               
-              <Button className="bg-white/20 hover:bg-white/30 text-white border-white/30" variant="outline">
-                Redeem Rewards
-              </Button>
-            </CardContent>
-          </Card>
+              <div className="space-y-6 flex-1">
+                {/* Level Progress */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Level Progress</span>
+                    <span className="text-sm text-purple-600 dark:text-purple-400">Level {userStats.level}</span>
+                  </div>
+                  <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full" style={{width: '75%'}}></div>
+                  </div>
+                </div>
 
-          {/* Gaming Hub */}
-          <Card className="md:col-span-3 bg-gradient-to-br from-orange-500 to-red-500 border-0 text-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <Gamepad2 className="h-6 w-6 text-orange-100" />
-                <Badge className="bg-white/20 text-white border-white/30">New!</Badge>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{userStats.totalPoints}</div>
+                    <div className="text-sm text-blue-700 dark:text-blue-300">Total Points</div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{userStats.badgesEarned}</div>
+                    <div className="text-sm text-green-700 dark:text-green-300">Badges Earned</div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{userStats.businessesVisited}</div>
+                    <div className="text-sm text-orange-700 dark:text-orange-300">Businesses</div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{userStats.streak}</div>
+                    <div className="text-sm text-purple-700 dark:text-purple-300">Day Streak</div>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="space-y-2">
+                  <Button 
+                    onClick={() => window.location.href = '/avatar-creator'}
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                  >
+                    <div className="w-4 h-4 mr-2 bg-white/30 rounded-full"></div>
+                    Customize Avatar
+                  </Button>
+                  <Button 
+                    onClick={() => window.location.href = '/ar-experience'}
+                    variant="outline" 
+                    className="w-full"
+                  >
+                    <div className="w-4 h-4 mr-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full"></div>
+                    AR Adventures
+                  </Button>
+                </div>
               </div>
-              <h3 className="font-semibold mb-1">Cirql Quest</h3>
-              <p className="text-orange-100 text-sm mb-4">AR gaming adventures</p>
-              <Button 
-                size="sm" 
-                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                variant="outline"
-              >
-                Play Now
-              </Button>
             </CardContent>
           </Card>
 
-          {/* Stats Row */}
-          <Card className="md:col-span-2 bg-gradient-to-br from-green-500 to-emerald-500 border-0 text-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <Trophy className="h-6 w-6 text-green-100" />
-                <Badge className="bg-white/20 text-white border-white/30">#{userStats.level}</Badge>
-              </div>
-              <div className="text-2xl font-bold">{userStats.badgesEarned}</div>
-              <p className="text-green-100 text-sm">Badges Earned</p>
-            </CardContent>
-          </Card>
-
-          <Card className="md:col-span-2 bg-gradient-to-br from-yellow-500 to-orange-500 border-0 text-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <Target className="h-6 w-6 text-yellow-100" />
-                <Badge className="bg-white/20 text-white border-white/30">Active</Badge>
-              </div>
-              <div className="text-2xl font-bold">{userStats.businessesVisited}</div>
-              <p className="text-yellow-100 text-sm">Businesses Visited</p>
-            </CardContent>
-          </Card>
-
-          <Card className="md:col-span-2 bg-gradient-to-br from-pink-500 to-purple-500 border-0 text-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <Share2 className="h-6 w-6 text-pink-100" />
-                <Badge className="bg-white/20 text-white border-white/30">+$50</Badge>
-              </div>
-              <div className="text-2xl font-bold">{userStats.referrals}</div>
-              <p className="text-pink-100 text-sm">Friends Referred</p>
-            </CardContent>
-          </Card>
-
-          {/* Recent Activity - Wide Block */}
-          <Card className="md:col-span-6 lg:col-span-5 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700">
+          {/* Recent Activity */}
+          <Card className="md:col-span-6 lg:col-span-5 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="flex items-center text-gray-900 dark:text-white">
-                <TrendingUp className="h-5 w-5 mr-2 text-purple-600" />
-                Recent Rewards
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-gray-900 dark:text-gray-100">Recent Activity</CardTitle>
+                <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center">
+                  <div className="w-3 h-3 bg-white rounded-full"></div>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentActivity.map((activity, idx) => (
-                  <div key={idx} className={`flex items-center justify-between p-4 bg-${activity.color}-50 dark:bg-${activity.color}-950/20 rounded-lg`}>
+                {recentActivity.map((activity, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <div className="flex items-center">
-                      <div className={`w-3 h-3 bg-${activity.color}-500 rounded-full mr-4`}></div>
+                      <div className={`w-10 h-10 bg-gradient-to-br ${
+                        activity.color === 'purple' ? 'from-purple-400 to-purple-600' :
+                        activity.color === 'blue' ? 'from-blue-400 to-blue-600' :
+                        'from-orange-400 to-orange-600'
+                      } rounded-lg flex items-center justify-center mr-4`}>
+                        <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
+                          <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                        </div>
+                      </div>
                       <div>
-                        <div className="font-semibold text-gray-900 dark:text-white">{activity.business}</div>
+                        <div className="font-semibold text-gray-900 dark:text-gray-100">{activity.business}</div>
                         <div className="text-sm text-gray-600 dark:text-gray-400">{activity.reward}</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold text-gray-900 dark:text-white">+{activity.points} pts</div>
-                      <div className="text-xs text-gray-500">{activity.time}</div>
+                      <div className="font-semibold text-green-600">+{activity.points} pts</div>
+                      <div className="text-sm text-gray-500">{activity.time}</div>
                     </div>
                   </div>
                 ))}
@@ -218,78 +215,145 @@ export default function CustomerBento() {
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
-          <Card 
-            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors cursor-pointer"
-            onClick={() => window.location.href = '/profile'}
-          >
-            <CardContent className="p-6 text-center">
-              <Heart className="h-6 w-6 text-red-600 mx-auto mb-2" />
-              <h3 className="font-medium text-gray-900 dark:text-white mb-1">Favorites</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-xs">Saved businesses</p>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors cursor-pointer"
-            onClick={() => window.location.href = '/calendar'}
-          >
-            <CardContent className="p-6 text-center">
-              <Calendar className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-              <h3 className="font-medium text-gray-900 dark:text-white mb-1">Events</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-xs">Upcoming deals</p>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors cursor-pointer"
-            onClick={() => window.location.href = '/community'}
-          >
-            <CardContent className="p-6 text-center">
-              <Users className="h-6 w-6 text-green-600 mx-auto mb-2" />
-              <h3 className="font-medium text-gray-900 dark:text-white mb-1">Community</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-xs">Connect & compete</p>
-            </CardContent>
-          </Card>
-
-          {/* Achievement Showcase */}
-          <Card className="md:col-span-6 lg:col-span-3 bg-gradient-to-br from-indigo-500 to-purple-600 border-0 text-white">
+          {/* Gamification Features */}
+          <Card className="md:col-span-3 lg:col-span-3 bg-gradient-to-br from-green-500 to-emerald-600 border-0 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Achievement Progress</h3>
-                <Crown className="h-6 w-6 text-indigo-100" />
+                <h3 className="text-xl font-bold">Daily Challenges</h3>
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                  <div className="w-4 h-4 bg-green-200 rounded-full animate-pulse"></div>
+                </div>
+              </div>
+              <p className="text-green-100 mb-4">Complete challenges to earn bonus rewards and level up faster!</p>
+              
+              <div className="space-y-3">
+                <div className="bg-white/10 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium">Visit 3 new businesses</span>
+                    <span className="text-xs bg-white/20 px-2 py-1 rounded">2/3</span>
+                  </div>
+                  <div className="bg-white/20 rounded-full h-2">
+                    <div className="bg-white h-2 rounded-full" style={{width: '66%'}}></div>
+                  </div>
+                </div>
+                
+                <div className="bg-white/10 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium">Share 1 AR experience</span>
+                    <span className="text-xs bg-green-400 text-green-800 px-2 py-1 rounded">Complete</span>
+                  </div>
+                  <div className="bg-white/20 rounded-full h-2">
+                    <div className="bg-white h-2 rounded-full w-full"></div>
+                  </div>
+                </div>
+                
+                <div className="bg-white/10 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium">Earn 500 points</span>
+                    <span className="text-xs bg-white/20 px-2 py-1 rounded">350/500</span>
+                  </div>
+                  <div className="bg-white/20 rounded-full h-2">
+                    <div className="bg-white h-2 rounded-full" style={{width: '70%'}}></div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Leaderboard Preview */}
+          <Card className="md:col-span-3 lg:col-span-3 bg-gradient-to-br from-orange-500 to-red-500 border-0 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold">Leaderboard</h3>
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                  <div className="w-4 h-4 bg-yellow-400 rounded-full"></div>
+                </div>
+              </div>
+              <p className="text-orange-100 mb-4">You're ranked #47 this week!</p>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between bg-white/10 rounded-lg p-3">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 font-bold mr-3">1</div>
+                    <span className="font-medium">Alex_Explorer</span>
+                  </div>
+                  <span className="text-sm">8,450 pts</span>
+                </div>
+                
+                <div className="flex items-center justify-between bg-white/10 rounded-lg p-3">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-gray-700 font-bold mr-3">2</div>
+                    <span className="font-medium">Sarah_Quest</span>
+                  </div>
+                  <span className="text-sm">7,890 pts</span>
+                </div>
+                
+                <div className="flex items-center justify-between bg-white/10 rounded-lg p-3">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-orange-400 rounded-full flex items-center justify-center text-orange-900 font-bold mr-3">3</div>
+                    <span className="font-medium">Mike_Hunter</span>
+                  </div>
+                  <span className="text-sm">6,230 pts</span>
+                </div>
               </div>
               
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm">Coffee Connoisseur</span>
-                    <span className="text-sm">8/10</span>
+              <Button 
+                onClick={() => window.location.href = '/community'}
+                className="w-full mt-4 bg-white/20 hover:bg-white/30 text-white border-white/30" 
+                variant="outline"
+              >
+                View Full Leaderboard
+                <div className="w-4 h-4 ml-2 bg-white/50 rounded-full"></div>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Quick Access Features */}
+          <Card className="md:col-span-6 lg:col-span-8 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-center text-gray-900 dark:text-gray-100">Explore More Features</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Button 
+                  onClick={() => window.location.href = '/ar-treasure-hunts'}
+                  className="h-20 flex-col gap-2 bg-gradient-to-br from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600"
+                >
+                  <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
+                    <div className="w-4 h-4 bg-white rounded-full"></div>
                   </div>
-                  <div className="w-full bg-white/20 rounded-full h-2">
-                    <div className="bg-white h-2 rounded-full" style={{ width: '80%' }}></div>
-                  </div>
-                </div>
+                  <span className="text-sm">AR Treasure Hunts</span>
+                </Button>
                 
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm">Social Butterfly</span>
-                    <span className="text-sm">15/20</span>
+                <Button 
+                  onClick={() => window.location.href = '/team-challenges'}
+                  className="h-20 flex-col gap-2 bg-gradient-to-br from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600"
+                >
+                  <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
+                    <div className="w-4 h-4 bg-white rounded-full"></div>
                   </div>
-                  <div className="w-full bg-white/20 rounded-full h-2">
-                    <div className="bg-white h-2 rounded-full" style={{ width: '75%' }}></div>
-                  </div>
-                </div>
+                  <span className="text-sm">Team Challenges</span>
+                </Button>
                 
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm">Explorer</span>
-                    <span className="text-sm">23/50</span>
+                <Button 
+                  onClick={() => window.location.href = '/viral-campaigns'}
+                  className="h-20 flex-col gap-2 bg-gradient-to-br from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
+                >
+                  <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
+                    <div className="w-4 h-4 bg-white rounded-full"></div>
                   </div>
-                  <div className="w-full bg-white/20 rounded-full h-2">
-                    <div className="bg-white h-2 rounded-full" style={{ width: '46%' }}></div>
+                  <span className="text-sm">Viral Campaigns</span>
+                </Button>
+                
+                <Button 
+                  onClick={() => window.location.href = '/cirql-quest'}
+                  className="h-20 flex-col gap-2 bg-gradient-to-br from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600"
+                >
+                  <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
+                    <div className="w-4 h-4 bg-white rounded-full"></div>
                   </div>
-                </div>
+                  <span className="text-sm">Cirql Quest</span>
+                </Button>
               </div>
             </CardContent>
           </Card>

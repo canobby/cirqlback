@@ -1,11 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Zap, Users, Store, Globe, Smartphone, Target, 
-  ArrowRight, PlayCircle, Star, TrendingUp, 
-  Gift, Crown, Heart, Sparkles
-} from "lucide-react";
 
 export default function HomeBento() {
   const stats = {
@@ -17,25 +12,52 @@ export default function HomeBento() {
 
   const features = [
     {
-      icon: Smartphone,
       title: "Tap & Earn",
-      description: "Simply tap NFC tags to unlock instant rewards",
+      description: "Simply tap Cirql tags to unlock instant rewards",
       gradient: "from-blue-500 to-cyan-500",
-      pattern: "📱"
+      visual: (
+        <div className="relative w-16 h-16 mx-auto">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-2xl"></div>
+          <div className="absolute inset-2 bg-white rounded-xl flex items-center justify-center">
+            <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full"></div>
+          </div>
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+        </div>
+      )
     },
     {
-      icon: Target,
       title: "Smart Campaigns",
       description: "AI-powered marketing that drives real results",
       gradient: "from-purple-500 to-pink-500",
-      pattern: "🎯"
+      visual: (
+        <div className="relative w-16 h-16 mx-auto">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-pink-400 rounded-2xl"></div>
+          <div className="absolute inset-2 bg-white rounded-xl flex items-center justify-center">
+            <div className="grid grid-cols-2 gap-1">
+              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+              <div className="w-2 h-2 bg-pink-400 rounded-full"></div>
+              <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+            </div>
+          </div>
+        </div>
+      )
     },
     {
-      icon: Globe,
       title: "Local Discovery",
       description: "Explore hidden gems in your neighborhood",
       gradient: "from-green-500 to-emerald-500",
-      pattern: "🌍"
+      visual: (
+        <div className="relative w-16 h-16 mx-auto">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-400 to-emerald-400 rounded-2xl"></div>
+          <div className="absolute inset-2 bg-white rounded-xl flex items-center justify-center">
+            <div className="relative">
+              <div className="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full"></div>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-400 rounded-full"></div>
+            </div>
+          </div>
+        </div>
+      )
     }
   ];
 
@@ -82,36 +104,44 @@ export default function HomeBento() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Button 
-                      onClick={() => window.location.href = '/customer'}
+                      onClick={() => window.location.href = '/customer-bento'}
                       className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                       variant="outline"
                     >
                       <div className="flex items-center w-full">
                         <div className="bg-white/20 p-2 rounded-lg mr-3">
-                          <Users className="h-5 w-5" />
+                          <div className="w-5 h-5 bg-gradient-to-br from-blue-200 to-cyan-200 rounded-full flex items-center justify-center">
+                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                          </div>
                         </div>
                         <div className="text-left">
                           <div className="font-semibold">I'm a Customer</div>
                           <div className="text-sm text-purple-100">Discover & earn rewards</div>
                         </div>
-                        <ArrowRight className="h-4 w-4 ml-auto" />
+                        <div className="w-4 h-4 ml-auto">
+                          <div className="w-full h-full bg-white/30 rounded-full"></div>
+                        </div>
                       </div>
                     </Button>
                     
                     <Button 
-                      onClick={() => window.location.href = '/merchant'}
+                      onClick={() => window.location.href = '/merchant-bento'}
                       className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                       variant="outline"
                     >
                       <div className="flex items-center w-full">
                         <div className="bg-white/20 p-2 rounded-lg mr-3">
-                          <Store className="h-5 w-5" />
+                          <div className="w-5 h-5 bg-gradient-to-br from-orange-200 to-yellow-200 rounded-lg flex items-center justify-center">
+                            <div className="w-2 h-2 bg-orange-600 rounded"></div>
+                          </div>
                         </div>
                         <div className="text-left">
                           <div className="font-semibold">I'm a Business</div>
                           <div className="text-sm text-purple-100">Attract more customers</div>
                         </div>
-                        <ArrowRight className="h-4 w-4 ml-auto" />
+                        <div className="w-4 h-4 ml-auto">
+                          <div className="w-full h-full bg-white/30 rounded-full"></div>
+                        </div>
                       </div>
                     </Button>
                   </div>
@@ -134,7 +164,9 @@ export default function HomeBento() {
                       <div className="px-4 py-3">
                         <div className="text-center mb-4">
                           <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-3 animate-pulse">
-                            <Gift className="text-white h-8 w-8" />
+                            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                              <div className="w-4 h-4 bg-gradient-to-br from-green-500 to-blue-500 rounded-full"></div>
+                            </div>
                           </div>
                           <h3 className="text-lg font-bold text-gray-800 mb-1">Reward Unlocked!</h3>
                           <p className="text-gray-600 text-sm">Joe's Coffee Shop</p>
@@ -147,7 +179,9 @@ export default function HomeBento() {
                               <h4 className="text-base font-semibold">Free Coffee</h4>
                               <p className="text-purple-100 text-sm">Today Only</p>
                             </div>
-                            <div className="text-2xl">☕</div>
+                            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                              <div className="text-lg">☕</div>
+                            </div>
                           </div>
                           <div className="flex items-center text-sm">
                             <span className="bg-white/20 px-2 py-1 rounded text-xs mr-2">+150 pts</span>
@@ -178,159 +212,181 @@ export default function HomeBento() {
           <Card className="md:col-span-3 lg:col-span-3 md:row-span-2 bg-gradient-to-br from-green-500 to-emerald-600 border-0 text-white">
             <CardContent className="p-6 h-full flex flex-col">
               <div className="flex items-center justify-between mb-4">
-                <TrendingUp className="h-8 w-8 text-green-100" />
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                  <div className="w-4 h-4 bg-green-200 rounded"></div>
+                </div>
                 <Badge className="bg-white/20 text-white border-white/30">Growing Fast</Badge>
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-medium text-green-100 mb-6">Platform Impact</h3>
-                
-                <div className="space-y-6">
-                  <div>
-                    <div className="text-3xl font-bold mb-1">{stats.businesses}</div>
-                    <div className="text-green-100 text-sm">Active Businesses</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-3xl font-bold mb-1">{stats.customers}</div>
-                    <div className="text-green-100 text-sm">Happy Customers</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-3xl font-bold mb-1">{stats.rewards}</div>
-                    <div className="text-green-100 text-sm">Rewards Claimed</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-3xl font-bold mb-1">{stats.cities}</div>
-                    <div className="text-green-100 text-sm">Cities & Growing</div>
-                  </div>
+              <h3 className="text-2xl font-bold mb-2">Platform Growth</h3>
+              <p className="text-green-100 mb-6 flex-1">Real numbers from our growing community of businesses and customers</p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <div className="text-3xl font-bold mb-1">{stats.businesses}</div>
+                  <div className="text-green-100 text-sm">Active Businesses</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold mb-1">{stats.customers}</div>
+                  <div className="text-green-100 text-sm">Happy Customers</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold mb-1">{stats.rewards}</div>
+                  <div className="text-green-100 text-sm">Rewards Claimed</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold mb-1">{stats.cities}</div>
+                  <div className="text-green-100 text-sm">Cities Covered</div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Feature Blocks */}
-          {features.map((feature, idx) => {
-            const Icon = feature.icon;
-            return (
-              <Card key={idx} className={`md:col-span-2 lg:col-span-${idx === 1 ? '3' : '2'} bg-gradient-to-br ${feature.gradient} border-0 text-white overflow-hidden relative`}>
-                <div className="absolute top-2 right-2 text-4xl opacity-20">
-                  {feature.pattern}
-                </div>
-                <CardContent className="p-6 relative z-10">
-                  <Icon className="h-8 w-8 mb-4 text-white" />
-                  <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
-                  <p className="text-white/90 text-sm">{feature.description}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
-
-
-
-          {/* Success Stories */}
-          <Card className="md:col-span-3 lg:col-span-4 bg-gradient-to-br from-orange-500 to-red-500 border-0 text-white">
+          {/* Feature Showcase - Wide Block */}
+          <Card className="md:col-span-6 lg:col-span-5 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Success Stories</h3>
-                <Crown className="h-6 w-6 text-orange-100" />
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold mb-2 text-gray-900 dark:text-gray-100">How It Works</h3>
+                <p className="text-gray-600 dark:text-gray-400">Three simple steps to start your local discovery adventure</p>
               </div>
               
-              <div className="space-y-4">
-                <div className="bg-white/10 rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="h-4 w-4 text-yellow-300 fill-current" />
-                      ))}
-                    </div>
-                    <span className="ml-2 text-sm text-orange-100">Joe's Coffee</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {features.map((feature, index) => (
+                  <div key={index} className="text-center p-4">
+                    {feature.visual}
+                    <h4 className="font-semibold text-lg mb-2 mt-4 text-gray-900 dark:text-gray-100">{feature.title}</h4>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm">{feature.description}</p>
                   </div>
-                  <p className="text-sm text-orange-100">"Customer visits increased 40% in just 2 months!"</p>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Gamification Highlight - Medium Block */}
+          <Card className="md:col-span-3 lg:col-span-3 bg-gradient-to-br from-orange-500 to-red-500 border-0 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                  <div className="w-4 h-4 bg-orange-200 rounded-full"></div>
                 </div>
-                
-                <div className="bg-white/10 rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="h-4 w-4 text-yellow-300 fill-current" />
-                      ))}
-                    </div>
-                    <span className="ml-2 text-sm text-orange-100">Tech Store Plus</span>
-                  </div>
-                  <p className="text-sm text-orange-100">"Best marketing tool we've ever used. ROI is incredible."</p>
+                <Badge className="bg-white/20 text-white border-white/30">Addictive</Badge>
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Gamified Rewards</h3>
+              <p className="text-orange-100 mb-4">Collect points, unlock achievements, and compete with friends while discovering amazing local businesses.</p>
+              <div className="space-y-2">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></div>
+                  <span className="text-sm text-orange-100">Daily challenges & quests</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></div>
+                  <span className="text-sm text-orange-100">Level progression system</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></div>
+                  <span className="text-sm text-orange-100">Exclusive member rewards</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Quick Links */}
-          <Card 
-            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors cursor-pointer"
-            onClick={() => window.location.href = '/trial-discount'}
-          >
-            <CardContent className="p-6 text-center">
-              <Gift className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-              <h3 className="font-medium text-gray-900 dark:text-white mb-1">Pricing</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-xs">Simple & transparent</p>
+          {/* Social Proof - Medium Block */}
+          <Card className="md:col-span-3 lg:col-span-3 bg-gradient-to-br from-pink-500 to-purple-600 border-0 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                  <div className="w-4 h-4 bg-pink-200 rounded-full animate-pulse"></div>
+                </div>
+                <Badge className="bg-white/20 text-white border-white/30">Community Love</Badge>
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Join the Movement</h3>
+              <p className="text-pink-100 mb-4">Thousands of businesses and customers are already part of the Cirqlback community.</p>
+              <div className="space-y-3">
+                <div className="bg-white/10 rounded-lg p-3">
+                  <div className="flex items-center mb-2">
+                    <div className="flex space-x-1 mr-2">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                      ))}
+                    </div>
+                    <span className="text-sm font-semibold">Sarah M.</span>
+                  </div>
+                  <p className="text-pink-100 text-sm">"Love discovering new places and earning rewards!"</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          <Card 
-            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors cursor-pointer"
-            onClick={() => window.location.href = '/help-center'}
-          >
-            <CardContent className="p-6 text-center">
-              <Heart className="h-6 w-6 text-red-600 mx-auto mb-2" />
-              <h3 className="font-medium text-gray-900 dark:text-white mb-1">Support</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-xs">We're here to help</p>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors cursor-pointer"
-            onClick={() => window.location.href = '/platform'}
-          >
-            <CardContent className="p-6 text-center">
-              <Zap className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
-              <h3 className="font-medium text-gray-900 dark:text-white mb-1">API</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-xs">Developer resources</p>
-            </CardContent>
-          </Card>
-
-        </div>
-
-        {/* Bottom CTA */}
-        <div className="text-center">
-          <Card className="max-w-4xl mx-auto bg-gradient-to-r from-indigo-600 to-purple-600 border-0 text-white">
-            <CardContent className="p-8">
-              <h2 className="text-3xl font-bold mb-4">Ready to Transform Your Business?</h2>
-              <p className="text-indigo-100 text-lg mb-6">
-                Join the revolution in local discovery. Start creating addictive customer experiences today.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          {/* Quick Start - Medium Block */}
+          <Card className="md:col-span-6 lg:col-span-5 bg-gradient-to-br from-blue-500 to-cyan-600 border-0 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-2xl font-bold mb-2">Ready to Explore?</h3>
+                  <p className="text-blue-100 text-lg">Start your local discovery adventure today - it's completely free!</p>
+                </div>
+                <div className="hidden md:block w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                  <div className="w-8 h-8 bg-yellow-400 rounded-full animate-bounce"></div>
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Button 
-                  size="lg"
-                  style={{ backgroundColor: 'white', color: 'black', fontWeight: 'bold' }}
-                  className="hover:bg-gray-50 shadow-lg border-2 border-gray-300"
-                  onClick={() => window.location.href = '/merchant'}
+                  onClick={() => window.location.href = '/customer-bento'}
+                  className="flex-1 bg-white text-blue-600 hover:bg-blue-50 font-semibold py-3"
                 >
-                  <span style={{ color: 'black', fontWeight: 'bold' }}>Start Free Trial</span>
-                  <ArrowRight className="h-5 w-5 ml-2" style={{ color: 'black' }} />
+                  Start Discovering
+                  <div className="w-4 h-4 ml-2">
+                    <div className="w-full h-full bg-blue-600 rounded-full"></div>
+                  </div>
                 </Button>
                 <Button 
-                  size="lg"
+                  onClick={() => window.location.href = '/merchant-bento'}
                   variant="outline"
-                  className="border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold transition-all"
-                  onClick={() => window.location.href = '/how-it-works'}
+                  className="flex-1 border-white text-white hover:bg-white/10 font-semibold py-3"
                 >
-                  Learn More
+                  List Your Business
+                  <div className="w-4 h-4 ml-2">
+                    <div className="w-full h-full bg-white rounded"></div>
+                  </div>
                 </Button>
               </div>
             </CardContent>
           </Card>
+
         </div>
 
+        {/* Navigation Footer */}
+        <div className="text-center">
+          <div className="flex justify-center space-x-4 mb-4">
+            <Button 
+              onClick={() => window.location.href = '/about'}
+              variant="outline" 
+              size="sm"
+              className="bg-white/50 backdrop-blur-sm"
+            >
+              About Cirqlback
+            </Button>
+            <Button 
+              onClick={() => window.location.href = '/how-it-works'}
+              variant="outline" 
+              size="sm"
+              className="bg-white/50 backdrop-blur-sm"
+            >
+              How It Works
+            </Button>
+            <Button 
+              onClick={() => window.location.href = '/contact'}
+              variant="outline" 
+              size="sm"
+              className="bg-white/50 backdrop-blur-sm"
+            >
+              Get Started
+            </Button>
+          </div>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">
+            © 2024 Cirqlback. Making local discovery addictively fun.
+          </p>
+        </div>
       </div>
     </div>
   );
