@@ -44,14 +44,34 @@ export default function HomeBento() {
       <div className="container max-w-7xl mx-auto px-4 py-8">
         
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="mb-6"></div>
-          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent mb-6">
-            Cirqlback
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 mb-8 max-w-3xl mx-auto">
-            Turn every business visit into an adventure. Like Pokemon Go for local businesses - tap, collect, compete, and earn real rewards.
-          </p>
+        <div className="relative text-center mb-12">
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-50 via-pink-50 to-orange-50 dark:from-purple-950/20 dark:via-pink-950/20 dark:to-orange-950/20 rounded-3xl"></div>
+          <div className="absolute top-4 left-8 w-20 h-20 bg-gradient-to-br from-purple-200 to-pink-200 dark:from-purple-800 dark:to-pink-800 rounded-full opacity-60"></div>
+          <div className="absolute top-16 right-12 w-16 h-16 bg-gradient-to-br from-orange-200 to-yellow-200 dark:from-orange-800 dark:to-yellow-800 rounded-full opacity-40"></div>
+          <div className="absolute bottom-8 left-16 w-12 h-12 bg-gradient-to-br from-blue-200 to-cyan-200 dark:from-blue-800 dark:to-cyan-800 rounded-full opacity-50"></div>
+          <div className="absolute bottom-4 right-8 w-14 h-14 bg-gradient-to-br from-green-200 to-emerald-200 dark:from-green-800 dark:to-emerald-800 rounded-full opacity-45"></div>
+          
+          <div className="relative z-10 py-16 px-8">
+            <div className="mb-8">
+              <span className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-full text-sm font-medium mb-4">
+                ✨ The Addictive Local Discovery Platform
+              </span>
+            </div>
+            <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent mb-6 leading-tight">
+              Cirqlback
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-8 max-w-4xl mx-auto leading-relaxed">
+              Turn every business visit into an adventure. Like Pokemon Go for local businesses - 
+              <span className="font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"> tap, collect, compete, and earn real rewards.</span>
+            </p>
+            
+            <div className="flex flex-wrap justify-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <span className="bg-white/60 dark:bg-gray-800/60 px-3 py-1 rounded-full border border-purple-200 dark:border-purple-700">🎮 Gamified</span>
+              <span className="bg-white/60 dark:bg-gray-800/60 px-3 py-1 rounded-full border border-pink-200 dark:border-pink-700">🏆 Competitive</span>
+              <span className="bg-white/60 dark:bg-gray-800/60 px-3 py-1 rounded-full border border-orange-200 dark:border-orange-700">💎 Rewarding</span>
+              <span className="bg-white/60 dark:bg-gray-800/60 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-700">🚀 Addictive</span>
+            </div>
+          </div>
         </div>
 
         {/* Bento Grid Layout */}
