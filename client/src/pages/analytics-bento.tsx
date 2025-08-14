@@ -43,19 +43,19 @@ export default function AnalyticsBento() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" className="text-white">
+              <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-100">
                 <Filter className="w-4 h-4 mr-2" />
                 Filter
               </Button>
-              <Button variant="outline" size="sm" className="text-white">
+              <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-100">
                 <Download className="w-4 h-4 mr-2" />
                 Export
               </Button>
               <Button 
-                onClick={() => window.location.href = '/analytics'}
+                onClick={() => window.location.href = '/analytics-classic'}
                 variant="outline" 
                 size="sm" 
-                className="text-white"
+                className="border-gray-300 text-gray-700 hover:bg-gray-100"
               >
                 Classic View
               </Button>

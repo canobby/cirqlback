@@ -38,9 +38,9 @@ export default function MerchantBento() {
             </div>
             <div className="flex items-center gap-3">
               <Button 
-                onClick={() => window.location.href = '/merchant'}
+                onClick={() => window.location.href = '/merchant-classic'}
                 variant="outline"
-                className="text-white"
+                className="border-gray-300 text-gray-700 hover:bg-gray-100"
               >
                 Classic View
               </Button>

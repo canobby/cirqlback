@@ -12,14 +12,16 @@ Color Palette: Comprehensive design system based on new logo gradient colors - p
 **Locked-In Features**: All confirmed features, changes, and billing items are documented in LOCKED_IN_FEATURES_LIST.md and must not be forgotten or overlooked in future development.
 **Latest Updates**: Successfully resolved Real Data input system crashes and database integration issues. Fixed UUID generation, data type mismatches, and API validation. Real sales data input now works seamlessly with proper ROI calculations and comparison analytics. Platform ready for production use with stable form handling and reliable data persistence.
 
-**COMPREHENSIVE BENTO GRID TRANSFORMATION**: Implemented modern Bento Grid layouts with bold blocks across the entire platform. Created visually intuitive interfaces for all major sections:
-- Merchant Dashboard (/merchant-bento) - Bold gradient blocks for business management
-- Campaign Setup (/campaign-setup-bento) - Visual campaign creation with step-by-step guidance  
-- Customer Hub (/customer-bento) - Gamified discovery interface with achievement tracking
-- Analytics Dashboard (/analytics-bento) - Real-time business intelligence with visual data blocks
-- Homepage (/home-bento) - Modern landing page showcasing platform capabilities
+**PLATFORM-WIDE BENTO GRID TRANSFORMATION**: Bento Grid design is now the primary interface throughout the entire platform. Implemented modern visual layouts with bold blocks across all major sections:
+- Homepage (/) - Modern Bento Grid landing page (classic available at /home-classic)
+- Customer Hub (/customer) - Gamified Bento interface (classic at /customer-classic)
+- Merchant Dashboard (/merchant) - Bold gradient business management blocks (classic at /merchant-classic)
+- Analytics Dashboard (/analytics) - Real-time business intelligence Bento layout (classic at /analytics-classic)
+- Discovery Map (/map) - Interactive location-based Bento design (classic at /map-classic)
+- Campaign Setup (/campaign-setup-wizard) - Visual campaign creation Bento interface
+- NFC Setup (/nfc-setup-wizard) - Streamlined tag programming Bento layout
 
-The Bento Grid system features responsive layouts, gradient backgrounds from our color palette (purple, pink, orange, blue, green), visual depth with shadows and animations, large touch-friendly interactive areas, and seamless navigation between classic and Bento versions. Users can switch between interfaces using "Try Bento Layout" and "Classic View" buttons throughout the platform.
+The Bento Grid system features responsive layouts, gradient backgrounds from our color palette (purple, pink, orange, blue, green), visual depth with shadows and animations, large touch-friendly interactive areas, and maintains classic alternatives. Users can access classic versions via "Classic View" buttons, but Bento is the primary experience showcasing modern visual design and intuitive navigation.
 
 **Complete Bento Grid Ecosystem Implemented:**
 - /merchant-bento - Business management dashboard with bold gradient blocks

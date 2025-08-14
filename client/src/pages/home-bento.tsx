@@ -51,10 +51,10 @@ export default function HomeBento() {
               The Future of Local Discovery
             </Badge>
             <Button 
-              onClick={() => window.location.href = '/'}
+              onClick={() => window.location.href = '/home-classic'}
               variant="outline"
               size="sm"
-              className="text-white"
+              className="text-gray-700 border-gray-300 hover:bg-gray-100"
             >
               Classic View
             </Button>
@@ -99,7 +99,7 @@ export default function HomeBento() {
                     </Button>
                     
                     <Button 
-                      onClick={() => window.location.href = '/merchant-bento'}
+                      onClick={() => window.location.href = '/merchant'}
                       className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                       variant="outline"
                     >
