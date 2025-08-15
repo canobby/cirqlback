@@ -39,8 +39,21 @@ export default function MapBento() {
 
     setLoadingLocation(true);
     
+    // Set a maximum timeout of 5 seconds
+    const timeoutId = setTimeout(() => {
+      setLocationPermission('denied');
+      setLoadingLocation(false);
+      loadMockBusinesses();
+      toast({
+        title: "Location Timeout",
+        description: "Location request timed out. Using default area.",
+        variant: "destructive"
+      });
+    }, 5000);
+    
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        clearTimeout(timeoutId);
         const { latitude, longitude } = position.coords;
         setUserLocation({ lat: latitude, lng: longitude });
         setLocationPermission('granted');
@@ -52,17 +65,35 @@ export default function MapBento() {
         });
       },
       (error) => {
+        clearTimeout(timeoutId);
         console.error('Geolocation error:', error);
         setLocationPermission('denied');
         setLoadingLocation(false);
         loadMockBusinesses();
+        
+        let errorMessage = "Using default area for business discovery";
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied. Using default area.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location unavailable. Using default area.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out. Using default area.";
+            break;
+          default:
+            errorMessage = "Location error. Using default area.";
+            break;
+        }
+        
         toast({
-          title: "Location Access Denied",
-          description: "Using default area for business discovery",
+          title: "Location Access Issue",
+          description: errorMessage,
           variant: "destructive"
         });
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 600000 }
+      { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
     );
   };
 
@@ -137,7 +168,7 @@ export default function MapBento() {
     const mockBusinesses = [
       {
         id: 1,
-        name: "Sample Coffee Shop",
+        name: "Local Coffee Roasters",
         category: "Coffee",
         distance: 0.2,
         rating: 4.8,
@@ -145,11 +176,11 @@ export default function MapBento() {
         isOpen: true,
         gradient: "from-orange-500 to-amber-500",
         icon: Coffee,
-        address: "Sample Location"
+        address: "Downtown Area"
       },
       {
         id: 2,
-        name: "Sample Tech Store",
+        name: "Downtown Electronics",
         category: "Electronics",
         distance: 0.4,
         rating: 4.6,
@@ -157,7 +188,31 @@ export default function MapBento() {
         isOpen: true,
         gradient: "from-blue-500 to-cyan-500",
         icon: Smartphone,
-        address: "Sample Location"
+        address: "Main Street"
+      },
+      {
+        id: 3,
+        name: "Family Pizza House",
+        category: "Food",
+        distance: 0.6,
+        rating: 4.7,
+        activeRewards: 4,
+        isOpen: false,
+        gradient: "from-red-500 to-pink-500",
+        icon: Utensils,
+        address: "Food District"
+      },
+      {
+        id: 4,
+        name: "Green Smoothie Bar",
+        category: "Food",
+        distance: 0.3,
+        rating: 4.5,
+        activeRewards: 2,
+        isOpen: true,
+        gradient: "from-green-500 to-emerald-500",
+        icon: Utensils,
+        address: "Health Quarter"
       }
     ];
     setNearbyBusinesses(mockBusinesses);
@@ -295,28 +350,30 @@ export default function MapBento() {
                   </div>
                 )}
                 
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {loadingLocation ? (
-                    <div className="text-center">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-white" />
-                      <p className="text-green-100 text-sm">Finding your location...</p>
-                    </div>
-                  ) : locationPermission === 'denied' ? (
-                    <div className="text-center">
-                      <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <MapPin className="h-6 w-6" />
+                {nearbyBusinesses.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {loadingLocation ? (
+                      <div className="text-center">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-white" />
+                        <p className="text-green-100 text-sm">Finding your location...</p>
                       </div>
-                      <p className="text-green-100 text-sm">Sample area view</p>
-                    </div>
-                  ) : (
-                    <div className="text-center">
-                      <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <Navigation className="h-6 w-6" />
+                    ) : locationPermission === 'denied' ? (
+                      <div className="text-center">
+                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                          <MapPin className="h-6 w-6" />
+                        </div>
+                        <p className="text-green-100 text-sm">Default area view</p>
                       </div>
-                      <p className="text-green-100 text-sm">Live location map</p>
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      <div className="text-center">
+                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                          <Navigation className="h-6 w-6" />
+                        </div>
+                        <p className="text-green-100 text-sm">Live location map</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               
               <div className="flex justify-between items-center mt-4">
