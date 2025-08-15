@@ -66,14 +66,11 @@ export const users = pgTable("users", {
   favoriteBusinessTypes: text("favorite_business_types").array().default(sql`'{}'`),
   visitFrequency: varchar("visit_frequency"),
   averageSpendRange: varchar("average_spend_range"),
-  // AR Avatar & Gamification
-  avatarId: varchar("avatar_id"),
-  avatarLevel: integer("avatar_level").default(1),
-  avatarExperience: integer("avatar_experience").default(0),
-  avatarSkills: jsonb("avatar_skills").default(sql`'{}'`), // cooking, fitness, art, social, explorer
-  avatarBadges: text("avatar_badges").array().default(sql`'{}'`),
-  avatarInventory: jsonb("avatar_inventory").default(sql`'{}'`), // collected items, power-ups
-  avatarAchievements: jsonb("avatar_achievements").default(sql`'{}'`),
+  // Basic Gamification
+  rewardPoints: integer("reward_points").default(0),
+  customerLevel: integer("customer_level").default(1),
+  totalVisits: integer("total_visits").default(0),
+  badges: text("badges").array().default(sql`'{}'`),
   currentStreak: integer("current_streak").default(0),
   longestStreak: integer("longest_streak").default(0),
   teamId: varchar("team_id"),

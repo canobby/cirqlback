@@ -34,7 +34,7 @@ export default function Customer() {
             </Button>
           </div>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Join team challenges, explore AR treasure hunts, earn exponential viral rewards, discover AI-powered cross-business partnerships with reward cost-sharing, and unlock personalized experiences across multiple merchant locations!
+            Join team challenges, earn exponential viral rewards, discover AI-powered cross-business partnerships with reward cost-sharing, and unlock personalized experiences across multiple merchant locations!
           </p>
         </div>
 
@@ -157,13 +157,13 @@ export default function Customer() {
                 <CardContent>
                   <div className="text-center space-y-4">
                     <div className="text-2xl">🎮</div>
-                    <p className="text-gray-600">Access your AR Avatar and team challenges</p>
+                    <p className="text-gray-600">Access your rewards profile and team challenges</p>
                     <Button 
                       className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                      onClick={() => window.location.href = '/ar-hub'}
+                      onClick={() => window.location.href = '/customer-bento'}
                     >
                       <Zap className="h-4 w-4 mr-2" />
-                      Launch AR Hub
+                      Launch Rewards Hub
                     </Button>
                   </div>
                 </CardContent>

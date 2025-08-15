@@ -185,9 +185,9 @@ export default function ProfileSetup() {
     "Customer Relationship Management (CRM)", "Inventory Management", "Accounting Software", "Analytics Tools"
   ];
 
-  const arCampaignTypeOptions = [
-    "Virtual Try-On", "Interactive Product Demos", "Location-Based Rewards", "Gamified Experiences", 
-    "Virtual Store Tours", "AR Treasure Hunts", "3D Product Visualization", "Educational Content"
+  const digitalCampaignTypeOptions = [
+    "Location-Based Rewards", "Gamified Experiences", "Interactive Product Demos", 
+    "Virtual Store Tours", "Educational Content", "Social Media Integration"
   ];
 
   const rewardTypeOptions = [
@@ -206,7 +206,7 @@ export default function ProfileSetup() {
     "Build Customer Loyalty",
     "Improve Online Presence",
     "Cross-Business Partnerships",
-    "AR Gaming Integration",
+    "Social Gaming Integration",
     "Team Challenge Events",
     "Viral Campaign Growth"
   ];

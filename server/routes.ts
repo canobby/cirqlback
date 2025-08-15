@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { registerARGameRoutes } from "./ar-game-routes";
+
 import { storage } from "./storage";
 import { db } from "./db";
 import { adminUsers, adminCommunications, adminTrainingProgress, adminTrainingModules, adminKnowledgeItems } from "@shared/schema";
@@ -3196,8 +3196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Register AR Game routes
-  registerARGameRoutes(app);
+
 
   // AI-POWERED FEATURES ROUTES
 

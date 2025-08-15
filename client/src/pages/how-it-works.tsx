@@ -26,26 +26,26 @@ export default function HowItWorksPage() {
     {
       icon: <Smartphone className="h-8 w-8" />,
       title: "Discover AI-Enhanced Business Network",
-      description: "Find businesses with predictive analytics, cross-partnerships, AR adventures, and complete digital presence",
-      details: "Each business offers AI-powered customer intelligence, partnership rewards, city-wide AR treasure hunts, team challenges, and comprehensive websites"
+      description: "Find businesses with predictive analytics, cross-partnerships, and complete digital presence",
+      details: "Each business offers AI-powered customer intelligence, partnership rewards, team challenges, and comprehensive websites"
     },
     {
       icon: <Zap className="h-8 w-8" />,
       title: "Tap for AI-Powered Experiences",
-      description: "One tap unlocks predictive rewards, cross-business benefits, AR treasure hunts, team challenges, and viral campaigns",
-      details: "Instantly access AI-enhanced rewards, partnership networks, immersive AR adventures, exponential referral multipliers, and comprehensive business platforms"
+      description: "One tap unlocks predictive rewards, cross-business benefits, team challenges, and viral campaigns",
+      details: "Instantly access AI-enhanced rewards, partnership networks, exponential referral multipliers, and comprehensive business platforms"
     },
     {
       icon: <Gift className="h-8 w-8" />,
       title: "Advanced Team & Viral Growth",
-      description: "Form teams, compete in city-wide AR adventures, earn exponential referral rewards, and drive community engagement",
-      details: "Every tap contributes to team challenges, unlocks AR treasure hunt clues, multiplies viral referral rewards, and builds cross-business partnerships"
+      description: "Form teams, compete in challenges, earn exponential referral rewards, and drive community engagement",
+      details: "Every tap contributes to team challenges, multiplies viral referral rewards, and builds cross-business partnerships"
     },
     {
       icon: <Crown className="h-8 w-8" />,
       title: "Build Your Legacy",
-      description: "Advance through loyalty tiers while building your AR avatar and team ranking",
-      details: "Unlock exclusive business content, AR abilities, team leadership roles, and platform-wide recognition"
+      description: "Advance through loyalty tiers while building your profile and team ranking",
+      details: "Unlock exclusive business content, team leadership roles, and platform-wide recognition"
     }
   ];
 
@@ -53,22 +53,22 @@ export default function HowItWorksPage() {
     {
       icon: <TrendingUp className="h-6 w-6 text-green-500" />,
       title: "AI-Powered Business Intelligence",
-      description: "Get predictive customer analytics, AI partnership recommendations, multi-merchant reward pools with cost-sharing, AR treasure hunts, viral campaigns, complete websites, and automated growth optimization"
+      description: "Get predictive customer analytics, AI partnership recommendations, multi-merchant reward pools with cost-sharing, viral campaigns, complete websites, and automated growth optimization"
     },
     {
       icon: <Users className="h-6 w-6 text-blue-500" />,
       title: "Comprehensive Ecosystem Integration", 
-      description: "Connect AI-powered analytics, smart business partnerships with compatibility scoring, multi-merchant reward cost-sharing pools, AR adventures, team competitions, viral growth mechanics, and complete digital presence seamlessly"
+      description: "Connect AI-powered analytics, smart business partnerships with compatibility scoring, multi-merchant reward cost-sharing pools, team competitions, viral growth mechanics, and complete digital presence seamlessly"
     },
     {
       icon: <Target className="h-6 w-6 text-purple-500" />,
       title: "Predictive Business Intelligence",
-      description: "Monitor customer health scoring, churn prediction, partnership revenue, AR engagement, team challenges, viral campaign performance, and cross-platform analytics"
+      description: "Monitor customer health scoring, churn prediction, partnership revenue, team challenges, viral campaign performance, and cross-platform analytics"
     },
     {
       icon: <Sparkles className="h-6 w-6 text-orange-500" />,
       title: "Revolutionary Unified Platform",
-      description: "The most comprehensive local business ecosystem available: AI-powered customer intelligence, cross-business partnership networks, AR treasure hunt adventures, multi-tier team challenges, exponential viral growth mechanics, complete website platforms, and predictive business optimization - a unified system no competitor can replicate piece by piece"
+      description: "The most comprehensive local business ecosystem available: AI-powered customer intelligence, cross-business partnership networks, multi-tier team challenges, exponential viral growth mechanics, complete website platforms, and predictive business optimization - a unified system no competitor can replicate piece by piece"
     }
   ];
 

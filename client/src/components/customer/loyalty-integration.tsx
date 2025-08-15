@@ -107,7 +107,7 @@ export default function LoyaltyIntegration() {
         title: "Morning Boost Challenge",
         distance: "0.2 miles",
         points: 75,
-        type: "ar_game"
+        type: "tap_challenge"
       },
       {
         id: "2",

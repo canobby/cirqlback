@@ -545,23 +545,23 @@ export default function ViralCommunityHub() {
                   ))}
                 </div>
 
-                {/* AR Challenge Prompts */}
+                {/* Weekly Social Challenge */}
                 <div className="mt-8 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="font-semibold text-purple-800">Weekly AR Challenge</h3>
-                      <p className="text-sm text-purple-600">Create viral AR content and win prizes!</p>
+                      <h3 className="font-semibold text-purple-800">Weekly Social Challenge</h3>
+                      <p className="text-sm text-purple-600">Create viral content and win prizes!</p>
                     </div>
                     <Video className="h-8 w-8 text-purple-500" />
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center space-x-3">
                       <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                      <span className="text-sm text-purple-700">Record an AR experience at 3 different businesses</span>
+                      <span className="text-sm text-purple-700">Visit and review 3 different businesses</span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                      <span className="text-sm text-purple-700">Share to Instagram with #CirqlbackAR hashtag</span>
+                      <span className="text-sm text-purple-700">Share to Instagram with #CirqlbackRewards hashtag</span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
@@ -569,7 +569,7 @@ export default function ViralCommunityHub() {
                     </div>
                   </div>
                   <Button className="mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-                    Start AR Challenge
+                    Start Social Challenge
                   </Button>
                 </div>
               </CardContent>

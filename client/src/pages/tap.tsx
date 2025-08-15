@@ -166,30 +166,7 @@ export default function TapPage() {
                 </div>
               </div>
               
-              {/* AR Features Preview */}
-              {tagInfo.campaign.arEnabled && (
-                <div className="mt-4 p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg border border-purple-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Camera className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm font-medium text-purple-700">AR Experience Enabled</span>
-                    </div>
-                    <Sparkles className="h-4 w-4 text-pink-500 animate-pulse" />
-                  </div>
-                  <p className="text-xs text-purple-600 mb-2">
-                    Tap to unlock an immersive augmented reality reward experience!
-                  </p>
-                  {tagInfo.campaign.collectibles && (
-                    <div className="flex flex-wrap gap-1">
-                      {tagInfo.campaign.collectibles.map((collectible: string, i: number) => (
-                        <Badge key={i} variant="outline" className="text-xs bg-purple-50 border-purple-200">
-                          {collectible}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+
             </CardContent>
           </Card>
         )}

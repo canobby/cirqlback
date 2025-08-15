@@ -39,7 +39,7 @@ const platformSections = [
       { path: "/ai-insights", name: "AI Business Intelligence", icon: BarChart3, description: "Customer health scoring, predictive pricing, and market intelligence" },
       { path: "/partnerships", name: "Smart Business Partnerships", icon: Users, description: "AI-powered partnership recommendations with compatibility scoring and campaign collaboration" },
       { path: "/team-challenges", name: "Team Challenges", icon: Zap, description: "Multi-tier team system with corporate integration and social gamification" },
-      { path: "/ar-treasure-hunts", name: "AR Treasure Hunts", icon: Zap, description: "City-wide AR adventures with immersive storytelling and achievement rewards" },
+
       { path: "/viral-campaigns", name: "Viral Growth Engine", icon: Zap, description: "Exponential referral systems with social proof automation and network effects" },
     ]
   },

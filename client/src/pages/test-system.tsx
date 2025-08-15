@@ -493,10 +493,10 @@ export default function TestSystem() {
                           <div>Community</div>
                         </div>
                       </Button>
-                      <Button onClick={() => window.location.href = '/ar-game-hub'} variant="outline" className="h-20">
+                      <Button onClick={() => window.location.href = '/team-challenges'} variant="outline" className="h-20">
                         <div className="text-center">
                           <Play className="h-6 w-6 mx-auto mb-1" />
-                          <div>AR Games</div>
+                          <div>Team Challenges</div>
                         </div>
                       </Button>
                     </div>

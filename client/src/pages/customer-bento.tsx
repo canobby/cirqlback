@@ -239,7 +239,7 @@ export default function CustomerBento() {
                 
                 <div className="bg-white/10 rounded-lg p-3">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium">Share 1 AR experience</span>
+                    <span className="text-sm font-medium">Share 1 business review</span>
                     <span className="text-xs bg-green-400 text-green-800 px-2 py-1 rounded">Complete</span>
                   </div>
                   <div className="bg-white/20 rounded-full h-2">
