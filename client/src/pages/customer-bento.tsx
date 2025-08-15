@@ -157,19 +157,19 @@ export default function CustomerBento() {
                 {/* Quick Actions */}
                 <div className="space-y-2">
                   <Button 
-                    onClick={() => window.location.href = '/avatar-creator'}
+                    onClick={() => window.location.href = '/profile'}
                     className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white"
                   >
                     <div className="w-4 h-4 mr-2 bg-white/30 rounded-full"></div>
-                    Customize Avatar
+                    Edit Profile
                   </Button>
                   <Button 
-                    onClick={() => window.location.href = '/ar-experience'}
+                    onClick={() => window.location.href = '/settings'}
                     variant="outline" 
                     className="w-full"
                   >
                     <div className="w-4 h-4 mr-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full"></div>
-                    AR Adventures
+                    Account Settings
                   </Button>
                 </div>
               </div>
@@ -316,43 +316,43 @@ export default function CustomerBento() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Button 
-                  onClick={() => window.location.href = '/ar-treasure-hunts'}
+                  onClick={() => window.location.href = '/map-bento'}
                   className="h-20 flex-col gap-2 bg-gradient-to-br from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
                     <div className="w-4 h-4 bg-white rounded-full"></div>
                   </div>
-                  <span className="text-sm">AR Treasure Hunts</span>
+                  <span className="text-sm">Discovery Map</span>
                 </Button>
                 
                 <Button 
-                  onClick={() => window.location.href = '/team-challenges'}
+                  onClick={() => window.location.href = '/nfc-setup-wizard-bento'}
                   className="h-20 flex-col gap-2 bg-gradient-to-br from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
                     <div className="w-4 h-4 bg-white rounded-full"></div>
                   </div>
-                  <span className="text-sm">Team Challenges</span>
+                  <span className="text-sm">Tap & Earn</span>
                 </Button>
                 
                 <Button 
-                  onClick={() => window.location.href = '/viral-campaigns'}
+                  onClick={() => window.location.href = '/analytics-bento'}
                   className="h-20 flex-col gap-2 bg-gradient-to-br from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
                     <div className="w-4 h-4 bg-white rounded-full"></div>
                   </div>
-                  <span className="text-sm">Viral Campaigns</span>
+                  <span className="text-sm">My Progress</span>
                 </Button>
                 
                 <Button 
-                  onClick={() => window.location.href = '/cirql-quest'}
+                  onClick={() => window.location.href = '/checkout'}
                   className="h-20 flex-col gap-2 bg-gradient-to-br from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
                     <div className="w-4 h-4 bg-white rounded-full"></div>
                   </div>
-                  <span className="text-sm">Cirql Quest</span>
+                  <span className="text-sm">Rewards Store</span>
                 </Button>
               </div>
             </CardContent>
