@@ -181,18 +181,11 @@ export default function MapBento() {
   };
 
   const categories = [
-    { id: "all", name: "All", icon: Store, count: nearbyBusinesses.length },
-    { id: "coffee", name: "Coffee", icon: Coffee, count: nearbyBusinesses.filter(b => b.category === 'Coffee').length },
-    { id: "food", name: "Food", icon: Utensils, count: nearbyBusinesses.filter(b => b.category === 'Food').length },
-    { id: "tech", name: "Tech", icon: Smartphone, count: nearbyBusinesses.filter(b => b.category === 'Electronics').length }
+    { id: "all", name: "All", icon: Store, count: 23 },
+    { id: "coffee", name: "Coffee", icon: Coffee, count: 8 },
+    { id: "food", name: "Food", icon: Utensils, count: 12 },
+    { id: "tech", name: "Tech", icon: Smartphone, count: 3 }
   ];
-
-  const filteredBusinesses = selectedCategory === 'all' 
-    ? nearbyBusinesses 
-    : nearbyBusinesses.filter(business => 
-        business.category.toLowerCase() === selectedCategory || 
-        (selectedCategory === 'tech' && business.category === 'Electronics')
-      );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-blue-50/30 dark:from-gray-950 dark:via-green-950/30 dark:to-blue-950/30">
@@ -265,12 +258,12 @@ export default function MapBento() {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-3xl font-bold mb-2">Your Local Area</h2>
-                  <p className="text-green-100">Live location-based discovery of nearby businesses</p>
+                  <p className="text-green-100">Interactive map showing nearby businesses with rewards</p>
                 </div>
                 <MapPin className="h-12 w-12 text-green-100" />
               </div>
               
-              {/* Live Map Area */}
+              {/* Mock Map Area */}
               <div className="h-64 bg-white/10 rounded-lg relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-green-600/20 to-blue-600/20"></div>
                 
@@ -284,7 +277,7 @@ export default function MapBento() {
                       top: `${20 + (index * 15)}%`,
                       left: `${15 + (index * 20)}%`,
                     }}
-                    title={`${business.name} - ${typeof business.distance === 'number' ? formatDistance(business.distance) : business.distance}`}
+                    title={`${business.name} - ${formatDistance(business.distance)}`}
                   />
                 ))}
                 
@@ -306,7 +299,7 @@ export default function MapBento() {
                       <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
                         <MapPin className="h-6 w-6" />
                       </div>
-                      <p className="text-green-100 text-sm">Sample area view</p>
+                      <p className="text-green-100 text-sm">Default area view</p>
                     </div>
                   ) : (
                     <div className="text-center">
@@ -345,7 +338,7 @@ export default function MapBento() {
             <CardContent className="p-6 h-full flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <Target className="h-8 w-8 text-purple-100" />
-                <Badge className="bg-white/20 text-white border-white/30">Live</Badge>
+                <Badge className="bg-white/20 text-white border-white/30">Updated now</Badge>
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-medium text-purple-100 mb-6">Discovery Stats</h3>
@@ -355,7 +348,7 @@ export default function MapBento() {
                     <div className="text-3xl font-bold mb-1">{nearbyBusinesses.length}</div>
                     <div className="text-purple-100 text-sm mb-2">Businesses Nearby</div>
                     <div className="w-full bg-white/20 rounded-full h-2">
-                      <div className="bg-white h-2 rounded-full" style={{ width: `${Math.min(nearbyBusinesses.length * 25, 100)}%` }}></div>
+                      <div className="bg-white h-2 rounded-full" style={{ width: `${Math.min(nearbyBusinesses.length * 10, 100)}%` }}></div>
                     </div>
                   </div>
                   
@@ -385,7 +378,7 @@ export default function MapBento() {
           </Card>
 
           {/* Category Filters */}
-          {categories.map((category) => {
+          {categories.map((category, idx) => {
             const Icon = category.icon;
             return (
               <Card 
@@ -415,12 +408,12 @@ export default function MapBento() {
             <CardHeader>
               <CardTitle className="flex items-center text-gray-900 dark:text-white">
                 <Store className="h-5 w-5 mr-2 text-purple-600" />
-                Live Nearby Businesses
+                Nearby Businesses with Rewards
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredBusinesses.map((business) => {
+                {nearbyBusinesses.map((business) => {
                   const Icon = business.icon;
                   return (
                     <Card key={business.id} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
@@ -436,7 +429,7 @@ export default function MapBento() {
                               <p className="text-sm text-gray-600 dark:text-gray-400">{business.category}</p>
                             </div>
                           </div>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" className="text-white">
                             <Heart className="h-3 w-3" />
                           </Button>
                         </div>
