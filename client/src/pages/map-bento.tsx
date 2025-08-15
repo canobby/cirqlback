@@ -165,6 +165,7 @@ export default function MapBento() {
   };
 
   const loadMockBusinesses = () => {
+    console.log('Loading mock businesses...');
     const mockBusinesses = [
       {
         id: 1,
@@ -215,6 +216,7 @@ export default function MapBento() {
         address: "Health Quarter"
       }
     ];
+    console.log('Setting nearby businesses:', mockBusinesses);
     setNearbyBusinesses(mockBusinesses);
   };
 
@@ -248,6 +250,10 @@ export default function MapBento() {
         business.category.toLowerCase() === selectedCategory || 
         (selectedCategory === 'tech' && business.category === 'Electronics')
       );
+
+  console.log('Nearby businesses:', nearbyBusinesses);
+  console.log('Filtered businesses:', filteredBusinesses);
+  console.log('Selected category:', selectedCategory);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-blue-50/30 dark:from-gray-950 dark:via-green-950/30 dark:to-blue-950/30">
@@ -476,8 +482,15 @@ export default function MapBento() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredBusinesses.map((business) => {
+              {filteredBusinesses.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-500 dark:text-gray-400">
+                    {nearbyBusinesses.length === 0 ? 'Loading businesses...' : 'No businesses match your filters'}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredBusinesses.map((business) => {
                   const Icon = business.icon;
                   return (
                     <Card key={business.id} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
@@ -528,9 +541,10 @@ export default function MapBento() {
                         </Button>
                       </CardContent>
                     </Card>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 
