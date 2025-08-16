@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import SimpleGoogleMapWrapper from "@/components/maps/SimpleGoogleMap";
+import WorkingGoogleMap from "@/components/maps/WorkingGoogleMap";
 import { 
   MapPin, Navigation, Search, Filter, Star, Clock, 
   Gift, Zap, Users, Target, ArrowRight, Heart,
@@ -23,9 +23,15 @@ export default function MapBento() {
   const [isMapFullScreen, setIsMapFullScreen] = useState(false);
   const { toast } = useToast();
   
-  // Initialize with Yakima location instead of trying to get current location first
+  // Initialize with Yakima location once
   useEffect(() => {
-    setYakimaLocation();
+    if (!userLocation) {
+      const yakimaLat = 46.6021;
+      const yakimaLng = -120.5059;
+      setUserLocation({ lat: yakimaLat, lng: yakimaLng });
+      setLocationPermission('granted');
+      loadMockBusinesses(yakimaLat, yakimaLng);
+    }
   }, []);
 
   const getCurrentLocation = async () => {
@@ -412,7 +418,7 @@ export default function MapBento() {
               
               {/* Interactive Google Maps */}
               <div className="h-64 bg-white rounded-lg overflow-hidden shadow-lg">
-                <SimpleGoogleMapWrapper
+                <WorkingGoogleMap
                   businesses={nearbyBusinesses}
                   userLocation={userLocation}
                   onBusinessSelect={(business) => {
