@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ArrowRight, Search, Store, Users, TrendingUp, MapPin, Award, Heart } from "lucide-react";
 import { useLocation } from "wouter";
+import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 
 export default function HomeBento() {
   const [, setLocation] = useLocation();
@@ -107,43 +109,35 @@ export default function HomeBento() {
                   <div className="responsive-button-group">
                     <Button 
                       onClick={() => setLocation('/customer-bento')}
-                      className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
-                      variant="outline"
+                      className="w-full bg-white hover:bg-gray-50 text-gray-900 border-0 h-auto p-4 justify-start rounded-xl font-medium"
+                      variant="default"
                     >
-                      <div className="flex items-center w-full text-white">
-                        <div className="bg-white/20 p-2 rounded-lg mr-3">
-                          <div className="w-5 h-5 bg-gradient-to-br from-blue-200 to-cyan-200 rounded-full flex items-center justify-center">
-                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                          </div>
+                      <div className="flex items-center w-full">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                          <Search className="h-4 w-4 text-blue-600" />
                         </div>
                         <div className="text-left flex-1">
-                          <div className="font-semibold text-white">I'm a Customer</div>
-                          <div className="text-sm text-purple-100">Discover & earn rewards</div>
+                          <div className="font-semibold text-gray-900">I'm a Customer</div>
+                          <div className="text-sm text-gray-600">Discover & earn rewards</div>
                         </div>
-                        <div className="w-4 h-4 ml-auto">
-                          <div className="w-full h-full bg-white/30 rounded-full"></div>
-                        </div>
+                        <ArrowRight className="h-4 w-4 ml-auto text-gray-400" />
                       </div>
                     </Button>
                     
                     <Button 
                       onClick={() => setLocation('/merchant-bento')}
-                      className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
-                      variant="outline"
+                      className="w-full bg-white hover:bg-gray-50 text-gray-900 border-0 h-auto p-4 justify-start rounded-xl font-medium"
+                      variant="default"
                     >
-                      <div className="flex items-center w-full text-white">
-                        <div className="bg-white/20 p-2 rounded-lg mr-3">
-                          <div className="w-5 h-5 bg-gradient-to-br from-orange-200 to-yellow-200 rounded-lg flex items-center justify-center">
-                            <div className="w-2 h-2 bg-orange-600 rounded"></div>
-                          </div>
+                      <div className="flex items-center w-full">
+                        <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                          <Store className="h-4 w-4 text-orange-600" />
                         </div>
                         <div className="text-left flex-1">
-                          <div className="font-semibold text-white">I'm a Business</div>
-                          <div className="text-sm text-purple-100">Attract more customers</div>
+                          <div className="font-semibold text-gray-900">I'm a Business</div>
+                          <div className="text-sm text-gray-600">Attract more customers</div>
                         </div>
-                        <div className="w-4 h-4 ml-auto">
-                          <div className="w-full h-full bg-white/30 rounded-full"></div>
-                        </div>
+                        <ArrowRight className="h-4 w-4 ml-auto text-gray-400" />
                       </div>
                     </Button>
                   </div>
