@@ -47,7 +47,7 @@ declare global {
   }
 }
 
-export default function IOSNFCWriter({ tagData, onWriteComplete }: NFCWriterProps) {
+export default function UniversalNFCWriter({ tagData, onWriteComplete }: NFCWriterProps) {
   const [isSupported, setIsSupported] = useState<boolean | null>(null);
   const [isWriting, setIsWriting] = useState(false);
   const [writeStatus, setWriteStatus] = useState<'idle' | 'writing' | 'success' | 'error'>('idle');
@@ -270,38 +270,29 @@ export default function IOSNFCWriter({ tagData, onWriteComplete }: NFCWriterProp
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <NfcIcon className="h-6 w-6" />
-          Cross-Platform NFC Writer
-          <Badge variant={isSupported ? "default" : "destructive"}>
-            {isSupported ? "Supported" : "Not Supported"}
-          </Badge>
+          Write NFC Tag
+          {isSupported && (
+            <Badge variant="default" className="bg-green-100 text-green-700">
+              Ready
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Device Detection */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Smartphone className="h-8 w-8 mx-auto mb-2 text-gray-600" />
-              <p className="font-medium">{deviceInfo.isIOS ? 'iOS' : deviceInfo.isAndroid ? 'Android' : 'Unknown'}</p>
-              <p className="text-sm text-gray-500">{deviceInfo.browser}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Wifi className="h-8 w-8 mx-auto mb-2 text-gray-600" />
-              <p className="font-medium">NFC Status</p>
+        {/* Simple Status Display */}
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-3">
+            <Smartphone className="h-6 w-6 text-blue-600" />
+            <div>
+              <p className="font-medium">{deviceInfo.isIOS ? 'iOS Device' : deviceInfo.isAndroid ? 'Android Device' : 'Unknown Device'}</p>
               <p className="text-sm text-gray-500">
-                {isSupported === null ? 'Checking...' : isSupported ? 'Available' : 'Not Available'}
+                {isSupported === null ? 'Checking NFC...' : isSupported ? 'NFC Ready' : 'Limited NFC Support'}
               </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Shield className="h-8 w-8 mx-auto mb-2 text-gray-600" />
-              <p className="font-medium">Security</p>
-              <p className="text-sm text-gray-500">HTTPS Required</p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+          <Badge variant={isSupported ? "default" : "secondary"}>
+            {isSupported ? "✓ Ready" : "⚠ Limited"}
+          </Badge>
         </div>
 
         {/* Campaign Info */}
@@ -314,22 +305,34 @@ export default function IOSNFCWriter({ tagData, onWriteComplete }: NFCWriterProp
           </AlertDescription>
         </Alert>
 
-        {/* Instructions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              {instructions.icon}
-              {instructions.title}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ol className="list-decimal list-inside space-y-2">
-              {instructions.steps.map((step, index) => (
-                <li key={index} className="text-sm">{step}</li>
-              ))}
-            </ol>
-          </CardContent>
-        </Card>
+        {/* Simple Instructions */}
+        <div className="p-4 bg-blue-50 rounded-lg">
+          <h3 className="font-medium mb-2 flex items-center gap-2">
+            {instructions.icon}
+            How to Write Your Tag
+          </h3>
+          <div className="text-sm text-gray-700 space-y-1">
+            {deviceInfo.isAndroid && (
+              <>
+                <p>1. Make sure NFC is enabled in your phone settings</p>
+                <p>2. Hold your phone close to the NFC tag</p>
+                <p>3. Tap the "Write to NFC Tag" button below</p>
+                <p>4. Keep your phone near the tag until writing completes</p>
+              </>
+            )}
+            {deviceInfo.isIOS && (
+              <>
+                <p>1. Make sure you're using Safari browser</p>
+                <p>2. Hold your iPhone near the NFC tag</p>
+                <p>3. Tap the "Write to NFC Tag" button below</p>
+                <p>4. Follow any prompts that appear</p>
+              </>
+            )}
+            {!deviceInfo.isIOS && !deviceInfo.isAndroid && (
+              <p>Please use an NFC-enabled smartphone for best results</p>
+            )}
+          </div>
+        </div>
 
         {/* Write Status */}
         {writeStatus === 'writing' && (
@@ -360,21 +363,21 @@ export default function IOSNFCWriter({ tagData, onWriteComplete }: NFCWriterProp
         )}
 
         {/* Write Button */}
-        <div className="flex gap-4">
+        <div className="space-y-3">
           <Button
             onClick={writeNFCTag}
-            disabled={!isSupported || isWriting}
-            className="flex-1"
+            disabled={isWriting}
+            className="w-full h-14 text-lg"
             size="lg"
           >
             {isWriting ? (
               <>
-                <Clock className="h-4 w-4 mr-2 animate-spin" />
-                Writing NFC Tag...
+                <Clock className="h-5 w-5 mr-3 animate-spin" />
+                Writing to Tag...
               </>
             ) : (
               <>
-                <Zap className="h-4 w-4 mr-2" />
+                <Zap className="h-5 w-5 mr-3" />
                 Write to NFC Tag
               </>
             )}
@@ -387,23 +390,30 @@ export default function IOSNFCWriter({ tagData, onWriteComplete }: NFCWriterProp
                 setErrorMessage('');
               }}
               variant="outline"
+              className="w-full"
             >
               Write Another Tag
             </Button>
           )}
         </div>
 
-        {/* Compatibility Notes */}
-        <Card className="bg-gray-50">
-          <CardHeader>
-            <CardTitle className="text-sm">Compatibility Notes</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs space-y-1">
-            <p><strong>iOS:</strong> Requires iOS 13+ with Safari. Core NFC framework needed for full functionality.</p>
-            <p><strong>Android:</strong> Requires Chrome browser with Web NFC API support (Android 6+).</p>
-            <p><strong>Security:</strong> HTTPS connection required for NFC writing operations.</p>
-          </CardContent>
-        </Card>
+        {/* Help Section */}
+        {(!isSupported || writeStatus === 'error') && (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h4 className="font-medium text-yellow-800 mb-2">Need Help?</h4>
+            <div className="text-sm text-yellow-700 space-y-1">
+              {deviceInfo.isIOS && (
+                <p>iOS devices have limited NFC writing support. Try using an Android device with Chrome for the best experience.</p>
+              )}
+              {!deviceInfo.isIOS && !deviceInfo.isAndroid && (
+                <p>For best results, use an Android phone with Chrome browser or an iPhone with Safari.</p>
+              )}
+              {writeStatus === 'error' && (
+                <p>Make sure NFC is enabled in your device settings and the tag is close to your phone.</p>
+              )}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

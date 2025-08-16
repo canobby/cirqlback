@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import IOSNFCWriter from "@/components/nfc/ios-nfc-writer";
+import UniversalNFCWriter from "@/components/nfc/ios-nfc-writer";
 import { 
   Smartphone, Wifi, CheckCircle, AlertTriangle, ArrowRight, 
   ArrowLeft, Zap, Target, Settings, RefreshCw, Play
@@ -69,7 +69,7 @@ export default function NFCSetupWizardBento() {
     }
   };
 
-  const progress = (step / 4) * 100;
+  const progress = (step / 5) * 100;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/50 to-purple-50/50 dark:from-gray-950 dark:via-blue-950/50 dark:to-purple-950/50">
@@ -107,10 +107,13 @@ export default function NFCSetupWizardBento() {
                 2. Enable  
               </Badge>
               <Badge variant={step >= 3 ? "default" : "secondary"} className={step >= 3 ? "bg-blue-600" : ""}>
-                3. Write
+                3. Setup
               </Badge>
               <Badge variant={step >= 4 ? "default" : "secondary"} className={step >= 4 ? "bg-blue-600" : ""}>
-                4. Test
+                4. Write
+              </Badge>
+              <Badge variant={step >= 5 ? "default" : "secondary"} className={step >= 5 ? "bg-blue-600" : ""}>
+                5. Done
               </Badge>
             </div>
           </div>
@@ -163,29 +166,16 @@ export default function NFCSetupWizardBento() {
                           </AlertDescription>
                         </Alert>
                         
-                        {deviceInfo.isIOS && (
-                          <div className="space-y-2">
-                            <p className="text-blue-200 text-sm">iOS Alternative Options:</p>
-                            <div className="flex flex-col gap-2">
-                              <Button 
-                                onClick={() => setLocation('/nfc-writer')}
-                                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                                variant="outline"
-                                size="sm"
-                              >
-                                Advanced NFC Writer
-                              </Button>
-                              <Button 
-                                onClick={() => setStep(2)}
-                                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                                variant="outline"
-                                size="sm"
-                              >
-                                Continue Anyway (Limited)
-                              </Button>
-                            </div>
-                          </div>
-                        )}
+                        <div className="space-y-2">
+                          <Button 
+                            onClick={() => setStep(2)}
+                            className="bg-white/20 hover:bg-white/30 text-white border-white/30 w-full"
+                            variant="outline"
+                          >
+                            Continue with Smart NFC Writer
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -296,39 +286,15 @@ export default function NFCSetupWizardBento() {
                     </div>
                     
                     <Button 
-                      onClick={handleWriteTag}
-                      disabled={isWriting}
+                      onClick={() => setStep(4)}
                       className="bg-white/20 hover:bg-white/30 text-white border-white/30 w-full h-14 text-lg"
                       variant="outline"
                     >
-                      {isWriting ? (
-                        <>
-                          <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                          Writing to Tag...
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="h-5 w-5 mr-2" />
-                          Write Campaign to Tag
-                        </>
-                      )}
+                      <Zap className="h-5 w-5 mr-2" />
+                      Use Smart NFC Writer
                     </Button>
                     
-                    {/* Advanced Cross-Platform NFC Writer */}
-                    <div className="mt-6 p-4 bg-white/10 rounded-lg">
-                      <p className="text-green-100 text-sm mb-3">
-                        For advanced iOS/Android NFC writing with full compatibility:
-                      </p>
-                      <Button 
-                        onClick={() => setStep(5)}
-                        className="bg-white/30 hover:bg-white/40 text-white border-white/30 w-full"
-                        variant="outline"
-                        size="sm"
-                      >
-                        Use Cross-Platform Writer
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </div>
+
                   </div>
                 </CardContent>
               </Card>
@@ -353,8 +319,28 @@ export default function NFCSetupWizardBento() {
             </>
           )}
 
-          {/* Step 4: Success */}
-          {step === 4 && (
+          {/* Step 4: Universal NFC Writer */}
+          {step === 4 && !tagWritten && (
+            <div className="md:col-span-6 lg:col-span-8">
+              <UniversalNFCWriter 
+                tagData={{
+                  url: "https://cirqlback.com/tap/demo123",
+                  campaignId: "campaign_001",
+                  businessName: "Demo Business",
+                  campaignType: "Summer Special - 20% off all drinks"
+                }}
+                onWriteComplete={(success) => {
+                  if (success) {
+                    setTagWritten(true);
+                    setStep(5); // Go to success step
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {/* Step 5: Success */}
+          {step === 5 && (
             <>
               <Card className="md:col-span-6 lg:col-span-5 bg-gradient-to-br from-green-500 to-emerald-600 border-0 text-white overflow-hidden relative">
                 <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-20 translate-x-20"></div>
@@ -416,28 +402,10 @@ export default function NFCSetupWizardBento() {
             </>
           )}
 
-          {/* Step 5: Cross-Platform NFC Writer */}
-          {step === 5 && (
-            <div className="md:col-span-6 lg:col-span-8">
-              <IOSNFCWriter 
-                tagData={{
-                  url: "https://cirqlback.com/tap/demo123",
-                  campaignId: "campaign_001",
-                  businessName: "Demo Business",
-                  campaignType: "Summer Special - 20% off all drinks"
-                }}
-                onWriteComplete={(success) => {
-                  if (success) {
-                    setTagWritten(true);
-                    setStep(4);
-                  }
-                }}
-              />
-            </div>
-          )}
+
 
           {/* Navigation */}
-          {step > 1 && step < 4 && (
+          {step > 1 && step < 5 && step !== 4 && (
             <div className="md:col-span-6 lg:col-span-8 flex justify-center gap-4">
               <Button variant="outline" onClick={() => setStep(step - 1)} size="lg" className="text-white">
                 <ArrowLeft className="h-5 w-5 mr-2" />
