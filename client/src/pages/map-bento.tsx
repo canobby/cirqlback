@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import GoogleMapWrapper from "@/components/maps/GoogleMapComponent";
 import { 
   MapPin, Navigation, Search, Filter, Star, Clock, 
   Gift, Zap, Users, Target, ArrowRight, Heart,
-  Smartphone, Coffee, Store, Utensils, Loader2
+  Smartphone, Coffee, Store, Utensils, Loader2, RefreshCw
 } from "lucide-react";
 
 export default function MapBento() {
@@ -333,55 +334,16 @@ export default function MapBento() {
                 <MapPin className="h-12 w-12 text-green-100" />
               </div>
               
-              {/* Live Map Area */}
-              <div className="h-64 bg-white/10 rounded-lg relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-600/20 to-blue-600/20"></div>
-                
-                {/* Live Business Markers */}
-                {!loadingLocation && nearbyBusinesses.map((business, index) => (
-                  <div 
-                    key={business.id}
-                    className="absolute w-4 h-4 rounded-full animate-pulse cursor-pointer hover:scale-150 transition-transform"
-                    style={{
-                      backgroundColor: business.isOpen ? '#10b981' : '#ef4444',
-                      top: `${20 + (index * 15)}%`,
-                      left: `${15 + (index * 20)}%`,
-                    }}
-                    title={`${business.name} - ${typeof business.distance === 'number' ? formatDistance(business.distance) : business.distance}`}
-                  />
-                ))}
-                
-                {/* User Location Marker */}
-                {userLocation && (
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                    <div className="w-6 h-6 bg-blue-500 rounded-full border-4 border-white animate-pulse"></div>
-                  </div>
-                )}
-                
-                {nearbyBusinesses.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    {loadingLocation ? (
-                      <div className="text-center">
-                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-white" />
-                        <p className="text-green-100 text-sm">Finding your location...</p>
-                      </div>
-                    ) : locationPermission === 'denied' ? (
-                      <div className="text-center">
-                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                          <MapPin className="h-6 w-6" />
-                        </div>
-                        <p className="text-green-100 text-sm">Default area view</p>
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                          <Navigation className="h-6 w-6" />
-                        </div>
-                        <p className="text-green-100 text-sm">Live location map</p>
-                      </div>
-                    )}
-                  </div>
-                )}
+              {/* Google Maps Integration */}
+              <div className="h-64 bg-white rounded-lg overflow-hidden">
+                <GoogleMapWrapper
+                  businesses={nearbyBusinesses}
+                  userLocation={userLocation}
+                  onBusinessSelect={(business) => {
+                    console.log('Selected business:', business);
+                  }}
+                  className="h-full w-full"
+                />
               </div>
               
               <div className="flex justify-between items-center mt-4">

@@ -16,6 +16,7 @@ import {
   handleVoiceTranslation, 
   handleTextToSpeech 
 } from './translation-service';
+import { getMapsConfig } from './maps-proxy';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -26,6 +27,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/translate/text', handleTextTranslation);
   app.post('/api/translate/voice', upload.single('audio'), handleVoiceTranslation);
   app.post('/api/translate/text-to-speech', handleTextToSpeech);
+  
+  // Maps API configuration
+  app.get('/api/maps/config', getMapsConfig);
   
   // Serve test page
   app.get('/test-quest', (req, res) => {
