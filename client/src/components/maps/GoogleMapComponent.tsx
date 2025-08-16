@@ -248,8 +248,8 @@ export default function GoogleMapWrapper({
       });
   }, []);
   
-  // Default center (San Francisco)
-  const defaultCenter = { lat: 37.7749, lng: -122.4194 };
+  // Default center (Yakima, WA)
+  const defaultCenter = { lat: 46.6021, lng: -120.5059 };
   const center = userLocation || defaultCenter;
 
   const render = (status: Status) => {

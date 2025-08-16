@@ -46,10 +46,10 @@ export default function MapBento() {
     const timeoutId = setTimeout(() => {
       setLocationPermission('denied');
       setLoadingLocation(false);
-      loadMockBusinesses();
+      loadMockBusinesses(); // This will default to Yakima, WA
       toast({
-        title: "Using Sample Area",
-        description: "Showing nearby businesses in your area. Tap 'Refresh Location' to try again.",
+        title: "Using Yakima Area",
+        description: "Showing businesses around Yakima, WA. Tap 'Refresh Location' for your exact location.",
         variant: "default"
       });
     }, 8000);
@@ -61,7 +61,7 @@ export default function MapBento() {
         setUserLocation({ lat: latitude, lng: longitude });
         setLocationPermission('granted');
         setLoadingLocation(false);
-        loadNearbyBusinesses(latitude, longitude);
+        loadMockBusinesses(latitude, longitude);
         toast({
           title: "Location Found",
           description: "Finding nearby businesses with rewards..."
@@ -167,56 +167,69 @@ export default function MapBento() {
     setNearbyBusinesses(businessesWithDistance);
   };
 
-  const loadMockBusinesses = () => {
-    console.log('Loading mock businesses...');
+  const loadMockBusinesses = (userLat?: number, userLng?: number) => {
+    console.log('Loading mock businesses for location:', { userLat, userLng });
+    
+    // Use Yakima, WA coordinates if no user location provided
+    const baseLat = userLat || 46.6021;
+    const baseLng = userLng || -120.5059;
+    
     const mockBusinesses = [
       {
         id: 1,
-        name: "Local Coffee Roasters",
+        name: "Yakima Coffee Company",
         category: "Coffee",
-        distance: 0.2,
+        lat: baseLat + 0.001,
+        lng: baseLng + 0.002,
+        distance: userLat ? calculateDistance(userLat, userLng!, baseLat + 0.001, baseLng + 0.002) : 0.2,
         rating: 4.8,
         activeRewards: 3,
         isOpen: true,
         gradient: "from-orange-500 to-amber-500",
         icon: Coffee,
-        address: "Downtown Area"
+        address: "Downtown Yakima"
       },
       {
         id: 2,
-        name: "Downtown Electronics",
+        name: "Valley Electronics",
         category: "Electronics",
-        distance: 0.4,
+        lat: baseLat - 0.002,
+        lng: baseLng + 0.001,
+        distance: userLat ? calculateDistance(userLat, userLng!, baseLat - 0.002, baseLng + 0.001) : 0.4,
         rating: 4.6,
         activeRewards: 2,
         isOpen: true,
         gradient: "from-blue-500 to-cyan-500",
         icon: Smartphone,
-        address: "Main Street"
+        address: "Yakima Avenue"
       },
       {
         id: 3,
-        name: "Family Pizza House",
+        name: "Hop Nation Brewing Co",
         category: "Food",
-        distance: 0.6,
+        lat: baseLat + 0.003,
+        lng: baseLng - 0.001,
+        distance: userLat ? calculateDistance(userLat, userLng!, baseLat + 0.003, baseLng - 0.001) : 0.6,
         rating: 4.7,
         activeRewards: 4,
         isOpen: false,
         gradient: "from-red-500 to-pink-500",
         icon: Utensils,
-        address: "Food District"
+        address: "Craft District"
       },
       {
         id: 4,
-        name: "Green Smoothie Bar",
+        name: "Fresh Valley Market",
         category: "Food",
-        distance: 0.3,
+        lat: baseLat - 0.001,
+        lng: baseLng + 0.003,
+        distance: userLat ? calculateDistance(userLat, userLng!, baseLat - 0.001, baseLng + 0.003) : 0.3,
         rating: 4.5,
         activeRewards: 2,
         isOpen: true,
         gradient: "from-green-500 to-emerald-500",
         icon: Utensils,
-        address: "Health Quarter"
+        address: "Farmers Market"
       }
     ];
     console.log('Setting nearby businesses:', mockBusinesses);
@@ -239,6 +252,25 @@ export default function MapBento() {
     if (distance < 0.1) return "< 0.1 miles";
     return `${distance.toFixed(1)} miles`;
   };
+
+  // Set location to Yakima specifically
+  const setYakimaLocation = () => {
+    const yakimaLat = 46.6021;
+    const yakimaLng = -120.5059;
+    setUserLocation({ lat: yakimaLat, lng: yakimaLng });
+    setLocationPermission('granted');
+    loadMockBusinesses(yakimaLat, yakimaLng);
+    toast({
+      title: "Location Set to Yakima",
+      description: "Showing businesses around Yakima, Washington",
+      variant: "default"
+    });
+  };
+
+  // Initialize with default location on component load
+  useEffect(() => {
+    setYakimaLocation(); // Start with Yakima location
+  }, []);
 
   const categories = [
     { id: "all", name: "All", icon: Store, count: nearbyBusinesses.length },
@@ -347,21 +379,33 @@ export default function MapBento() {
               </div>
               
               <div className="flex justify-between items-center mt-4">
-                <Button 
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30" 
-                  variant="outline"
-                  onClick={getCurrentLocation}
-                  disabled={loadingLocation}
-                >
-                  {loadingLocation ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Navigation className="h-4 w-4 mr-2" />
-                  )}
-                  {loadingLocation ? 'Finding...' : 'Refresh Location'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    className="bg-white/20 hover:bg-white/30 text-white border-white/30" 
+                    variant="outline"
+                    onClick={getCurrentLocation}
+                    disabled={loadingLocation}
+                    size="sm"
+                  >
+                    {loadingLocation ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Navigation className="h-4 w-4 mr-2" />
+                    )}
+                    {loadingLocation ? 'Finding...' : 'My Location'}
+                  </Button>
+                  <Button 
+                    className="bg-white/20 hover:bg-white/30 text-white border-white/30" 
+                    variant="outline"
+                    onClick={setYakimaLocation}
+                    size="sm"
+                  >
+                    <MapPin className="h-4 w-4 mr-2" />
+                    Yakima
+                  </Button>
+                </div>
                 <span className="text-green-100 text-sm">
-                  {locationPermission === 'granted' ? 'Live location' : 'Sample area'}
+                  {userLocation ? `${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}` : 'Default area'}
                 </span>
               </div>
             </CardContent>
