@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import BasicMap from "@/components/maps/BasicMap";
+import SimpleMap from "@/components/maps/SimpleMap";
 import { 
   MapPin, Navigation, Search, Filter, Star, Clock, 
   Gift, Zap, Users, Target, ArrowRight, Heart,
@@ -251,8 +251,11 @@ export default function MapBento() {
     const yakimaLng = -120.5059;
     setUserLocation({ lat: yakimaLat, lng: yakimaLng });
     setLocationPermission('granted');
-    loadMockBusinesses(yakimaLat, yakimaLng);
-    // Location set to Yakima - no toast notification needed
+    
+    // Only load businesses if we don't have any
+    if (nearbyBusinesses.length === 0) {
+      loadMockBusinesses(yakimaLat, yakimaLng);
+    }
   };
 
   // Interactive business functions for map info windows
@@ -281,11 +284,13 @@ export default function MapBento() {
     };
   };
 
-  // Initialize with default location on component load
+  // Initialize only once on component mount
   useEffect(() => {
-    setYakimaLocation(); // Start with Yakima location
+    if (nearbyBusinesses.length === 0) {
+      setYakimaLocation(); // Start with Yakima location
+    }
     setupBusinessInteractions(); // Set up interactive functions
-  }, [nearbyBusinesses]);
+  }, []);
 
   const categories = [
     { id: "all", name: "All", icon: Store, count: nearbyBusinesses.length },
@@ -308,13 +313,13 @@ export default function MapBento() {
       {isMapFullScreen && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
           <div className="flex-1">
-            <BasicMap
+            <SimpleMap
               businesses={nearbyBusinesses}
               userLocation={userLocation}
               onBusinessSelect={(business: any) => {
                 toast({
                   title: `Selected ${business.name}`,
-                  description: `${business.activeRewards} reviews available • ${business.category}`,
+                  description: `${business.activeRewards} rewards available • ${business.category}`,
                   variant: "default"
                 });
               }}
@@ -420,7 +425,7 @@ export default function MapBento() {
               
               {/* Interactive Google Maps */}
               <div className="h-64 bg-white rounded-lg overflow-hidden shadow-lg">
-                <BasicMap
+                <SimpleMap
                   businesses={nearbyBusinesses}
                   userLocation={userLocation}
                   onBusinessSelect={(business) => {
