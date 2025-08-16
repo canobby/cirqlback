@@ -177,14 +177,7 @@
     max-width: calc(100vw - 2rem); /* Prevent edge overflow */
   }
   
-  /* Button Text Visibility - Force white text on gradient buttons */
-  .constrained-button, .constrained-button * {
-    color: white !important;
-  }
-  
-  .constrained-button .text-purple-100 {
-    color: rgb(243 232 255) !important;
-  }
+  /* Remove problematic button overrides */
   
   /* Text Overflow Protection */
   .safe-text {

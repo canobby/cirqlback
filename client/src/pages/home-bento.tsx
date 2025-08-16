@@ -106,34 +106,34 @@ export default function HomeBento() {
                   <h2 className="responsive-heading font-bold mb-2 sm:mb-4">Start Your Adventure</h2>
                   <p className="text-purple-100 responsive-text mb-4 sm:mb-6">Join thousands discovering local businesses through gamified rewards</p>
                   
-                  <div className="responsive-button-group">
-                    <button
+                  <div className="space-y-3">
+                    <div
                       onClick={() => setLocation('/customer-bento')}
-                      className="w-full bg-white hover:bg-gray-50 text-gray-900 border-0 p-4 rounded-xl font-medium shadow-sm transition-all duration-200 flex items-center justify-start"
+                      className="w-full bg-white hover:bg-gray-50 text-gray-900 p-4 rounded-xl shadow-sm cursor-pointer transition-all duration-200 flex items-center justify-start"
                     >
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                        <Search className="h-4 w-4 text-blue-600" />
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                        <Search className="h-5 w-5 text-blue-600" />
                       </div>
-                      <div className="text-left flex-1">
-                        <div className="font-semibold text-gray-900 text-base">I'm a Customer</div>
-                        <div className="text-sm text-gray-600">Discover & earn rewards</div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-900 text-lg">I'm a Customer</div>
+                        <div className="text-gray-600">Discover & earn rewards</div>
                       </div>
-                      <ArrowRight className="h-4 w-4 ml-2 text-gray-400" />
-                    </button>
+                      <ArrowRight className="h-5 w-5 text-gray-400" />
+                    </div>
                     
-                    <button
+                    <div
                       onClick={() => setLocation('/merchant-bento')}
-                      className="w-full bg-white hover:bg-gray-50 text-gray-900 border-0 p-4 rounded-xl font-medium shadow-sm transition-all duration-200 flex items-center justify-start"
+                      className="w-full bg-white hover:bg-gray-50 text-gray-900 p-4 rounded-xl shadow-sm cursor-pointer transition-all duration-200 flex items-center justify-start"
                     >
-                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
-                        <Store className="h-4 w-4 text-orange-600" />
+                      <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
+                        <Store className="h-5 w-5 text-orange-600" />
                       </div>
-                      <div className="text-left flex-1">
-                        <div className="font-semibold text-gray-900 text-base">I'm a Business</div>
-                        <div className="text-sm text-gray-600">Attract more customers</div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-900 text-lg">I'm a Business</div>
+                        <div className="text-gray-600">Attract more customers</div>
                       </div>
-                      <ArrowRight className="h-4 w-4 ml-2 text-gray-400" />
-                    </button>
+                      <ArrowRight className="h-5 w-5 text-gray-400" />
+                    </div>
                   </div>
                 </div>
                 {/* Mobile Interface Mockup */}
