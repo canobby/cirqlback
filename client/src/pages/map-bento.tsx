@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import WorkingGoogleMap from "@/components/maps/WorkingGoogleMap";
+import MinimalGoogleMap from "@/components/maps/MinimalGoogleMap";
 import { 
   MapPin, Navigation, Search, Filter, Star, Clock, 
   Gift, Zap, Users, Target, ArrowRight, Heart,
@@ -308,15 +308,17 @@ export default function MapBento() {
       {isMapFullScreen && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
           <div className="flex-1">
-            <GoogleMapWrapper
+            <MinimalGoogleMap
               businesses={nearbyBusinesses}
               userLocation={userLocation}
-              onBusinessSelect={(business) => {
-                console.log('Selected business:', business);
+              onBusinessSelect={(business: any) => {
+                toast({
+                  title: `Selected ${business.name}`,
+                  description: `${business.activeRewards} rewards available • ${business.category}`,
+                  variant: "default"
+                });
               }}
               className="h-full w-full"
-              isFullScreen={isMapFullScreen}
-              onToggleFullScreen={() => setIsMapFullScreen(false)}
             />
           </div>
           <div className="bg-white p-4 border-t">
@@ -418,7 +420,7 @@ export default function MapBento() {
               
               {/* Interactive Google Maps */}
               <div className="h-64 bg-white rounded-lg overflow-hidden shadow-lg">
-                <WorkingGoogleMap
+                <MinimalGoogleMap
                   businesses={nearbyBusinesses}
                   userLocation={userLocation}
                   onBusinessSelect={(business) => {
