@@ -17,15 +17,15 @@ export default function MapBento() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [locationPermission, setLocationPermission] = useState<'pending' | 'granted' | 'denied'>('pending');
-  const [loadingLocation, setLoadingLocation] = useState(true);
+  const [locationPermission, setLocationPermission] = useState<'pending' | 'granted' | 'denied'>('granted');
+  const [loadingLocation, setLoadingLocation] = useState(false);
   const [nearbyBusinesses, setNearbyBusinesses] = useState<any[]>([]);
   const [isMapFullScreen, setIsMapFullScreen] = useState(false);
   const { toast } = useToast();
   
-  // Get user location on component mount
+  // Initialize with Yakima location instead of trying to get current location first
   useEffect(() => {
-    getCurrentLocation();
+    setYakimaLocation();
   }, []);
 
   const getCurrentLocation = async () => {
@@ -314,9 +314,7 @@ export default function MapBento() {
         (selectedCategory === 'tech' && business.category === 'Electronics')
       );
 
-  console.log('Nearby businesses:', nearbyBusinesses);
-  console.log('Filtered businesses:', filteredBusinesses);
-  console.log('Selected category:', selectedCategory);
+  // Debug logs removed for cleaner interface
 
   return (
     <>
@@ -394,17 +392,10 @@ export default function MapBento() {
               >
                 Classic View
               </Button>
-              {loadingLocation ? (
-                <Badge className="bg-blue-100 text-blue-700 border-blue-200">
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                  Finding location...
-                </Badge>
-              ) : (
-                <Badge className="bg-green-100 text-green-700 border-green-200">
-                  <Navigation className="w-3 h-3 mr-1" />
-                  {nearbyBusinesses.length} nearby
-                </Badge>
-              )}
+              <Badge className="bg-green-100 text-green-700 border-green-200">
+                <Navigation className="w-3 h-3 mr-1" />
+                {nearbyBusinesses.length} nearby
+              </Badge>
             </div>
           </div>
         </div>
@@ -466,15 +457,10 @@ export default function MapBento() {
                     className="bg-white/20 hover:bg-white/30 text-white border-white/30" 
                     variant="outline"
                     onClick={getCurrentLocation}
-                    disabled={loadingLocation}
                     size="sm"
                   >
-                    {loadingLocation ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Navigation className="h-4 w-4 mr-2" />
-                    )}
-                    {loadingLocation ? 'Finding...' : 'My Location'}
+                    <Navigation className="h-4 w-4 mr-2" />
+                    My Location
                   </Button>
                   <Button 
                     className="bg-white/20 hover:bg-white/30 text-white border-white/30" 
@@ -487,7 +473,7 @@ export default function MapBento() {
                   </Button>
                 </div>
                 <span className="text-green-100 text-sm">
-                  {userLocation ? `${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}` : 'Default area'}
+                  Yakima area • Tap markers to explore
                 </span>
               </div>
             </CardContent>

@@ -193,14 +193,13 @@ function MapComponent({ center, zoom, businesses, onBusinessSelect, userLocation
   return <div ref={ref} className="w-full h-full min-h-[400px] rounded-lg" />;
 }
 
-// Loading component
+// Loading component - simplified
 function MapLoadingComponent() {
   return (
     <div className="w-full h-full min-h-[400px] bg-gradient-to-br from-blue-50 to-green-50 rounded-lg flex items-center justify-center">
       <div className="text-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-3" />
-        <p className="text-gray-600 font-medium">Loading interactive map...</p>
-        <p className="text-sm text-gray-500">Connecting to Google Maps</p>
+        <p className="text-gray-600 font-medium">Loading Map</p>
       </div>
     </div>
   );
