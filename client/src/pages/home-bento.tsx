@@ -106,71 +106,47 @@ export default function HomeBento() {
                   <h2 className="responsive-heading font-bold mb-2 sm:mb-4">Start Your Adventure</h2>
                   <p className="text-purple-100 responsive-text mb-4 sm:mb-6">Join thousands discovering local businesses through gamified rewards</p>
                   
-                  <div className="space-y-3">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div
                       onClick={() => setLocation('/customer-bento')}
                       style={{
-                        width: '100%',
-                        backgroundColor: 'white',
-                        color: 'black',
-                        padding: '16px',
+                        backgroundColor: '#ffffff',
+                        border: '2px solid #000000',
                         borderRadius: '12px',
+                        padding: '20px',
                         cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                      }}
-                    >
-                      <div style={{ 
-                        width: '40px', 
-                        height: '40px', 
-                        backgroundColor: '#dbeafe', 
-                        borderRadius: '8px', 
-                        marginRight: '16px',
+                        fontSize: '18px',
+                        fontWeight: 'bold',
+                        color: '#000000',
+                        textAlign: 'center',
+                        minHeight: '60px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
-                      }}>
-                        🔍
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '18px', color: 'black' }}>I'm a Customer</div>
-                        <div style={{ color: '#666', fontSize: '14px' }}>Discover & earn rewards</div>
-                      </div>
-                      <div style={{ color: '#999' }}>→</div>
+                      }}
+                    >
+                      I'm a Customer - Discover & Earn Rewards
                     </div>
                     
                     <div
                       onClick={() => setLocation('/merchant-bento')}
                       style={{
-                        width: '100%',
-                        backgroundColor: 'white',
-                        color: 'black',
-                        padding: '16px',
+                        backgroundColor: '#ffffff',
+                        border: '2px solid #000000',
                         borderRadius: '12px',
+                        padding: '20px',
                         cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                      }}
-                    >
-                      <div style={{ 
-                        width: '40px', 
-                        height: '40px', 
-                        backgroundColor: '#fed7aa', 
-                        borderRadius: '8px', 
-                        marginRight: '16px',
+                        fontSize: '18px',
+                        fontWeight: 'bold',
+                        color: '#000000',
+                        textAlign: 'center',
+                        minHeight: '60px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
-                      }}>
-                        🏪
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '18px', color: 'black' }}>I'm a Business</div>
-                        <div style={{ color: '#666', fontSize: '14px' }}>Attract more customers</div>
-                      </div>
-                      <div style={{ color: '#999' }}>→</div>
+                      }}
+                    >
+                      I'm a Business - Attract More Customers
                     </div>
                   </div>
                 </div>
