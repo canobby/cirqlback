@@ -93,6 +93,60 @@ export default function HomeBento() {
           </div>
         </div>
 
+        {/* Simple Buttons Section - Outside of complex layouts */}
+        <div style={{ 
+          maxWidth: '800px', 
+          margin: '0 auto 40px auto', 
+          padding: '0 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '20px'
+        }}>
+          <div
+            onClick={() => setLocation('/customer-bento')}
+            style={{
+              backgroundColor: '#ffffff',
+              border: '3px solid #000000',
+              borderRadius: '15px',
+              padding: '25px',
+              cursor: 'pointer',
+              fontSize: '20px',
+              fontWeight: 'bold',
+              color: '#000000',
+              textAlign: 'center',
+              minHeight: '80px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }}
+          >
+            🔍 I'm a Customer - Discover & Earn Rewards
+          </div>
+          
+          <div
+            onClick={() => setLocation('/merchant-bento')}
+            style={{
+              backgroundColor: '#ffffff',
+              border: '3px solid #000000',
+              borderRadius: '15px',
+              padding: '25px',
+              cursor: 'pointer',
+              fontSize: '20px',
+              fontWeight: 'bold',
+              color: '#000000',
+              textAlign: 'center',
+              minHeight: '80px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }}
+          >
+            🏪 I'm a Business - Attract More Customers
+          </div>
+        </div>
+
         {/* Bento Grid Layout */}
         <div className="bento-grid auto-rows-min mb-8 sm:mb-12">
           
@@ -103,52 +157,8 @@ export default function HomeBento() {
             <CardContent className="responsive-card relative z-10">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
                 <div className="min-w-0 flex-1">
-                  <h2 className="responsive-heading font-bold mb-2 sm:mb-4">Start Your Adventure</h2>
-                  <p className="text-purple-100 responsive-text mb-4 sm:mb-6">Join thousands discovering local businesses through gamified rewards</p>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div
-                      onClick={() => setLocation('/customer-bento')}
-                      style={{
-                        backgroundColor: '#ffffff',
-                        border: '2px solid #000000',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        cursor: 'pointer',
-                        fontSize: '18px',
-                        fontWeight: 'bold',
-                        color: '#000000',
-                        textAlign: 'center',
-                        minHeight: '60px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      I'm a Customer - Discover & Earn Rewards
-                    </div>
-                    
-                    <div
-                      onClick={() => setLocation('/merchant-bento')}
-                      style={{
-                        backgroundColor: '#ffffff',
-                        border: '2px solid #000000',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        cursor: 'pointer',
-                        fontSize: '18px',
-                        fontWeight: 'bold',
-                        color: '#000000',
-                        textAlign: 'center',
-                        minHeight: '60px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      I'm a Business - Attract More Customers
-                    </div>
-                  </div>
+                  <h2 className="responsive-heading font-bold mb-2 sm:mb-4">Ready to Explore?</h2>
+                  <p className="text-purple-100 responsive-text mb-4 sm:mb-6">Start your local discovery adventure today - it's completely free!</p>
                 </div>
                 {/* Mobile Interface Mockup */}
                 <div className="hidden lg:block">
