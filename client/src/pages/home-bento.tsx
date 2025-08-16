@@ -93,127 +93,101 @@ export default function HomeBento() {
           </div>
         </div>
 
-        {/* Simple Buttons Section - Outside of complex layouts */}
-        <div style={{ 
-          maxWidth: '800px', 
-          margin: '0 auto 40px auto', 
-          padding: '0 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '20px'
-        }}>
-          <div
+        {/* Main Navigation - Bento Style */}
+        <div className="bento-grid auto-rows-min mb-8 sm:mb-12">
+          <Card 
+            className="bento-item-large bg-gradient-to-br from-blue-500 to-cyan-500 border-0 text-white cursor-pointer transition-transform hover:scale-[1.02]"
             onClick={() => setLocation('/customer-bento')}
-            style={{
-              backgroundColor: '#ffffff',
-              border: '3px solid #000000',
-              borderRadius: '15px',
-              padding: '25px',
-              cursor: 'pointer',
-              fontSize: '20px',
-              fontWeight: 'bold',
-              color: '#000000',
-              textAlign: 'center',
-              minHeight: '80px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-            }}
           >
-            🔍 I'm a Customer - Discover & Earn Rewards
-          </div>
-          
-          <div
+            <CardContent className="responsive-card flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Search className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-1">I'm a Customer</h3>
+                  <p className="text-blue-100">Discover & earn rewards</p>
+                </div>
+              </div>
+              <ArrowRight className="h-6 w-6 text-white/70" />
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="bento-item-large bg-gradient-to-br from-orange-500 to-pink-500 border-0 text-white cursor-pointer transition-transform hover:scale-[1.02]"
             onClick={() => setLocation('/merchant-bento')}
-            style={{
-              backgroundColor: '#ffffff',
-              border: '3px solid #000000',
-              borderRadius: '15px',
-              padding: '25px',
-              cursor: 'pointer',
-              fontSize: '20px',
-              fontWeight: 'bold',
-              color: '#000000',
-              textAlign: 'center',
-              minHeight: '80px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-            }}
           >
-            🏪 I'm a Business - Attract More Customers
-          </div>
+            <CardContent className="responsive-card flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Store className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-1">I'm a Business</h3>
+                  <p className="text-orange-100">Attract more customers</p>
+                </div>
+              </div>
+              <ArrowRight className="h-6 w-6 text-white/70" />
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Bento Grid Layout */}
+        {/* Additional Bento Grid Layout */}
         <div className="bento-grid auto-rows-min mb-8 sm:mb-12">
           
-          {/* Main CTA - Large Hero Block */}
-          <Card className="bento-item-large bg-gradient-to-br from-purple-600 to-pink-600 border-0 text-white overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-20 translate-x-20"></div>
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16"></div>
-            <CardContent className="responsive-card relative z-10">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
-                <div className="min-w-0 flex-1">
-                  <h2 className="responsive-heading font-bold mb-2 sm:mb-4">Ready to Explore?</h2>
-                  <p className="text-purple-100 responsive-text mb-4 sm:mb-6">Start your local discovery adventure today - it's completely free!</p>
-                </div>
-                {/* Mobile Interface Mockup */}
-                <div className="hidden lg:block">
-                  <div className="w-64 h-[480px] bg-white rounded-[2rem] border-4 border-gray-200 shadow-2xl overflow-hidden relative">
-                    <div className="h-full bg-gradient-to-b from-gray-50 to-white">
-                      {/* Status Bar */}
-                      <div className="flex justify-between items-center px-4 pt-3 pb-2 text-xs text-gray-800">
-                        <span>9:41</span>
-                        <div className="flex space-x-1">
-                          <div className="w-3 h-1.5 bg-gray-400 rounded-full"></div>
-                          <div className="w-4 h-1.5 bg-gray-400 rounded-full"></div>
-                          <div className="w-4 h-1.5 bg-green-500 rounded-full"></div>
+          {/* Mobile Interface Mockup Card */}
+          <Card className="bento-item-large bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+            <CardContent className="responsive-card flex items-center justify-center">
+              <div className="w-64 h-[480px] bg-white rounded-[2rem] border-4 border-gray-200 shadow-2xl overflow-hidden relative">
+                <div className="h-full bg-gradient-to-b from-gray-50 to-white">
+                  {/* Status Bar */}
+                  <div className="flex justify-between items-center px-4 pt-3 pb-2 text-xs text-gray-800">
+                    <span>9:41</span>
+                    <div className="flex space-x-1">
+                      <div className="w-3 h-1.5 bg-gray-400 rounded-full"></div>
+                      <div className="w-4 h-1.5 bg-gray-400 rounded-full"></div>
+                      <div className="w-4 h-1.5 bg-green-500 rounded-full"></div>
+                    </div>
+                  </div>
+
+                  {/* App Content */}
+                  <div className="px-4 py-3">
+                    <div className="text-center mb-4">
+                      <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-3 animate-pulse">
+                        <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                          <div className="w-4 h-4 bg-gradient-to-br from-green-500 to-blue-500 rounded-full"></div>
                         </div>
                       </div>
+                      <h3 className="text-lg font-bold text-gray-800 mb-1">Reward Unlocked!</h3>
+                      <p className="text-gray-600 text-sm">Joe's Coffee Shop</p>
+                    </div>
 
-                      {/* App Content */}
-                      <div className="px-4 py-3">
-                        <div className="text-center mb-4">
-                          <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-3 animate-pulse">
-                            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                              <div className="w-4 h-4 bg-gradient-to-br from-green-500 to-blue-500 rounded-full"></div>
-                            </div>
-                          </div>
-                          <h3 className="text-lg font-bold text-gray-800 mb-1">Reward Unlocked!</h3>
-                          <p className="text-gray-600 text-sm">Joe's Coffee Shop</p>
+                    {/* Reward Card */}
+                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-4 text-white mb-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="text-base font-semibold">Free Coffee</h4>
+                          <p className="text-purple-100 text-sm">Today Only</p>
                         </div>
+                        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                          <div className="text-lg">☕</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center text-sm">
+                        <span className="bg-white/20 px-2 py-1 rounded text-xs mr-2">+150 pts</span>
+                        <span className="text-purple-100">Expires in 2 hours</span>
+                      </div>
+                    </div>
 
-                        {/* Reward Card */}
-                        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-4 text-white mb-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <h4 className="text-base font-semibold">Free Coffee</h4>
-                              <p className="text-purple-100 text-sm">Today Only</p>
-                            </div>
-                            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                              <div className="text-lg">☕</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center text-sm">
-                            <span className="bg-white/20 px-2 py-1 rounded text-xs mr-2">+150 pts</span>
-                            <span className="text-purple-100">Expires in 2 hours</span>
-                          </div>
-                        </div>
-
-                        {/* Points Display */}
-                        <div className="flex justify-between items-center bg-gray-100 rounded-lg p-3">
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-gray-800">2,847</div>
-                            <div className="text-xs text-gray-600">Total Points</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-gray-800">Level 12</div>
-                            <div className="text-xs text-gray-600">Explorer</div>
-                          </div>
-                        </div>
+                    {/* Points Display */}
+                    <div className="flex justify-between items-center bg-gray-100 rounded-lg p-3">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-gray-800">2,847</div>
+                        <div className="text-xs text-gray-600">Total Points</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-gray-800">Level 12</div>
+                        <div className="text-xs text-gray-600">Explorer</div>
                       </div>
                     </div>
                   </div>
@@ -330,42 +304,7 @@ export default function HomeBento() {
             </CardContent>
           </Card>
 
-          {/* Quick Start - Medium Block */}
-          <Card className="md:col-span-6 lg:col-span-5 bg-gradient-to-br from-blue-500 to-cyan-600 border-0 text-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-2xl font-bold mb-2">Ready to Explore?</h3>
-                  <p className="text-blue-100 text-lg">Start your local discovery adventure today - it's completely free!</p>
-                </div>
-                <div className="hidden md:block w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
-                  <div className="w-8 h-8 bg-yellow-400 rounded-full animate-bounce"></div>
-                </div>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button 
-                  onClick={() => setLocation('/customer-bento')}
-                  className="flex-1 bg-white text-blue-600 hover:bg-blue-50 font-semibold py-3"
-                >
-                  Start Discovering
-                  <div className="w-4 h-4 ml-2">
-                    <div className="w-full h-full bg-blue-600 rounded-full"></div>
-                  </div>
-                </Button>
-                <Button 
-                  onClick={() => setLocation('/merchant-bento')}
-                  variant="outline"
-                  className="flex-1 border-white text-white hover:bg-white/10 font-semibold py-3"
-                >
-                  List Your Business
-                  <div className="w-4 h-4 ml-2">
-                    <div className="w-full h-full bg-white rounded"></div>
-                  </div>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+
 
         </div>
 
