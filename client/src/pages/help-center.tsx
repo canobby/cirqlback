@@ -105,7 +105,7 @@ export default function HelpCenterPage() {
       helpful: 87
     },
     {
-      title: "Setting Up AR Treasure Hunts for Your Business",
+      title: "Setting Up Discovery Challenges for Your Business",
       category: "Quest System",
       readTime: "8 min read",
       views: "980 views", 

@@ -22,7 +22,7 @@ export default function Home() {
             </div>
             <h1 className="responsive-heading font-bold mb-3 sm:mb-4">Turn Every Business Visit Into an Adventure</h1>
             <p className="responsive-text opacity-90 mb-4 sm:mb-6">
-              The addictive local discovery platform that makes exploring your neighborhood as exciting as Pokemon Go. Tap Cirql tags, collect rare treasures, complete daily quests, compete with friends, and unlock real rewards at amazing local businesses. AI-powered partnerships and smart reward pools help merchants collaborate while customers enjoy seamless adventures across multiple locations.
+              The addictive local discovery platform that transforms every business visit into an adventure. Tap Cirql tags, collect rewards, complete daily challenges, compete with friends, and unlock genuine rewards at amazing local businesses. AI-powered partnerships and smart reward pools help merchants collaborate while customers enjoy seamless discovery across multiple locations.
             </p>
             <div className="responsive-button-group">
               <Link href="/tap">

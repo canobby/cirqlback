@@ -267,9 +267,9 @@ export default function Customer() {
           {
             id: "ar-experiences",
             target: "[data-tour='ar-experiences']",
-            title: "AR Discovery",
-            description: "Unlock augmented reality treasure hunts and interactive experiences",
-            tip: "Use your phone's camera to discover hidden rewards in participating locations",
+            title: "Interactive Discovery",
+            description: "Unlock interactive discovery challenges and engaging experiences",
+            tip: "Discover hidden rewards and challenges in participating locations",
             position: "top"
           },
           {

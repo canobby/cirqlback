@@ -83,7 +83,7 @@ export default function HomeBento() {
               Cirqlback
             </h1>
             <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-8 max-w-4xl mx-auto leading-relaxed">
-              Turn every business visit into an adventure. Like Pokemon Go for local businesses - 
+              Transform every business visit into an exciting adventure through gamified local discovery - 
               <span className="font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"> tap, collect, compete, and earn real rewards.</span>
             </p>
           </div>

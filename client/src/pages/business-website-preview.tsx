@@ -168,7 +168,7 @@ export default function BusinessWebsitePreview() {
                 <div className="p-6">
                   <div className="bg-gradient-to-r from-green-100 to-blue-100 p-4 rounded-lg mb-6">
                     <h3 className="font-semibold text-green-800 mb-2">🎯 Tap to Earn Rewards!</h3>
-                    <p className="text-sm text-green-700 mb-3">Look for our Cirql tags in-store to unlock exclusive deals and join local treasure hunts!</p>
+                    <p className="text-sm text-green-700 mb-3">Look for our Cirql tags in-store to unlock exclusive deals and join local discovery challenges!</p>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="secondary">💰 20% Off Coffee</Badge>
                       <Badge variant="secondary">🏆 Loyalty Points 2x</Badge>

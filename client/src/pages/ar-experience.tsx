@@ -260,7 +260,7 @@ export default function ARExperience() {
               <h1 className="text-3xl font-bold">AR Reward Experience</h1>
               <p className="text-xl text-purple-200">at {arScene.businessName}</p>
               <p className="text-gray-300 max-w-md">
-                Point your camera to discover your magical rewards in augmented reality!
+                Point your camera to discover your magical rewards through interactive experiences!
               </p>
             </div>
             

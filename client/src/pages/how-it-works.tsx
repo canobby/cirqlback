@@ -95,7 +95,7 @@ export default function HowItWorksPage() {
       category: "Team & Social Gaming",
       features: [
         "Multi-Tier Team System (Casual to Corporate)",
-        "City-Wide AR Treasure Hunts with GPS Integration",
+        "City-Wide Discovery Challenges with GPS Integration",
         "Team vs Team Battles & Live Competitions",
         "Corporate Team Building Challenges"
       ]
@@ -220,7 +220,7 @@ export default function HowItWorksPage() {
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Explore the comprehensive features that make Cirqlback the most advanced local business platform available - 
-              a revolutionary marketing ecosystem with unified AI intelligence, cross-business networks, AR adventures, 
+              a revolutionary marketing ecosystem with unified AI intelligence, cross-business networks, gamified discovery, 
               team challenges, and viral growth mechanics.
             </p>
           </div>

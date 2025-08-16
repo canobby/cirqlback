@@ -59,26 +59,7 @@ export default function PlatformMenu() {
           </Link>
         </DropdownMenuItem>
         
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>🎮 AR & Gaming</DropdownMenuLabel>
-        <DropdownMenuItem asChild>
-          <Link href="/ar-hub" className="flex items-center gap-2 w-full">
-            <Gamepad2 className="h-4 w-4" />
-            AR Game Hub
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/avatar" className="flex items-center gap-2 w-full">
-            <UserCircle className="h-4 w-4" />
-            Avatar Creator
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/ar/demo" className="flex items-center gap-2 w-full">
-            <Zap className="h-4 w-4" />
-            AR Experience
-          </Link>
-        </DropdownMenuItem>
+
         
         <DropdownMenuSeparator />
         <DropdownMenuLabel>📍 Discovery & Social</DropdownMenuLabel>

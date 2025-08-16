@@ -1074,7 +1074,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         {
           id: "camp_3",
-          name: "AR Treasure Hunt",
+          name: "Discovery Challenge",
           businessId: "biz_1",
           businessName: "Grind Coffee Co.",
           type: "ar-experience",
@@ -1513,8 +1513,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
       res.json(treasureHunts);
     } catch (error) {
-      console.error("Error fetching treasure hunts:", error);
-      res.status(500).json({ error: "Failed to fetch treasure hunts" });
+      console.error("Error fetching discovery challenges:", error);
+      res.status(500).json({ error: "Failed to fetch discovery challenges" });
     }
   });
 
@@ -1636,7 +1636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error starting hunt:", error);
-      res.status(500).json({ error: "Failed to start treasure hunt" });
+      res.status(500).json({ error: "Failed to start discovery challenge" });
     }
   });
 
@@ -3028,7 +3028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <div class="container">
             <div class="cirql-banner">
               <h3>🎯 Tap to Earn Rewards!</h3>
-              <p>Look for our Cirql tags in-store to unlock exclusive deals and join local treasure hunts!</p>
+              <p>Look for our Cirql tags in-store to unlock exclusive deals and join local discovery challenges!</p>
               <div style="margin-top: 15px;">
                 <strong>Active Campaigns:</strong>
                 <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
@@ -3444,9 +3444,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
-  // AR TREASURE HUNT ROUTES
+  // DISCOVERY CHALLENGE ROUTES
 
-  // Get treasure hunts
+  // Get discovery challenges
   app.get("/api/ar/treasure-hunts", (req, res) => {
     const mockTreasureHunts = [
       {
@@ -3536,7 +3536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(mockProgress);
   });
 
-  // Join treasure hunt
+  // Join discovery challenge
   app.post("/api/ar/treasure-hunts/:id/join", (req, res) => {
     res.json({ success: true });
   });
@@ -4493,7 +4493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         {
           id: "ach_005",
-          name: "Treasure Hunter",
+          name: "Discovery Explorer",
           description: "Find 25 hidden quest items",
           progress: 11,
           target: 25,

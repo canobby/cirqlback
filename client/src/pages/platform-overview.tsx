@@ -49,7 +49,7 @@ const platformSections = [
     pages: [
       { path: "/map", name: "Interactive Discovery Map", icon: Map, description: "Real-time business locations, customer visibility controls, and cross-business rewards" },
       { path: "/community", name: "Viral Community Hub", icon: Users, description: "Team competitions, viral challenges, exponential referral tracking, and social proof feeds" },
-      { path: "/tap", name: "Smart Tap Interface", icon: NfcIcon, description: "AI-enhanced tag scanning with partnership rewards and AR treasure hunt triggers" },
+      { path: "/tap", name: "Smart Tap Interface", icon: NfcIcon, description: "AI-enhanced tag scanning with partnership rewards and discovery challenge triggers" },
     ]
   },
   {

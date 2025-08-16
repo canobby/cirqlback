@@ -54,13 +54,13 @@ export default function UserGuide() {
     },
     {
       id: "team-challenges",
-      title: "Advanced Team Challenges & AR Adventures",
-      description: "Join multi-tier teams, compete in AR treasure hunts, and earn exponential viral rewards",
+      title: "Advanced Team Challenges & Discovery Adventures",
+      description: "Join multi-tier teams, compete in discovery challenges, and earn exponential viral rewards",
       steps: [
-        "Create your avatar in the Avatar Creator",
+        "Create your profile and customize your experience",
         "Browse available team challenges",
         "Form teams across casual, competitive, corporate, and family tiers",
-        "Participate in city-wide AR treasure hunts with GPS clues",
+        "Participate in city-wide discovery challenges with GPS clues",
         "Compete in real-time team vs team battles and live competitions",
         "Invite friends through exponential referral multipliers for viral growth",
         "Claim partnership rewards across multiple business locations"
@@ -78,7 +78,7 @@ export default function UserGuide() {
         "Set up AI-powered customer intelligence and health scoring",
         "Configure cross-business partnership networks and revenue sharing",
         "Launch your complete business website with integrated campaigns",
-        "Create AR treasure hunts and team challenges for customers",
+        "Create discovery challenges and team competitions for customers",
         "Activate viral growth campaigns with referral multipliers",
         "Create your first campaign with rewards and offers",
         "Order and set up physical Cirql tags",

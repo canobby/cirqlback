@@ -57,7 +57,7 @@ const walkthroughData = {
       {
         id: "step-3",
         title: "Unlock AI-Enhanced Rewards & Partnerships",
-        description: "Receive predictive rewards, cross-business benefits, AR treasure hunt clues, and team challenge points",
+        description: "Receive predictive rewards, cross-business benefits, discovery challenge clues, and team challenge points",
         action: "Your personalized rewards appear instantly with AI-powered customization and partnership offers",
         tip: "Activate exponential referral multipliers to earn even more through viral friend invitations",
         interactive: false

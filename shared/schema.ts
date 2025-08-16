@@ -990,7 +990,7 @@ export const arExperiences = pgTable("ar_experiences", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// AR Treasure Hunts
+// Discovery Challenges
 export const arTreasureHunts = pgTable("ar_treasure_hunts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: varchar("title").notNull(),

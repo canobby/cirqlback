@@ -127,7 +127,7 @@ export default function TestSystem() {
     },
     {
       id: "camp_3",
-      name: "AR Treasure Hunt",
+      name: "Discovery Challenge",
       businessId: "biz_1",
       businessName: "Grind Coffee Co.",
       type: "ar-experience",
