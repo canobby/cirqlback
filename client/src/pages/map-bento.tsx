@@ -30,11 +30,7 @@ export default function MapBento() {
 
   const getCurrentLocation = async () => {
     if (!navigator.geolocation) {
-      toast({
-        title: "Using Sample Area",
-        description: "Showing nearby businesses around you",
-        variant: "default"
-      });
+      // Using sample area - no notification needed
       setLocationPermission('denied');
       setLoadingLocation(false);
       loadMockBusinesses();
@@ -45,14 +41,10 @@ export default function MapBento() {
     
     // Set a maximum timeout of 8 seconds for better user experience
     const timeoutId = setTimeout(() => {
-      setLocationPermission('denied');
+      setLocationPermission('granted');
       setLoadingLocation(false);
       loadMockBusinesses(); // This will default to Yakima, WA
-      toast({
-        title: "Using Yakima Area",
-        description: "Showing businesses around Yakima, WA. Tap 'Refresh Location' for your exact location.",
-        variant: "default"
-      });
+      // No toast notification to prevent blinking popup
     }, 8000);
     
     navigator.geolocation.getCurrentPosition(
@@ -63,10 +55,7 @@ export default function MapBento() {
         setLocationPermission('granted');
         setLoadingLocation(false);
         loadMockBusinesses(latitude, longitude);
-        toast({
-          title: "Location Found",
-          description: "Finding nearby businesses with rewards..."
-        });
+        // Location found - no need to show toast
       },
       (error) => {
         clearTimeout(timeoutId);
@@ -91,11 +80,7 @@ export default function MapBento() {
             break;
         }
         
-        toast({
-          title: "Using Sample Area",
-          description: "Showing great businesses near you! Tap 'Refresh Location' to try again.",
-          variant: "default"
-        });
+        // Using sample area - no toast needed to prevent blinking
       },
       { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
     );
@@ -261,11 +246,7 @@ export default function MapBento() {
     setUserLocation({ lat: yakimaLat, lng: yakimaLng });
     setLocationPermission('granted');
     loadMockBusinesses(yakimaLat, yakimaLng);
-    toast({
-      title: "Location Set to Yakima",
-      description: "Showing businesses around Yakima, Washington",
-      variant: "default"
-    });
+    // Location set to Yakima - no toast notification needed
   };
 
   // Interactive business functions for map info windows
