@@ -109,35 +109,35 @@ export default function HomeBento() {
                   <div className="responsive-button-group">
                     <Button 
                       onClick={() => setLocation('/customer-bento')}
-                      className="w-full bg-white hover:bg-gray-50 text-gray-900 border-0 h-auto p-4 justify-start rounded-xl font-medium"
+                      className="w-full bg-white hover:bg-gray-50 text-gray-900 border-0 h-auto p-4 justify-start rounded-xl font-medium shadow-sm"
                       variant="default"
                     >
-                      <div className="flex items-center w-full">
-                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                      <div className="flex items-center w-full min-w-0">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
                           <Search className="h-4 w-4 text-blue-600" />
                         </div>
-                        <div className="text-left flex-1">
-                          <div className="font-semibold text-gray-900">I'm a Customer</div>
-                          <div className="text-sm text-gray-600">Discover & earn rewards</div>
+                        <div className="text-left flex-1 min-w-0">
+                          <div className="font-semibold text-gray-900 text-sm sm:text-base">I'm a Customer</div>
+                          <div className="text-xs sm:text-sm text-gray-600">Discover & earn rewards</div>
                         </div>
-                        <ArrowRight className="h-4 w-4 ml-auto text-gray-400" />
+                        <ArrowRight className="h-4 w-4 ml-2 text-gray-400 flex-shrink-0" />
                       </div>
                     </Button>
                     
                     <Button 
                       onClick={() => setLocation('/merchant-bento')}
-                      className="w-full bg-white hover:bg-gray-50 text-gray-900 border-0 h-auto p-4 justify-start rounded-xl font-medium"
+                      className="w-full bg-white hover:bg-gray-50 text-gray-900 border-0 h-auto p-4 justify-start rounded-xl font-medium shadow-sm"
                       variant="default"
                     >
-                      <div className="flex items-center w-full">
-                        <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                      <div className="flex items-center w-full min-w-0">
+                        <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
                           <Store className="h-4 w-4 text-orange-600" />
                         </div>
-                        <div className="text-left flex-1">
-                          <div className="font-semibold text-gray-900">I'm a Business</div>
-                          <div className="text-sm text-gray-600">Attract more customers</div>
+                        <div className="text-left flex-1 min-w-0">
+                          <div className="font-semibold text-gray-900 text-sm sm:text-base">I'm a Business</div>
+                          <div className="text-xs sm:text-sm text-gray-600">Attract more customers</div>
                         </div>
-                        <ArrowRight className="h-4 w-4 ml-auto text-gray-400" />
+                        <ArrowRight className="h-4 w-4 ml-2 text-gray-400 flex-shrink-0" />
                       </div>
                     </Button>
                   </div>
