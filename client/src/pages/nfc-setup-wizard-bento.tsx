@@ -18,11 +18,33 @@ export default function NFCSetupWizardBento() {
   const [nfcEnabled, setNfcEnabled] = useState(false);
   const [tagWritten, setTagWritten] = useState(false);
   const [isWriting, setIsWriting] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState({
+    isIOS: false,
+    isAndroid: false,
+    browser: ''
+  });
 
   useEffect(() => {
-    // Check NFC support
-    if ('NDEFReader' in window) {
+    // Enhanced NFC support detection
+    const userAgent = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+    const isAndroid = /Android/.test(userAgent);
+    const isSafari = userAgent.includes('Safari') && !userAgent.includes('Chrome');
+    const isChrome = userAgent.includes('Chrome');
+
+    setDeviceInfo({
+      isIOS,
+      isAndroid,
+      browser: isChrome ? 'Chrome' : isSafari ? 'Safari' : 'Other'
+    });
+
+    if (isAndroid && isChrome && 'NDEFReader' in window) {
       setNfcSupported(true);
+    } else if (isIOS && isSafari) {
+      // iOS has NFC reading capability but writing requires special handling
+      setNfcSupported(false);
+    } else {
+      setNfcSupported(false);
     }
   }, []);
 
@@ -130,12 +152,41 @@ export default function NFCSetupWizardBento() {
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </Button>
                     ) : (
-                      <Alert className="bg-red-500/20 border-red-300/20">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription className="text-red-100">
-                          Your device doesn't support NFC. Please use an Android device with NFC capability.
-                        </AlertDescription>
-                      </Alert>
+                      <div className="space-y-4">
+                        <Alert className="bg-red-500/20 border-red-300/20">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription className="text-red-100">
+                            {deviceInfo.isIOS 
+                              ? "iOS devices have limited NFC writing support in browsers. For full NFC functionality, try our advanced NFC writer or use an Android device with Chrome."
+                              : "Your device doesn't support NFC. Please use an Android device with NFC capability."
+                            }
+                          </AlertDescription>
+                        </Alert>
+                        
+                        {deviceInfo.isIOS && (
+                          <div className="space-y-2">
+                            <p className="text-blue-200 text-sm">iOS Alternative Options:</p>
+                            <div className="flex flex-col gap-2">
+                              <Button 
+                                onClick={() => setLocation('/nfc-writer')}
+                                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                                variant="outline"
+                                size="sm"
+                              >
+                                Advanced NFC Writer
+                              </Button>
+                              <Button 
+                                onClick={() => setStep(2)}
+                                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                                variant="outline"
+                                size="sm"
+                              >
+                                Continue Anyway (Limited)
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </CardContent>
