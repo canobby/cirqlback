@@ -58,6 +58,7 @@ function Router() {
           <Route path="/map" component={MapBento} />
           <Route path="/campaign-setup-wizard" component={CampaignSetupBento} />
           <Route path="/nfc-setup-wizard" component={NFCSetupWizardBento} />
+          <Route path="/nfc-writer" component={NfcWriterPage} />
           
           {/* Essential Features */}
           <Route path="/account" component={Account} />

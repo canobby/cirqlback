@@ -1,508 +1,329 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import IOSNFCWriter from "@/components/nfc/ios-nfc-writer";
+import { useToast } from "@/hooks/use-toast";
 import { 
-  Smartphone, 
-  Plus, 
-  Settings, 
-  Zap, 
-  QrCode, 
-  MapPin,
-  Tag as TagIcon,
-  AlertCircle,
-  CheckCircle,
-  Copy,
-  RefreshCw,
-  Trash2
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import WebNfcInterface from '@/components/nfc/WebNfcInterface';
-import { apiRequest } from '@/lib/queryClient';
+  NfcIcon,
+  ArrowLeft,
+  Settings,
+  Smartphone,
+  Zap,
+  Globe,
+  Target,
+  Users,
+  Gift,
+  Percent,
+  Info
+} from "lucide-react";
 
-interface Campaign {
+interface CampaignData {
   id: string;
   name: string;
-  description: string;
   type: string;
-  value?: number;
-  pointsAwarded?: number;
-  isActive: boolean;
-}
-
-interface NfcTag {
-  id: string;
-  tagIdentifier: string;
-  businessId: string;
-  campaignId?: string;
-  location: string;
-  customLabel?: string;
-  description?: string;
-  placementNotes?: string;
-  isActive: boolean;
-  totalTaps: number;
-  tagUrl?: string;
-  qrCodeUrl?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface TagConfiguration {
-  campaignId: string;
-  location: string;
-  customLabel: string;
   description: string;
-  placementNotes: string;
+  url: string;
+  businessName: string;
 }
 
-export default function NfcWriterPage() {
-  const [selectedBusinessId] = useState('demo_biz_1'); // For demo purposes
-  const [tagConfiguration, setTagConfiguration] = useState<TagConfiguration>({
-    campaignId: '',
-    location: '',
-    customLabel: '',
-    description: '',
-    placementNotes: ''
-  });
-  const [selectedTagId, setSelectedTagId] = useState<string>('');
-  const [currentWritingTag, setCurrentWritingTag] = useState<any>(null);
-  
+export default function NFCWriter() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const [selectedCampaign, setSelectedCampaign] = useState<CampaignData | null>(null);
+  const [customUrl, setCustomUrl] = useState("");
+  const [useCustomUrl, setUseCustomUrl] = useState(false);
 
-  // Fetch campaigns
-  const { data: campaigns = [], isLoading: campaignsLoading } = useQuery({
-    queryKey: ['/api/campaigns'],
-    select: (data: any) => Array.isArray(data) ? data : []
-  });
-
-  // Fetch existing NFC tags
-  const { data: nfcTags = [], isLoading: tagsLoading } = useQuery({
-    queryKey: [`/api/nfc-tags?businessId=${selectedBusinessId}`],
-    select: (data: any) => Array.isArray(data) ? data : []
-  });
-
-  // Create new NFC tag
-  const createTagMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await fetch('/api/nfc-tags', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          businessId: selectedBusinessId,
-          ...data
-        })
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create tag');
-      }
-      return await response.json();
+  // Mock campaigns data
+  const campaigns: CampaignData[] = [
+    {
+      id: "camp_001",
+      name: "New Customer Welcome",
+      type: "Discount",
+      description: "20% off first purchase for new customers",
+      url: "https://cirqlback.com/tap/welcome001",
+      businessName: "Your Business"
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/nfc-tags?businessId=${selectedBusinessId}`] });
-      setCurrentWritingTag(data);
-      toast({
-        title: "Tag Created Successfully",
-        description: "Your NFC tag configuration has been saved and is ready for programming."
-      });
+    {
+      id: "camp_002", 
+      name: "Happy Hour Special",
+      type: "Time-Limited",
+      description: "Buy one get one free drinks 4-6 PM",
+      url: "https://cirqlback.com/tap/happy002",
+      businessName: "Your Business"
     },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to Create Tag",
-        description: error.message || "Please try again.",
-        variant: "destructive"
-      });
+    {
+      id: "camp_003",
+      name: "Loyalty Points Boost",
+      type: "Loyalty", 
+      description: "Double points on all purchases this week",
+      url: "https://cirqlback.com/tap/loyalty003",
+      businessName: "Your Business"
+    },
+    {
+      id: "camp_004",
+      name: "Weekend Event",
+      type: "Event",
+      description: "Live music Saturday + Sunday, special menu",
+      url: "https://cirqlback.com/tap/event004", 
+      businessName: "Your Business"
     }
-  });
+  ];
 
-  // Update existing NFC tag
-  const updateTagMutation = useMutation({
-    mutationFn: async ({ id, ...data }: any) => {
-      const response = await fetch(`/api/nfc-tags/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update tag');
-      }
-      return await response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/nfc-tags?businessId=${selectedBusinessId}`] });
-      toast({
-        title: "Tag Updated Successfully",
-        description: "Your NFC tag configuration has been updated."
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to Update Tag",
-        description: error.message || "Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Delete NFC tag
-  const deleteTagMutation = useMutation({
-    mutationFn: async (tagId: string) => {
-      const response = await fetch(`/api/nfc-tags/${tagId}`, {
-        method: 'DELETE'
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete tag');
-      }
-      return await response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/nfc-tags?businessId=${selectedBusinessId}`] });
-      toast({
-        title: "Tag Deleted",
-        description: "NFC tag has been removed from your account."
-      });
-    }
-  });
-
-  const handleCreateTag = () => {
-    if (!tagConfiguration.campaignId || !tagConfiguration.location) {
-      toast({
-        title: "Missing Required Fields",
-        description: "Please select a campaign and specify a location.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    createTagMutation.mutate(tagConfiguration);
+  const handleCampaignSelect = (campaignId: string) => {
+    const campaign = campaigns.find(c => c.id === campaignId);
+    setSelectedCampaign(campaign || null);
+    setUseCustomUrl(false);
   };
 
-  const handleUpdateTag = (tagId: string, updates: any) => {
-    updateTagMutation.mutate({ id: tagId, ...updates });
-  };
-
-  const handleNfcWriteSuccess = (data: any) => {
-    toast({
-      title: "NFC Tag Programmed!",
-      description: "Your physical NFC tag has been successfully programmed with campaign data.",
-    });
+  const getTagData = () => {
+    if (useCustomUrl && customUrl) {
+      return {
+        url: customUrl,
+        campaignId: "custom_url",
+        businessName: "Custom URL",
+        campaignType: "Custom Link"
+      };
+    }
     
-    // Update the tag status in the database if needed
-    if (currentWritingTag) {
-      handleUpdateTag(currentWritingTag.id, {
-        lastTapAt: new Date().toISOString(),
-        isActive: true
-      });
+    if (selectedCampaign) {
+      return {
+        url: selectedCampaign.url,
+        campaignId: selectedCampaign.id,
+        businessName: selectedCampaign.businessName,
+        campaignType: selectedCampaign.name
+      };
+    }
+    
+    return null;
+  };
+
+  const getCampaignIcon = (type: string) => {
+    switch (type) {
+      case 'Discount': return <Percent className="h-4 w-4" />;
+      case 'Time-Limited': return <Target className="h-4 w-4" />;
+      case 'Loyalty': return <Users className="h-4 w-4" />;
+      case 'Event': return <Gift className="h-4 w-4" />;
+      default: return <Zap className="h-4 w-4" />;
     }
   };
 
-  const handleNfcWriteError = (error: string) => {
-    console.error('NFC Write Error:', error);
+  const getCampaignColor = (type: string) => {
+    switch (type) {
+      case 'Discount': return 'bg-green-100 text-green-700 border-green-200';
+      case 'Time-Limited': return 'bg-orange-100 text-orange-700 border-orange-200';
+      case 'Loyalty': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'Event': return 'bg-purple-100 text-purple-700 border-purple-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
   };
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied!",
-      description: `${label} copied to clipboard.`
-    });
-  };
-
-  const selectedCampaign = campaigns.find((c: Campaign) => c.id === tagConfiguration.campaignId);
-  const selectedTag = nfcTags.find((t: NfcTag) => t.id === selectedTagId);
+  const tagData = getTagData();
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">NFC Tag Writer</h1>
-          <p className="text-gray-600 mt-2">Create and program your Cirql tags for customer engagement</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6">
+      <div className="max-w-6xl mx-auto space-y-8">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <Button 
+                onClick={() => setLocation('/merchant')}
+                variant="outline"
+                size="sm"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Merchant
+              </Button>
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Cross-Platform NFC Writer
+            </h1>
+            <p className="text-gray-600 text-lg mt-2">
+              Write NFC tags for both iOS and Android devices with full compatibility
+            </p>
+          </div>
+          <div className="text-right">
+            <Badge variant="outline" className="mb-2">
+              <Smartphone className="h-3 w-3 mr-1" />
+              iOS + Android
+            </Badge>
+            <p className="text-sm text-gray-500">Universal NFC Support</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge className="bg-blue-100 text-blue-800">
-            Web NFC Enabled
-          </Badge>
-        </div>
-      </div>
 
-      <Tabs defaultValue="create" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="create" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Create New Tag
-          </TabsTrigger>
-          <TabsTrigger value="manage" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Manage Existing Tags
-          </TabsTrigger>
-          <TabsTrigger value="writer" className="flex items-center gap-2">
-            <Smartphone className="h-4 w-4" />
-            NFC Writer
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Create New Tag */}
-        <TabsContent value="create" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          {/* Campaign Selection */}
+          <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TagIcon className="h-5 w-5" />
-                  Tag Configuration
+                  <Settings className="h-5 w-5" />
+                  Select Campaign or URL
                 </CardTitle>
-                <CardDescription>
-                  Set up your new NFC tag with campaign and location details
-                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
+                
                 {/* Campaign Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="campaign">Campaign (Required)</Label>
-                  <Select 
-                    value={tagConfiguration.campaignId} 
-                    onValueChange={(value) => setTagConfiguration(prev => ({ ...prev, campaignId: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a campaign" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {campaignsLoading ? (
-                        <SelectItem value="loading" disabled>Loading campaigns...</SelectItem>
-                      ) : campaigns.length === 0 ? (
-                        <SelectItem value="none" disabled>No campaigns available</SelectItem>
-                      ) : (
-                        campaigns.map((campaign: Campaign) => (
-                          <SelectItem key={campaign.id} value={campaign.id}>
-                            <div>
-                              <div className="font-medium">{campaign.name}</div>
-                              <div className="text-sm text-gray-500">{campaign.type}</div>
+                <div>
+                  <Label className="text-base font-medium">Choose Campaign</Label>
+                  <div className="grid gap-3 mt-3">
+                    {campaigns.map((campaign) => (
+                      <Card 
+                        key={campaign.id}
+                        className={`cursor-pointer transition-all hover:shadow-md ${
+                          selectedCampaign?.id === campaign.id && !useCustomUrl
+                            ? 'ring-2 ring-blue-500 bg-blue-50' 
+                            : 'hover:bg-gray-50'
+                        }`}
+                        onClick={() => handleCampaignSelect(campaign.id)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge className={getCampaignColor(campaign.type)}>
+                                  {getCampaignIcon(campaign.type)}
+                                  {campaign.type}
+                                </Badge>
+                              </div>
+                              <h3 className="font-semibold">{campaign.name}</h3>
+                              <p className="text-sm text-gray-600 mt-1">{campaign.description}</p>
+                              <p className="text-xs text-gray-400 mt-2">{campaign.url}</p>
                             </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Location */}
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location (Required)</Label>
-                  <Input
-                    id="location"
-                    placeholder="e.g., Front Counter, Main Entrance, Table 5"
-                    value={tagConfiguration.location}
-                    onChange={(e) => setTagConfiguration(prev => ({ ...prev, location: e.target.value }))}
-                  />
+                {/* Custom URL Option */}
+                <div className="border-t pt-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <input 
+                      type="checkbox"
+                      id="customUrl"
+                      checked={useCustomUrl}
+                      onChange={(e) => {
+                        setUseCustomUrl(e.target.checked);
+                        if (e.target.checked) setSelectedCampaign(null);
+                      }}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="customUrl" className="font-medium">
+                      Use Custom URL
+                    </Label>
+                  </div>
+                  
+                  {useCustomUrl && (
+                    <div>
+                      <Input
+                        placeholder="https://your-website.com/custom-page"
+                        value={customUrl}
+                        onChange={(e) => setCustomUrl(e.target.value)}
+                        className="mb-2"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Enter any URL to write to the NFC tag
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                {/* Custom Label */}
-                <div className="space-y-2">
-                  <Label htmlFor="customLabel">Custom Label</Label>
-                  <Input
-                    id="customLabel"
-                    placeholder="e.g., Welcome Tag, Loyalty Rewards"
-                    value={tagConfiguration.customLabel}
-                    onChange={(e) => setTagConfiguration(prev => ({ ...prev, customLabel: e.target.value }))}
-                  />
-                </div>
+                {/* Selected Preview */}
+                {tagData && (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Selected for NFC Tag:</strong><br />
+                      <span className="font-mono text-sm">{tagData.url}</span>
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-                {/* Description */}
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="What should customers expect when they tap this tag?"
-                    value={tagConfiguration.description}
-                    onChange={(e) => setTagConfiguration(prev => ({ ...prev, description: e.target.value }))}
-                    rows={3}
-                  />
-                </div>
-
-                {/* Placement Notes */}
-                <div className="space-y-2">
-                  <Label htmlFor="placementNotes">Placement Notes</Label>
-                  <Textarea
-                    id="placementNotes"
-                    placeholder="Add notes about optimal placement or special instructions..."
-                    value={tagConfiguration.placementNotes}
-                    onChange={(e) => setTagConfiguration(prev => ({ ...prev, placementNotes: e.target.value }))}
-                    rows={2}
-                  />
-                </div>
-
-                <Button 
-                  onClick={handleCreateTag}
-                  disabled={!tagConfiguration.campaignId || !tagConfiguration.location || createTagMutation.isPending}
-                  className="w-full"
-                >
-                  {createTagMutation.isPending ? 'Creating...' : 'Create Tag Configuration'}
-                </Button>
               </CardContent>
             </Card>
+          </div>
 
-            {/* Campaign Preview */}
-            {selectedCampaign && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Campaign Preview</CardTitle>
-                  <CardDescription>
-                    This is what customers will experience
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-blue-900">{selectedCampaign.name}</h4>
-                    <p className="text-blue-700 text-sm mt-1">{selectedCampaign.description}</p>
-                    <div className="flex items-center mt-3 space-x-4">
-                      <Badge variant="outline">{selectedCampaign.type}</Badge>
-                      {selectedCampaign.value && (
-                        <span className="text-blue-700 font-medium">
-                          {selectedCampaign.type === 'discount' 
-                            ? `${selectedCampaign.value}% off` 
-                            : `${selectedCampaign.pointsAwarded} points`}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+          {/* NFC Writer */}
+          <div>
+            {tagData ? (
+              <IOSNFCWriter 
+                tagData={tagData}
+                onWriteComplete={(success) => {
+                  if (success) {
+                    toast({
+                      title: "NFC Tag Written Successfully",
+                      description: `Tag programmed with: ${tagData.campaignType}`,
+                    });
+                  }
+                }}
+              />
+            ) : (
+              <Card className="h-full flex items-center justify-center">
+                <CardContent className="text-center p-12">
+                  <NfcIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                    Select Campaign or URL
+                  </h3>
+                  <p className="text-gray-500">
+                    Choose a campaign or enter a custom URL to write to your NFC tag
+                  </p>
                 </CardContent>
               </Card>
             )}
           </div>
-        </TabsContent>
 
-        {/* Manage Existing Tags */}
-        <TabsContent value="manage" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Your NFC Tags
-              </CardTitle>
-              <CardDescription>
-                Manage, update, or reprogram your existing tags
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {tagsLoading ? (
-                <div className="text-center py-8">
-                  <RefreshCw className="h-8 w-8 animate-spin mx-auto text-gray-400" />
-                  <p className="text-gray-500 mt-2">Loading tags...</p>
-                </div>
-              ) : nfcTags.length === 0 ? (
-                <div className="text-center py-8">
-                  <TagIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No NFC Tags Yet</h3>
-                  <p className="text-gray-500">Create your first NFC tag to get started with customer engagement.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {nfcTags.map((tag: NfcTag) => (
-                    <Card key={tag.id} className="border-gray-200">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-base">{tag.customLabel || tag.location}</CardTitle>
-                          <Badge className={tag.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}>
-                            {tag.isActive ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </div>
-                        <CardDescription>{tag.location}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="text-sm space-y-1">
-                          <div><strong>Tag ID:</strong> {tag.tagIdentifier}</div>
-                          <div><strong>Total Taps:</strong> {tag.totalTaps}</div>
-                          {tag.description && <div><strong>Description:</strong> {tag.description}</div>}
-                        </div>
+        </div>
 
-                        <div className="flex flex-wrap gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedTagId(tag.id);
-                              setCurrentWritingTag(tag);
-                            }}
-                          >
-                            <Smartphone className="h-3 w-3 mr-1" />
-                            Program
-                          </Button>
-                          
-                          {tag.tagUrl && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => copyToClipboard(tag.tagUrl!, 'Tag URL')}
-                            >
-                              <Copy className="h-3 w-3 mr-1" />
-                              Copy URL
-                            </Button>
-                          )}
-                          
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleUpdateTag(tag.id, { isActive: !tag.isActive })}
-                          >
-                            {tag.isActive ? 'Deactivate' : 'Activate'}
-                          </Button>
-                          
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => deleteTagMutation.mutate(tag.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+        {/* Features */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Cross-Platform NFC Writing Features</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Smartphone className="h-6 w-6 text-blue-600" />
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                <h3 className="font-semibold mb-2">iOS Compatibility</h3>
+                <p className="text-sm text-gray-600">
+                  Works with Safari on iOS 13+ using Core NFC framework
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Globe className="h-6 w-6 text-green-600" />
+                </div>
+                <h3 className="font-semibold mb-2">Android Support</h3>
+                <p className="text-sm text-gray-600">
+                  Full Web NFC API support in Chrome for Android devices
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Zap className="h-6 w-6 text-purple-600" />
+                </div>
+                <h3 className="font-semibold mb-2">Smart Detection</h3>
+                <p className="text-sm text-gray-600">
+                  Automatically detects device capabilities and optimizes accordingly
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* NFC Writer Interface */}
-        <TabsContent value="writer" className="space-y-6">
-          {currentWritingTag ? (
-            <WebNfcInterface
-              tagData={{
-                tagId: currentWritingTag.id,
-                businessId: selectedBusinessId,
-                campaignId: currentWritingTag.campaignId,
-                redirectUrl: currentWritingTag.tagUrl || `${window.location.origin}/tap/${currentWritingTag.id}`,
-                metadata: {
-                  location: currentWritingTag.location,
-                  customLabel: currentWritingTag.customLabel,
-                  description: currentWritingTag.description,
-                  createdAt: currentWritingTag.createdAt
-                }
-              }}
-              onWriteSuccess={handleNfcWriteSuccess}
-              onWriteError={handleNfcWriteError}
-            />
-          ) : (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Please create a new tag or select an existing tag from the "Manage Existing Tags" tab to begin programming.
-              </AlertDescription>
-            </Alert>
-          )}
-        </TabsContent>
-      </Tabs>
+      </div>
     </div>
   );
 }

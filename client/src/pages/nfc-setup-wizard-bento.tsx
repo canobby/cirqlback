@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import IOSNFCWriter from "@/components/nfc/ios-nfc-writer";
 import { 
   Smartphone, Wifi, CheckCircle, AlertTriangle, ArrowRight, 
   ArrowLeft, Zap, Target, Settings, RefreshCw, Play
@@ -261,6 +262,22 @@ export default function NFCSetupWizardBento() {
                         </>
                       )}
                     </Button>
+                    
+                    {/* Advanced Cross-Platform NFC Writer */}
+                    <div className="mt-6 p-4 bg-white/10 rounded-lg">
+                      <p className="text-green-100 text-sm mb-3">
+                        For advanced iOS/Android NFC writing with full compatibility:
+                      </p>
+                      <Button 
+                        onClick={() => setStep(5)}
+                        className="bg-white/30 hover:bg-white/40 text-white border-white/30 w-full"
+                        variant="outline"
+                        size="sm"
+                      >
+                        Use Cross-Platform Writer
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -348,12 +365,41 @@ export default function NFCSetupWizardBento() {
             </>
           )}
 
+          {/* Step 5: Cross-Platform NFC Writer */}
+          {step === 5 && (
+            <div className="md:col-span-6 lg:col-span-8">
+              <IOSNFCWriter 
+                tagData={{
+                  url: "https://cirqlback.com/tap/demo123",
+                  campaignId: "campaign_001",
+                  businessName: "Demo Business",
+                  campaignType: "Summer Special - 20% off all drinks"
+                }}
+                onWriteComplete={(success) => {
+                  if (success) {
+                    setTagWritten(true);
+                    setStep(4);
+                  }
+                }}
+              />
+            </div>
+          )}
+
           {/* Navigation */}
           {step > 1 && step < 4 && (
             <div className="md:col-span-6 lg:col-span-8 flex justify-center gap-4">
               <Button variant="outline" onClick={() => setStep(step - 1)} size="lg" className="text-white">
                 <ArrowLeft className="h-5 w-5 mr-2" />
                 Back
+              </Button>
+            </div>
+          )}
+          
+          {step === 5 && (
+            <div className="md:col-span-6 lg:col-span-8 flex justify-center gap-4">
+              <Button variant="outline" onClick={() => setStep(3)} size="lg">
+                <ArrowLeft className="h-5 w-5 mr-2" />
+                Back to Simple Writer
               </Button>
             </div>
           )}
