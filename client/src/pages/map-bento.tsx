@@ -365,14 +365,6 @@ export default function MapBento() {
               </p>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              <Button 
-                onClick={() => setLocation('/map')}
-                variant="outline"
-                size="sm"
-                className="text-white"
-              >
-                Classic View
-              </Button>
               <Badge className="bg-green-100 text-green-700 border-green-200">
                 <Navigation className="w-3 h-3 mr-1" />
                 {nearbyBusinesses.length} nearby
@@ -418,13 +410,17 @@ export default function MapBento() {
                 <MapPin className="h-12 w-12 text-green-100" />
               </div>
               
-              {/* Google Maps Integration */}
-              <div className="h-64 bg-white rounded-lg overflow-hidden">
+              {/* Interactive Google Maps */}
+              <div className="h-64 bg-white rounded-lg overflow-hidden shadow-lg">
                 <GoogleMapWrapper
                   businesses={nearbyBusinesses}
                   userLocation={userLocation}
                   onBusinessSelect={(business) => {
-                    console.log('Selected business:', business);
+                    toast({
+                      title: `Selected ${business.name}`,
+                      description: `${business.activeRewards} rewards available • ${business.category}`,
+                      variant: "default"
+                    });
                   }}
                   className="h-full w-full"
                   isFullScreen={isMapFullScreen}
