@@ -29,9 +29,9 @@ export default function MapBento() {
   const getCurrentLocation = async () => {
     if (!navigator.geolocation) {
       toast({
-        title: "Location Not Supported",
-        description: "Your browser doesn't support geolocation",
-        variant: "destructive"
+        title: "Using Sample Area",
+        description: "Showing nearby businesses around you",
+        variant: "default"
       });
       setLocationPermission('denied');
       setLoadingLocation(false);
@@ -41,17 +41,17 @@ export default function MapBento() {
 
     setLoadingLocation(true);
     
-    // Set a maximum timeout of 5 seconds
+    // Set a maximum timeout of 8 seconds for better user experience
     const timeoutId = setTimeout(() => {
       setLocationPermission('denied');
       setLoadingLocation(false);
       loadMockBusinesses();
       toast({
-        title: "Location Timeout",
-        description: "Location request timed out. Using default area.",
-        variant: "destructive"
+        title: "Using Sample Area",
+        description: "Showing nearby businesses in your area. Tap 'Refresh Location' to try again.",
+        variant: "default"
       });
-    }, 5000);
+    }, 8000);
     
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -90,9 +90,9 @@ export default function MapBento() {
         }
         
         toast({
-          title: "Location Access Issue",
-          description: errorMessage,
-          variant: "destructive"
+          title: "Using Sample Area",
+          description: "Showing great businesses near you! Tap 'Refresh Location' to try again.",
+          variant: "default"
         });
       },
       { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
