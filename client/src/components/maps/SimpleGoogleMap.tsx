@@ -2,6 +2,12 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Wrapper, Status } from '@googlemaps/react-wrapper';
 import { Loader2, MapPin } from 'lucide-react';
 
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
 interface Business {
   id: number;
   name: string;
@@ -25,8 +31,8 @@ interface MapComponentProps {
 // Simple Google Maps component without infinite loop issues
 function SimpleMapComponent({ center, zoom, businesses, onBusinessSelect, userLocation }: MapComponentProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
+  const mapRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
 
   useEffect(() => {
     // Initialize map only once
@@ -66,20 +72,15 @@ function SimpleMapComponent({ center, zoom, businesses, onBusinessSelect, userLo
     }
 
     // Add business markers
+    console.log('Adding markers for businesses:', businesses);
     businesses.forEach((business) => {
       if (business.lat && business.lng) {
+        console.log('Creating marker for:', business.name, 'at', business.lat, business.lng);
         const marker = new window.google.maps.Marker({
           position: { lat: business.lat, lng: business.lng },
           map,
           title: business.name,
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 12,
-            fillColor: business.isOpen ? '#10B981' : '#EF4444',
-            fillOpacity: 1,
-            strokeWeight: 2,
-            strokeColor: '#FFFFFF',
-          },
+          // Use default red pin for visibility - we can customize later
         });
 
         const infoWindow = new window.google.maps.InfoWindow({
@@ -101,6 +102,7 @@ function SimpleMapComponent({ center, zoom, businesses, onBusinessSelect, userLo
         });
 
         marker.addListener('click', () => {
+          console.log('Marker clicked for:', business.name);
           infoWindow.open(map, marker);
           if (onBusinessSelect) {
             onBusinessSelect(business);
