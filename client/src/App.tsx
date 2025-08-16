@@ -43,6 +43,7 @@ import ProfileSetup from "@/pages/profile-setup";
 import TestSystem from "@/pages/test-system";
 import AdminDashboard from "@/pages/admin-dashboard";
 import BusinessWebsitePreview from "@/pages/business-website-preview";
+import AboutPage from "@/pages/about";
 
 function Router() {
   const [location] = useLocation();
@@ -95,6 +96,7 @@ function Router() {
           <Route path="/campaign-setup-bento" component={CampaignSetupBento} />
           
           {/* Footer Pages */}
+          <Route path="/about" component={AboutPage} />
           <Route path="/contact" component={ContactPage} />
           <Route path="/help-center" component={HelpCenterPage} />
           <Route path="/privacy-policy" component={PrivacyPolicyPage} />

@@ -182,8 +182,8 @@ export default function CustomerBento() {
                       justifyContent: 'center',
                       transition: 'background-color 0.2s'
                     }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f9fafb'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                    onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f9fafb'}
+                    onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'white'}
                   >
                     <div className="w-4 h-4 mr-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full"></div>
                     Account Settings

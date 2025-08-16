@@ -143,8 +143,8 @@ export default function MerchantBento() {
                   textAlign: 'center',
                   transition: 'background-color 0.2s'
                 }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255,255,255,0.3)'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255,255,255,0.2)'}
+                onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.3)'}
+                onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.2)'}
               >
                 Manage
               </div>
@@ -208,8 +208,8 @@ export default function MerchantBento() {
                   textAlign: 'center',
                   transition: 'background-color 0.2s'
                 }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
+                onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'white'}
               >
                 View Details
               </div>
@@ -238,8 +238,8 @@ export default function MerchantBento() {
                   textAlign: 'center',
                   transition: 'background-color 0.2s'
                 }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
+                onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'white'}
               >
                 Tag Manager
               </div>
