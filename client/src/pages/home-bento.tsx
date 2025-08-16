@@ -135,7 +135,25 @@ export default function HomeBento() {
           </div>
         </div>
 
-        {/* Additional Bento Grid Layout */}
+        {/* Feature Showcase Section */}
+        <div className="max-w-6xl mx-auto mb-16">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-gray-100">How It Works</h2>
+            <p className="text-xl text-gray-600 dark:text-gray-400">Three simple steps to start your local discovery adventure</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <div key={index} className="text-center p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                <div className="mb-6">{feature.visual}</div>
+                <h4 className="font-bold text-xl mb-3 text-gray-900 dark:text-gray-100">{feature.title}</h4>
+                <p className="text-gray-600 dark:text-gray-400">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bento Grid Layout */}
         <div className="bento-grid auto-rows-min mb-8 sm:mb-12">
           
           {/* Mobile Interface Mockup Card */}
@@ -232,25 +250,7 @@ export default function HomeBento() {
             </CardContent>
           </Card>
 
-          {/* Feature Showcase - Wide Block */}
-          <Card className="md:col-span-6 lg:col-span-5 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
-            <CardContent className="p-6">
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold mb-2 text-gray-900 dark:text-gray-100">How It Works</h3>
-                <p className="text-gray-600 dark:text-gray-400">Three simple steps to start your local discovery adventure</p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {features.map((feature, index) => (
-                  <div key={index} className="text-center p-4">
-                    {feature.visual}
-                    <h4 className="font-semibold text-lg mb-2 mt-4 text-gray-900 dark:text-gray-100">{feature.title}</h4>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">{feature.description}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+
 
           {/* Gamification Highlight - Medium Block */}
           <Card className="md:col-span-3 lg:col-span-3 bg-gradient-to-br from-orange-500 to-red-500 border-0 text-white">
