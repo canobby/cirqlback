@@ -36,6 +36,13 @@ import AnalyticsBento from "@/pages/analytics-bento";
 import HomeBento from "@/pages/home-bento";
 import NFCSetupWizardBento from "@/pages/nfc-setup-wizard-bento";
 import MapBento from "@/pages/map-bento";
+import Marketing from "@/pages/marketing";
+import Communication from "@/pages/communication";
+import Community from "@/pages/community";
+import ProfileSetup from "@/pages/profile-setup";
+import TestSystem from "@/pages/test-system";
+import AdminDashboard from "@/pages/admin-dashboard";
+import BusinessWebsitePreview from "@/pages/business-website-preview";
 
 function Router() {
   const [location] = useLocation();
@@ -70,6 +77,13 @@ function Router() {
           <Route path="/profile" component={CustomerProfile} />
           <Route path="/business-settings" component={BusinessSettings} />
           <Route path="/campaign-builder" component={CampaignBuilder} />
+          <Route path="/marketing" component={Marketing} />
+          <Route path="/communication" component={Communication} />
+          <Route path="/community" component={Community} />
+          <Route path="/profile-setup" component={ProfileSetup} />
+          <Route path="/test-system" component={TestSystem} />
+          <Route path="/admin-dashboard" component={AdminDashboard} />
+          <Route path="/website-preview" component={BusinessWebsitePreview} />
           
           {/* Bento Route Aliases */}
           <Route path="/merchant-bento" component={MerchantBento} />

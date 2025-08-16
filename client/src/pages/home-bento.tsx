@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useLocation } from "wouter";
 
 export default function HomeBento() {
+  const [, setLocation] = useLocation();
   const stats = {
     businesses: "2,500+",
     customers: "50K+",
@@ -104,7 +106,7 @@ export default function HomeBento() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Button 
-                      onClick={() => window.location.href = '/customer-bento'}
+                      onClick={() => setLocation('/customer-bento')}
                       className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                       variant="outline"
                     >
@@ -125,7 +127,7 @@ export default function HomeBento() {
                     </Button>
                     
                     <Button 
-                      onClick={() => window.location.href = '/merchant-bento'}
+                      onClick={() => setLocation('/merchant-bento')}
                       className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                       variant="outline"
                     >
@@ -331,7 +333,7 @@ export default function HomeBento() {
               
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button 
-                  onClick={() => window.location.href = '/customer-bento'}
+                  onClick={() => setLocation('/customer-bento')}
                   className="flex-1 bg-white text-blue-600 hover:bg-blue-50 font-semibold py-3"
                 >
                   Start Discovering
@@ -340,7 +342,7 @@ export default function HomeBento() {
                   </div>
                 </Button>
                 <Button 
-                  onClick={() => window.location.href = '/merchant-bento'}
+                  onClick={() => setLocation('/merchant-bento')}
                   variant="outline"
                   className="flex-1 border-white text-white hover:bg-white/10 font-semibold py-3"
                 >
@@ -359,7 +361,7 @@ export default function HomeBento() {
         <div className="text-center">
           <div className="flex justify-center space-x-4 mb-4">
             <Button 
-              onClick={() => window.location.href = '/about'}
+              onClick={() => setLocation('/about')}
               variant="outline" 
               size="sm"
               className="bg-white/50 backdrop-blur-sm"
@@ -367,7 +369,7 @@ export default function HomeBento() {
               About Cirqlback
             </Button>
             <Button 
-              onClick={() => window.location.href = '/how-it-works'}
+              onClick={() => setLocation('/how-it-works')}
               variant="outline" 
               size="sm"
               className="bg-white/50 backdrop-blur-sm"
@@ -375,7 +377,7 @@ export default function HomeBento() {
               How It Works
             </Button>
             <Button 
-              onClick={() => window.location.href = '/contact'}
+              onClick={() => setLocation('/contact')}
               variant="outline" 
               size="sm"
               className="bg-white/50 backdrop-blur-sm"

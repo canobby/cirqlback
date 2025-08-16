@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ import {
 } from "lucide-react";
 
 export default function AnalyticsBento() {
+  const [, setLocation] = useLocation();
   const [timeRange, setTimeRange] = useState("week");
   
   const metrics = {
@@ -288,7 +290,7 @@ export default function AnalyticsBento() {
               <Button 
                 className="w-full mt-4 bg-white/20 hover:bg-white/30 text-white border-white/30" 
                 variant="outline"
-                onClick={() => window.location.href = '/analytics'}
+                onClick={() => setLocation('/analytics')}
               >
                 View Full Activity Log
                 <ArrowRight className="w-4 h-4 ml-2" />

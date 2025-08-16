@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +30,7 @@ import {
 } from "lucide-react";
 
 export default function AnalyticsDashboard() {
+  const [, setLocation] = useLocation();
   const [timeRange, setTimeRange] = useState("7d");
   const [selectedBusiness, setSelectedBusiness] = useState("all");
   const [showAIInsights, setShowAIInsights] = useState(false);
@@ -153,7 +155,7 @@ export default function AnalyticsDashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <Button 
-                onClick={() => window.location.href = '/analytics-bento'}
+                onClick={() => setLocation('/analytics-bento')}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               >
                 Try Bento Layout

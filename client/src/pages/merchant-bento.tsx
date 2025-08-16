@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import {
 
 export default function MerchantBento() {
   const [selectedBusiness] = useState("business-1");
+  const [, setLocation] = useLocation();
 
   // Mock stats data
   const stats = {
@@ -63,7 +65,7 @@ export default function MerchantBento() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Button 
-                  onClick={() => window.location.href = '/campaign-setup-wizard'}
+                  onClick={() => setLocation('/campaign-setup-wizard')}
                   className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
                 >
@@ -80,7 +82,7 @@ export default function MerchantBento() {
                 </Button>
                 
                 <Button 
-                  onClick={() => window.location.href = '/nfc-setup-wizard-bento'}
+                  onClick={() => setLocation('/nfc-setup-wizard-bento')}
                   className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
                 >
@@ -184,7 +186,7 @@ export default function MerchantBento() {
               <Button 
                 size="sm" 
                 variant="outline"
-                onClick={() => window.location.href = '/analytics'}
+                onClick={() => setLocation('/analytics')}
                 className="text-gray-700 border-gray-300 hover:bg-gray-100"
               >
                 View Details
@@ -203,7 +205,7 @@ export default function MerchantBento() {
               <Button 
                 size="sm" 
                 variant="outline"
-                onClick={() => window.location.href = '/nfc-writer'}
+                onClick={() => setLocation('/nfc-writer')}
                 className="text-gray-700 border-gray-300 hover:bg-gray-100"
               >
                 Tag Manager
@@ -214,7 +216,7 @@ export default function MerchantBento() {
           {/* Additional Tools Row */}
           <Card 
             className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors cursor-pointer"
-            onClick={() => window.location.href = '/communication'}
+            onClick={() => setLocation('/communication')}
           >
             <CardContent className="p-6 text-center">
               <MessageSquare className="h-6 w-6 text-green-600 mx-auto mb-2" />
@@ -225,7 +227,7 @@ export default function MerchantBento() {
 
           <Card 
             className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-yellow-300 dark:hover:border-yellow-600 transition-colors cursor-pointer"
-            onClick={() => window.location.href = '/campaign-setup-wizard'}
+            onClick={() => setLocation('/campaign-setup-wizard')}
           >
             <CardContent className="p-6 text-center">
               <Calendar className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
@@ -236,7 +238,7 @@ export default function MerchantBento() {
 
           <Card 
             className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors cursor-pointer"
-            onClick={() => window.location.href = '/settings'}
+            onClick={() => setLocation('/settings')}
           >
             <CardContent className="p-6 text-center">
               <Settings className="h-6 w-6 text-purple-600 mx-auto mb-2" />

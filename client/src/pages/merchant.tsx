@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignManagement from "@/components/merchant/campaign-management";
@@ -18,6 +19,7 @@ import PlatformSync from "@/components/global/platform-sync";
 import { GuidedTour } from "@/components/interactive/guided-tour";
 
 export default function Merchant() {
+  const [, setLocation] = useLocation();
   const [selectedBusiness] = useState("business-1"); // Simulate selected business
 
   // Mock stats data
@@ -37,7 +39,7 @@ export default function Merchant() {
             <p className="text-xl text-gray-600">Complete business ecosystem with AI partnership recommendations, multi-merchant reward pools, predictive customer analytics, 22+ platform integrations, automated marketing orchestration, and comprehensive export capabilities</p>
           </div>
           <Button 
-            onClick={() => window.location.href = '/merchant-bento'}
+            onClick={() => setLocation('/merchant-bento')}
             className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
           >
             <Zap className="h-4 w-4 mr-2" />
@@ -120,7 +122,7 @@ export default function Merchant() {
                   Set up discounts, loyalty points, or referral rewards in minutes
                 </p>
                 <Button 
-                  onClick={() => window.location.href = '/campaign-setup-bento'}
+                  onClick={() => setLocation('/campaign-setup-bento')}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                 >
                   <Zap className="h-4 w-4 mr-2" />
@@ -143,7 +145,7 @@ export default function Merchant() {
                   Quick physical tag setup with guided step-by-step process
                 </p>
                 <Button 
-                  onClick={() => window.location.href = '/nfc-setup-wizard'}
+                  onClick={() => setLocation('/nfc-setup-wizard')}
                   className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white"
                 >
                   <Smartphone className="h-4 w-4 mr-2" />
@@ -191,7 +193,7 @@ export default function Merchant() {
                 </div>
                 <h3 className="text-lg font-semibold mb-2">Advanced Campaign Templates</h3>
                 <p className="text-gray-600 mb-6">Access 9+ pre-made templates with seasonal rotation and cross-business collaboration</p>
-                <Button onClick={() => window.location.href = '/campaign-builder'} className="bg-purple-600 hover:bg-purple-700">
+                <Button onClick={() => setLocation('/campaign-builder')} className="bg-purple-600 hover:bg-purple-700">
                   <Zap className="mr-2 h-4 w-4" />
                   Open Campaign Builder
                 </Button>
@@ -210,7 +212,7 @@ export default function Merchant() {
                     <p className="text-blue-700 text-sm">Program physical NFC tags with Web NFC API integration</p>
                   </div>
                   <Button 
-                    onClick={() => window.location.href = '/nfc-writer'} 
+                    onClick={() => setLocation('/nfc-writer')} 
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     <Smartphone className="mr-2 h-4 w-4" />
@@ -254,7 +256,7 @@ export default function Merchant() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/marketing'}>
+                <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setLocation('/marketing')}>
                   <div className="text-center">
                     <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                       <BookOpen className="h-6 w-6 text-blue-600" />
@@ -267,7 +269,7 @@ export default function Merchant() {
                   </div>
                 </Card>
 
-                <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/marketing'}>
+                <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setLocation('/marketing')}>
                   <div className="text-center">
                     <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                       <UtensilsCrossed className="h-6 w-6 text-purple-600" />
@@ -280,7 +282,7 @@ export default function Merchant() {
                   </div>
                 </Card>
 
-                <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/marketing'}>
+                <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setLocation('/marketing')}>
                   <div className="text-center">
                     <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                       <DollarSign className="h-6 w-6 text-green-600" />
@@ -318,7 +320,7 @@ export default function Merchant() {
 
               <div className="text-center">
                 <button 
-                  onClick={() => window.location.href = '/marketing'}
+                  onClick={() => setLocation('/marketing')}
                   className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors font-medium"
                 >
                   Open Full Marketing Suite

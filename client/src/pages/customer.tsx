@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import LoyaltyIntegration from "@/components/customer/loyalty-integration";
 import { GuidedTour } from "@/components/interactive/guided-tour";
 
 export default function Customer() {
+  const [, setLocation] = useLocation();
   const [customerEmail, setCustomerEmail] = useState("");
   const [showDashboard, setShowDashboard] = useState(false);
 
@@ -27,7 +29,7 @@ export default function Customer() {
               Advanced Community & Rewards Hub
             </h1>
             <Button 
-              onClick={() => window.location.href = '/customer-bento'}
+              onClick={() => setLocation('/customer-bento')}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
             >
               Try Bento Layout
@@ -160,7 +162,7 @@ export default function Customer() {
                     <p className="text-gray-600">Access your rewards profile and team challenges</p>
                     <Button 
                       className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                      onClick={() => window.location.href = '/customer-bento'}
+                      onClick={() => setLocation('/customer-bento')}
                     >
                       <Zap className="h-4 w-4 mr-2" />
                       Launch Rewards Hub

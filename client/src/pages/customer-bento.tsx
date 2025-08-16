@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export default function CustomerBento() {
+  const [, setLocation] = useLocation();
   const [userStats] = useState({
     totalPoints: 2847,
     level: 12,
@@ -71,7 +73,7 @@ export default function CustomerBento() {
                 <Button 
                   className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
-                  onClick={() => window.location.href = '/map-bento'}
+                  onClick={() => setLocation('/map-bento')}
                 >
                   <div className="flex items-center w-full">
                     <div className="bg-white/20 p-2 rounded-lg mr-3">
@@ -90,7 +92,7 @@ export default function CustomerBento() {
                 <Button 
                   className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
-                  onClick={() => window.location.href = '/nfc-setup-wizard-bento'}
+                  onClick={() => setLocation('/nfc-setup-wizard-bento')}
                 >
                   <div className="flex items-center w-full">
                     <div className="bg-white/20 p-2 rounded-lg mr-3">
@@ -157,14 +159,14 @@ export default function CustomerBento() {
                 {/* Quick Actions */}
                 <div className="space-y-2">
                   <Button 
-                    onClick={() => window.location.href = '/profile'}
+                    onClick={() => setLocation('/profile')}
                     className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white"
                   >
                     <div className="w-4 h-4 mr-2 bg-white/30 rounded-full"></div>
                     Edit Profile
                   </Button>
                   <Button 
-                    onClick={() => window.location.href = '/settings'}
+                    onClick={() => setLocation('/settings')}
                     variant="outline" 
                     className="w-full"
                   >
@@ -298,7 +300,7 @@ export default function CustomerBento() {
               </div>
               
               <Button 
-                onClick={() => window.location.href = '/community'}
+                onClick={() => setLocation('/community')}
                 className="w-full mt-4 bg-white/20 hover:bg-white/30 text-white border-white/30" 
                 variant="outline"
               >
@@ -316,7 +318,7 @@ export default function CustomerBento() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Button 
-                  onClick={() => window.location.href = '/map-bento'}
+                  onClick={() => setLocation('/map-bento')}
                   className="h-20 flex-col gap-2 bg-gradient-to-br from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
@@ -326,7 +328,7 @@ export default function CustomerBento() {
                 </Button>
                 
                 <Button 
-                  onClick={() => window.location.href = '/nfc-setup-wizard-bento'}
+                  onClick={() => setLocation('/nfc-setup-wizard-bento')}
                   className="h-20 flex-col gap-2 bg-gradient-to-br from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
@@ -336,7 +338,7 @@ export default function CustomerBento() {
                 </Button>
                 
                 <Button 
-                  onClick={() => window.location.href = '/analytics-bento'}
+                  onClick={() => setLocation('/analytics-bento')}
                   className="h-20 flex-col gap-2 bg-gradient-to-br from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
@@ -346,7 +348,7 @@ export default function CustomerBento() {
                 </Button>
                 
                 <Button 
-                  onClick={() => window.location.href = '/checkout'}
+                  onClick={() => setLocation('/checkout')}
                   className="h-20 flex-col gap-2 bg-gradient-to-br from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">

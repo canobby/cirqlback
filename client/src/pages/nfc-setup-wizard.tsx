@@ -133,7 +133,7 @@ export default function NFCSetupWizard() {
               NFC Tag Setup Wizard
             </h1>
             <Button 
-              onClick={() => window.location.href = '/nfc-setup-wizard-bento'}
+              onClick={() => setLocation('/nfc-setup-wizard-bento')}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
             >
               Try Bento Layout

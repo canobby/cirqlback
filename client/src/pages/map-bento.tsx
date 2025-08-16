@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 
 export default function MapBento() {
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -272,7 +274,7 @@ export default function MapBento() {
             </div>
             <div className="flex items-center gap-3">
               <Button 
-                onClick={() => window.location.href = '/map'}
+                onClick={() => setLocation('/map')}
                 variant="outline"
                 size="sm"
                 className="text-white"

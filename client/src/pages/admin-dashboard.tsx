@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,6 +73,7 @@ interface CampaignTemplateAdmin {
 }
 
 export default function AdminDashboard() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   
   // AI Platform Insights Query
@@ -303,7 +305,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center space-x-3">
             <Button 
-              onClick={() => window.location.href = '/test-system'}
+              onClick={() => setLocation('/test-system')}
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
             >
               <Target className="h-4 w-4 mr-2" />

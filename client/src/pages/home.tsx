@@ -1,11 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Store, Smartphone, BarChart3, Users, Coffee, BookOpen, UtensilsCrossed, CheckCircle, Wifi, Share2, MapPin } from "lucide-react";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 import { GuidedTour } from "@/components/interactive/guided-tour";
 
 export default function Home() {
+  const [, setLocation] = useLocation();
   return (
     <main className="max-w-7xl mx-auto responsive-container py-4 sm:py-6 lg:py-8">
       {/* Hero Section */}
@@ -40,7 +41,7 @@ export default function Home() {
                 </Button>
               </Link>
               <Button 
-                onClick={() => window.location.href = '/home-bento'}
+                onClick={() => setLocation('/home-bento')}
                 size="lg" 
                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium w-full sm:w-auto"
               >

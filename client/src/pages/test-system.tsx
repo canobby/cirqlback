@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ interface TestCampaign {
 }
 
 export default function TestSystem() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [selectedTestType, setSelectedTestType] = useState<string>("system-overview");
   const [testUsers, setTestUsers] = useState<TestUser[]>([
@@ -481,19 +483,19 @@ export default function TestSystem() {
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Button onClick={() => window.location.href = '/map'} className="h-20">
+                      <Button onClick={() => setLocation('/map')} className="h-20">
                         <div className="text-center">
                           <MapPin className="h-6 w-6 mx-auto mb-1" />
                           <div>Discover Map</div>
                         </div>
                       </Button>
-                      <Button onClick={() => window.location.href = '/community'} variant="outline" className="h-20">
+                      <Button onClick={() => setLocation('/community')} variant="outline" className="h-20">
                         <div className="text-center">
                           <Users className="h-6 w-6 mx-auto mb-1" />
                           <div>Community</div>
                         </div>
                       </Button>
-                      <Button onClick={() => window.location.href = '/team-challenges'} variant="outline" className="h-20">
+                      <Button onClick={() => setLocation('/team-challenges')} variant="outline" className="h-20">
                         <div className="text-center">
                           <Play className="h-6 w-6 mx-auto mb-1" />
                           <div>Team Challenges</div>
@@ -564,21 +566,21 @@ export default function TestSystem() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Button onClick={() => window.location.href = '/campaign-builder'} className="h-24">
+                      <Button onClick={() => setLocation('/campaign-builder')} className="h-24">
                         <div className="text-center">
                           <Gift className="h-8 w-8 mx-auto mb-2" />
                           <div className="font-medium">Campaign Builder</div>
                           <div className="text-xs opacity-75">Create new campaigns</div>
                         </div>
                       </Button>
-                      <Button onClick={() => window.location.href = '/analytics'} variant="outline" className="h-24">
+                      <Button onClick={() => setLocation('/analytics')} variant="outline" className="h-24">
                         <div className="text-center">
                           <Trophy className="h-8 w-8 mx-auto mb-2" />
                           <div className="font-medium">Analytics</div>
                           <div className="text-xs opacity-75">Track performance</div>
                         </div>
                       </Button>
-                      <Button onClick={() => window.location.href = '/merchant'} variant="outline" className="h-24">
+                      <Button onClick={() => setLocation('/merchant')} variant="outline" className="h-24">
                         <div className="text-center">
                           <Users className="h-8 w-8 mx-auto mb-2" />
                           <div className="font-medium">Merchant Hub</div>
@@ -597,19 +599,19 @@ export default function TestSystem() {
                       <CardDescription>Test different campaign types</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <Button onClick={() => window.location.href = '/campaign-builder?template=loyalty'} variant="outline" className="w-full justify-start">
+                      <Button onClick={() => setLocation('/campaign-builder?template=loyalty')} variant="outline" className="w-full justify-start">
                         <Star className="h-4 w-4 mr-2" />
                         Loyalty Program Campaign
                       </Button>
-                      <Button onClick={() => window.location.href = '/campaign-builder?template=referral'} variant="outline" className="w-full justify-start">
+                      <Button onClick={() => setLocation('/campaign-builder?template=referral')} variant="outline" className="w-full justify-start">
                         <Users className="h-4 w-4 mr-2" />
                         Referral Campaign
                       </Button>
-                      <Button onClick={() => window.location.href = '/campaign-builder?template=ar'} variant="outline" className="w-full justify-start">
+                      <Button onClick={() => setLocation('/campaign-builder?template=ar')} variant="outline" className="w-full justify-start">
                         <Play className="h-4 w-4 mr-2" />
                         AR Experience Campaign
                       </Button>
-                      <Button onClick={() => window.location.href = '/campaign-builder?template=seasonal'} variant="outline" className="w-full justify-start">
+                      <Button onClick={() => setLocation('/campaign-builder?template=seasonal')} variant="outline" className="w-full justify-start">
                         <Gift className="h-4 w-4 mr-2" />
                         Seasonal Campaign
                       </Button>
@@ -622,15 +624,15 @@ export default function TestSystem() {
                       <CardDescription>Test AI assistance tools</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <Button onClick={() => window.location.href = '/ai-insights'} variant="outline" className="w-full justify-start">
+                      <Button onClick={() => setLocation('/ai-insights')} variant="outline" className="w-full justify-start">
                         <Zap className="h-4 w-4 mr-2" />
                         AI Customer Insights
                       </Button>
-                      <Button onClick={() => window.location.href = '/analytics?view=predictions'} variant="outline" className="w-full justify-start">
+                      <Button onClick={() => setLocation('/analytics?view=predictions')} variant="outline" className="w-full justify-start">
                         <Trophy className="h-4 w-4 mr-2" />
                         Predictive Analytics
                       </Button>
-                      <Button onClick={() => window.location.href = '/merchant?tab=pricing'} variant="outline" className="w-full justify-start">
+                      <Button onClick={() => setLocation('/merchant?tab=pricing')} variant="outline" className="w-full justify-start">
                         <Star className="h-4 w-4 mr-2" />
                         AI Pricing Optimizer
                       </Button>
@@ -655,25 +657,25 @@ export default function TestSystem() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Button onClick={() => window.location.href = '/admin-dashboard'} className="h-20">
+                  <Button onClick={() => setLocation('/admin-dashboard')} className="h-20">
                     <div className="text-center">
                       <Shield className="h-6 w-6 mx-auto mb-1" />
                       <div>Admin Dashboard</div>
                     </div>
                   </Button>
-                  <Button onClick={() => window.location.href = '/admin-invitations'} variant="outline" className="h-20">
+                  <Button onClick={() => setLocation('/admin-invitations')} variant="outline" className="h-20">
                     <div className="text-center">
                       <Users className="h-6 w-6 mx-auto mb-1" />
                       <div>Invitations</div>
                     </div>
                   </Button>
-                  <Button onClick={() => window.location.href = '/admin-training-center'} variant="outline" className="h-20">
+                  <Button onClick={() => setLocation('/admin-training-center')} variant="outline" className="h-20">
                     <div className="text-center">
                       <Trophy className="h-6 w-6 mx-auto mb-1" />
                       <div>Training Center</div>
                     </div>
                   </Button>
-                  <Button onClick={() => window.location.href = '/platform-overview'} variant="outline" className="h-20">
+                  <Button onClick={() => setLocation('/platform-overview')} variant="outline" className="h-20">
                     <div className="text-center">
                       <Star className="h-6 w-6 mx-auto mb-1" />
                       <div>Platform Overview</div>
