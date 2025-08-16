@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,7 @@ interface Customer {
 }
 
 export default function InteractiveDiscoveryMap() {
+  const [, setLocation] = useLocation();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
