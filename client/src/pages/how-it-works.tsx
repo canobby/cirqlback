@@ -153,22 +153,48 @@ export default function HowItWorksPage() {
             rewarding experiences for customers and powerful growth tools for businesses.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              className="bg-white text-purple-600 hover:bg-gray-100"
+            <div
               onClick={() => setLocation("/tap")}
+              style={{
+                backgroundColor: 'white',
+                color: '#7c3aed',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
             >
               Try a Cirql Tap
               <ChevronRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="border-white text-white hover:bg-white/10"
+            </div>
+            <div
               onClick={() => setLocation("/merchant")}
+              style={{
+                backgroundColor: 'transparent',
+                color: 'white',
+                border: '2px solid white',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
             >
               For Businesses
-            </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -326,14 +352,27 @@ export default function HowItWorksPage() {
           </div>
 
           <div className="text-center">
-            <Button 
-              size="lg" 
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+            <div
               onClick={() => setLocation("/merchant")}
+              style={{
+                background: 'linear-gradient(to right, #3b82f6, #4f46e5)',
+                color: 'white',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: '600',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.background = 'linear-gradient(to right, #2563eb, #4338ca)'}
+              onMouseLeave={(e) => e.target.style.background = 'linear-gradient(to right, #3b82f6, #4f46e5)'}
             >
               Start Growing Your Business
               <ChevronRight className="ml-2 h-5 w-5" />
-            </Button>
+            </div>
           </div>
         </div>
       </section>

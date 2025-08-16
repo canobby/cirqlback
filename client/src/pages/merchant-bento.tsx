@@ -130,13 +130,24 @@ export default function MerchantBento() {
               </div>
               <h3 className="font-semibold mb-1">Active Campaigns</h3>
               <p className="text-orange-100 text-sm mb-4">Running promotions</p>
-              <Button 
-                size="sm" 
-                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                variant="outline"
+              <div
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  textAlign: 'center',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255,255,255,0.3)'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255,255,255,0.2)'}
               >
                 Manage
-              </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -183,14 +194,25 @@ export default function MerchantBento() {
               </div>
               <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Analytics</h3>
               <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">Performance insights</p>
-              <Button 
-                size="sm" 
-                variant="outline"
+              <div
                 onClick={() => setLocation('/analytics')}
-                className="text-gray-700 border-gray-300 hover:bg-gray-100"
+                style={{
+                  backgroundColor: 'white',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  textAlign: 'center',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
               >
                 View Details
-              </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -202,14 +224,25 @@ export default function MerchantBento() {
               </div>
               <h3 className="font-semibold text-gray-900 dark:text-white mb-1">NFC Tags</h3>
               <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">Manage your tags</p>
-              <Button 
-                size="sm" 
-                variant="outline"
+              <div
                 onClick={() => setLocation('/nfc-writer')}
-                className="text-gray-700 border-gray-300 hover:bg-gray-100"
+                style={{
+                  backgroundColor: 'white',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  textAlign: 'center',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
               >
                 Tag Manager
-              </Button>
+              </div>
             </CardContent>
           </Card>
 

@@ -314,30 +314,51 @@ export default function HomeBento() {
         {/* Navigation Footer */}
         <div className="text-center">
           <div className="flex justify-center space-x-4 mb-4">
-            <Button 
+            <div
               onClick={() => setLocation('/about')}
-              variant="outline" 
-              size="sm"
-              className="bg-white/50 backdrop-blur-sm"
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
             >
               About Cirqlback
-            </Button>
-            <Button 
+            </div>
+            <div
               onClick={() => setLocation('/how-it-works')}
-              variant="outline" 
-              size="sm"
-              className="bg-white/50 backdrop-blur-sm"
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
             >
               How It Works
-            </Button>
-            <Button 
+            </div>
+            <div
               onClick={() => setLocation('/contact')}
-              variant="outline" 
-              size="sm"
-              className="bg-white/50 backdrop-blur-sm"
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
             >
               Get Started
-            </Button>
+            </div>
           </div>
           <p className="text-gray-600 dark:text-gray-400 text-sm">
             © 2024 Cirqlback. Making local discovery addictively fun.

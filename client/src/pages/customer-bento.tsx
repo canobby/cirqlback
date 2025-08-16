@@ -165,14 +165,29 @@ export default function CustomerBento() {
                     <div className="w-4 h-4 mr-2 bg-white/30 rounded-full"></div>
                     Edit Profile
                   </Button>
-                  <Button 
+                  <div
                     onClick={() => setLocation('/settings')}
-                    variant="outline" 
-                    className="w-full"
+                    style={{
+                      backgroundColor: 'white',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      textAlign: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f9fafb'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
                   >
                     <div className="w-4 h-4 mr-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full"></div>
                     Account Settings
-                  </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
