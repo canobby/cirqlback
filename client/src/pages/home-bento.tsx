@@ -94,42 +94,45 @@ export default function HomeBento() {
         </div>
 
         {/* Main Navigation - Bento Style */}
-        <div className="bento-grid auto-rows-min mb-8 sm:mb-12">
-          <Card 
-            className="bento-item-large bg-gradient-to-br from-blue-500 to-cyan-500 border-0 text-white cursor-pointer transition-transform hover:scale-[1.02]"
-            onClick={() => setLocation('/customer-bento')}
-          >
-            <CardContent className="responsive-card flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Search className="h-6 w-6 text-white" />
+        <div className="max-w-4xl mx-auto mb-12">
+          <h2 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-gray-100">Choose Your Experience</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card 
+              className="bg-gradient-to-br from-blue-500 to-cyan-500 border-0 text-white cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+              onClick={() => setLocation('/customer-bento')}
+            >
+              <CardContent className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <Search className="h-8 w-8 text-white" />
+                  </div>
+                  <ArrowRight className="h-6 w-6 text-white/70" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold mb-1">I'm a Customer</h3>
-                  <p className="text-blue-100">Discover & earn rewards</p>
+                  <h3 className="text-2xl font-bold mb-3">I'm a Customer</h3>
+                  <p className="text-blue-100 text-lg leading-relaxed">Discover amazing local businesses, earn rewards, and compete with friends in your neighborhood.</p>
                 </div>
-              </div>
-              <ArrowRight className="h-6 w-6 text-white/70" />
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card 
-            className="bento-item-large bg-gradient-to-br from-orange-500 to-pink-500 border-0 text-white cursor-pointer transition-transform hover:scale-[1.02]"
-            onClick={() => setLocation('/merchant-bento')}
-          >
-            <CardContent className="responsive-card flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Store className="h-6 w-6 text-white" />
+            <Card 
+              className="bg-gradient-to-br from-orange-500 to-pink-500 border-0 text-white cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+              onClick={() => setLocation('/merchant-bento')}
+            >
+              <CardContent className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <Store className="h-8 w-8 text-white" />
+                  </div>
+                  <ArrowRight className="h-6 w-6 text-white/70" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold mb-1">I'm a Business</h3>
-                  <p className="text-orange-100">Attract more customers</p>
+                  <h3 className="text-2xl font-bold mb-3">I'm a Business</h3>
+                  <p className="text-orange-100 text-lg leading-relaxed">Attract more customers, increase engagement, and grow your local presence with gamified marketing.</p>
                 </div>
-              </div>
-              <ArrowRight className="h-6 w-6 text-white/70" />
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Additional Bento Grid Layout */}
