@@ -109,30 +109,68 @@ export default function HomeBento() {
                   <div className="space-y-3">
                     <div
                       onClick={() => setLocation('/customer-bento')}
-                      className="w-full bg-white hover:bg-gray-50 text-gray-900 p-4 rounded-xl shadow-sm cursor-pointer transition-all duration-200 flex items-center justify-start"
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'white',
+                        color: 'black',
+                        padding: '16px',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                      }}
                     >
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                        <Search className="h-5 w-5 text-blue-600" />
+                      <div style={{ 
+                        width: '40px', 
+                        height: '40px', 
+                        backgroundColor: '#dbeafe', 
+                        borderRadius: '8px', 
+                        marginRight: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        🔍
                       </div>
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-900 text-lg">I'm a Customer</div>
-                        <div className="text-gray-600">Discover & earn rewards</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '18px', color: 'black' }}>I'm a Customer</div>
+                        <div style={{ color: '#666', fontSize: '14px' }}>Discover & earn rewards</div>
                       </div>
-                      <ArrowRight className="h-5 w-5 text-gray-400" />
+                      <div style={{ color: '#999' }}>→</div>
                     </div>
                     
                     <div
                       onClick={() => setLocation('/merchant-bento')}
-                      className="w-full bg-white hover:bg-gray-50 text-gray-900 p-4 rounded-xl shadow-sm cursor-pointer transition-all duration-200 flex items-center justify-start"
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'white',
+                        color: 'black',
+                        padding: '16px',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                      }}
                     >
-                      <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
-                        <Store className="h-5 w-5 text-orange-600" />
+                      <div style={{ 
+                        width: '40px', 
+                        height: '40px', 
+                        backgroundColor: '#fed7aa', 
+                        borderRadius: '8px', 
+                        marginRight: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        🏪
                       </div>
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-900 text-lg">I'm a Business</div>
-                        <div className="text-gray-600">Attract more customers</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '18px', color: 'black' }}>I'm a Business</div>
+                        <div style={{ color: '#666', fontSize: '14px' }}>Attract more customers</div>
                       </div>
-                      <ArrowRight className="h-5 w-5 text-gray-400" />
+                      <div style={{ color: '#999' }}>→</div>
                     </div>
                   </div>
                 </div>
