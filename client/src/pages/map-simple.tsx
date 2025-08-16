@@ -81,10 +81,10 @@ export default function MapSimple() {
         </div>
 
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Your Local Area
+          Find Businesses with Cirql Tags
         </h1>
         <p className="text-gray-600">
-          Live location-based discovery of nearby businesses
+          Discover local businesses where you can tap Cirql tags to earn rewards and collect treasures
         </p>
       </div>
 
@@ -98,7 +98,7 @@ export default function MapSimple() {
                 <div>
                   <CardTitle className="text-xl">Yakima, WA</CardTitle>
                   <p className="text-green-100 text-sm">
-                    {businesses.length} businesses nearby
+                    {businesses.length} businesses with Cirql tags nearby
                   </p>
                 </div>
               </div>
@@ -169,7 +169,7 @@ export default function MapSimple() {
                         </div>
                         
                         <Button variant="outline" size="sm">
-                          View Details
+                          Visit & Tap
                         </Button>
                       </div>
                     </CardContent>
@@ -178,14 +178,25 @@ export default function MapSimple() {
               })}
             </div>
 
+            {/* Help Section */}
+            <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border">
+              <h3 className="font-semibold text-gray-900 mb-2">How it works:</h3>
+              <div className="space-y-2 text-sm text-gray-700">
+                <p>1. Visit any business listed above</p>
+                <p>2. Look for a Cirql tag (NFC sticker or QR code)</p>
+                <p>3. Tap your phone to the tag to earn rewards</p>
+                <p>4. Collect points, unlock levels, and get real prizes!</p>
+              </div>
+            </div>
+
             {/* Action Buttons */}
-            <div className="mt-8 flex gap-4">
+            <div className="mt-6 flex gap-4">
               <Button 
-                onClick={() => setLocation('/nfc-setup-wizard')}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                onClick={() => setLocation('/customer')}
+                className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
               >
-                <Smartphone className="h-4 w-4 mr-2" />
-                Set Up NFC Tags
+                <Gift className="h-4 w-4 mr-2" />
+                My Rewards
               </Button>
               <Button 
                 variant="outline"
@@ -193,7 +204,7 @@ export default function MapSimple() {
                 className="flex-1"
               >
                 <Store className="h-4 w-4 mr-2" />
-                Business Dashboard
+                For Business Owners
               </Button>
             </div>
           </CardContent>
