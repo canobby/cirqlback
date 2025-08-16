@@ -73,26 +73,26 @@ export default function NFCSetupWizardBento() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/50 to-purple-50/50 dark:from-gray-950 dark:via-blue-950/50 dark:to-purple-950/50">
-      <div className="container max-w-6xl mx-auto px-4 py-8">
+      <div className="responsive-container max-w-6xl mx-auto py-4 sm:py-6 lg:py-8">
         
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-between mb-6">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
             <Button 
               onClick={() => setLocation('/merchant')}
               variant="outline"
               size="sm"
-              className="text-gray-700 border-gray-300 hover:bg-gray-100"
+              className="constrained-button text-gray-700 border-gray-300 hover:bg-gray-100"
             >
               Back to Merchant
             </Button>
-            <div></div>
+            <div className="hidden sm:block"></div>
           </div>
           
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 bg-clip-text text-transparent mb-2">
+          <h1 className="responsive-heading font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 bg-clip-text text-transparent mb-2">
             Cirql Tag Setup
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg mb-6">
+          <p className="text-gray-600 dark:text-gray-400 responsive-text mb-4 sm:mb-6">
             Program your NFC tags in guided visual steps
           </p>
           
@@ -120,7 +120,7 @@ export default function NFCSetupWizardBento() {
         </div>
 
         {/* Bento Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-8 gap-6 auto-rows-min">
+        <div className="bento-grid auto-rows-min">
 
           {/* Step 1: NFC Support Check */}
           {step === 1 && (

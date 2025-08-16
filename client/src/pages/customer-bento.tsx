@@ -23,20 +23,20 @@ export default function CustomerBento() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-green-50/30 dark:from-gray-950 dark:via-blue-950/30 dark:to-green-950/30">
-      <div className="container max-w-7xl mx-auto px-4 py-8">
+      <div className="responsive-container max-w-7xl mx-auto py-4 sm:py-6 lg:py-8">
         
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 bg-clip-text text-transparent">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div className="min-w-0 flex-1">
+              <h1 className="responsive-heading font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 bg-clip-text text-transparent">
                 Discovery Hub
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 text-lg">
+              <p className="text-gray-600 dark:text-gray-400 responsive-text">
                 Your adventure continues - Level {userStats.level} Explorer
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <Badge className="bg-blue-100 text-blue-700 border-blue-200">
                 <div className="w-3 h-3 mr-1 bg-blue-500 rounded-full"></div>
                 Level {userStats.level}
@@ -50,17 +50,17 @@ export default function CustomerBento() {
         </div>
 
         {/* Bento Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-8 gap-6 auto-rows-min">
+        <div className="bento-grid auto-rows-min">
           
           {/* Discover Nearby - Large Hero Block */}
-          <Card className="md:col-span-6 lg:col-span-5 bg-gradient-to-br from-blue-500 to-cyan-500 border-0 text-white overflow-hidden relative">
+          <Card className="bento-item-large bg-gradient-to-br from-blue-500 to-cyan-500 border-0 text-white overflow-hidden relative">
             <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-20 translate-x-20"></div>
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16"></div>
-            <CardContent className="p-8 relative z-10">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-3xl font-bold mb-2">Discover Local Gems</h2>
-                  <p className="text-blue-100 text-lg">23 businesses nearby with active rewards</p>
+            <CardContent className="responsive-card relative z-10">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
+                <div className="min-w-0 flex-1">
+                  <h2 className="responsive-heading font-bold mb-2">Discover Local Gems</h2>
+                  <p className="text-blue-100 responsive-text">23 businesses nearby with active rewards</p>
                 </div>
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                   <div className="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center">
@@ -69,9 +69,9 @@ export default function CustomerBento() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="responsive-button-group">
                 <Button 
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
+                  className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
                   onClick={() => setLocation('/map-bento')}
                 >
@@ -90,7 +90,7 @@ export default function CustomerBento() {
                 </Button>
                 
                 <Button 
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
+                  className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
                   onClick={() => setLocation('/nfc-setup-wizard-bento')}
                 >

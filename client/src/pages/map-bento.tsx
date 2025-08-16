@@ -259,20 +259,20 @@ export default function MapBento() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-blue-50/30 dark:from-gray-950 dark:via-green-950/30 dark:to-blue-950/30">
-      <div className="container max-w-7xl mx-auto px-4 py-8">
+      <div className="responsive-container max-w-7xl mx-auto py-4 sm:py-6 lg:py-8">
         
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div className="min-w-0 flex-1">
+              <h1 className="responsive-heading font-bold bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Discovery Map
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 text-lg">
+              <p className="text-gray-600 dark:text-gray-400 responsive-text">
                 Find local businesses with active Cirql rewards near you
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <Button 
                 onClick={() => setLocation('/map')}
                 variant="outline"
@@ -297,8 +297,8 @@ export default function MapBento() {
         </div>
 
         {/* Search & Filters */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row gap-4">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -318,7 +318,7 @@ export default function MapBento() {
         </div>
 
         {/* Bento Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-8 gap-6 auto-rows-min">
+        <div className="bento-grid auto-rows-min">
           
           {/* Interactive Map - Large Block */}
           <Card className="md:col-span-6 lg:col-span-5 bg-gradient-to-br from-green-500 to-blue-500 border-0 text-white overflow-hidden relative">

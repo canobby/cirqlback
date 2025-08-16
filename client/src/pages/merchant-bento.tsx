@@ -25,20 +25,20 @@ export default function MerchantBento() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30 dark:from-gray-950 dark:via-purple-950/30 dark:to-pink-950/30">
-      <div className="container max-w-7xl mx-auto px-4 py-8">
+      <div className="responsive-container max-w-7xl mx-auto py-4 sm:py-6 lg:py-8">
         
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div className="min-w-0 flex-1">
+              <h1 className="responsive-heading font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
                 Business Hub
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 text-lg">
+              <p className="text-gray-600 dark:text-gray-400 responsive-text">
                 Complete control center for Joe's Coffee Shop
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
 
               <Badge className="bg-green-100 text-green-700 border-green-200">
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
@@ -53,20 +53,20 @@ export default function MerchantBento() {
         </div>
 
         {/* Bento Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-8 gap-6 auto-rows-min">
+        <div className="bento-grid auto-rows-min">
           
           {/* Quick Actions - Large Block */}
-          <Card className="md:col-span-6 lg:col-span-4 bg-gradient-to-br from-purple-500 to-pink-500 border-0 text-white overflow-hidden relative">
+          <Card className="bento-item-large bg-gradient-to-br from-purple-500 to-pink-500 border-0 text-white overflow-hidden relative">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
-            <CardContent className="p-8 relative z-10">
-              <h2 className="text-2xl font-bold mb-2">Quick Setup</h2>
-              <p className="text-purple-100 mb-6">Get your campaigns and tags running in minutes</p>
+            <CardContent className="responsive-card relative z-10">
+              <h2 className="responsive-heading font-bold mb-2">Quick Setup</h2>
+              <p className="text-purple-100 mb-4 sm:mb-6 responsive-text">Get your campaigns and tags running in minutes</p>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="responsive-button-group">
                 <Button 
                   onClick={() => setLocation('/campaign-setup-wizard')}
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
+                  className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
                 >
                   <div className="flex items-center w-full">
@@ -83,7 +83,7 @@ export default function MerchantBento() {
                 
                 <Button 
                   onClick={() => setLocation('/nfc-setup-wizard-bento')}
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
+                  className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
                 >
                   <div className="flex items-center w-full">

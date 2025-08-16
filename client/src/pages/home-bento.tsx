@@ -65,7 +65,7 @@ export default function HomeBento() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-blue-50/30 dark:from-gray-950 dark:via-purple-950/30 dark:to-blue-950/30">
-      <div className="container max-w-7xl mx-auto px-4 py-8">
+      <div className="responsive-container max-w-7xl mx-auto py-4 sm:py-6 lg:py-8">
         
         {/* Hero Section */}
         <div className="relative text-center mb-12">
@@ -92,22 +92,22 @@ export default function HomeBento() {
         </div>
 
         {/* Bento Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-8 gap-6 auto-rows-min mb-12">
+        <div className="bento-grid auto-rows-min mb-8 sm:mb-12">
           
           {/* Main CTA - Large Hero Block */}
-          <Card className="md:col-span-6 lg:col-span-5 bg-gradient-to-br from-purple-600 to-pink-600 border-0 text-white overflow-hidden relative">
+          <Card className="bento-item-large bg-gradient-to-br from-purple-600 to-pink-600 border-0 text-white overflow-hidden relative">
             <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-20 translate-x-20"></div>
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16"></div>
-            <CardContent className="p-8 relative z-10">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-3xl font-bold mb-4">Start Your Adventure</h2>
-                  <p className="text-purple-100 text-lg mb-6">Join thousands discovering local businesses through gamified rewards</p>
+            <CardContent className="responsive-card relative z-10">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
+                <div className="min-w-0 flex-1">
+                  <h2 className="responsive-heading font-bold mb-2 sm:mb-4">Start Your Adventure</h2>
+                  <p className="text-purple-100 responsive-text mb-4 sm:mb-6">Join thousands discovering local businesses through gamified rewards</p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="responsive-button-group">
                     <Button 
                       onClick={() => setLocation('/customer-bento')}
-                      className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
+                      className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                       variant="outline"
                     >
                       <div className="flex items-center w-full">

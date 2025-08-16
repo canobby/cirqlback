@@ -115,6 +115,83 @@
 }
 
 @layer components {
+  /* Responsive Container - Prevents edge overflow */
+  .responsive-container {
+    @apply px-4 sm:px-6 lg:px-8;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  
+  /* Responsive Text Sizing */
+  .responsive-heading {
+    @apply text-2xl sm:text-3xl lg:text-4xl;
+  }
+  
+  .responsive-text {
+    @apply text-sm sm:text-base lg:text-lg;
+  }
+  
+  /* Responsive Button Groups */
+  .responsive-button-group {
+    @apply flex flex-col sm:flex-row gap-3 sm:gap-4;
+  }
+  
+  .responsive-button-group > * {
+    @apply w-full sm:w-auto flex-shrink-0;
+  }
+  
+  /* Responsive Grid System for Bento Layouts */
+  .bento-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 xl:grid-cols-8 gap-4 sm:gap-6;
+  }
+  
+  .bento-item-full {
+    @apply col-span-1 sm:col-span-2 lg:col-span-6 xl:col-span-8;
+  }
+  
+  .bento-item-large {
+    @apply col-span-1 sm:col-span-2 lg:col-span-4 xl:col-span-5;
+  }
+  
+  .bento-item-medium {
+    @apply col-span-1 sm:col-span-1 lg:col-span-2 xl:col-span-3;
+  }
+  
+  .bento-item-small {
+    @apply col-span-1 sm:col-span-1 lg:col-span-1 xl:col-span-2;
+  }
+  
+  /* Safe Button Sizing */
+  .safe-button {
+    @apply max-w-full overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+  
+  /* Mobile-First Card Padding */
+  .responsive-card {
+    @apply p-4 sm:p-6 lg:p-8;
+  }
+  
+  /* Button Size Constraints */
+  .constrained-button {
+    @apply w-full sm:w-auto min-w-0 flex-shrink-0;
+    max-width: calc(100vw - 2rem); /* Prevent edge overflow */
+  }
+  
+  /* Text Overflow Protection */
+  .safe-text {
+    @apply break-words overflow-wrap-anywhere;
+  }
+  
+  /* Flex Container Safety */
+  .safe-flex {
+    @apply min-w-0 flex-1;
+  }
+  
+  /* Grid Item Safety */
+  .safe-grid-item {
+    @apply min-w-0;
+  }
+
   /* Cirqlback Brand Gradient - matches logo colors exactly */
   .gradient-bg {
     background: linear-gradient(135deg, 
