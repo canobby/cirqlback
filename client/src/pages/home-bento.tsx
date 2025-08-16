@@ -110,14 +110,14 @@ export default function HomeBento() {
                       className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                       variant="outline"
                     >
-                      <div className="flex items-center w-full">
+                      <div className="flex items-center w-full text-white">
                         <div className="bg-white/20 p-2 rounded-lg mr-3">
                           <div className="w-5 h-5 bg-gradient-to-br from-blue-200 to-cyan-200 rounded-full flex items-center justify-center">
                             <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                           </div>
                         </div>
-                        <div className="text-left">
-                          <div className="font-semibold">I'm a Customer</div>
+                        <div className="text-left flex-1">
+                          <div className="font-semibold text-white">I'm a Customer</div>
                           <div className="text-sm text-purple-100">Discover & earn rewards</div>
                         </div>
                         <div className="w-4 h-4 ml-auto">
@@ -128,17 +128,17 @@ export default function HomeBento() {
                     
                     <Button 
                       onClick={() => setLocation('/merchant-bento')}
-                      className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
+                      className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                       variant="outline"
                     >
-                      <div className="flex items-center w-full">
+                      <div className="flex items-center w-full text-white">
                         <div className="bg-white/20 p-2 rounded-lg mr-3">
                           <div className="w-5 h-5 bg-gradient-to-br from-orange-200 to-yellow-200 rounded-lg flex items-center justify-center">
                             <div className="w-2 h-2 bg-orange-600 rounded"></div>
                           </div>
                         </div>
-                        <div className="text-left">
-                          <div className="font-semibold">I'm a Business</div>
+                        <div className="text-left flex-1">
+                          <div className="font-semibold text-white">I'm a Business</div>
                           <div className="text-sm text-purple-100">Attract more customers</div>
                         </div>
                         <div className="w-4 h-4 ml-auto">
