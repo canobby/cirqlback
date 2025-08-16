@@ -50,7 +50,7 @@ function MapComponent({ center, zoom, businesses, onBusinessSelect, userLocation
   const [map, setMap] = useState<google.maps.Map>();
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
 
-  // Initialize map
+  // Initialize map - only run once when ref is available
   useEffect(() => {
     if (ref.current && !map) {
       const newMap = new window.google.maps.Map(ref.current, {
@@ -73,7 +73,7 @@ function MapComponent({ center, zoom, businesses, onBusinessSelect, userLocation
       });
       setMap(newMap);
     }
-  }, [ref, map, center, zoom]);
+  }, [map]); // Fixed dependency array
 
   // Add markers for businesses
   useEffect(() => {

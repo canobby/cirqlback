@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import GoogleMapWrapper from "@/components/maps/GoogleMapComponent";
+import SimpleGoogleMapWrapper from "@/components/maps/SimpleGoogleMap";
 import { 
   MapPin, Navigation, Search, Filter, Star, Clock, 
   Gift, Zap, Users, Target, ArrowRight, Heart,
@@ -412,7 +412,7 @@ export default function MapBento() {
               
               {/* Interactive Google Maps */}
               <div className="h-64 bg-white rounded-lg overflow-hidden shadow-lg">
-                <GoogleMapWrapper
+                <SimpleGoogleMapWrapper
                   businesses={nearbyBusinesses}
                   userLocation={userLocation}
                   onBusinessSelect={(business) => {
@@ -423,8 +423,6 @@ export default function MapBento() {
                     });
                   }}
                   className="h-full w-full"
-                  isFullScreen={isMapFullScreen}
-                  onToggleFullScreen={() => setIsMapFullScreen(!isMapFullScreen)}
                 />
               </div>
               
