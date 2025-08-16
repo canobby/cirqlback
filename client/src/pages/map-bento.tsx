@@ -20,6 +20,7 @@ export default function MapBento() {
   const [locationPermission, setLocationPermission] = useState<'pending' | 'granted' | 'denied'>('pending');
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [nearbyBusinesses, setNearbyBusinesses] = useState<any[]>([]);
+  const [isMapFullScreen, setIsMapFullScreen] = useState(false);
   const { toast } = useToast();
   
   // Get user location on component mount
@@ -267,10 +268,37 @@ export default function MapBento() {
     });
   };
 
+  // Interactive business functions for map info windows
+  const setupBusinessInteractions = () => {
+    (window as any).viewBusiness = (businessId: number) => {
+      const business = nearbyBusinesses.find(b => b.id === businessId);
+      if (business) {
+        toast({
+          title: `Viewing ${business.name}`,
+          description: `${business.category} • ${business.activeRewards} rewards available`,
+          variant: "default"
+        });
+        // Business interaction handled via console and toast
+      }
+    };
+
+    (window as any).tapNFC = (businessId: number) => {
+      const business = nearbyBusinesses.find(b => b.id === businessId);
+      if (business) {
+        toast({
+          title: "NFC Tap Simulation",
+          description: `Earned points from ${business.name}! Check your rewards.`,
+          variant: "default"
+        });
+      }
+    };
+  };
+
   // Initialize with default location on component load
   useEffect(() => {
     setYakimaLocation(); // Start with Yakima location
-  }, []);
+    setupBusinessInteractions(); // Set up interactive functions
+  }, [nearbyBusinesses]);
 
   const categories = [
     { id: "all", name: "All", icon: Store, count: nearbyBusinesses.length },
@@ -291,8 +319,60 @@ export default function MapBento() {
   console.log('Selected category:', selectedCategory);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-blue-50/30 dark:from-gray-950 dark:via-green-950/30 dark:to-blue-950/30">
-      <div className="responsive-container max-w-7xl mx-auto py-4 sm:py-6 lg:py-8">
+    <>
+      {isMapFullScreen && (
+        <div className="fixed inset-0 bg-black z-50 flex flex-col">
+          <div className="flex-1">
+            <GoogleMapWrapper
+              businesses={nearbyBusinesses}
+              userLocation={userLocation}
+              onBusinessSelect={(business) => {
+                console.log('Selected business:', business);
+              }}
+              className="h-full w-full"
+              isFullScreen={isMapFullScreen}
+              onToggleFullScreen={() => setIsMapFullScreen(false)}
+            />
+          </div>
+          <div className="bg-white p-4 border-t">
+            <div className="flex justify-between items-center">
+              <h3 className="font-semibold text-gray-900">Discovery Map - Full Screen</h3>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={getCurrentLocation}
+                  variant="outline"
+                  size="sm"
+                  disabled={loadingLocation}
+                >
+                  {loadingLocation ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Navigation className="h-4 w-4 mr-2" />
+                  )}
+                  My Location
+                </Button>
+                <Button 
+                  onClick={setYakimaLocation}
+                  variant="outline"
+                  size="sm"
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Yakima
+                </Button>
+                <Button 
+                  onClick={() => setIsMapFullScreen(false)}
+                  variant="outline"
+                  size="sm"
+                >
+                  Exit Full Screen
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-blue-50/30 dark:from-gray-950 dark:via-green-950/30 dark:to-blue-950/30">
+        <div className="responsive-container max-w-7xl mx-auto py-4 sm:py-6 lg:py-8">
         
         {/* Header */}
         <div className="mb-6 sm:mb-8">
@@ -375,6 +455,8 @@ export default function MapBento() {
                     console.log('Selected business:', business);
                   }}
                   className="h-full w-full"
+                  isFullScreen={isMapFullScreen}
+                  onToggleFullScreen={() => setIsMapFullScreen(!isMapFullScreen)}
                 />
               </div>
               
@@ -559,5 +641,6 @@ export default function MapBento() {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -83,6 +83,45 @@ function MapComponent({ center, zoom, businesses, onBusinessSelect, userLocation
     markers.forEach(marker => marker.setMap(null));
     const newMarkers: google.maps.Marker[] = [];
 
+    // Create info window with business details and interactive buttons  
+    const createInfoWindow = (business: Business) => {
+      const businessId = business.id;
+      return `
+        <div style="padding: 16px; min-width: 300px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.4;">
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+            <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1f2937;">${business.name}</h3>
+            <span style="background: ${business.isOpen ? '#10b981' : '#ef4444'}; color: white; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500;">
+              ${business.isOpen ? 'Open' : 'Closed'}
+            </span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <span style="color: #6b7280; font-size: 14px;">${business.category}</span>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span style="color: #f59e0b; font-size: 16px;">★</span>
+              <span style="color: #374151; font-weight: 600;">${business.rating}</span>
+            </div>
+          </div>
+          <div style="color: #6b7280; font-size: 14px; margin-bottom: 16px;">${business.address}</div>
+          <div style="margin-bottom: 16px;">
+            <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+              <svg style="width: 14px; height: 14px;" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              </svg>
+              ${business.activeRewards} Active Rewards
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button onclick="window.viewBusiness && window.viewBusiness(${businessId})" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; flex: 1;">
+              View Details
+            </button>
+            <button onclick="window.tapNFC && window.tapNFC(${businessId})" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; flex: 1;">
+              Tap & Earn
+            </button>
+          </div>
+        </div>
+      `;
+    };
+
     // Add user location marker
     if (userLocation) {
       const userMarker = new window.google.maps.Marker({
@@ -118,34 +157,9 @@ function MapComponent({ center, zoom, businesses, onBusinessSelect, userLocation
           },
         });
 
-        // Create info window
+        // Create info window with interactive content
         const infoWindow = new window.google.maps.InfoWindow({
-          content: `
-            <div class="p-3 max-w-sm">
-              <h3 class="font-semibold text-lg text-gray-900 mb-1">${business.name}</h3>
-              <p class="text-sm text-gray-600 mb-2">${business.category} • ${business.address}</p>
-              <div class="flex items-center gap-2 mb-2">
-                <div class="flex items-center">
-                  <span class="text-yellow-400">★</span>
-                  <span class="text-sm text-gray-700">${business.rating}</span>
-                </div>
-                <span class="text-sm ${business.isOpen ? 'text-green-600' : 'text-red-600'}">
-                  ${business.isOpen ? 'Open' : 'Closed'}
-                </span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm font-medium text-purple-600">
-                  ${business.activeRewards} active reward${business.activeRewards !== 1 ? 's' : ''}
-                </span>
-                <button 
-                  onclick="window.selectBusiness(${business.id})"
-                  class="px-3 py-1 bg-purple-600 text-white text-xs rounded-md hover:bg-purple-700"
-                >
-                  View Details
-                </button>
-              </div>
-            </div>
-          `,
+          content: createInfoWindow(business),
         });
 
         marker.addListener('click', () => {
@@ -220,13 +234,17 @@ interface GoogleMapWrapperProps {
   userLocation?: { lat: number; lng: number } | null;
   onBusinessSelect?: (business: Business) => void;
   className?: string;
+  isFullScreen?: boolean;
+  onToggleFullScreen?: () => void;
 }
 
 export default function GoogleMapWrapper({ 
   businesses, 
   userLocation, 
   onBusinessSelect,
-  className = ""
+  className = "",
+  isFullScreen = false,
+  onToggleFullScreen
 }: GoogleMapWrapperProps) {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
