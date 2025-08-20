@@ -66,9 +66,9 @@ export default function MapSimple() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 pt-20">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       {/* Header */}
-      <div className="max-w-6xl mx-auto mb-6">
+      <div className="container mx-auto px-4 pt-20 pb-6">
         <div className="flex items-center justify-between mb-4">
           <Button 
             variant="ghost" 
@@ -89,24 +89,65 @@ export default function MapSimple() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto">
-        <Card className="bg-white/80 backdrop-blur-sm shadow-xl border-0">
-          <CardHeader className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-t-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <MapPin className="h-6 w-6" />
-                <div>
-                  <CardTitle className="text-xl">Yakima, WA</CardTitle>
-                  <p className="text-green-100 text-sm">
-                    {businesses.length} businesses with Cirql tags nearby
-                  </p>
+      <div className="container mx-auto px-4">
+        {/* Visual Map Section */}
+        <div className="mb-6">
+          <Card className="bg-gradient-to-br from-blue-100 to-green-100 border-0 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-6 w-6 text-blue-600" />
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Yakima, WA</h2>
+                    <p className="text-gray-600 text-sm">
+                      {businesses.length} businesses with Cirql tags nearby
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Navigation className="h-4 w-4 mr-2" />
+                  My Location
+                </Button>
+              </div>
+              
+              {/* Visual Map Grid */}
+              <div className="relative bg-white/50 rounded-lg p-4 min-h-[200px]">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg opacity-60"></div>
+                <div className="relative grid grid-cols-2 md:grid-cols-4 gap-4 h-full">
+                  {businesses.map((business, index) => {
+                    const IconComponent = getCategoryIcon(business.category);
+                    return (
+                      <div
+                        key={business.id}
+                        className="flex flex-col items-center justify-center p-3 bg-white/80 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                        style={{
+                          transform: `translate(${index % 2 === 0 ? '0' : '10px'}, ${index * 5}px)`
+                        }}
+                      >
+                        <div className={`p-2 rounded-full mb-2 ${
+                          business.isOpen 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-gray-400 text-white'
+                        }`}>
+                          <IconComponent className="h-4 w-4" />
+                        </div>
+                        <p className="text-xs font-medium text-center text-gray-900">
+                          {business.name}
+                        </p>
+                        <p className="text-xs text-gray-600">{business.distance}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-              <Button variant="secondary" size="sm">
-                <Navigation className="h-4 w-4 mr-2" />
-                My Location
-              </Button>
-            </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Business List */}
+        <Card className="bg-white/90 backdrop-blur-sm shadow-xl border-0">
+          <CardHeader className="bg-gradient-to-r from-green-500 to-blue-500 text-white">
+            <CardTitle className="text-lg">Available Businesses</CardTitle>
           </CardHeader>
           
           <CardContent className="p-6">
@@ -190,7 +231,7 @@ export default function MapSimple() {
             </div>
 
             {/* Action Buttons */}
-            <div className="mt-6 flex gap-4">
+            <div className="mt-6 flex flex-col sm:flex-row gap-4">
               <Button 
                 onClick={() => setLocation('/customer')}
                 className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
