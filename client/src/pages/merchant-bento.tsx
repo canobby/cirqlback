@@ -24,22 +24,21 @@ export default function MerchantBento() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30 dark:from-gray-950 dark:via-purple-950/30 dark:to-pink-950/30">
-      <div className="responsive-container max-w-7xl mx-auto py-4 sm:py-6 lg:py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30 pb-8 pt-20">
+      <div className="max-w-6xl mx-auto px-4">
         
         {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div className="min-w-0 flex-1">
-              <h1 className="responsive-heading font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
+              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent mb-2">
                 Business Hub
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 responsive-text">
+              <p className="text-gray-600 text-lg">
                 Complete control center for Joe's Coffee Shop
               </p>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-
+            <div className="flex items-center gap-3 flex-shrink-0">
               <Badge className="bg-green-100 text-green-700 border-green-200">
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                 Live
@@ -53,20 +52,20 @@ export default function MerchantBento() {
         </div>
 
         {/* Bento Grid Layout */}
-        <div className="bento-grid auto-rows-min">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-6 auto-rows-min">
           
           {/* Quick Actions - Large Block */}
-          <Card className="bento-item-large bg-gradient-to-br from-purple-500 to-pink-500 border-0 text-white overflow-hidden relative">
+          <Card className="md:col-span-6 bg-gradient-to-br from-purple-500 to-pink-500 border-0 text-white overflow-hidden relative">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
-            <CardContent className="responsive-card relative z-10">
-              <h2 className="responsive-heading font-bold mb-2">Quick Setup</h2>
-              <p className="text-purple-100 mb-4 sm:mb-6 responsive-text">Get your campaigns and tags running in minutes</p>
+            <CardContent className="p-6 relative z-10">
+              <h2 className="text-2xl font-bold mb-2">Quick Setup</h2>
+              <p className="text-purple-100 mb-6">Get your campaigns and tags running in minutes</p>
               
-              <div className="responsive-button-group">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Button 
                   onClick={() => setLocation('/campaign-setup-wizard')}
-                  className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
                 >
                   <div className="flex items-center w-full">
@@ -83,7 +82,7 @@ export default function MerchantBento() {
                 
                 <Button 
                   onClick={() => setLocation('/nfc-setup-wizard-bento')}
-                  className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
                   variant="outline"
                 >
                   <div className="flex items-center w-full">
@@ -102,7 +101,7 @@ export default function MerchantBento() {
           </Card>
 
           {/* Revenue Metrics - Tall Block */}
-          <Card className="md:col-span-3 lg:col-span-2 md:row-span-2 bg-gradient-to-br from-green-500 to-blue-500 border-0 text-white">
+          <Card className="md:col-span-3 bg-gradient-to-br from-green-500 to-blue-500 border-0 text-white">
             <CardContent className="p-6 h-full flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <DollarSign className="h-8 w-8 text-green-100" />
@@ -122,7 +121,7 @@ export default function MerchantBento() {
           </Card>
 
           {/* Active Campaigns - Medium Block */}
-          <Card className="md:col-span-3 lg:col-span-2 bg-gradient-to-br from-orange-500 to-red-500 border-0 text-white">
+          <Card className="md:col-span-3 bg-gradient-to-br from-orange-500 to-red-500 border-0 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <Gift className="h-6 w-6 text-orange-100" />
@@ -130,24 +129,14 @@ export default function MerchantBento() {
               </div>
               <h3 className="font-semibold mb-1">Active Campaigns</h3>
               <p className="text-orange-100 text-sm mb-4">Running promotions</p>
-              <div
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  color: 'white',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  padding: '6px 12px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  textAlign: 'center',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.3)'}
-                onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.2)'}
+              <Button
+                variant="outline"
+                size="sm" 
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                onClick={() => setLocation('/campaign-setup-wizard')}
               >
                 Manage
-              </div>
+              </Button>
             </CardContent>
           </Card>
 
@@ -186,130 +175,106 @@ export default function MerchantBento() {
           </Card>
 
           {/* Management Tools */}
-          <Card className="md:col-span-3 lg:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors">
+          <Card className="md:col-span-3 bg-white border-2 border-gray-200 hover:border-purple-300 transition-colors cursor-pointer" onClick={() => setLocation('/analytics')}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <BarChart3 className="h-6 w-6 text-purple-600" />
                 <ArrowRight className="h-4 w-4 text-gray-400" />
               </div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Analytics</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">Performance insights</p>
-              <div
-                onClick={() => setLocation('/analytics')}
-                style={{
-                  backgroundColor: 'white',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
-                  padding: '6px 12px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  textAlign: 'center',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
-                onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'white'}
+              <h3 className="font-semibold text-gray-900 mb-1">Analytics</h3>
+              <p className="text-gray-600 text-sm mb-4">Performance insights</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
               >
                 View Details
-              </div>
+              </Button>
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-3 lg:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors">
+          <Card className="md:col-span-3 bg-white border-2 border-gray-200 hover:border-blue-300 transition-colors cursor-pointer" onClick={() => setLocation('/nfc-writer')}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <Smartphone className="h-6 w-6 text-blue-600" />
                 <ArrowRight className="h-4 w-4 text-gray-400" />
               </div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">NFC Tags</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">Manage your tags</p>
-              <div
-                onClick={() => setLocation('/nfc-writer')}
-                style={{
-                  backgroundColor: 'white',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
-                  padding: '6px 12px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  textAlign: 'center',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
-                onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'white'}
+              <h3 className="font-semibold text-gray-900 mb-1">NFC Tags</h3>
+              <p className="text-gray-600 text-sm mb-4">Manage your tags</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
               >
                 Tag Manager
-              </div>
+              </Button>
             </CardContent>
           </Card>
 
           {/* Additional Tools Row */}
           <Card 
-            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors cursor-pointer"
+            className="md:col-span-2 bg-white border-2 border-gray-200 hover:border-green-300 transition-colors cursor-pointer"
             onClick={() => setLocation('/communication')}
           >
             <CardContent className="p-6 text-center">
               <MessageSquare className="h-6 w-6 text-green-600 mx-auto mb-2" />
-              <h3 className="font-medium text-gray-900 dark:text-white mb-1">Communication</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-xs">Customer messaging</p>
+              <h3 className="font-medium text-gray-900 mb-1">Communication</h3>
+              <p className="text-gray-600 text-xs">Customer messaging</p>
             </CardContent>
           </Card>
 
           <Card 
-            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-yellow-300 dark:hover:border-yellow-600 transition-colors cursor-pointer"
+            className="md:col-span-2 bg-white border-2 border-gray-200 hover:border-yellow-300 transition-colors cursor-pointer"
             onClick={() => setLocation('/campaign-setup-wizard')}
           >
             <CardContent className="p-6 text-center">
               <Calendar className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
-              <h3 className="font-medium text-gray-900 dark:text-white mb-1">Campaigns</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-xs">Schedule & manage</p>
+              <h3 className="font-medium text-gray-900 mb-1">Campaigns</h3>
+              <p className="text-gray-600 text-xs">Schedule & manage</p>
             </CardContent>
           </Card>
 
           <Card 
-            className="md:col-span-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors cursor-pointer"
+            className="md:col-span-2 bg-white border-2 border-gray-200 hover:border-purple-300 transition-colors cursor-pointer"
             onClick={() => setLocation('/settings')}
           >
             <CardContent className="p-6 text-center">
               <Settings className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-              <h3 className="font-medium text-gray-900 dark:text-white mb-1">Settings</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-xs">Business config</p>
+              <h3 className="font-medium text-gray-900 mb-1">Settings</h3>
+              <p className="text-gray-600 text-xs">Business config</p>
             </CardContent>
           </Card>
 
           {/* Recent Activity - Wide Block */}
-          <Card className="md:col-span-6 lg:col-span-4 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700">
+          <Card className="md:col-span-6 bg-white border-2 border-gray-200">
             <CardHeader>
-              <CardTitle className="flex items-center text-gray-900 dark:text-white">
+              <CardTitle className="flex items-center text-gray-900">
                 <Trophy className="h-5 w-5 mr-2 text-purple-600" />
                 Recent Activity
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                   <div className="flex items-center">
                     <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-900 dark:text-white">Campaign "Summer Special" activated</span>
+                    <span className="text-sm text-gray-900">Campaign "Summer Special" activated</span>
                   </div>
                   <span className="text-xs text-gray-500">2 hours ago</span>
                 </div>
                 
-                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                   <div className="flex items-center">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-900 dark:text-white">NFC tag programmed at front counter</span>
+                    <span className="text-sm text-gray-900">NFC tag programmed at front counter</span>
                   </div>
                   <span className="text-xs text-gray-500">4 hours ago</span>
                 </div>
                 
-                <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                   <div className="flex items-center">
                     <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-900 dark:text-white">23 new customer taps today</span>
+                    <span className="text-sm text-gray-900">23 new customer taps today</span>
                   </div>
                   <span className="text-xs text-gray-500">6 hours ago</span>
                 </div>
@@ -318,7 +283,7 @@ export default function MerchantBento() {
           </Card>
 
           {/* Performance Chart Placeholder */}
-          <Card className="md:col-span-3 lg:col-span-4 bg-gradient-to-br from-indigo-500 to-purple-600 border-0 text-white">
+          <Card className="md:col-span-6 bg-gradient-to-br from-indigo-500 to-purple-600 border-0 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Performance Overview</h3>
