@@ -127,22 +127,26 @@ export default function MapSimple() {
             />
             
             {/* Business Markers on Map */}
-            <div className="absolute inset-0 p-4">
+            <div className="absolute inset-0 p-8">
               {businesses.map((business, index) => {
                 const IconComponent = getCategoryIcon(business.category);
                 const positions = [
-                  { top: '20%', left: '25%' },
-                  { top: '60%', left: '70%' }, 
-                  { top: '40%', left: '15%' },
-                  { top: '70%', left: '45%' }
+                  { top: '25%', left: '30%' },
+                  { top: '65%', left: '75%' }, 
+                  { top: '45%', left: '20%' },
+                  { top: '80%', left: '50%' }
                 ];
                 const pos = positions[index % positions.length];
                 
                 return (
                   <div
                     key={business.id}
-                    className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
-                    style={{ top: pos.top, left: pos.left }}
+                    className="absolute cursor-pointer group"
+                    style={{ 
+                      top: pos.top, 
+                      left: pos.left,
+                      transform: 'translate(-50%, -50%)'
+                    }}
                   >
                     {/* Map Pin */}
                     <div className={`relative ${
@@ -150,13 +154,21 @@ export default function MapSimple() {
                         ? 'bg-green-500 hover:bg-green-600' 
                         : 'bg-gray-500 hover:bg-gray-600'
                     } text-white p-3 rounded-full shadow-lg transition-all group-hover:scale-110`}>
-                      <IconComponent className="h-4 w-4" />
+                      <IconComponent className="h-5 w-5" />
+                    </div>
+                    
+                    {/* Business Label */}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2">
+                      <div className="bg-white/90 backdrop-blur-sm text-gray-900 text-xs rounded px-2 py-1 text-center whitespace-nowrap shadow-sm border">
+                        <div className="font-medium">{business.name.split(' ')[0]}</div>
+                        <div className="text-green-600">{business.activeRewards} rewards</div>
+                      </div>
                     </div>
                     
                     {/* Hover Info */}
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                       <div className="bg-black text-white text-xs rounded py-1 px-2 whitespace-nowrap">
-                        {business.name} • {business.activeRewards} rewards
+                        {business.name} • {business.activeRewards} rewards • {business.distance}
                       </div>
                     </div>
                   </div>
