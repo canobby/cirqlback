@@ -69,6 +69,18 @@ export default function Navbar() {
                   Analytics
                 </Button>
               </Link>
+              <Link href="/map">
+                <Button 
+                  variant="ghost" 
+                  className={`px-2 lg:px-3 py-2 text-xs lg:text-sm font-medium transition-all duration-200 mobile-button-size ${
+                    isActive("/map") 
+                      ? "text-blue-600 bg-blue-50 border border-blue-200" 
+                      : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                  }`}
+                >
+                  Map
+                </Button>
+              </Link>
               <Link href="/test-system">
                 <Button 
                   variant="ghost" 

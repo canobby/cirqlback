@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Search, Store, Users, TrendingUp, MapPin, Award, Heart } from "lucide-react";
+import { ArrowRight, Search, Store, Users, TrendingUp, MapPin, Award, Heart, Gift, Zap } from "lucide-react";
 import { useLocation } from "wouter";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 
@@ -309,6 +309,41 @@ export default function HomeBento() {
 
 
 
+        </div>
+
+        {/* Quick Action Buttons */}
+        <div className="text-center mb-8">
+          <h3 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Ready to Start?</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
+            <Button 
+              onClick={() => setLocation('/map')}
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <MapPin className="h-5 w-5 mr-2" />
+              Find Businesses
+            </Button>
+            <Button 
+              onClick={() => setLocation('/customer')}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <Gift className="h-5 w-5 mr-2" />
+              My Rewards
+            </Button>
+            <Button 
+              onClick={() => setLocation('/merchant')}
+              className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <Store className="h-5 w-5 mr-2" />
+              Business Portal
+            </Button>
+            <Button 
+              onClick={() => setLocation('/nfc-setup-wizard')}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <Zap className="h-5 w-5 mr-2" />
+              NFC Setup
+            </Button>
+          </div>
         </div>
 
         {/* Navigation Footer */}
