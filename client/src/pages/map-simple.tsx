@@ -66,9 +66,9 @@ export default function MapSimple() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 pb-8">
       {/* Header */}
-      <div className="container mx-auto px-4 pt-20 pb-6">
+      <div className="w-full px-4 pt-20 pb-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <Button 
             variant="ghost" 
@@ -89,64 +89,92 @@ export default function MapSimple() {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4">
-        {/* Visual Map Section */}
-        <div className="mb-6">
-          <Card className="bg-gradient-to-br from-blue-100 to-green-100 border-0 shadow-lg">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <MapPin className="h-6 w-6 text-blue-600" />
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">Yakima, WA</h2>
-                    <p className="text-gray-600 text-sm">
-                      {businesses.length} businesses with Cirql tags nearby
-                    </p>
-                  </div>
+      <div className="w-full px-4 max-w-4xl mx-auto space-y-6">
+        {/* Interactive Map Section */}
+        <Card className="bg-white shadow-xl border-0 overflow-hidden">
+          <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <MapPin className="h-6 w-6" />
+                <div>
+                  <h2 className="text-xl font-bold">Interactive Map - Yakima, WA</h2>
+                  <p className="text-green-100 text-sm">
+                    {businesses.length} businesses with Cirql tags nearby
+                  </p>
                 </div>
-                <Button variant="outline" size="sm">
-                  <Navigation className="h-4 w-4 mr-2" />
-                  My Location
-                </Button>
               </div>
-              
-              {/* Visual Map Grid */}
-              <div className="relative bg-white/50 rounded-lg p-4 min-h-[200px]">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg opacity-60"></div>
-                <div className="relative grid grid-cols-2 md:grid-cols-4 gap-4 h-full">
-                  {businesses.map((business, index) => {
-                    const IconComponent = getCategoryIcon(business.category);
-                    return (
-                      <div
-                        key={business.id}
-                        className="flex flex-col items-center justify-center p-3 bg-white/80 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                        style={{
-                          transform: `translate(${index % 2 === 0 ? '0' : '10px'}, ${index * 5}px)`
-                        }}
-                      >
-                        <div className={`p-2 rounded-full mb-2 ${
-                          business.isOpen 
-                            ? 'bg-green-500 text-white' 
-                            : 'bg-gray-400 text-white'
-                        }`}>
-                          <IconComponent className="h-4 w-4" />
-                        </div>
-                        <p className="text-xs font-medium text-center text-gray-900">
-                          {business.name}
-                        </p>
-                        <p className="text-xs text-gray-600">{business.distance}</p>
+              <Button variant="secondary" size="sm">
+                <Navigation className="h-4 w-4 mr-2" />
+                My Location
+              </Button>
+            </div>
+          </div>
+          
+          {/* Interactive Map Area */}
+          <div className="relative h-64 bg-gradient-to-br from-blue-100 to-green-100">
+            {/* Map Background Pattern */}
+            <div 
+              className="absolute inset-0 opacity-30"
+              style={{
+                backgroundImage: `
+                  radial-gradient(circle at 25% 25%, #10b981 0%, transparent 50%),
+                  radial-gradient(circle at 75% 75%, #3b82f6 0%, transparent 50%),
+                  linear-gradient(90deg, #f3f4f6 50%, transparent 50%),
+                  linear-gradient(#f3f4f6 50%, transparent 50%)
+                `,
+                backgroundSize: '40px 40px, 40px 40px, 20px 20px, 20px 20px'
+              }}
+            />
+            
+            {/* Business Markers on Map */}
+            <div className="absolute inset-0 p-4">
+              {businesses.map((business, index) => {
+                const IconComponent = getCategoryIcon(business.category);
+                const positions = [
+                  { top: '20%', left: '25%' },
+                  { top: '60%', left: '70%' }, 
+                  { top: '40%', left: '15%' },
+                  { top: '70%', left: '45%' }
+                ];
+                const pos = positions[index % positions.length];
+                
+                return (
+                  <div
+                    key={business.id}
+                    className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
+                    style={{ top: pos.top, left: pos.left }}
+                  >
+                    {/* Map Pin */}
+                    <div className={`relative ${
+                      business.isOpen 
+                        ? 'bg-green-500 hover:bg-green-600' 
+                        : 'bg-gray-500 hover:bg-gray-600'
+                    } text-white p-3 rounded-full shadow-lg transition-all group-hover:scale-110`}>
+                      <IconComponent className="h-4 w-4" />
+                    </div>
+                    
+                    {/* Hover Info */}
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <div className="bg-black text-white text-xs rounded py-1 px-2 whitespace-nowrap">
+                        {business.name} • {business.activeRewards} rewards
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* Map Controls */}
+            <div className="absolute top-4 right-4 flex flex-col gap-2">
+              <Button size="sm" variant="secondary" className="w-8 h-8 p-0">+</Button>
+              <Button size="sm" variant="secondary" className="w-8 h-8 p-0">-</Button>
+            </div>
+          </div>
+        </Card>
 
         {/* Business List */}
-        <Card className="bg-white/90 backdrop-blur-sm shadow-xl border-0">
-          <CardHeader className="bg-gradient-to-r from-green-500 to-blue-500 text-white">
+        <Card className="bg-white shadow-xl border-0">
+          <CardHeader className="bg-gradient-to-r from-purple-500 to-blue-500 text-white">
             <CardTitle className="text-lg">Available Businesses</CardTitle>
           </CardHeader>
           
@@ -181,15 +209,15 @@ export default function MapSimple() {
                             <IconComponent className="h-5 w-5" />
                           </div>
                           
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 mb-1">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-gray-900 mb-1 truncate">
                               {business.name}
                             </h3>
-                            <p className="text-sm text-gray-600 mb-2">
+                            <p className="text-sm text-gray-600 mb-2 truncate">
                               {business.category} • {business.address}
                             </p>
                             
-                            <div className="flex items-center gap-4 text-sm">
+                            <div className="flex items-center gap-4 text-sm flex-wrap">
                               <div className="flex items-center gap-1">
                                 <Star className="h-4 w-4 text-yellow-500" fill="currentColor" />
                                 <span className="font-medium">{business.rating}</span>
@@ -209,7 +237,7 @@ export default function MapSimple() {
                           </div>
                         </div>
                         
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" className="shrink-0 ml-2">
                           Visit & Tap
                         </Button>
                       </div>
@@ -231,10 +259,10 @@ export default function MapSimple() {
             </div>
 
             {/* Action Buttons */}
-            <div className="mt-6 flex flex-col sm:flex-row gap-4">
+            <div className="mt-6 flex flex-col gap-3">
               <Button 
                 onClick={() => setLocation('/customer')}
-                className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+                className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
               >
                 <Gift className="h-4 w-4 mr-2" />
                 My Rewards
@@ -242,7 +270,7 @@ export default function MapSimple() {
               <Button 
                 variant="outline"
                 onClick={() => setLocation('/merchant')}
-                className="flex-1"
+                className="w-full"
               >
                 <Store className="h-4 w-4 mr-2" />
                 For Business Owners
