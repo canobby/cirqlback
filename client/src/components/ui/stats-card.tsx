@@ -2,11 +2,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
 
 interface StatsCardProps {
-  title: string;
+  title: string | React.ReactNode;
   value: string | number;
   icon: LucideIcon;
   color: "blue" | "green" | "yellow" | "purple" | "red";
-  subtitle?: string;
+  subtitle?: string | React.ReactNode;
   trend?: {
     value: string;
     isPositive: boolean;

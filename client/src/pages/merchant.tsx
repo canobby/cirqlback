@@ -54,12 +54,12 @@ export default function Merchant() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle className="text-2xl gradient-text">☕ Joe's Coffee Shop</CardTitle>
-              <p className="text-gray-600">Downtown Location • Active since Jan 2024 • Premium Member</p>
+              <CardTitle className="text-2xl gradient-text">☕ <QuickTranslate text="Coffee Shop Business" /></CardTitle>
+              <p className="text-gray-600"><QuickTranslate text="Downtown Location • Active since Jan 2024 • Premium Member" /></p>
               <div className="flex items-center mt-2 space-x-4">
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">🟢 Live</span>
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">💎 Gold Tier</span>
-                <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">⚡ High Volume</span>
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">🟢 <QuickTranslate text="Live" /></span>
+                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">💎 <QuickTranslate text="Gold Tier" /></span>
+                <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">⚡ <QuickTranslate text="High Volume" /></span>
               </div>
             </div>
             <div className="w-16 h-16 gradient-bg rounded-full flex items-center justify-center floating-animation">
@@ -77,35 +77,35 @@ export default function Merchant() {
       {/* Enhanced Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <StatsCard
-          title="Total Taps"
+          title={<QuickTranslate text="Total Taps" />}
           value={stats.totalTaps.toLocaleString()}
           icon={Store}
           color="blue"
-          subtitle="This month"
+          subtitle={<QuickTranslate text="This month" />}
           trend={{ value: "+23%", isPositive: true }}
         />
         <StatsCard
-          title="Active Customers"
+          title={<QuickTranslate text="Active Customers" />}
           value={stats.activeCustomers.toLocaleString()}
           icon={Users}
           color="green"
-          subtitle="Weekly active"
+          subtitle={<QuickTranslate text="Weekly active" />}
           trend={{ value: "+18%", isPositive: true }}
         />
         <StatsCard
-          title="Referrals Generated"
+          title={<QuickTranslate text="Referrals Generated" />}
           value={stats.referrals.toString()}
           icon={Share2}
           color="yellow"
-          subtitle="This month"
+          subtitle={<QuickTranslate text="This month" />}
           trend={{ value: "+45%", isPositive: true }}
         />
         <StatsCard
-          title="Conversion Rate"
+          title={<QuickTranslate text="Conversion Rate" />}
           value={`${stats.conversionRate}%`}
           icon={TrendingUp}
           color="purple"
-          subtitle="Tap to purchase"
+          subtitle={<QuickTranslate text="Tap to purchase" />}
           trend={{ value: "+5.2%", isPositive: true }}
         />
       </div>
@@ -117,10 +117,10 @@ export default function Merchant() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-purple-800 dark:text-purple-200 mb-2">
-                  Create New Campaign
+                  <QuickTranslate text="Create New Campaign" />
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
-                  Set up discounts, loyalty points, or referral rewards in minutes
+                  <QuickTranslate text="Set up discounts, loyalty points, or referral rewards in minutes" />
                 </p>
                 <Button 
                   onClick={() => setLocation('/campaign-setup-bento')}

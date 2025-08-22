@@ -443,6 +443,162 @@ const UI_TRANSLATIONS: Record<string, Record<SupportedLanguage, string>> = {
   "Complete business ecosystem with AI partnership recommendations, multi-merchant reward pools, predictive customer analytics, 22+ platform integrations, automated marketing orchestration, and comprehensive export capabilities": {
     en: "Complete business ecosystem with AI partnership recommendations, multi-merchant reward pools, predictive customer analytics, 22+ platform integrations, automated marketing orchestration, and comprehensive export capabilities",
     es: "Ecosistema empresarial completo con recomendaciones de asociaciones de IA, grupos de recompensas multi-comerciante, análisis predictivo de clientes, 22+ integraciones de plataforma, orquestación de marketing automatizada y capacidades de exportación integral"
+  },
+  "Discovery Hub": {
+    en: "Discovery Hub",
+    es: "Centro de descubrimiento"
+  },
+  "Your adventure continues - Level": {
+    en: "Your adventure continues - Level",
+    es: "Tu aventura continúa - Nivel"
+  },
+  "Discover Local Gems": {
+    en: "Discover Local Gems", 
+    es: "Descubre joyas locales"
+  },
+  "businesses nearby with active rewards": {
+    en: "businesses nearby with active rewards",
+    es: "negocios cercanos con recompensas activas"
+  },
+  "View Map": {
+    en: "View Map",
+    es: "Ver mapa"
+  },
+  "Find nearby rewards": {
+    en: "Find nearby rewards",
+    es: "Encontrar recompensas cercanas"
+  },
+  "Tap to Earn": {
+    en: "Tap to Earn",
+    es: "Toca para ganar"
+  },
+  "Quick reward scan": {
+    en: "Quick reward scan",
+    es: "Escaneo rápido de recompensas"
+  },
+  "Your Progress": {
+    en: "Your Progress",
+    es: "Tu progreso"
+  },
+  "Level Progress": {
+    en: "Level Progress",
+    es: "Progreso de nivel"
+  },
+  "Downtown Location • Active since Jan 2024 • Premium Member": {
+    en: "Downtown Location • Active since Jan 2024 • Premium Member",
+    es: "Ubicación centro • Activo desde enero 2024 • Miembro premium"
+  },
+  "Live": {
+    en: "Live",
+    es: "En vivo"
+  },
+  "Gold Tier": {
+    en: "Gold Tier",
+    es: "Nivel dorado"
+  },
+  "High Volume": {
+    en: "High Volume",
+    es: "Alto volumen"
+  },
+  "Back to Map": {
+    en: "Back to Map",
+    es: "Volver al mapa"
+  },
+  "Discover Local Businesses": {
+    en: "Discover Local Businesses",
+    es: "Descubrir negocios locales"
+  },
+  "Tap Cirql tags to earn rewards and discover amazing local spots in Yakima, WA": {
+    en: "Tap Cirql tags to earn rewards and discover amazing local spots in Yakima, WA",
+    es: "Toca etiquetas Cirql para ganar recompensas y descubrir lugares locales increíbles en Yakima, WA"
+  },
+  "Open": {
+    en: "Open",
+    es: "Abierto"
+  },
+  "Closed": {
+    en: "Closed", 
+    es: "Cerrado"
+  },
+  "rewards available": {
+    en: "rewards available",
+    es: "recompensas disponibles"
+  },
+  "reward available": {
+    en: "reward available",
+    es: "recompensa disponible"
+  },
+  "Coffee Shop Business": {
+    en: "Joe's Coffee Shop",
+    es: "Cafetería de Joe"
+  },
+  "Total Points": {
+    en: "Total Points",
+    es: "Puntos totales"
+  },
+  "Explorer": {
+    en: "Explorer",
+    es: "Explorador"
+  },
+  "Badges Earned": {
+    en: "Badges Earned",
+    es: "Insignias ganadas"
+  },
+  "Businesses": {
+    en: "Businesses",
+    es: "Negocios"
+  },
+  "Day Streak": {
+    en: "Day Streak",
+    es: "Racha diaria"
+  },
+  "Edit Profile": {
+    en: "Edit Profile",
+    es: "Editar perfil"
+  },
+  "Account Settings": {
+    en: "Account Settings",
+    es: "Configuración de cuenta"
+  },
+  "Recent Activity": {
+    en: "Recent Activity",
+    es: "Actividad reciente"
+  },
+  "Total Taps": {
+    en: "Total Taps",
+    es: "Total de toques"
+  },
+  "This month": {
+    en: "This month",
+    es: "Este mes"
+  },
+  "Active Customers": {
+    en: "Active Customers",
+    es: "Clientes activos"
+  },
+  "Weekly active": {
+    en: "Weekly active",
+    es: "Activos semanalmente"
+  },
+  "Referrals Generated": {
+    en: "Referrals Generated",
+    es: "Referencias generadas"
+  },
+  "Conversion Rate": {
+    en: "Conversion Rate",
+    es: "Tasa de conversión"
+  },
+  "Tap to purchase": {
+    en: "Tap to purchase",
+    es: "Toque para comprar"
+  },
+  "Create New Campaign": {
+    en: "Create New Campaign",
+    es: "Crear nueva campaña"
+  },
+  "Set up discounts, loyalty points, or referral rewards in minutes": {
+    en: "Set up discounts, loyalty points, or referral rewards in minutes",
+    es: "Configure descuentos, puntos de lealtad o recompensas de referencia en minutos"
   }
 };
 

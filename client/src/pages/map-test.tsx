@@ -2,6 +2,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { QuickTranslate } from "@/components/ui/translated-text";
 import { 
   MapPin, ArrowRight, Coffee, Smartphone, Store, Utensils, Star, Gift
 } from "lucide-react";
@@ -73,14 +74,14 @@ export default function MapTest() {
             className="mb-4"
           >
             <ArrowRight className="h-4 w-4 rotate-180 mr-2" />
-            Back to Home
+            <QuickTranslate text="Back to Home" />
           </Button>
           
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Local Business Map
+            <QuickTranslate text="Discover Local Businesses" />
           </h1>
           <p className="text-gray-600">
-            Discover businesses in Yakima, WA and earn rewards by tapping Cirql tags
+            <QuickTranslate text="Tap Cirql tags to earn rewards and discover amazing local spots in Yakima, WA" />
           </p>
         </div>
 

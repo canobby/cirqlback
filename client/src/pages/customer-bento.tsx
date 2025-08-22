@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { QuickTranslate } from "@/components/ui/translated-text";
 
 export default function CustomerBento() {
   const [, setLocation] = useLocation();
@@ -30,10 +31,10 @@ export default function CustomerBento() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div className="min-w-0 flex-1">
               <h1 className="responsive-heading font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 bg-clip-text text-transparent">
-                Discovery Hub
+                <QuickTranslate text="Discovery Hub" />
               </h1>
               <p className="text-gray-600 dark:text-gray-400 responsive-text">
-                Your adventure continues - Level {userStats.level} Explorer
+                <QuickTranslate text="Your adventure continues - Level" /> {userStats.level} <QuickTranslate text="Explorer" />
               </p>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
@@ -59,8 +60,8 @@ export default function CustomerBento() {
             <CardContent className="responsive-card relative z-10">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
                 <div className="min-w-0 flex-1">
-                  <h2 className="responsive-heading font-bold mb-2">Discover Local Gems</h2>
-                  <p className="text-blue-100 responsive-text">23 businesses nearby with active rewards</p>
+                  <h2 className="responsive-heading font-bold mb-2"><QuickTranslate text="Discover Local Gems" /></h2>
+                  <p className="text-blue-100 responsive-text">23 <QuickTranslate text="businesses nearby with active rewards" /></p>
                 </div>
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                   <div className="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center">
@@ -82,8 +83,8 @@ export default function CustomerBento() {
                       </div>
                     </div>
                     <div className="text-left">
-                      <div className="font-semibold">View Map</div>
-                      <div className="text-sm text-blue-100">Find nearby rewards</div>
+                      <div className="font-semibold"><QuickTranslate text="View Map" /></div>
+                      <div className="text-sm text-blue-100"><QuickTranslate text="Find nearby rewards" /></div>
                     </div>
                     <div className="w-4 h-4 ml-auto bg-white/30 rounded-full"></div>
                   </div>
@@ -101,8 +102,8 @@ export default function CustomerBento() {
                       </div>
                     </div>
                     <div className="text-left">
-                      <div className="font-semibold">Tap to Earn</div>
-                      <div className="text-sm text-blue-100">Quick reward scan</div>
+                      <div className="font-semibold"><QuickTranslate text="Tap to Earn" /></div>
+                      <div className="text-sm text-blue-100"><QuickTranslate text="Quick reward scan" /></div>
                     </div>
                     <div className="w-4 h-4 ml-auto bg-white/30 rounded-full"></div>
                   </div>
@@ -115,7 +116,7 @@ export default function CustomerBento() {
           <Card className="md:col-span-3 lg:col-span-3 md:row-span-2 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
             <CardContent className="p-6 h-full">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Your Progress</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100"><QuickTranslate text="Your Progress" /></h3>
                 <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
                   <div className="w-4 h-4 bg-white rounded-full"></div>
                 </div>
@@ -125,7 +126,7 @@ export default function CustomerBento() {
                 {/* Level Progress */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Level Progress</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300"><QuickTranslate text="Level Progress" /></span>
                     <span className="text-sm text-purple-600 dark:text-purple-400">Level {userStats.level}</span>
                   </div>
                   <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-3">
@@ -137,22 +138,22 @@ export default function CustomerBento() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-4 text-center">
                     <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{userStats.totalPoints}</div>
-                    <div className="text-sm text-blue-700 dark:text-blue-300">Total Points</div>
+                    <div className="text-sm text-blue-700 dark:text-blue-300"><QuickTranslate text="Total Points" /></div>
                   </div>
                   
                   <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 text-center">
                     <div className="text-2xl font-bold text-green-600 dark:text-green-400">{userStats.badgesEarned}</div>
-                    <div className="text-sm text-green-700 dark:text-green-300">Badges Earned</div>
+                    <div className="text-sm text-green-700 dark:text-green-300"><QuickTranslate text="Badges Earned" /></div>
                   </div>
                   
                   <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-xl p-4 text-center">
                     <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{userStats.businessesVisited}</div>
-                    <div className="text-sm text-orange-700 dark:text-orange-300">Businesses</div>
+                    <div className="text-sm text-orange-700 dark:text-orange-300"><QuickTranslate text="Businesses" /></div>
                   </div>
                   
                   <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-4 text-center">
                     <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{userStats.streak}</div>
-                    <div className="text-sm text-purple-700 dark:text-purple-300">Day Streak</div>
+                    <div className="text-sm text-purple-700 dark:text-purple-300"><QuickTranslate text="Day Streak" /></div>
                   </div>
                 </div>
 
@@ -163,7 +164,7 @@ export default function CustomerBento() {
                     className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white"
                   >
                     <div className="w-4 h-4 mr-2 bg-white/30 rounded-full"></div>
-                    Edit Profile
+                    <QuickTranslate text="Edit Profile" />
                   </Button>
                   <div
                     onClick={() => setLocation('/settings')}
@@ -186,7 +187,7 @@ export default function CustomerBento() {
                     onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'white'}
                   >
                     <div className="w-4 h-4 mr-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full"></div>
-                    Account Settings
+                    <QuickTranslate text="Account Settings" />
                   </div>
                 </div>
               </div>
@@ -197,7 +198,7 @@ export default function CustomerBento() {
           <Card className="md:col-span-6 lg:col-span-5 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-gray-900 dark:text-gray-100">Recent Activity</CardTitle>
+                <CardTitle className="text-gray-900 dark:text-gray-100"><QuickTranslate text="Recent Activity" /></CardTitle>
                 <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center">
                   <div className="w-3 h-3 bg-white rounded-full"></div>
                 </div>
