@@ -23,7 +23,7 @@ export default function Navbar() {
             <Link href="/" className="flex items-center hover:opacity-80 transition-opacity flex-shrink-0">
               <img 
                 src={cirqlbackLogo} 
-                alt="Cirqlback" 
+                alt="Logo" 
                 className="h-5 w-auto mr-2 sm:h-6 sm:mr-3 logo-transparent"
                 key="cirqlback-logo-v5"
               />
