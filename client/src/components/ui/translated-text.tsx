@@ -320,10 +320,6 @@ const UI_TRANSLATIONS: Record<string, Record<SupportedLanguage, string>> = {
     en: "About Cirqlback",
     es: "Acerca de Cirqlback"
   },
-  "Get Started": {
-    en: "Get Started",
-    es: "Comenzar"
-  },
   "Making local discovery addictively fun.": {
     en: "Making local discovery addictively fun.",
     es: "Haciendo que el descubrimiento local sea adictivamente divertido."
