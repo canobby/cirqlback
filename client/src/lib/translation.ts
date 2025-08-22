@@ -5,16 +5,6 @@ import { useState, useEffect } from 'react';
 export const SUPPORTED_LANGUAGES = {
   en: { name: 'English', flag: '🇺🇸', code: 'en' },
   es: { name: 'Español', flag: '🇪🇸', code: 'es' },
-  fr: { name: 'Français', flag: '🇫🇷', code: 'fr' },
-  de: { name: 'Deutsch', flag: '🇩🇪', code: 'de' },
-  it: { name: 'Italiano', flag: '🇮🇹', code: 'it' },
-  pt: { name: 'Português', flag: '🇧🇷', code: 'pt' },
-  zh: { name: '中文', flag: '🇨🇳', code: 'zh' },
-  ja: { name: '日本語', flag: '🇯🇵', code: 'ja' },
-  ko: { name: '한국어', flag: '🇰🇷', code: 'ko' },
-  ar: { name: 'العربية', flag: '🇸🇦', code: 'ar' },
-  hi: { name: 'हिन्दी', flag: '🇮🇳', code: 'hi' },
-  ru: { name: 'Русский', flag: '🇷🇺', code: 'ru' },
 } as const;
 
 export type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES;
@@ -40,8 +30,13 @@ class LanguageManager {
     this.currentLanguage = language;
     localStorage.setItem('cirqlback-language', language);
     
-    // Trigger language change event
+    // Trigger language change event for immediate UI updates
     window.dispatchEvent(new CustomEvent('languageChanged', { detail: language }));
+    
+    // Force page reload to retranslate all content
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   }
 
   async translateText(text: string, targetLanguage?: SupportedLanguage): Promise<string> {

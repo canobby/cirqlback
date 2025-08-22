@@ -50,87 +50,91 @@ export function TranslatedText({
 const UI_TRANSLATIONS: Record<string, Record<SupportedLanguage, string>> = {
   "Customer": {
     en: "Customer",
-    es: "Cliente", 
-    fr: "Client",
-    de: "Kunde",
-    it: "Cliente",
-    pt: "Cliente",
-    zh: "客户",
-    ja: "顧客",
-    ko: "고객",
-    ar: "عميل",
-    hi: "ग्राहक",
-    ru: "Клиент"
+    es: "Cliente"
   },
   "Merchant": {
     en: "Merchant",
-    es: "Comerciante",
-    fr: "Commerçant", 
-    de: "Händler",
-    it: "Commerciante",
-    pt: "Comerciante",
-    zh: "商家",
-    ja: "商人",
-    ko: "상인",
-    ar: "تاجر",
-    hi: "व्यापारी",
-    ru: "Торговец"
+    es: "Comerciante"
   },
   "Analytics": {
     en: "Analytics",
-    es: "Análisis",
-    fr: "Analyses",
-    de: "Analytik",
-    it: "Analisi",
-    pt: "Análises",
-    zh: "分析",
-    ja: "分析",
-    ko: "분석",
-    ar: "تحليلات",
-    hi: "विश्लेषण",
-    ru: "Аналитика"
+    es: "Análisis"
   },
   "Map": {
     en: "Map",
-    es: "Mapa",
-    fr: "Carte",
-    de: "Karte", 
-    it: "Mappa",
-    pt: "Mapa",
-    zh: "地图",
-    ja: "地図",
-    ko: "지도",
-    ar: "خريطة",
-    hi: "मानचित्र",
-    ru: "Карта"
+    es: "Mapa"
   },
   "Login": {
     en: "Login",
-    es: "Iniciar sesión",
-    fr: "Connexion",
-    de: "Anmelden",
-    it: "Accedi",
-    pt: "Entrar",
-    zh: "登录",
-    ja: "ログイン",
-    ko: "로그인",
-    ar: "تسجيل الدخول",
-    hi: "लॉगिन",
-    ru: "Войти"
+    es: "Iniciar sesión"
   },
   "All Pages": {
     en: "All Pages",
-    es: "Todas las páginas",
-    fr: "Toutes les pages",
-    de: "Alle Seiten",
-    it: "Tutte le pagine", 
-    pt: "Todas as páginas",
-    zh: "所有页面",
-    ja: "すべてのページ",
-    ko: "모든 페이지",
-    ar: "جميع الصفحات",
-    hi: "सभी पृष्ठ",
-    ru: "Все страницы"
+    es: "Todas las páginas"
+  },
+  "Home": {
+    en: "Home",
+    es: "Inicio"
+  },
+  "Dashboard": {
+    en: "Dashboard", 
+    es: "Panel de control"
+  },
+  "The Addictive Local Discovery Platform": {
+    en: "The Addictive Local Discovery Platform",
+    es: "La Plataforma Adictiva de Descubrimiento Local"
+  },
+  "Transform every business visit into an exciting adventure through gamified local discovery": {
+    en: "Transform every business visit into an exciting adventure through gamified local discovery",
+    es: "Transforma cada visita a un negocio en una aventura emocionante a través del descubrimiento local gamificado"
+  },
+  "tap, collect, compete, and earn real rewards": {
+    en: "tap, collect, compete, and earn real rewards",
+    es: "toca, colecciona, compite y gana recompensas reales"
+  },
+  "Get Started": {
+    en: "Get Started",
+    es: "Comenzar"
+  },
+  "Explore Map": {
+    en: "Explore Map",
+    es: "Explorar mapa"
+  },
+  "Business Solutions": {
+    en: "Business Solutions", 
+    es: "Soluciones empresariales"
+  },
+  "Join Community": {
+    en: "Join Community",
+    es: "Unirse a la comunidad"
+  },
+  "Choose Your Experience": {
+    en: "Choose Your Experience",
+    es: "Elige tu experiencia"
+  },
+  "I'm a Customer": {
+    en: "I'm a Customer",
+    es: "Soy un cliente"
+  },
+  "I'm a Business": {
+    en: "I'm a Business",
+    es: "Soy un negocio"
+  },
+  "Discover amazing local businesses, earn rewards, and compete with friends in your neighborhood.": {
+    en: "Discover amazing local businesses, earn rewards, and compete with friends in your neighborhood.",
+    es: "Descubre negocios locales increíbles, gana recompensas y compite con amigos en tu vecindario."
+  },
+  "Attract more customers, increase engagement, and grow your local presence with gamified marketing.": {
+    en: "Attract more customers, increase engagement, and grow your local presence with gamified marketing.",
+    es: "Atrae más clientes, aumenta el compromiso y haz crecer tu presencia local con marketing gamificado."
+  },
+  "How It Works": {
+    en: "How It Works",
+    es: "Cómo funciona"
+  },
+  "Three simple steps to start your local discovery adventure": {
+    en: "Three simple steps to start your local discovery adventure",
+    es: "Tres simples pasos para comenzar tu aventura de descubrimiento local"
   }
 };
 

@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Search, Store, Users, TrendingUp, MapPin, Award, Heart, Gift, Zap } from "lucide-react";
 import { useLocation } from "wouter";
+import { QuickTranslate } from "@/components/ui/translated-text";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 
 export default function HomeBento() {
@@ -80,22 +81,22 @@ export default function HomeBento() {
           <div className="relative z-10 py-16 px-8">
             <div className="mb-8">
               <span className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-full text-sm font-medium mb-4">
-                ✨ The Addictive Local Discovery Platform
+                ✨ <QuickTranslate text="The Addictive Local Discovery Platform" />
               </span>
             </div>
             <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent mb-6 leading-tight">
               Cirqlback
             </h1>
             <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-8 max-w-4xl mx-auto leading-relaxed">
-              Transform every business visit into an exciting adventure through gamified local discovery - 
-              <span className="font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"> tap, collect, compete, and earn real rewards.</span>
+              <QuickTranslate text="Transform every business visit into an exciting adventure through gamified local discovery" /> - 
+              <span className="font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"> <QuickTranslate text="tap, collect, compete, and earn real rewards" />.</span>
             </p>
           </div>
         </div>
 
         {/* Main Navigation - Bento Style */}
         <div className="max-w-4xl mx-auto mb-12">
-          <h2 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-gray-100">Choose Your Experience</h2>
+          <h2 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-gray-100"><QuickTranslate text="Choose Your Experience" /></h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card 
               className="bg-gradient-to-br from-blue-500 to-cyan-500 border-0 text-white cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl"
@@ -109,8 +110,8 @@ export default function HomeBento() {
                   <ArrowRight className="h-6 w-6 text-white/70" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold mb-3">I'm a Customer</h3>
-                  <p className="text-blue-100 text-lg leading-relaxed">Discover amazing local businesses, earn rewards, and compete with friends in your neighborhood.</p>
+                  <h3 className="text-2xl font-bold mb-3"><QuickTranslate text="I'm a Customer" /></h3>
+                  <p className="text-blue-100 text-lg leading-relaxed"><QuickTranslate text="Discover amazing local businesses, earn rewards, and compete with friends in your neighborhood." /></p>
                 </div>
               </CardContent>
             </Card>
@@ -127,8 +128,8 @@ export default function HomeBento() {
                   <ArrowRight className="h-6 w-6 text-white/70" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold mb-3">I'm a Business</h3>
-                  <p className="text-orange-100 text-lg leading-relaxed">Attract more customers, increase engagement, and grow your local presence with gamified marketing.</p>
+                  <h3 className="text-2xl font-bold mb-3"><QuickTranslate text="I'm a Business" /></h3>
+                  <p className="text-orange-100 text-lg leading-relaxed"><QuickTranslate text="Attract more customers, increase engagement, and grow your local presence with gamified marketing." /></p>
                 </div>
               </CardContent>
             </Card>
@@ -138,8 +139,8 @@ export default function HomeBento() {
         {/* Feature Showcase Section */}
         <div className="max-w-6xl mx-auto mb-16">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-gray-100">How It Works</h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400">Three simple steps to start your local discovery adventure</p>
+            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-gray-100"><QuickTranslate text="How It Works" /></h2>
+            <p className="text-xl text-gray-600 dark:text-gray-400"><QuickTranslate text="Three simple steps to start your local discovery adventure" /></p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
