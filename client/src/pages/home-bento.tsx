@@ -180,24 +180,24 @@ export default function HomeBento() {
                           <div className="w-4 h-4 bg-gradient-to-br from-green-500 to-blue-500 rounded-full"></div>
                         </div>
                       </div>
-                      <h3 className="text-lg font-bold text-gray-800 mb-1">Reward Unlocked!</h3>
-                      <p className="text-gray-600 text-sm">Joe's Coffee Shop</p>
+                      <h3 className="text-lg font-bold text-gray-800 mb-1"><QuickTranslate text="Reward Unlocked!" /></h3>
+                      <p className="text-gray-600 text-sm"><QuickTranslate text="Joe's Coffee Shop" /></p>
                     </div>
 
                     {/* Reward Card */}
                     <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-4 text-white mb-4">
                       <div className="flex items-center justify-between mb-3">
                         <div>
-                          <h4 className="text-base font-semibold">Free Coffee</h4>
-                          <p className="text-purple-100 text-sm">Today Only</p>
+                          <h4 className="text-base font-semibold"><QuickTranslate text="Free Coffee" /></h4>
+                          <p className="text-purple-100 text-sm"><QuickTranslate text="Today Only" /></p>
                         </div>
                         <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
                           <div className="text-lg">☕</div>
                         </div>
                       </div>
                       <div className="flex items-center text-sm">
-                        <span className="bg-white/20 px-2 py-1 rounded text-xs mr-2">+150 pts</span>
-                        <span className="text-purple-100">Expires in 2 hours</span>
+                        <span className="bg-white/20 px-2 py-1 rounded text-xs mr-2">+150 <QuickTranslate text="pts" /></span>
+                        <span className="text-purple-100"><QuickTranslate text="Expires in 2 hours" /></span>
                       </div>
                     </div>
 
@@ -205,10 +205,10 @@ export default function HomeBento() {
                     <div className="flex justify-between items-center bg-gray-100 rounded-lg p-3">
                       <div className="text-center">
                         <div className="text-lg font-bold text-gray-800">2,847</div>
-                        <div className="text-xs text-gray-600">Total Points</div>
+                        <div className="text-xs text-gray-600"><QuickTranslate text="Total Points" /></div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-bold text-gray-800">Level 12</div>
+                        <div className="text-lg font-bold text-gray-800"><QuickTranslate text="Level" /> 12</div>
                         <div className="text-xs text-gray-600">Explorer</div>
                       </div>
                     </div>
@@ -227,25 +227,25 @@ export default function HomeBento() {
                 </div>
                 <Badge className="bg-white/20 text-white border-white/30">Growing Fast</Badge>
               </div>
-              <h3 className="text-2xl font-bold mb-2">Platform Growth</h3>
-              <p className="text-green-100 mb-6 flex-1">Real numbers from our growing community of businesses and customers</p>
+              <h3 className="text-2xl font-bold mb-2"><QuickTranslate text="Platform Stats" /></h3>
+              <p className="text-green-100 mb-6 flex-1"><QuickTranslate text="Ready to discover amazing local businesses and earn rewards?" /></p>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
                   <div className="text-3xl font-bold mb-1">{stats.businesses}</div>
-                  <div className="text-green-100 text-sm">Active Businesses</div>
+                  <div className="text-green-100 text-sm"><QuickTranslate text="Businesses" /></div>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold mb-1">{stats.customers}</div>
-                  <div className="text-green-100 text-sm">Happy Customers</div>
+                  <div className="text-green-100 text-sm"><QuickTranslate text="Customers" /></div>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold mb-1">{stats.rewards}</div>
-                  <div className="text-green-100 text-sm">Rewards Claimed</div>
+                  <div className="text-green-100 text-sm"><QuickTranslate text="Rewards Claimed" /></div>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold mb-1">{stats.cities}</div>
-                  <div className="text-green-100 text-sm">Cities Covered</div>
+                  <div className="text-green-100 text-sm"><QuickTranslate text="Cities" /></div>
                 </div>
               </div>
             </CardContent>

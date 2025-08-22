@@ -159,6 +159,70 @@ const UI_TRANSLATIONS: Record<string, Record<SupportedLanguage, string>> = {
   "Explore hidden gems in your neighborhood": {
     en: "Explore hidden gems in your neighborhood",
     es: "Explora joyas ocultas en tu vecindario"
+  },
+  "Reward Unlocked!": {
+    en: "Reward Unlocked!",
+    es: "¡Recompensa desbloqueada!"
+  },
+  "Joe's Coffee Shop": {
+    en: "Joe's Coffee Shop",
+    es: "Cafetería de Joe"
+  },
+  "Free Coffee": {
+    en: "Free Coffee",
+    es: "Café gratis"
+  },
+  "Today Only": {
+    en: "Today Only",
+    es: "Solo hoy"
+  },
+  "pts": {
+    en: "pts",
+    es: "pts"
+  },
+  "Expires in 2 hours": {
+    en: "Expires in 2 hours",
+    es: "Expira en 2 horas"
+  },
+  "Level": {
+    en: "Level",
+    es: "Nivel"
+  },
+  "Total Points": {
+    en: "Total Points",
+    es: "Puntos totales"
+  },
+  "Your Rewards": {
+    en: "Your Rewards",
+    es: "Tus recompensas"
+  },
+  "Platform Stats": {
+    en: "Platform Stats",
+    es: "Estadísticas de la plataforma"
+  },
+  "Businesses": {
+    en: "Businesses",
+    es: "Negocios"
+  },
+  "Customers": {
+    en: "Customers",
+    es: "Clientes"
+  },
+  "Rewards Claimed": {
+    en: "Rewards Claimed",
+    es: "Recompensas reclamadas"
+  },
+  "Cities": {
+    en: "Cities",
+    es: "Ciudades"
+  },
+  "Start Your Adventure": {
+    en: "Start Your Adventure",
+    es: "Comienza tu aventura"
+  },
+  "Ready to discover amazing local businesses and earn rewards?": {
+    en: "Ready to discover amazing local businesses and earn rewards?",
+    es: "¿Listo para descubrir negocios locales increíbles y ganar recompensas?"
   }
 };
 
