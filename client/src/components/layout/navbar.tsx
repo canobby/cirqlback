@@ -17,7 +17,7 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto responsive-container">
+      <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16 sm:h-20">
           <div className="flex items-center min-w-0">
             <Link href="/" className="flex items-center hover:opacity-80 transition-opacity flex-shrink-0">
@@ -31,16 +31,12 @@ export default function Navbar() {
             </Link>
           </div>
           
-          <div className="hidden md:block">
-            <div className="ml-6 lg:ml-10 flex items-baseline space-x-2 lg:space-x-4">
+          <div className="hidden md:block flex-1">
+            <div className="flex items-center justify-center space-x-6">
               <Link href="/customer">
                 <Button 
                   variant="ghost" 
-                  className={`px-2 lg:px-3 py-2 text-xs lg:text-sm font-medium transition-all duration-200 mobile-button-size ${
-                    isActive("/customer") 
-                      ? "text-primary bg-primary/10 border border-primary/20" 
-                      : "text-muted-foreground hover:text-primary hover:bg-primary/5"
-                  }`}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200"
                 >
                   Customer
                 </Button>
@@ -48,11 +44,7 @@ export default function Navbar() {
               <Link href="/merchant">
                 <Button 
                   variant="ghost" 
-                  className={`px-2 lg:px-3 py-2 text-xs lg:text-sm font-medium transition-all duration-200 mobile-button-size ${
-                    isActive("/merchant") 
-                      ? "text-secondary bg-secondary/10 border border-secondary/20" 
-                      : "text-muted-foreground hover:text-secondary hover:bg-secondary/5"
-                  }`}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-orange-600 hover:bg-orange-50 transition-all duration-200"
                 >
                   Merchant
                 </Button>
@@ -60,11 +52,7 @@ export default function Navbar() {
               <Link href="/analytics">
                 <Button 
                   variant="ghost" 
-                  className={`px-2 lg:px-3 py-2 text-xs lg:text-sm font-medium transition-all duration-200 mobile-button-size ${
-                    isActive("/analytics") 
-                      ? "text-accent bg-accent/10 border border-accent/20" 
-                      : "text-muted-foreground hover:text-accent hover:bg-accent/5"
-                  }`}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
                 >
                   Analytics
                 </Button>
@@ -72,35 +60,15 @@ export default function Navbar() {
               <Link href="/map">
                 <Button 
                   variant="ghost" 
-                  className={`px-2 lg:px-3 py-2 text-xs lg:text-sm font-medium transition-all duration-200 mobile-button-size ${
-                    isActive("/map") 
-                      ? "text-blue-600 bg-blue-50 border border-blue-200" 
-                      : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
-                  }`}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-green-600 hover:bg-green-50 transition-all duration-200"
                 >
                   Map
-                </Button>
-              </Link>
-              <Link href="/test-system">
-                <Button 
-                  variant="ghost" 
-                  className={`px-2 lg:px-3 py-2 text-xs lg:text-sm font-medium transition-all duration-200 mobile-button-size ${
-                    isActive("/test-system") 
-                      ? "text-blue-600 bg-blue-50 border border-blue-200" 
-                      : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
-                  }`}
-                >
-                  Testing
                 </Button>
               </Link>
               <Link href="/admin-dashboard">
                 <Button 
                   variant="ghost" 
-                  className={`px-2 lg:px-3 py-2 text-xs lg:text-sm font-medium transition-all duration-200 mobile-button-size ${
-                    isActive("/admin-dashboard") 
-                      ? "text-red-600 bg-red-50 border border-red-200" 
-                      : "text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                  }`}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
                 >
                   Admin
                 </Button>
@@ -108,7 +76,7 @@ export default function Navbar() {
             </div>
           </div>
           
-          <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4">
+          <div className="flex items-center space-x-3">
             <div className="hidden sm:block">
               <LanguageSelector variant="button" size="sm" />
             </div>
@@ -123,7 +91,7 @@ export default function Navbar() {
                 <Settings className="h-4 w-4" />
               </Button>
             </Link>
-            <Button className="gradient-bg border-0 text-white font-semibold text-xs sm:text-sm px-3 sm:px-4 py-2 mobile-sm-touch">
+            <Button className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-sm px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200">
               Login
             </Button>
           </div>
