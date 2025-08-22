@@ -209,7 +209,7 @@ export default function HomeBento() {
                       </div>
                       <div className="text-center">
                         <div className="text-lg font-bold text-gray-800"><QuickTranslate text="Level" /> 12</div>
-                        <div className="text-xs text-gray-600">Explorer</div>
+                        <div className="text-xs text-gray-600"><QuickTranslate text="Explorer" /></div>
                       </div>
                     </div>
                   </div>
@@ -225,7 +225,7 @@ export default function HomeBento() {
                 <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
                   <div className="w-4 h-4 bg-green-200 rounded"></div>
                 </div>
-                <Badge className="bg-white/20 text-white border-white/30">Growing Fast</Badge>
+                <Badge className="bg-white/20 text-white border-white/30"><QuickTranslate text="Growing Fast" /></Badge>
               </div>
               <h3 className="text-2xl font-bold mb-2"><QuickTranslate text="Platform Stats" /></h3>
               <p className="text-green-100 mb-6 flex-1"><QuickTranslate text="Ready to discover amazing local businesses and earn rewards?" /></p>
@@ -260,22 +260,22 @@ export default function HomeBento() {
                 <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
                   <div className="w-4 h-4 bg-orange-200 rounded-full"></div>
                 </div>
-                <Badge className="bg-white/20 text-white border-white/30">Addictive</Badge>
+                <Badge className="bg-white/20 text-white border-white/30"><QuickTranslate text="Addictive" /></Badge>
               </div>
-              <h3 className="text-2xl font-bold mb-2">Gamified Rewards</h3>
-              <p className="text-orange-100 mb-4">Collect points, unlock achievements, and compete with friends while discovering amazing local businesses.</p>
+              <h3 className="text-2xl font-bold mb-2"><QuickTranslate text="Gamified Rewards" /></h3>
+              <p className="text-orange-100 mb-4"><QuickTranslate text="Collect points, unlock achievements, and compete with friends while discovering amazing local businesses." /></p>
               <div className="space-y-2">
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></div>
-                  <span className="text-sm text-orange-100">Daily challenges & quests</span>
+                  <span className="text-sm text-orange-100"><QuickTranslate text="Daily challenges & quests" /></span>
                 </div>
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></div>
-                  <span className="text-sm text-orange-100">Level progression system</span>
+                  <span className="text-sm text-orange-100"><QuickTranslate text="Level progression system" /></span>
                 </div>
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></div>
-                  <span className="text-sm text-orange-100">Exclusive member rewards</span>
+                  <span className="text-sm text-orange-100"><QuickTranslate text="Exclusive member rewards" /></span>
                 </div>
               </div>
             </CardContent>
@@ -288,10 +288,10 @@ export default function HomeBento() {
                 <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
                   <div className="w-4 h-4 bg-pink-200 rounded-full animate-pulse"></div>
                 </div>
-                <Badge className="bg-white/20 text-white border-white/30">Community Love</Badge>
+                <Badge className="bg-white/20 text-white border-white/30"><QuickTranslate text="Community Love" /></Badge>
               </div>
-              <h3 className="text-2xl font-bold mb-2">Join the Movement</h3>
-              <p className="text-pink-100 mb-4">Thousands of businesses and customers are already part of the Cirqlback community.</p>
+              <h3 className="text-2xl font-bold mb-2"><QuickTranslate text="Join the Movement" /></h3>
+              <p className="text-pink-100 mb-4"><QuickTranslate text="Thousands of businesses and customers are already part of the Cirqlback community." /></p>
               <div className="space-y-3">
                 <div className="bg-white/10 rounded-lg p-3">
                   <div className="flex items-center mb-2">
@@ -300,9 +300,9 @@ export default function HomeBento() {
                         <div key={i} className="w-3 h-3 bg-yellow-400 rounded-full"></div>
                       ))}
                     </div>
-                    <span className="text-sm font-semibold">Sarah M.</span>
+                    <span className="text-sm font-semibold"><QuickTranslate text="Sarah M." /></span>
                   </div>
-                  <p className="text-pink-100 text-sm">"Love discovering new places and earning rewards!"</p>
+                  <p className="text-pink-100 text-sm">"<QuickTranslate text="Love discovering new places and earning rewards!" />"</p>
                 </div>
               </div>
             </CardContent>

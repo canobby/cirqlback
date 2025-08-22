@@ -223,6 +223,58 @@ const UI_TRANSLATIONS: Record<string, Record<SupportedLanguage, string>> = {
   "Ready to discover amazing local businesses and earn rewards?": {
     en: "Ready to discover amazing local businesses and earn rewards?",
     es: "¿Listo para descubrir negocios locales increíbles y ganar recompensas?"
+  },
+  "Gamified Rewards": {
+    en: "Gamified Rewards",
+    es: "Recompensas gamificadas"
+  },
+  "Collect points, unlock achievements, and compete with friends while discovering amazing local businesses.": {
+    en: "Collect points, unlock achievements, and compete with friends while discovering amazing local businesses.",
+    es: "Colecciona puntos, desbloquea logros y compite con amigos mientras descubres increíbles negocios locales."
+  },
+  "Daily challenges & quests": {
+    en: "Daily challenges & quests",
+    es: "Desafíos y misiones diarias"
+  },
+  "Level progression system": {
+    en: "Level progression system", 
+    es: "Sistema de progresión de niveles"
+  },
+  "Exclusive member rewards": {
+    en: "Exclusive member rewards",
+    es: "Recompensas exclusivas para miembros"
+  },
+  "Growing Fast": {
+    en: "Growing Fast",
+    es: "Crecimiento rápido"
+  },
+  "Addictive": {
+    en: "Addictive",
+    es: "Adictivo"
+  },
+  "Explorer": {
+    en: "Explorer",
+    es: "Explorador"
+  },
+  "Community Love": {
+    en: "Community Love",
+    es: "Amor de la comunidad"
+  },
+  "Join the Movement": {
+    en: "Join the Movement",
+    es: "Únete al movimiento"
+  },
+  "Thousands of businesses and customers are already part of the Cirqlback community.": {
+    en: "Thousands of businesses and customers are already part of the Cirqlback community.",
+    es: "Miles de negocios y clientes ya son parte de la comunidad Cirqlback."
+  },
+  "Love discovering new places and earning rewards!": {
+    en: "Love discovering new places and earning rewards!",
+    es: "¡Me encanta descubrir nuevos lugares y ganar recompensas!"
+  },
+  "Sarah M.": {
+    en: "Sarah M.",
+    es: "Sarah M."
   }
 };
 
