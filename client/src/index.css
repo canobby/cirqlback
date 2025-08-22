@@ -552,16 +552,30 @@
     box-shadow: 0 25px 50px -12px hsl(280 100% 65% / 0.25);
   }
 
-  /* Updated gradient text with logo colors */
+  /* Clean gradient text with logo colors */
   .gradient-text {
     background: linear-gradient(135deg, 
-      var(--cirq-purple) 0%, 
-      var(--cirq-pink) 50%, 
-      var(--cirq-orange) 100%
+      hsl(260 95% 55%) 0%, 
+      hsl(320 100% 60%) 50%, 
+      hsl(30 100% 55%) 100%
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    display: inline-block;
+    font-weight: 700;
+  }
+  
+  /* Prevent any overlay issues */
+  .gradient-text::before,
+  .gradient-text::after {
+    content: none !important;
+    display: none !important;
+  }
+  
+  /* Force single text rendering */
+  .gradient-text * {
+    display: none !important;
   }
 
   .floating-animation {
