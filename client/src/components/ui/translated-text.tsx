@@ -599,6 +599,10 @@ const UI_TRANSLATIONS: Record<string, Record<SupportedLanguage, string>> = {
   "Set up discounts, loyalty points, or referral rewards in minutes": {
     en: "Set up discounts, loyalty points, or referral rewards in minutes",
     es: "Configure descuentos, puntos de lealtad o recompensas de referencia en minutos"
+  },
+  "Nearby Businesses": {
+    en: "Nearby Businesses",
+    es: "Negocios cercanos"
   }
 };
 
