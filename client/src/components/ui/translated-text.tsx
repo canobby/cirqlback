@@ -135,6 +135,30 @@ const UI_TRANSLATIONS: Record<string, Record<SupportedLanguage, string>> = {
   "Three simple steps to start your local discovery adventure": {
     en: "Three simple steps to start your local discovery adventure",
     es: "Tres simples pasos para comenzar tu aventura de descubrimiento local"
+  },
+  "Tap & Earn": {
+    en: "Tap & Earn",
+    es: "Toca y gana"
+  },
+  "Smart Campaigns": {
+    en: "Smart Campaigns", 
+    es: "Campañas inteligentes"
+  },
+  "Local Discovery": {
+    en: "Local Discovery",
+    es: "Descubrimiento local"
+  },
+  "Simply tap Cirql tags to unlock instant rewards": {
+    en: "Simply tap Cirql tags to unlock instant rewards",
+    es: "Simplemente toca las etiquetas Cirql para desbloquear recompensas instantáneas"
+  },
+  "AI-powered marketing that drives real results": {
+    en: "AI-powered marketing that drives real results",
+    es: "Marketing impulsado por IA que genera resultados reales"
+  },
+  "Explore hidden gems in your neighborhood": {
+    en: "Explore hidden gems in your neighborhood",
+    es: "Explora joyas ocultas en tu vecindario"
   }
 };
 

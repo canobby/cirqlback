@@ -147,8 +147,8 @@ export default function HomeBento() {
             {features.map((feature, index) => (
               <div key={index} className="text-center p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
                 <div className="mb-6">{feature.visual}</div>
-                <h4 className="font-bold text-xl mb-3 text-gray-900 dark:text-gray-100">{feature.title}</h4>
-                <p className="text-gray-600 dark:text-gray-400">{feature.description}</p>
+                <h4 className="font-bold text-xl mb-3 text-gray-900 dark:text-gray-100"><QuickTranslate text={feature.title} /></h4>
+                <p className="text-gray-600 dark:text-gray-400"><QuickTranslate text={feature.description} /></p>
               </div>
             ))}
           </div>
