@@ -27,7 +27,7 @@ export default function Navbar() {
                 className="h-5 w-auto mr-2 sm:h-6 sm:mr-3 logo-transparent"
                 key="cirqlback-logo-v5"
               />
-
+              <span className="text-lg sm:text-xl font-bold gradient-text truncate">Cirqlback</span>
             </Link>
           </div>
           
