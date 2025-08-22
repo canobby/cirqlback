@@ -275,6 +275,58 @@ const UI_TRANSLATIONS: Record<string, Record<SupportedLanguage, string>> = {
   "Sarah M.": {
     en: "Sarah M.",
     es: "Sarah M."
+  },
+  "Get Started Today": {
+    en: "Get Started Today",
+    es: "Comienza hoy"
+  },
+  "Download": {
+    en: "Download",
+    es: "Descargar"
+  },
+  "Experience": {
+    en: "Experience",
+    es: "Experiencia"
+  },
+  "Download the Cirqlback app and start your local discovery adventure today.": {
+    en: "Download the Cirqlback app and start your local discovery adventure today.",
+    es: "Descarga la aplicación Cirqlback y comienza tu aventura de descubrimiento local hoy."
+  },
+  "Tap a Cirql tag at any participating business to unlock instant rewards and start earning.": {
+    en: "Tap a Cirql tag at any participating business to unlock instant rewards and start earning.",
+    es: "Toca una etiqueta Cirql en cualquier negocio participante para desbloquear recompensas instantáneas y comenzar a ganar."
+  },
+  "Ready to Start?": {
+    en: "Ready to Start?",
+    es: "¿Listo para comenzar?"
+  },
+  "Find Businesses": {
+    en: "Find Businesses",
+    es: "Encontrar negocios"
+  },
+  "My Rewards": {
+    en: "My Rewards",
+    es: "Mis recompensas"
+  },
+  "Business Portal": {
+    en: "Business Portal",
+    es: "Portal de negocios"
+  },
+  "NFC Setup": {
+    en: "NFC Setup",
+    es: "Configuración NFC"
+  },
+  "About Cirqlback": {
+    en: "About Cirqlback",
+    es: "Acerca de Cirqlback"
+  },
+  "Get Started": {
+    en: "Get Started",
+    es: "Comenzar"
+  },
+  "Making local discovery addictively fun.": {
+    en: "Making local discovery addictively fun.",
+    es: "Haciendo que el descubrimiento local sea adictivamente divertido."
   }
 };
 

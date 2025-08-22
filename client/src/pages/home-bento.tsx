@@ -314,35 +314,35 @@ export default function HomeBento() {
 
         {/* Quick Action Buttons */}
         <div className="text-center mb-8">
-          <h3 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Ready to Start?</h3>
+          <h3 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100"><QuickTranslate text="Ready to Start?" /></h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
             <Button 
               onClick={() => setLocation('/map')}
               className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
             >
               <MapPin className="h-5 w-5 mr-2" />
-              Find Businesses
+              <QuickTranslate text="Find Businesses" />
             </Button>
             <Button 
               onClick={() => setLocation('/customer')}
               className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
             >
               <Gift className="h-5 w-5 mr-2" />
-              My Rewards
+              <QuickTranslate text="My Rewards" />
             </Button>
             <Button 
               onClick={() => setLocation('/merchant')}
               className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
             >
               <Store className="h-5 w-5 mr-2" />
-              Business Portal
+              <QuickTranslate text="Business Portal" />
             </Button>
             <Button 
               onClick={() => setLocation('/nfc-setup-wizard')}
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
             >
               <Zap className="h-5 w-5 mr-2" />
-              NFC Setup
+              <QuickTranslate text="NFC Setup" />
             </Button>
           </div>
         </div>
@@ -363,7 +363,7 @@ export default function HomeBento() {
                 fontWeight: '500'
               }}
             >
-              About Cirqlback
+              <QuickTranslate text="About Cirqlback" />
             </div>
             <div
               onClick={() => setLocation('/how-it-works')}
@@ -378,7 +378,7 @@ export default function HomeBento() {
                 fontWeight: '500'
               }}
             >
-              How It Works
+              <QuickTranslate text="How It Works" />
             </div>
             <div
               onClick={() => setLocation('/contact')}
@@ -393,11 +393,11 @@ export default function HomeBento() {
                 fontWeight: '500'
               }}
             >
-              Get Started
+              <QuickTranslate text="Get Started" />
             </div>
           </div>
           <p className="text-gray-600 dark:text-gray-400 text-sm">
-            © 2024 Cirqlback. Making local discovery addictively fun.
+            © 2024 Cirqlback. <QuickTranslate text="Making local discovery addictively fun." />
           </p>
         </div>
       </div>
