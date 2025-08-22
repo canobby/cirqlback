@@ -289,16 +289,6 @@
   }
   
   /* Fix button text visibility */
-  .gradient-text {
-    background: linear-gradient(135deg, 
-      var(--cirq-purple) 0%, 
-      var(--cirq-pink) 50%,
-      var(--cirq-orange) 100%
-    );
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
 
   /* Force white text on all dark buttons */
   .button-text-fix {
