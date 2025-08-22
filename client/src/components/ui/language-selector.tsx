@@ -6,14 +6,14 @@ import { useLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/lib/
 
 interface LanguageSelectorProps {
   variant?: 'select' | 'button';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'default' | 'lg';
   showFlag?: boolean;
   className?: string;
 }
 
 export function LanguageSelector({ 
   variant = 'select', 
-  size = 'md',
+  size = 'default',
   showFlag = true,
   className = '' 
 }: LanguageSelectorProps) {

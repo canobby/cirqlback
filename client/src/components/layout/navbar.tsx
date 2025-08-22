@@ -4,6 +4,7 @@ import { Search, Settings } from "lucide-react";
 import PlatformMenu from "@/components/layout/platform-menu";
 import NotificationCenter from "@/components/global/notification-center";
 import { LanguageSelector } from "@/components/ui/language-selector";
+import { QuickTranslate } from "@/components/ui/translated-text";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 
 export default function Navbar() {
@@ -47,7 +48,7 @@ export default function Navbar() {
               </Button>
             </Link>
             <Button className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-sm px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200">
-              Login
+              <QuickTranslate text="Login" />
             </Button>
           </div>
         </div>

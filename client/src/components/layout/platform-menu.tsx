@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { QuickTranslate } from "@/components/ui/translated-text";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,7 +35,7 @@ export default function PlatformMenu() {
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1 sm:gap-2 mobile-sm-touch px-2 sm:px-3">
           <Menu className="h-4 w-4" />
-          <span className="hidden sm:inline">All Pages</span>
+          <span className="hidden sm:inline"><QuickTranslate text="All Pages" /></span>
           <span className="sm:hidden">Navigation</span>
         </Button>
       </DropdownMenuTrigger>
