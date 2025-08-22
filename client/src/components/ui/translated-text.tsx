@@ -323,6 +323,66 @@ const UI_TRANSLATIONS: Record<string, Record<SupportedLanguage, string>> = {
   "Making local discovery addictively fun.": {
     en: "Making local discovery addictively fun.",
     es: "Haciendo que el descubrimiento local sea adictivamente divertido."
+  },
+  "The revolutionary NFC-powered local marketing platform connecting customers with businesses through seamless tap-to-reward experiences.": {
+    en: "The revolutionary NFC-powered local marketing platform connecting customers with businesses through seamless tap-to-reward experiences.",
+    es: "La plataforma revolucionaria de marketing local impulsada por NFC que conecta clientes con negocios a través de experiencias perfectas de tocar para recompensar."
+  },
+  "Platform": {
+    en: "Platform",
+    es: "Plataforma"
+  },
+  "Support": {
+    en: "Support", 
+    es: "Soporte"
+  },
+  "Customer Experience": {
+    en: "Customer Experience",
+    es: "Experiencia del cliente"
+  },
+  "Merchant Dashboard": {
+    en: "Merchant Dashboard",
+    es: "Panel de comerciante"
+  },
+  "Analytics Suite": {
+    en: "Analytics Suite",
+    es: "Suite de análisis"
+  },
+  "Community Hub": {
+    en: "Community Hub",
+    es: "Centro de comunidad"
+  },
+  "Help Center": {
+    en: "Help Center",
+    es: "Centro de ayuda"
+  },
+  "Documentation": {
+    en: "Documentation",
+    es: "Documentación"
+  },
+  "Contact Us": {
+    en: "Contact Us",
+    es: "Contáctanos"
+  },
+  "System Status": {
+    en: "System Status",
+    es: "Estado del sistema"
+  },
+  "All rights reserved.": {
+    en: "All rights reserved.",
+    es: "Todos los derechos reservados."
+  },
+  "Privacy Policy": {
+    en: "Privacy Policy",
+    es: "Política de privacidad"
+  },
+  "Terms of Service": {
+    en: "Terms of Service",
+    es: "Términos de servicio"
+  },
+  "Cookie Policy": {
+    en: "Cookie Policy",
+    es: "Política de cookies"
   }
 };
 

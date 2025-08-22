@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
+import { QuickTranslate } from "@/components/ui/translated-text";
 
 export default function Footer() {
   return (
@@ -17,8 +18,7 @@ export default function Footer() {
               <span className="text-xl font-bold gradient-text">Cirqlback</span>
             </div>
             <p className="text-muted-foreground mb-4 max-w-md">
-              The revolutionary NFC-powered local marketing platform connecting customers 
-              with businesses through seamless tap-to-reward experiences.
+              <QuickTranslate text="The revolutionary NFC-powered local marketing platform connecting customers with businesses through seamless tap-to-reward experiences." />
             </p>
             <div className="flex space-x-4">
               <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center hover:bg-primary/80 transition-colors cursor-pointer">
@@ -35,35 +35,35 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider mb-4 text-foreground">Platform</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider mb-4 text-foreground"><QuickTranslate text="Platform" /></h3>
             <ul className="space-y-2">
-              <li><Link href="/customer" className="text-muted-foreground hover:text-primary transition-colors">Customer Experience</Link></li>
-              <li><Link href="/merchant" className="text-muted-foreground hover:text-secondary transition-colors">Merchant Dashboard</Link></li>
-              <li><Link href="/analytics" className="text-muted-foreground hover:text-accent transition-colors">Analytics Suite</Link></li>
-              <li><Link href="/community" className="text-muted-foreground hover:text-primary transition-colors">Community Hub</Link></li>
+              <li><Link href="/customer" className="text-muted-foreground hover:text-primary transition-colors"><QuickTranslate text="Customer Experience" /></Link></li>
+              <li><Link href="/merchant" className="text-muted-foreground hover:text-secondary transition-colors"><QuickTranslate text="Merchant Dashboard" /></Link></li>
+              <li><Link href="/analytics" className="text-muted-foreground hover:text-accent transition-colors"><QuickTranslate text="Analytics Suite" /></Link></li>
+              <li><Link href="/community" className="text-muted-foreground hover:text-primary transition-colors"><QuickTranslate text="Community Hub" /></Link></li>
             </ul>
           </div>
 
           {/* Support */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider mb-4 text-foreground">Support</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider mb-4 text-foreground"><QuickTranslate text="Support" /></h3>
             <ul className="space-y-2">
-              <li><Link href="/help-center" className="text-muted-foreground hover:text-primary transition-colors">Help Center</Link></li>
-              <li><Link href="/user-guide" className="text-muted-foreground hover:text-secondary transition-colors">Documentation</Link></li>
-              <li><Link href="/contact" className="text-muted-foreground hover:text-accent transition-colors">Contact Us</Link></li>
-              <li><Link href="/platform-overview" className="text-muted-foreground hover:text-primary transition-colors">System Status</Link></li>
+              <li><Link href="/help-center" className="text-muted-foreground hover:text-primary transition-colors"><QuickTranslate text="Help Center" /></Link></li>
+              <li><Link href="/user-guide" className="text-muted-foreground hover:text-secondary transition-colors"><QuickTranslate text="Documentation" /></Link></li>
+              <li><Link href="/contact" className="text-muted-foreground hover:text-accent transition-colors"><QuickTranslate text="Contact Us" /></Link></li>
+              <li><Link href="/platform-overview" className="text-muted-foreground hover:text-primary transition-colors"><QuickTranslate text="System Status" /></Link></li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-border mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-muted-foreground text-sm">
-            © 2024 Cirqlback. All rights reserved.
+            © 2024 Cirqlback. <QuickTranslate text="All rights reserved." />
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
-            <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary text-sm transition-colors">Privacy Policy</Link>
-            <Link href="/terms-of-service" className="text-muted-foreground hover:text-secondary text-sm transition-colors">Terms of Service</Link>
-            <Link href="/help-center" className="text-muted-foreground hover:text-accent text-sm transition-colors">Cookie Policy</Link>
+            <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary text-sm transition-colors"><QuickTranslate text="Privacy Policy" /></Link>
+            <Link href="/terms-of-service" className="text-muted-foreground hover:text-secondary text-sm transition-colors"><QuickTranslate text="Terms of Service" /></Link>
+            <Link href="/help-center" className="text-muted-foreground hover:text-accent text-sm transition-colors"><QuickTranslate text="Cookie Policy" /></Link>
           </div>
         </div>
       </div>
