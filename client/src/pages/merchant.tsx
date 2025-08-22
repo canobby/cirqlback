@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { QuickTranslate } from "@/components/ui/translated-text";
 import CampaignManagement from "@/components/merchant/campaign-management";
 import NFCWritingInterface from "@/components/merchant/nfc-writing-interface";
 import NfcWritingWizard from "@/components/nfc/NfcWritingWizard";
@@ -35,15 +36,15 @@ export default function Merchant() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-4xl font-bold gradient-text mb-2">AI-Powered Business Intelligence Hub</h1>
-            <p className="text-xl text-gray-600">Complete business ecosystem with AI partnership recommendations, multi-merchant reward pools, predictive customer analytics, 22+ platform integrations, automated marketing orchestration, and comprehensive export capabilities</p>
+            <h1 className="text-4xl font-bold gradient-text mb-2"><QuickTranslate text="AI-Powered Business Intelligence Hub" /></h1>
+            <p className="text-xl text-gray-600"><QuickTranslate text="Complete business ecosystem with AI partnership recommendations, multi-merchant reward pools, predictive customer analytics, 22+ platform integrations, automated marketing orchestration, and comprehensive export capabilities" /></p>
           </div>
           <Button 
             onClick={() => setLocation('/merchant-bento')}
             className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
           >
             <Zap className="h-4 w-4 mr-2" />
-            Try Bento Layout
+            <QuickTranslate text="Try Bento Layout" />
           </Button>
         </div>
       </div>

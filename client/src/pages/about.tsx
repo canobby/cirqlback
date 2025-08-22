@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocation } from "wouter";
+import { QuickTranslate } from "@/components/ui/translated-text";
 import { 
   ArrowLeft,
   Users,
@@ -68,17 +69,16 @@ export default function AboutPage() {
             onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.2)'}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Home
+            <QuickTranslate text="Back to Home" />
           </div>
           
           <div className="text-center">
             <img src={cirqlLogoPath} alt="Cirqlback" className="h-20 mx-auto mb-6" />
             <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
-              About Cirqlback
+              <QuickTranslate text="About Cirqlback" />
             </h1>
             <p className="text-xl text-white/90 max-w-3xl mx-auto">
-              We're revolutionizing how communities discover, engage with, and support local businesses 
-              through innovative NFC technology and gamified experiences.
+              <QuickTranslate text="We're revolutionizing how communities discover, engage with, and support local businesses through innovative NFC technology and gamified experiences." />
             </p>
           </div>
         </div>
@@ -87,7 +87,7 @@ export default function AboutPage() {
       {/* Mission Statement */}
       <section className="py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-8">Our Mission</h2>
+          <h2 className="text-4xl font-bold text-gray-900 mb-8"><QuickTranslate text="Our Mission" /></h2>
           <p className="text-xl text-gray-600 leading-relaxed mb-12">
             To create an addictive local discovery platform that transforms every business visit into an exciting adventure. 
             We're building the future where customers eagerly explore their neighborhoods, businesses thrive through genuine 
@@ -101,9 +101,9 @@ export default function AboutPage() {
       <section className="py-20 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Our Values</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4"><QuickTranslate text="Our Values" /></h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              These core principles guide everything we do at Cirqlback.
+              <QuickTranslate text="These core principles guide everything we do at Cirqlback." />
             </p>
           </div>
 
@@ -127,9 +127,9 @@ export default function AboutPage() {
       <section className="py-20 px-4 bg-gradient-to-br from-blue-50 to-indigo-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Growing Together</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4"><QuickTranslate text="Growing Together" /></h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              See how we're making a real impact in communities across the country.
+              <QuickTranslate text="See how we're making a real impact in communities across the country." />
             </p>
           </div>
 

@@ -383,6 +383,66 @@ const UI_TRANSLATIONS: Record<string, Record<SupportedLanguage, string>> = {
   "Cookie Policy": {
     en: "Cookie Policy",
     es: "Política de cookies"
+  },
+  "Back to Home": {
+    en: "Back to Home",
+    es: "Volver al inicio"
+  },
+  "Our Mission": {
+    en: "Our Mission",
+    es: "Nuestra misión"
+  },
+  "We're revolutionizing how communities discover, engage with, and support local businesses through innovative NFC technology and gamified experiences.": {
+    en: "We're revolutionizing how communities discover, engage with, and support local businesses through innovative NFC technology and gamified experiences.",
+    es: "Estamos revolucionando cómo las comunidades descubren, se involucran y apoyan a los negocios locales a través de tecnología NFC innovadora y experiencias gamificadas."
+  },
+  "To create an addictive local discovery platform that transforms every business visit into an exciting adventure. We're building the future where customers eagerly explore their neighborhoods, businesses thrive through genuine engagement, and communities grow stronger through meaningful connections.": {
+    en: "To create an addictive local discovery platform that transforms every business visit into an exciting adventure. We're building the future where customers eagerly explore their neighborhoods, businesses thrive through genuine engagement, and communities grow stronger through meaningful connections.",
+    es: "Crear una plataforma adictiva de descubrimiento local que transforme cada visita comercial en una aventura emocionante. Estamos construyendo el futuro donde los clientes exploran con entusiasmo sus vecindarios, los negocios prosperan a través del compromiso genuino, y las comunidades se fortalecen a través de conexiones significativas."
+  },
+  "Our Values": {
+    en: "Our Values",
+    es: "Nuestros valores"
+  },
+  "These core principles guide everything we do at Cirqlback.": {
+    en: "These core principles guide everything we do at Cirqlback.",
+    es: "Estos principios fundamentales guían todo lo que hacemos en Cirqlback."
+  },
+  "Growing Together": {
+    en: "Growing Together",
+    es: "Creciendo juntos"
+  },
+  "See how we're making a real impact in communities across the country.": {
+    en: "See how we're making a real impact in communities across the country.",
+    es: "Mira cómo estamos generando un impacto real en comunidades de todo el país."
+  },
+  "Advanced Community & Rewards Hub": {
+    en: "Advanced Community & Rewards Hub",
+    es: "Centro Avanzado de Comunidad y Recompensas"
+  },
+  "Try Bento Layout": {
+    en: "Try Bento Layout",
+    es: "Probar diseño Bento"
+  },
+  "Join team challenges, earn exponential viral rewards, discover AI-powered cross-business partnerships with reward cost-sharing, and unlock personalized experiences across multiple merchant locations!": {
+    en: "Join team challenges, earn exponential viral rewards, discover AI-powered cross-business partnerships with reward cost-sharing, and unlock personalized experiences across multiple merchant locations!",
+    es: "¡Únete a desafíos de equipo, gana recompensas virales exponenciales, descubre asociaciones comerciales cruzadas impulsadas por IA con costos compartidos de recompensas, y desbloquea experiencias personalizadas en múltiples ubicaciones de comerciantes!"
+  },
+  "Enter your email to access your rewards dashboard": {
+    en: "Enter your email to access your rewards dashboard",
+    es: "Ingresa tu correo electrónico para acceder a tu panel de recompensas"
+  },
+  "Access Dashboard": {
+    en: "Access Dashboard", 
+    es: "Acceder al panel"
+  },
+  "AI-Powered Business Intelligence Hub": {
+    en: "AI-Powered Business Intelligence Hub",
+    es: "Centro de Inteligencia Empresarial Impulsado por IA"
+  },
+  "Complete business ecosystem with AI partnership recommendations, multi-merchant reward pools, predictive customer analytics, 22+ platform integrations, automated marketing orchestration, and comprehensive export capabilities": {
+    en: "Complete business ecosystem with AI partnership recommendations, multi-merchant reward pools, predictive customer analytics, 22+ platform integrations, automated marketing orchestration, and comprehensive export capabilities",
+    es: "Ecosistema empresarial completo con recomendaciones de asociaciones de IA, grupos de recompensas multi-comerciante, análisis predictivo de clientes, 22+ integraciones de plataforma, orquestación de marketing automatizada y capacidades de exportación integral"
   }
 };
 

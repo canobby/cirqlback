@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Gift, Users, MapPin, Share2, Star, Target, Zap } from "lucide-react";
+import { QuickTranslate } from "@/components/ui/translated-text";
 import EnhancedRewards from "@/components/customer/enhanced-rewards";
 import LoyaltyIntegration from "@/components/customer/loyalty-integration";
 import { GuidedTour } from "@/components/interactive/guided-tour";
@@ -26,17 +27,17 @@ export default function Customer() {
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-4 mb-4">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Advanced Community & Rewards Hub
+              <QuickTranslate text="Advanced Community & Rewards Hub" />
             </h1>
             <Button 
               onClick={() => setLocation('/customer-bento')}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
             >
-              Try Bento Layout
+              <QuickTranslate text="Try Bento Layout" />
             </Button>
           </div>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Join team challenges, earn exponential viral rewards, discover AI-powered cross-business partnerships with reward cost-sharing, and unlock personalized experiences across multiple merchant locations!
+            <QuickTranslate text="Join team challenges, earn exponential viral rewards, discover AI-powered cross-business partnerships with reward cost-sharing, and unlock personalized experiences across multiple merchant locations!" />
           </p>
         </div>
 
@@ -47,7 +48,7 @@ export default function Customer() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <label htmlFor="customer-email" className="block text-sm font-medium text-gray-700 mb-2">
-                    Enter your email to access your rewards dashboard
+                    <QuickTranslate text="Enter your email to access your rewards dashboard" />
                   </label>
                   <Input
                     id="customer-email"
@@ -65,7 +66,7 @@ export default function Customer() {
                     className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 min-w-[120px]"
                   >
                     <Gift className="h-4 w-4 mr-2" />
-                    Access Dashboard
+                    <QuickTranslate text="Access Dashboard" />
                   </Button>
                 </div>
               </div>
