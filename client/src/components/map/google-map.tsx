@@ -169,12 +169,12 @@ export default function GoogleMapComponent() {
   };
 
   // Access the Google Maps API key from environment
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBHLett8djBo62dDXj0EjCpF92A_SWMnwI';
 
   return (
     <div className="space-y-4">
       <LoadScript
-        googleMapsApiKey={apiKey || process.env.GOOGLE_MAPS_API_KEY || 'dummy-key'}
+        googleMapsApiKey={apiKey}
         loadingElement={
           <div className="h-[500px] bg-gray-100 rounded-xl flex items-center justify-center">
             <div className="text-gray-500">Loading map...</div>

@@ -126,25 +126,44 @@ export default function SimpleMapComponent() {
         </CardHeader>
         
         <CardContent className="p-0">
-          <div className="h-96 bg-gradient-to-br from-blue-50 to-green-50 relative overflow-hidden">
-            {/* Interactive Street Grid Background */}
-            <svg className="absolute inset-0 w-full h-full opacity-20">
-              <defs>
-                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#94a3b8" strokeWidth="1"/>
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
-            </svg>
+          <div className="h-96 bg-gray-100 relative overflow-hidden">
+            {/* Realistic Map Background */}
+            <div className="absolute inset-0 w-full h-full">
+              {/* Street Lines */}
+              <svg className="absolute inset-0 w-full h-full">
+                {/* Main Streets */}
+                <path d="M0,120 Q200,110 400,120 Q600,130 800,120" stroke="#E5E7EB" strokeWidth="8" fill="none" />
+                <path d="M0,200 Q200,190 400,200 Q600,210 800,200" stroke="#E5E7EB" strokeWidth="6" fill="none" />
+                <path d="M0,280 Q200,270 400,280 Q600,290 800,280" stroke="#E5E7EB" strokeWidth="6" fill="none" />
+                
+                {/* Cross Streets */}
+                <path d="M150,0 L160,400" stroke="#F3F4F6" strokeWidth="4" />
+                <path d="M300,0 L310,400" stroke="#F3F4F6" strokeWidth="4" />
+                <path d="M450,0 L460,400" stroke="#F3F4F6" strokeWidth="4" />
+                <path d="M600,0 L610,400" stroke="#F3F4F6" strokeWidth="4" />
+                
+                {/* Small details */}
+                <circle cx="160" cy="120" r="2" fill="#D1D5DB" />
+                <circle cx="310" cy="200" r="2" fill="#D1D5DB" />
+                <circle cx="460" cy="280" r="2" fill="#D1D5DB" />
+              </svg>
+              
+              {/* Building blocks */}
+              <div className="absolute top-4 left-4 w-12 h-8 bg-gray-200 rounded opacity-60"></div>
+              <div className="absolute top-16 left-20 w-16 h-12 bg-gray-300 rounded opacity-60"></div>
+              <div className="absolute top-6 right-12 w-10 h-10 bg-gray-200 rounded opacity-60"></div>
+              <div className="absolute bottom-16 left-8 w-14 h-10 bg-gray-300 rounded opacity-60"></div>
+              <div className="absolute bottom-8 right-20 w-12 h-12 bg-gray-200 rounded opacity-60"></div>
+            </div>
             
             {/* Business Markers - Interactive */}
             {businesses.map((business, index) => {
               const IconComponent = getIcon(business.category);
               const positions = [
-                { x: 20, y: 30 }, // Coffee shop
-                { x: 60, y: 45 }, // Electronics  
-                { x: 40, y: 70 }, // Restaurant
-                { x: 75, y: 25 }  // Grocery
+                { x: 18, y: 31 }, // Coffee shop - near intersection
+                { x: 62, y: 47 }, // Electronics - main street
+                { x: 38, y: 72 }, // Restaurant - corner location
+                { x: 77, y: 23 }  // Grocery - street side
               ];
               const pos = positions[index] || { x: 50, y: 50 };
               
@@ -256,9 +275,11 @@ export default function SimpleMapComponent() {
             
             {/* User Location - You Are Here */}
             <div className="absolute bottom-6 left-6">
-              <div className="flex items-center space-x-2 bg-white rounded-lg px-3 py-2 shadow-lg">
+              <div className="flex items-center space-x-2 bg-white rounded-lg px-3 py-2 shadow-lg border">
                 <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
-                <span className="text-xs font-medium text-gray-700">You are here</span>
+                <span className="text-xs font-medium text-gray-700">
+                  <QuickTranslate text="You are here" />
+                </span>
               </div>
             </div>
             
