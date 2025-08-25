@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { QuickTranslate } from "@/components/ui/translated-text";
 import { ArrowRight } from "lucide-react";
-import SimpleMapComponent from "@/components/map/simple-map";
+import RealGoogleMap from "@/components/map/real-google-map";
 
 export default function MapTest() {
   const [, setLocation] = useLocation();
@@ -31,7 +31,7 @@ export default function MapTest() {
         </div>
 
         {/* Interactive Map with Navigation */}
-        <SimpleMapComponent />
+        <RealGoogleMap />
       </div>
     </div>
   );
