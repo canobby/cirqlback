@@ -70,42 +70,36 @@ export default function CustomerBento() {
                 </div>
               </div>
               
-              <div className="responsive-button-group">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Button 
-                  className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-14 justify-start text-left"
                   variant="outline"
-                  onClick={() => setLocation('/map-bento')}
+                  onClick={() => setLocation('/map')}
                 >
                   <div className="flex items-center w-full">
-                    <div className="bg-white/20 p-2 rounded-lg mr-3">
-                      <div className="w-5 h-5 bg-green-300 rounded-full flex items-center justify-center">
-                        <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                      </div>
+                    <div className="bg-white/30 p-2 rounded-lg mr-3 flex-shrink-0">
+                      <div className="w-4 h-4 bg-green-400 rounded-full"></div>
                     </div>
-                    <div className="text-left">
-                      <div className="font-semibold"><QuickTranslate text="View Map" /></div>
-                      <div className="text-sm text-blue-100"><QuickTranslate text="Find nearby rewards" /></div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm"><QuickTranslate text="View Map" /></div>
+                      <div className="text-xs text-blue-100 truncate"><QuickTranslate text="Find nearby rewards" /></div>
                     </div>
-                    <div className="w-4 h-4 ml-auto bg-white/30 rounded-full"></div>
                   </div>
                 </Button>
                 
                 <Button 
-                  className="constrained-button bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-auto p-4 justify-start"
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-14 justify-start text-left"
                   variant="outline"
                   onClick={() => setLocation('/nfc-setup-wizard-bento')}
                 >
                   <div className="flex items-center w-full">
-                    <div className="bg-white/20 p-2 rounded-lg mr-3">
-                      <div className="w-5 h-5 bg-yellow-300 rounded-lg flex items-center justify-center">
-                        <div className="w-2 h-2 bg-yellow-600 rounded"></div>
-                      </div>
+                    <div className="bg-white/30 p-2 rounded-lg mr-3 flex-shrink-0">
+                      <div className="w-4 h-4 bg-yellow-400 rounded"></div>
                     </div>
-                    <div className="text-left">
-                      <div className="font-semibold"><QuickTranslate text="Tap to Earn" /></div>
-                      <div className="text-sm text-blue-100"><QuickTranslate text="Quick reward scan" /></div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm"><QuickTranslate text="Tap to Earn" /></div>
+                      <div className="text-xs text-blue-100 truncate"><QuickTranslate text="Quick reward scan" /></div>
                     </div>
-                    <div className="w-4 h-4 ml-auto bg-white/30 rounded-full"></div>
                   </div>
                 </Button>
               </div>
