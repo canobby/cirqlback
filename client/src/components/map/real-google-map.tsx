@@ -96,10 +96,8 @@ const businesses: Business[] = [
 export default function RealGoogleMap() {
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
-  });
+  // Skip Google Maps integration - use enhanced interactive map directly
+  const loadError = true; // Force fallback to avoid API errors
 
   if (loadError) {
     // Fall back to enhanced interactive map if Google Maps fails
