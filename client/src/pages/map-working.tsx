@@ -87,27 +87,47 @@ export default function MapWorking() {
           </CardHeader>
           
           <CardContent className="p-0">
-            <div className="h-48 bg-gradient-to-br from-blue-50 to-green-50 relative">
-              {/* Simple map representation */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="grid grid-cols-3 gap-8 w-full max-w-md px-8">
-                  {businesses.map((business, index) => {
-                    const IconComponent = getIcon(business.category);
-                    return (
-                      <div key={business.id} className="flex flex-col items-center">
-                        <div className={`p-3 rounded-full shadow-lg ${
-                          business.isOpen ? 'bg-green-500' : 'bg-gray-400'
-                        } text-white mb-2`}>
-                          <IconComponent className="h-5 w-5" />
-                        </div>
-                        <div className="text-xs text-center">
-                          <div className="font-medium">{business.name.split(' ')[0]}</div>
-                          <div className="text-green-600">{business.rewards} rewards</div>
-                        </div>
-                      </div>
-                    );
-                  })}
+            <div className="h-96 bg-gradient-to-br from-blue-50 to-green-50 relative">
+              {/* Interactive Map Display */}
+              <iframe
+                className="w-full h-full rounded-b-lg"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d47327.77!2d-120.5059!3d46.6021!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x549691a71f0f7e25%3A0x7df0d9e4e9c87b8c!2sYakima%2C%20WA!5e0!3m2!1sen!2sus!4v1623456789000!5m2!1sen!2sus"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Yakima Area Business Map"
+              ></iframe>
+              
+              {/* Business Markers Overlay */}
+              <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <MapPin className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium">Active Businesses</span>
                 </div>
+                <div className="space-y-1">
+                  {businesses.map((business) => (
+                    <div key={business.id} className="flex items-center gap-2 text-xs">
+                      <div className={`w-2 h-2 rounded-full ${business.isOpen ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                      <span className="truncate">{business.name}</span>
+                      <span className="text-green-600">{business.rewards}🎁</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Map Controls */}
+              <div className="absolute bottom-4 right-4 flex flex-col gap-2">
+                <Button 
+                  size="sm" 
+                  className="bg-white/90 text-gray-900 hover:bg-white shadow-lg"
+                  onClick={() => {
+                    const url = "https://www.google.com/maps/search/restaurants+near+Yakima,+WA";
+                    window.open(url, '_blank');
+                  }}
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  <QuickTranslate text="Open Full Map" />
+                </Button>
               </div>
             </div>
           </CardContent>
