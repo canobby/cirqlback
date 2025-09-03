@@ -2,8 +2,9 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { QuickTranslate } from "@/components/ui/translated-text";
 import { 
-  MapPin, ArrowRight, Coffee, Smartphone, Store, Utensils, Star, Gift
+  MapPin, ArrowRight, Coffee, Smartphone, Store, Utensils, Star, Gift, Navigation
 } from "lucide-react";
 
 export default function MapWorking() {
@@ -60,14 +61,14 @@ export default function MapWorking() {
             className="mb-4"
           >
             <ArrowRight className="h-4 w-4 rotate-180 mr-2" />
-            Back to Home
+            <QuickTranslate text="Back to Home" />
           </Button>
           
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Find Local Businesses
+            <QuickTranslate text="Discover Local Businesses" />
           </h1>
           <p className="text-gray-600">
-            Tap Cirql tags at these businesses to earn rewards
+            <QuickTranslate text="Tap Cirql tags to earn rewards and discover amazing local spots in Yakima, WA" />
           </p>
         </div>
 
@@ -80,7 +81,7 @@ export default function MapWorking() {
                   <MapPin className="h-5 w-5 mr-2" />
                   Yakima, WA Area
                 </CardTitle>
-                <p className="text-blue-100 text-sm">{businesses.length} businesses nearby</p>
+                <p className="text-blue-100 text-sm">{businesses.length} <QuickTranslate text="businesses nearby with active rewards" /></p>
               </div>
             </div>
           </CardHeader>
@@ -146,7 +147,7 @@ export default function MapWorking() {
                           </div>
                           
                           <Badge variant={business.isOpen ? "default" : "secondary"}>
-                            {business.isOpen ? "Open" : "Closed"}
+                            <QuickTranslate text={business.isOpen ? "Open" : "Closed"} />
                           </Badge>
                           
                           <span className="text-gray-500">{business.distance}</span>
@@ -154,8 +155,12 @@ export default function MapWorking() {
                       </div>
                     </div>
                     
-                    <Button size="sm">
-                      Visit & Tap
+                    <Button size="sm" onClick={() => {
+                      const url = `https://www.google.com/maps/search/?api=1&query=${business.name}+Yakima+WA`;
+                      window.open(url, '_blank');
+                    }}>
+                      <Navigation className="h-4 w-4 mr-2" />
+                      <QuickTranslate text="Directions" />
                     </Button>
                   </div>
                 </CardContent>
@@ -171,7 +176,7 @@ export default function MapWorking() {
             className="w-full bg-gradient-to-r from-green-600 to-blue-600"
           >
             <Gift className="h-4 w-4 mr-2" />
-            View My Rewards
+            <QuickTranslate text="View My Rewards" />
           </Button>
           <Button 
             variant="outline"
@@ -179,7 +184,7 @@ export default function MapWorking() {
             className="w-full"
           >
             <Store className="h-4 w-4 mr-2" />
-            Business Owner? Get Started
+            <QuickTranslate text="Business Owner? Get Started" />
           </Button>
         </div>
 

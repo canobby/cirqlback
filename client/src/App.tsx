@@ -64,8 +64,8 @@ function Router() {
           <Route path="/customer" component={CustomerBento} />
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />
-          <Route path="/map" component={MapTest} />
-          <Route path="/map-working" component={MapWorking} />
+          <Route path="/map" component={MapWorking} />
+          <Route path="/map-test" component={MapTest} />
           <Route path="/campaign-setup-wizard" component={CampaignSetupBento} />
           <Route path="/nfc-setup-wizard" component={NFCSetupWizardBento} />
           <Route path="/nfc-writer" component={NfcWriterPage} />
