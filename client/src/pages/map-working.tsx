@@ -102,14 +102,20 @@ export default function MapWorking() {
           
           {/* Full-Width Interactive Map */}
           <div className="relative h-80 bg-gray-100">
-            <iframe
-              className="w-full h-full"
-              src="https://www.google.com/maps/embed?pb=!1m16!1m12!1m3!1d11793.22!2d-120.5059!3d46.6021!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!2m1!1srestaurants%20coffee%20shops%20electronics%20stores%20Yakima%20WA!5e0!3m2!1sen!2sus!4v1623456789000!5m2!1sen!2sus"
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Yakima Area Business Map"
-            ></iframe>
+            {import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? (
+              <iframe
+                className="w-full h-full"
+                src={`https://www.google.com/maps/embed/v1/search?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&q=restaurants+coffee+shops+electronics+stores+Yakima+WA&zoom=14&center=46.6021,-120.5059`}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Yakima Business Locations"
+              ></iframe>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                <p className="text-gray-600">Loading map...</p>
+              </div>
+            )}
             
             {/* Quick Action Buttons */}
             <div className="absolute top-4 right-4 flex flex-col gap-2">
@@ -138,7 +144,7 @@ export default function MapWorking() {
           
           {/* Business Quick Access */}
           <div className="p-4 bg-gray-50">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">📍 Map shows Yakima area - click businesses below for directions and rewards:</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-3">📍 Interactive map shows real business locations with markers - click any business on the map or below:</h4>
             <div className="flex gap-3 overflow-x-auto pb-2">
               {businesses.map((business, index) => {
                 const IconComponent = getIcon(business.category);
