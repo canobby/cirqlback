@@ -388,6 +388,18 @@ const UI_TRANSLATIONS: Record<string, Record<SupportedLanguage, string>> = {
     en: "Back to Home",
     es: "Volver al inicio"
   },
+  "Directions": {
+    en: "Directions",
+    es: "Direcciones"
+  },
+  "View My Rewards": {
+    en: "View My Rewards",
+    es: "Ver mis recompensas"
+  },
+  "Business Owner? Get Started": {
+    en: "Business Owner? Get Started",
+    es: "¿Propietario de negocio? Comenzar"
+  },
   "Our Mission": {
     en: "Our Mission",
     es: "Nuestra misión"
@@ -532,21 +544,9 @@ const UI_TRANSLATIONS: Record<string, Record<SupportedLanguage, string>> = {
     en: "Joe's Coffee Shop",
     es: "Cafetería de Joe"
   },
-  "Total Points": {
-    en: "Total Points",
-    es: "Puntos totales"
-  },
-  "Explorer": {
-    en: "Explorer",
-    es: "Explorador"
-  },
   "Badges Earned": {
     en: "Badges Earned",
     es: "Insignias ganadas"
-  },
-  "Businesses": {
-    en: "Businesses",
-    es: "Negocios"
   },
   "Day Streak": {
     en: "Day Streak",
