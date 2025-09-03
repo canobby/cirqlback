@@ -104,11 +104,11 @@ export default function MapWorking() {
           <div className="relative h-80 bg-gray-100">
             <iframe
               className="w-full h-full"
-              src={`https://www.google.com/maps/embed/v1/search?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&q=restaurants+coffee+shops+electronics+stores+near+Yakima+WA&center=46.6021,-120.5059&zoom=14`}
+              src="https://www.google.com/maps/embed?pb=!1m16!1m12!1m3!1d11793.22!2d-120.5059!3d46.6021!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!2m1!1srestaurants%20coffee%20shops%20electronics%20stores%20Yakima%20WA!5e0!3m2!1sen!2sus!4v1623456789000!5m2!1sen!2sus"
               allowFullScreen
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
-              title="Yakima Business Search Results Map"
+              title="Yakima Area Business Map"
             ></iframe>
             
             {/* Quick Action Buttons */}
@@ -138,7 +138,7 @@ export default function MapWorking() {
           
           {/* Business Quick Access */}
           <div className="p-4 bg-gray-50">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">📍 Interactive map shows all local businesses with rewards - click any marker on the map or select below:</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-3">📍 Map shows Yakima area - click businesses below for directions and rewards:</h4>
             <div className="flex gap-3 overflow-x-auto pb-2">
               {businesses.map((business, index) => {
                 const IconComponent = getIcon(business.category);
