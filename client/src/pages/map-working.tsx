@@ -72,140 +72,179 @@ export default function MapWorking() {
           </p>
         </div>
 
-        {/* Map Visual */}
-        <Card className="mb-6 overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-blue-500 to-green-500 text-white">
+        {/* Interactive Map Section */}
+        <div className="mb-6 bg-white rounded-xl shadow-lg overflow-hidden">
+          {/* Map Header Bar */}
+          <div className="bg-white border-b border-gray-200 px-4 py-3">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center">
-                  <MapPin className="h-5 w-5 mr-2" />
-                  Yakima, WA Area
-                </CardTitle>
-                <p className="text-blue-100 text-sm">{businesses.length} <QuickTranslate text="businesses nearby with active rewards" /></p>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                  <MapPin className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-gray-900">Yakima, WA</h2>
+                  <p className="text-sm text-gray-600">{businesses.length} businesses with rewards</p>
+                </div>
               </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  const url = "https://www.google.com/maps/search/restaurants+near+Yakima,+WA";
+                  window.open(url, '_blank');
+                }}
+              >
+                <Navigation className="h-4 w-4 mr-2" />
+                Navigate
+              </Button>
             </div>
-          </CardHeader>
+          </div>
           
-          <CardContent className="p-0">
-            <div className="h-96 bg-gradient-to-br from-blue-50 to-green-50 relative">
-              {/* Interactive Map Display */}
-              <iframe
-                className="w-full h-full rounded-b-lg"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d47327.77!2d-120.5059!3d46.6021!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x549691a71f0f7e25%3A0x7df0d9e4e9c87b8c!2sYakima%2C%20WA!5e0!3m2!1sen!2sus!4v1623456789000!5m2!1sen!2sus"
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="Yakima Area Business Map"
-              ></iframe>
-              
-              {/* Business Markers Overlay */}
-              <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium">Active Businesses</span>
-                </div>
-                <div className="space-y-1">
-                  {businesses.map((business) => (
-                    <div key={business.id} className="flex items-center gap-2 text-xs">
-                      <div className={`w-2 h-2 rounded-full ${business.isOpen ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                      <span className="truncate">{business.name}</span>
-                      <span className="text-green-600">{business.rewards}🎁</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Map Controls */}
-              <div className="absolute bottom-4 right-4 flex flex-col gap-2">
-                <Button 
-                  size="sm" 
-                  className="bg-white/90 text-gray-900 hover:bg-white shadow-lg"
-                  onClick={() => {
-                    const url = "https://www.google.com/maps/search/restaurants+near+Yakima,+WA";
-                    window.open(url, '_blank');
-                  }}
-                >
-                  <MapPin className="h-4 w-4 mr-2" />
-                  <QuickTranslate text="Open Full Map" />
-                </Button>
-              </div>
+          {/* Full-Width Interactive Map */}
+          <div className="relative h-80 bg-gray-100">
+            <iframe
+              className="w-full h-full"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d47327.77!2d-120.5059!3d46.6021!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x549691a71f0f7e25%3A0x7df0d9e4e9c87b8c!2sYakima%2C%20WA!5e0!3m2!1sen!2sus!4v1623456789000!5m2!1sen!2sus"
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              title="Yakima Area Business Map"
+            ></iframe>
+            
+            {/* Quick Action Buttons */}
+            <div className="absolute top-4 right-4 flex flex-col gap-2">
+              <Button 
+                size="sm" 
+                className="bg-white text-gray-900 hover:bg-gray-50 shadow-md border"
+                onClick={() => {
+                  const url = "https://www.google.com/maps/dir//Yakima,+WA";
+                  window.open(url, '_blank');
+                }}
+              >
+                <Navigation className="h-4 w-4" />
+              </Button>
+              <Button 
+                size="sm" 
+                className="bg-white text-gray-900 hover:bg-gray-50 shadow-md border"
+                onClick={() => {
+                  const url = "https://www.google.com/maps/search/restaurants+near+Yakima,+WA";
+                  window.open(url, '_blank');
+                }}
+              >
+                <Store className="h-4 w-4" />
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Business List */}
-        <div className="space-y-4">
-          {businesses.map((business) => {
-            const IconComponent = getIcon(business.category);
-            return (
-              <Card key={business.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`p-3 rounded-lg ${
-                        business.isOpen 
-                          ? 'bg-green-100 text-green-600' 
-                          : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        <IconComponent className="h-5 w-5" />
-                      </div>
-                      
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-1">
-                          {business.name}
-                        </h3>
-                        
-                        <div className="flex items-center gap-4 text-sm">
-                          <div className="flex items-center gap-1">
-                            <Star className="h-4 w-4 text-yellow-500" fill="currentColor" />
-                            <span>{business.rating}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-1">
-                            <Gift className="h-4 w-4 text-green-600" />
-                            <span>{business.rewards} rewards</span>
-                          </div>
-                          
-                          <Badge variant={business.isOpen ? "default" : "secondary"}>
-                            <QuickTranslate text={business.isOpen ? "Open" : "Closed"} />
-                          </Badge>
-                          
-                          <span className="text-gray-500">{business.distance}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <Button size="sm" onClick={() => {
+          </div>
+          
+          {/* Business Quick Access */}
+          <div className="p-4 bg-gray-50">
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {businesses.map((business) => {
+                const IconComponent = getIcon(business.category);
+                return (
+                  <div 
+                    key={business.id} 
+                    className="flex-shrink-0 bg-white rounded-lg p-3 shadow-sm border cursor-pointer hover:shadow-md transition-all"
+                    onClick={() => {
                       const url = `https://www.google.com/maps/search/?api=1&query=${business.name}+Yakima+WA`;
                       window.open(url, '_blank');
-                    }}>
-                      <Navigation className="h-4 w-4 mr-2" />
-                      <QuickTranslate text="Directions" />
-                    </Button>
+                    }}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`p-2 rounded-lg ${
+                        business.isOpen ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        <IconComponent className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm text-gray-900 truncate">{business.name}</p>
+                        <p className="text-xs text-green-600">{business.rewards} rewards • {business.distance}</p>
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                );
+              })}
+            </div>
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="mt-8 flex flex-col gap-3">
+        {/* Quick Navigation Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <Button 
             onClick={() => setLocation('/customer')}
-            className="w-full bg-gradient-to-r from-green-600 to-blue-600"
+            className="h-16 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
           >
-            <Gift className="h-4 w-4 mr-2" />
-            <QuickTranslate text="View My Rewards" />
+            <div className="flex items-center gap-3">
+              <Gift className="h-6 w-6" />
+              <div className="text-left">
+                <div className="font-semibold"><QuickTranslate text="View My Rewards" /></div>
+                <div className="text-sm opacity-90">Check points & earnings</div>
+              </div>
+            </div>
           </Button>
+          
           <Button 
             variant="outline"
             onClick={() => setLocation('/merchant')}
-            className="w-full"
+            className="h-16 border-2 hover:bg-gray-50"
           >
-            <Store className="h-4 w-4 mr-2" />
-            <QuickTranslate text="Business Owner? Get Started" />
+            <div className="flex items-center gap-3">
+              <Store className="h-6 w-6" />
+              <div className="text-left">
+                <div className="font-semibold"><QuickTranslate text="Business Owner? Get Started" /></div>
+                <div className="text-sm text-gray-600">Set up rewards program</div>
+              </div>
+            </div>
           </Button>
+        </div>
+        
+        {/* Detailed Business Info */}
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Nearby Businesses</h3>
+          <div className="space-y-3">
+            {businesses.map((business) => {
+              const IconComponent = getIcon(business.category);
+              return (
+                <div 
+                  key={business.id} 
+                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                  onClick={() => {
+                    const url = `https://www.google.com/maps/search/?api=1&query=${business.name}+Yakima+WA`;
+                    window.open(url, '_blank');
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      business.isOpen ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      <IconComponent className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{business.name}</p>
+                      <div className="flex items-center gap-3 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <Star className="h-3 w-3 text-yellow-500" fill="currentColor" />
+                          {business.rating}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Gift className="h-3 w-3 text-green-600" />
+                          {business.rewards} rewards
+                        </span>
+                        <span>{business.distance}</span>
+                        <Badge 
+                          variant={business.isOpen ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          <QuickTranslate text={business.isOpen ? "Open" : "Closed"} />
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <Navigation className="h-4 w-4 text-gray-400" />
+                </div>
+              );
+            })}
+          </div>
         </div>
 
       </div>
