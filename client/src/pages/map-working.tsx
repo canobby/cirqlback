@@ -104,11 +104,11 @@ export default function MapWorking() {
           <div className="relative h-80 bg-gray-100">
             <iframe
               className="w-full h-full"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d47327.77!2d-120.5059!3d46.6021!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x549691a71f0f7e25%3A0x7df0d9e4e9c87b8c!2sYakima%2C%20WA!5e0!3m2!1sen!2sus!4v1623456789000!5m2!1sen!2sus"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d11793.22!2d-120.5059!3d46.6021!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x5496915c7c5b8b8b%3A0x1234567890123456!2sYakima%20Coffee%20Company!5e0!3m2!1sen!2sus!4v1623456789000!5m2!1sen!2sus&amp;markers=color:red%7Clabel:C%7C46.6031,-120.5049&amp;markers=color:blue%7Clabel:E%7C46.6011,-120.5029&amp;markers=color:green%7Clabel:B%7C46.5991,-120.5079"
               allowFullScreen
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
-              title="Yakima Area Business Map"
+              title="Yakima Business Locations with Markers"
             ></iframe>
             
             {/* Quick Action Buttons */}
@@ -138,9 +138,12 @@ export default function MapWorking() {
           
           {/* Business Quick Access */}
           <div className="p-4 bg-gray-50">
+            <h4 className="text-sm font-medium text-gray-700 mb-3">📍 Tap any business marker on the map above or select below:</h4>
             <div className="flex gap-3 overflow-x-auto pb-2">
-              {businesses.map((business) => {
+              {businesses.map((business, index) => {
                 const IconComponent = getIcon(business.category);
+                const markerColors = ['red', 'blue', 'green'];
+                const markerLabels = ['C', 'E', 'B'];
                 return (
                   <div 
                     key={business.id} 
@@ -151,10 +154,18 @@ export default function MapWorking() {
                     }}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className={`p-2 rounded-lg ${
-                        business.isOpen ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        <IconComponent className="h-4 w-4" />
+                      <div className="relative">
+                        <div className={`p-2 rounded-lg ${
+                          business.isOpen ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          <IconComponent className="h-4 w-4" />
+                        </div>
+                        <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-xs flex items-center justify-center font-bold ${
+                          markerColors[index] === 'red' ? 'bg-red-500' : 
+                          markerColors[index] === 'blue' ? 'bg-blue-500' : 'bg-green-500'
+                        }`}>
+                          {markerLabels[index]}
+                        </div>
                       </div>
                       <div className="min-w-0">
                         <p className="font-medium text-sm text-gray-900 truncate">{business.name}</p>
