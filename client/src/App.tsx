@@ -37,6 +37,7 @@ import Community from "@/pages/community";
 import ProfileSetup from "@/pages/profile-setup";
 import TestSystem from "@/pages/test-system";
 import AdminDashboard from "@/pages/admin-dashboard";
+import CoordinatorDashboard from "@/pages/coordinator-dashboard";
 import BusinessWebsitePreview from "@/pages/business-website-preview";
 import AboutPage from "@/pages/about";
 import AuthPage from "@/pages/auth";
@@ -87,6 +88,7 @@ function Router() {
           <Route path="/profile-setup" component={ProfileSetup} />
           <Route path="/test-system" component={TestSystem} />
           <Route path="/admin-dashboard" component={AdminDashboard} />
+          <Route path="/coordinator" component={CoordinatorDashboard} />
           <Route path="/website-preview" component={BusinessWebsitePreview} />
           
           {/* Bento Route Aliases */}

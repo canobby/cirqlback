@@ -20,6 +20,7 @@ import {
   Zap,
   BookOpen,
   Shield,
+  Globe,
   Settings,
   LogOut,
   Menu,
@@ -58,6 +59,7 @@ const BY_ROLE: Record<string, NavItem[]> = {
     { href: "/marketing", label: "Marketing", icon: BookOpen },
   ],
   admin: [{ href: "/admin-dashboard", label: "Admin", icon: Shield }],
+  coordinator: [{ href: "/coordinator", label: "Territory", icon: Globe }],
 };
 
 export default function Navbar() {
@@ -169,6 +171,16 @@ export default function Navbar() {
                         className="flex items-center gap-2 w-full"
                       >
                         <Shield className="h-4 w-4" /> Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {role === "coordinator" && (
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/coordinator"
+                        className="flex items-center gap-2 w-full"
+                      >
+                        <Globe className="h-4 w-4" /> Territory
                       </Link>
                     </DropdownMenuItem>
                   )}

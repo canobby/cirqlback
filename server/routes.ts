@@ -4,9 +4,10 @@ import { WebSocketServer, WebSocket } from "ws";
 import multer from "multer";
 import { handleTextTranslation, handleVoiceTranslation, handleTextToSpeech } from "./translation-service";
 import { getMapsConfig } from "./maps-proxy";
-import { setupAuth, isAuthenticated, isAdminAuthenticated } from "./auth";
+import { setupAuth, isAuthenticated, isAdminAuthenticated, isCoordinator } from "./auth";
 import { storage } from "./storage";
 import type { RouteDeps } from "./routes/_shared";
+import { registerCoordinatorRoutes } from "./routes/coordinator";
 import { registerAccountSubscriptionRoutes } from "./routes/account-subscription";
 import { registerBusinessesCampaignsNfcRoutes } from "./routes/businesses-campaigns-nfc";
 import { registerTapsRewardsRoutes } from "./routes/taps-rewards";
@@ -71,6 +72,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // with an admin_users record). Previously these were fully unauthenticated.
   app.use('/api/admin', isAdminAuthenticated);
 
+  // CHR-51: every /api/coordinator/* route requires an active coordinator.
+  app.use('/api/coordinator', isCoordinator);
+
   // CHR-16: does the authenticated user own the business behind a resource?
   const userOwnsBusiness = async (userId: string, businessId?: string | null): Promise<boolean> => {
     if (!businessId) return false;
@@ -93,6 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerBusinessWebsiteSalesRoutes(app, deps);
   registerAdminRoutes(app, deps);
   registerProfileQuestSalesRoutes(app, deps);
+  registerCoordinatorRoutes(app, deps);
 
   const httpServer = createServer(app);
 

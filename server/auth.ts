@@ -68,6 +68,27 @@ export const isAdminAuthenticated: RequestHandler = async (req, res, next) => {
   }
 };
 
+/**
+ * Requires a logged-in session user who ALSO has an active `coordinators`
+ * record (CHR-31). On success, attaches it to req.coordinator.
+ * 401 if not logged in, 403 if logged in but not an active coordinator.
+ */
+export const isCoordinator: RequestHandler = async (req, res, next) => {
+  if (!req.isAuthenticated?.() || !req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    const coordinator = await storage.getCoordinatorByUserId((req.user as User).id);
+    if (!coordinator || coordinator.isActive === false) {
+      return res.status(403).json({ message: "Coordinator access required" });
+    }
+    (req as any).coordinator = coordinator;
+    return next();
+  } catch (err) {
+    return next(err as Error);
+  }
+};
+
 // --- Setup ------------------------------------------------------------------
 
 const registerSchema = z.object({
