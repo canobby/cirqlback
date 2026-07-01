@@ -368,6 +368,7 @@ export function registerDiscoveryMarketingRoutes(app: Express, deps: RouteDeps) 
           category: (b.establishmentType && b.establishmentType[0]) || "business",
           isActive: b.isActive ?? true,
           featured: (b.isFeatured ?? false) || boosted.has(b.id), // CHR-54 coordinator + CHR-66 add-on
+          isNonprofit: b.isNonprofit ?? false, // CHR-72
         }));
       res.json(mapBusinesses);
     } catch (error) {

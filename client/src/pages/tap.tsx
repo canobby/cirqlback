@@ -311,6 +311,18 @@ export default function TapPage() {
               <div className="text-center">
                 <p className="text-green-700 mb-4">{tapResult.message}</p>
                 
+                {/* CHR-72: donation-per-tap acknowledgement */}
+                {Array.isArray(tapResult.donations) && tapResult.donations.length > 0 && (
+                  <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 mb-4 text-left">
+                    {tapResult.donations.map((d: any) => (
+                      <p key={d.campaignId} className="text-sm text-rose-700 flex items-center gap-2">
+                        <Gift className="h-4 w-4" />
+                        Your tap donated ${((d.amountCents || 0) / 100).toFixed(2)} to <span className="font-semibold">{d.name}</span>. 💜
+                      </p>
+                    ))}
+                  </div>
+                )}
+
                 {tapResult.reward && (
                   <div className="p-4 bg-white rounded-lg border-2 border-green-200">
                     <h4 className="font-semibold text-green-800 mb-2">{tapResult.reward.title}</h4>

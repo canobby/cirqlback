@@ -38,6 +38,7 @@ import ProfileSetup from "@/pages/profile-setup";
 import TestSystem from "@/pages/test-system";
 import AdminDashboard from "@/pages/admin-dashboard";
 import CoordinatorDashboard from "@/pages/coordinator-dashboard";
+import NonprofitDashboard from "@/pages/nonprofit-dashboard";
 import BusinessWebsitePreview from "@/pages/business-website-preview";
 import AboutPage from "@/pages/about";
 import AuthPage from "@/pages/auth";
@@ -63,6 +64,7 @@ function Router() {
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />
           <Route path="/map" component={MapWorking} />
+          <Route path="/nonprofit" component={NonprofitDashboard} />
           <Route path="/campaign-setup-wizard" component={CampaignSetupBento} />
           <Route path="/nfc-setup-wizard" component={NFCSetupWizardBento} />
           <Route path="/nfc-writer" component={NfcWriterPage} />

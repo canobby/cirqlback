@@ -18,6 +18,24 @@ interface MapBusiness {
   category: string;
   isActive: boolean;
   featured?: boolean; // CHR-54: coordinator map promotion
+  isNonprofit?: boolean; // CHR-72
+}
+
+// CHR-72: active donation-per-tap campaigns for the "Support a Cause" section.
+interface DonationCampaignMember {
+  businessId: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+interface DonationCampaign {
+  id: string;
+  name: string;
+  description: string | null;
+  nonprofitName: string | null;
+  donationPerTapCents: number;
+  totalRaisedCents: number;
+  members: DonationCampaignMember[];
 }
 
 interface TrailMember {
@@ -67,6 +85,10 @@ export default function MapWorking() {
   const [email, setEmail] = useState("");
   const { data: trails = [] } = useQuery<Trail[]>({
     queryKey: ["/api/group-campaigns/active"],
+  });
+  // CHR-72: active donation-per-tap campaigns.
+  const { data: donationCampaigns = [] } = useQuery<DonationCampaign[]>({
+    queryKey: ["/api/donation-campaigns/active"],
   });
   const { data: progress } = useQuery<TrailProgress>({
     queryKey: ["group-progress", selectedTrailId, email],
@@ -160,6 +182,8 @@ export default function MapWorking() {
                     icon={
                       selectedTrailId && highlightedIds.has(b.id)
                         ? { url: "http://maps.google.com/mapfiles/ms/icons/purple-dot.png" }
+                        : b.isNonprofit
+                        ? { url: "http://maps.google.com/mapfiles/ms/icons/green-dot.png" }
                         : b.featured
                         ? { url: "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png" }
                         : undefined
@@ -201,6 +225,49 @@ export default function MapWorking() {
             )}
           </div>
         </div>
+
+        {/* CHR-72: Support a Cause (active donation-per-tap campaigns) */}
+        {donationCampaigns.length > 0 && (
+          <div className="mb-6 bg-white rounded-xl shadow-sm border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+              <Gift className="h-5 w-5 text-rose-600" />
+              Support a Cause
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Tap Cirql tags at participating shops — each tap donates to these local nonprofits.
+            </p>
+            <div className="space-y-3">
+              {donationCampaigns.map((d) => (
+                <div key={d.id} className="rounded-lg border border-rose-100 bg-rose-50/40 p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-gray-900">{d.name}</div>
+                      <div className="text-xs text-gray-500">
+                        {d.nonprofitName ? `${d.nonprofitName} · ` : ""}
+                        ${((d.donationPerTapCents || 0) / 100).toFixed(2)} per tap · {d.members.length} shop{d.members.length === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-rose-700">
+                        ${((d.totalRaisedCents || 0) / 100).toFixed(2)}
+                      </div>
+                      <div className="text-[10px] text-gray-500 uppercase tracking-wide">raised</div>
+                    </div>
+                  </div>
+                  {d.members.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {d.members.map((m) => (
+                        <span key={m.businessId} className="text-xs px-2 py-0.5 rounded-full bg-white border border-rose-200 text-gray-600">
+                          {m.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* CHR-59: Group Trails (active multi-store group campaigns) */}
         {trails.length > 0 && (
