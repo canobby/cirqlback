@@ -415,6 +415,52 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
     }
   });
 
+  // CHR-63: downloadable CSV of a month's earnings (one row per charge).
+  app.get("/api/coordinator/earnings/export", async (req, res) => {
+    try {
+      const month = typeof req.query.month === "string" ? req.query.month : undefined;
+      const rows = await storage.getCoordinatorEarnings(coordinatorOf(req).id, { month });
+
+      // Resolve business names once per id.
+      const nameById = new Map<string, string>();
+      for (const r of rows) {
+        if (r.businessId && !nameById.has(r.businessId)) {
+          const b = await storage.getBusiness(r.businessId);
+          nameById.set(r.businessId, b?.name || r.businessId);
+        }
+      }
+
+      const cell = (v: unknown) => {
+        const s = v == null ? "" : String(v);
+        return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const header = ["Date", "Business", "Source", "Plan/Description", "Gross (USD)", "Share %", "Share (USD)"];
+      const lines = [header.join(",")];
+      for (const r of rows) {
+        const date = r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 10) : "";
+        lines.push(
+          [
+            cell(date),
+            cell(r.businessId ? nameById.get(r.businessId) : ""),
+            cell(r.source),
+            cell(r.description || r.planId || ""),
+            cell(((r.grossAmountCents || 0) / 100).toFixed(2)),
+            cell(r.sharePct),
+            cell(((r.shareAmountCents || 0) / 100).toFixed(2)),
+          ].join(",")
+        );
+      }
+      const csv = lines.join("\r\n");
+      const filename = `cirqlback-earnings-${month || "all"}.csv`;
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(csv);
+    } catch (error) {
+      console.error("Coordinator earnings export error:", error);
+      res.status(500).json({ error: "Failed to export earnings" });
+    }
+  });
+
   // Itemized earnings, optionally scoped to one ?month=YYYY-MM.
   app.get("/api/coordinator/earnings", async (req, res) => {
     try {

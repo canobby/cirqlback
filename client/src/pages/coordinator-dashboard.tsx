@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare, Route, Star } from "lucide-react";
+import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare, Route, Star, DollarSign, Download, TrendingUp } from "lucide-react";
 
 interface Territory {
   id: string;
@@ -51,6 +51,31 @@ interface CoordinatorCampaign {
   participants: number;
   completions: number;
   stores: CampaignStore[];
+}
+
+// CHR-63: coordinator revenue-share summary (amounts in cents).
+interface EarningsTotal {
+  grossCents: number;
+  shareCents: number;
+  count: number;
+}
+interface EarningsSummary {
+  currency: string;
+  sharePct: number;
+  lifetime: EarningsTotal;
+  currentMonth: { month: string } & EarningsTotal;
+  trailing12Months: EarningsTotal;
+  bySource: { subscription: EarningsTotal; addon: EarningsTotal };
+  monthly: ({ month: string } & EarningsTotal)[];
+  recent: {
+    id: string;
+    createdAt: string | null;
+    source: string;
+    description: string | null;
+    grossCents: number;
+    sharePct: number;
+    shareCents: number;
+  }[];
 }
 
 interface TerritoryOverview {
@@ -246,6 +271,42 @@ export default function CoordinatorDashboard() {
     },
     onError: () => toast({ title: "Couldn't update placement", variant: "destructive" }),
   });
+
+  // CHR-63: revenue & licensing
+  const { data: earnings } = useQuery<EarningsSummary>({
+    queryKey: ["/api/coordinator/earnings/summary"],
+    enabled: isAuthenticated && !isError,
+    retry: false,
+  });
+  const [exportMonth, setExportMonth] = useState(
+    earnings?.currentMonth?.month || new Date().toISOString().slice(0, 7),
+  );
+  const [exporting, setExporting] = useState(false);
+  const usd = (cents: number) =>
+    ((cents || 0) / 100).toLocaleString(undefined, { style: "currency", currency: "USD" });
+
+  const downloadCsv = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/coordinator/earnings/export?month=${exportMonth}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cirqlback-earnings-${exportMonth}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "Couldn't export earnings", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const [welcome, setWelcome] = useState("");
   useEffect(() => {
@@ -473,6 +534,94 @@ export default function CoordinatorDashboard() {
                 </table>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* CHR-63: Revenue & licensing */}
+      {earnings && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between text-gray-900 dark:text-white">
+              <span className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-purple-600" />
+                Revenue & licensing
+              </span>
+              <Badge className="bg-purple-100 text-purple-700 border-purple-200">
+                {earnings.sharePct}% share
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {[
+                { label: "This month", t: earnings.currentMonth },
+                { label: "Last 12 months", t: earnings.trailing12Months },
+                { label: "Lifetime", t: earnings.lifetime },
+              ].map(({ label, t }) => (
+                <div key={label} className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{label}</div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{usd(t.shareCents)}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    your share of {usd(t.grossCents)} · {t.count} charge{t.count === 1 ? "" : "s"}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subscriptions</div>
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">{usd(earnings.bySource.subscription.shareCents)}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">of {usd(earnings.bySource.subscription.grossCents)} gross</div>
+              </div>
+              <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Add-ons</div>
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">{usd(earnings.bySource.addon.shareCents)}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">of {usd(earnings.bySource.addon.grossCents)} gross</div>
+              </div>
+            </div>
+
+            {(() => {
+              const maxShare = Math.max(1, ...earnings.monthly.map((m) => m.shareCents));
+              return (
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <TrendingUp className="h-4 w-4 text-purple-600" /> Monthly share (last 12 months)
+                  </div>
+                  <div className="space-y-1">
+                    {earnings.monthly.map((m) => (
+                      <div key={m.month} className="flex items-center gap-2 text-xs">
+                        <span className="w-16 text-gray-500 dark:text-gray-400 tabular-nums">{m.month}</span>
+                        <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded h-3 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                            style={{ width: `${Math.round((m.shareCents / maxShare) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="w-20 text-right text-gray-700 dark:text-gray-300 tabular-nums">{usd(m.shareCents)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="flex flex-wrap items-end gap-3 border-t border-gray-100 dark:border-gray-800 pt-4">
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Export month</label>
+                <Input
+                  type="month"
+                  value={exportMonth}
+                  onChange={(e) => setExportMonth(e.target.value)}
+                  className="w-44"
+                />
+              </div>
+              <Button variant="outline" disabled={exporting} onClick={downloadCsv}>
+                <Download className="h-4 w-4 mr-2" />
+                {exporting ? "Exporting…" : "Download CSV"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
