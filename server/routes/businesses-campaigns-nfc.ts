@@ -142,6 +142,70 @@ export function registerBusinessesCampaignsNfcRoutes(app: Express, deps: RouteDe
     }
   });
 
+  // ── CHR-34 / CHR-71: donation-per-tap campaigns ──
+
+  // Create a donation-per-tap campaign for a nonprofit the user owns, seeding
+  // the participating stores.
+  app.post("/api/donation-campaigns", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const { nonprofitId, name, description, donationPerTapCents, businessIds } = req.body || {};
+      if (!nonprofitId || !name) return res.status(400).json({ error: "nonprofitId and name are required" });
+      const np = await storage.getBusiness(nonprofitId);
+      if (!np || !np.isNonprofit) return res.status(404).json({ error: "Nonprofit not found" });
+      if (np.ownerId !== userId) return res.status(403).json({ error: "Not your nonprofit" });
+
+      const campaign = await storage.createDonationCampaign({
+        nonprofitId,
+        name,
+        description,
+        donationPerTapCents: Number(donationPerTapCents) > 0 ? Number(donationPerTapCents) : 0,
+        createdByUserId: userId,
+        isActive: true,
+      } as any);
+
+      const ids: string[] = Array.isArray(businessIds) ? businessIds : [];
+      for (const bid of ids) await storage.addDonationCampaignMember(campaign.id, bid);
+
+      res.status(201).json(await storage.getDonationCampaignWithMembers(campaign.id));
+    } catch (error) {
+      console.error("Create donation campaign error:", error);
+      res.status(500).json({ error: "Failed to create donation campaign" });
+    }
+  });
+
+  // Public: active donation campaigns (for the discovery map / tap flow).
+  app.get("/api/donation-campaigns/active", async (_req, res) => {
+    try {
+      res.json(await storage.getActiveDonationCampaignsWithMembers());
+    } catch (error) {
+      console.error("Active donation campaigns error:", error);
+      res.status(500).json({ error: "Failed to load donation campaigns" });
+    }
+  });
+
+  // Public: a donation campaign + members + total raised.
+  app.get("/api/donation-campaigns/:id", async (req, res) => {
+    try {
+      const full = await storage.getDonationCampaignWithMembers(req.params.id);
+      if (!full) return res.status(404).json({ error: "Donation campaign not found" });
+      res.json(full);
+    } catch (error) {
+      console.error("Get donation campaign error:", error);
+      res.status(500).json({ error: "Failed to load donation campaign" });
+    }
+  });
+
+  // Public: a nonprofit's attributed donation totals (transparency).
+  app.get("/api/nonprofits/:id/donations", async (req, res) => {
+    try {
+      res.json(await storage.getNonprofitDonationTotals(req.params.id));
+    } catch (error) {
+      console.error("Nonprofit donation totals error:", error);
+      res.status(500).json({ error: "Failed to load donation totals" });
+    }
+  });
+
   // Campaign routes
   app.get("/api/campaigns", async (req, res) => {
     try {

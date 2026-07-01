@@ -284,6 +284,47 @@ export const businessTapBranding = pgTable("business_tap_branding", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ── CHR-34 / CHR-71: donation-per-tap campaigns ──
+// A nonprofit runs "tap at these shops to support us — each store donates $X per
+// tap." Donations accrue per tap and are attributed to the nonprofit.
+export const donationCampaigns = pgTable("donation_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  nonprofitId: varchar("nonprofit_id").references(() => businesses.id).notNull(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  donationPerTapCents: integer("donation_per_tap_cents").notNull().default(0),
+  isActive: boolean("is_active").default(true),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const donationCampaignMembers = pgTable("donation_campaign_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  donationCampaignId: varchar("donation_campaign_id").references(() => donationCampaigns.id).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueMember: unique("donation_campaign_members_unique").on(table.donationCampaignId, table.businessId),
+}));
+
+// One row per accrued donation. Unique (campaign, tap) makes accrual idempotent.
+export const donations = pgTable("donations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  donationCampaignId: varchar("donation_campaign_id").references(() => donationCampaigns.id).notNull(),
+  nonprofitId: varchar("nonprofit_id").references(() => businesses.id),
+  businessId: varchar("business_id").references(() => businesses.id), // store that donated
+  tapId: varchar("tap_id").references(() => taps.id),
+  customerEmail: varchar("customer_email"),
+  amountCents: integer("amount_cents").notNull(),
+  periodMonth: varchar("period_month"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniquePerTap: unique("donations_campaign_tap_unique").on(table.donationCampaignId, table.tapId),
+}));
+
 // ── CHR-33: first-class multi-store group campaigns ──
 // Supersedes the older (all-mock, unused) business_partnerships / reward_pool_*
 // tables — those are slated for retirement in CHR-58.
@@ -622,6 +663,12 @@ export const insertBusinessTapBrandingSchema = createInsertSchema(businessTapBra
   updatedAt: true,
 });
 
+export const insertDonationCampaignSchema = createInsertSchema(donationCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertGroupCampaignSchema = createInsertSchema(groupCampaigns).omit({
   id: true,
   createdAt: true,
@@ -893,6 +940,9 @@ export type BusinessAddon = typeof businessAddons.$inferSelect;
 export type InsertBusinessAddon = z.infer<typeof insertBusinessAddonSchema>;
 export type BusinessTapBranding = typeof businessTapBranding.$inferSelect;
 export type InsertBusinessTapBranding = z.infer<typeof insertBusinessTapBrandingSchema>;
+export type DonationCampaign = typeof donationCampaigns.$inferSelect;
+export type InsertDonationCampaign = z.infer<typeof insertDonationCampaignSchema>;
+export type Donation = typeof donations.$inferSelect;
 export type GroupCampaign = typeof groupCampaigns.$inferSelect;
 export type InsertGroupCampaign = z.infer<typeof insertGroupCampaignSchema>;
 export type GroupCampaignMember = typeof groupCampaignMembers.$inferSelect;

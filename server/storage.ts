@@ -18,6 +18,9 @@ import {
   coordinatorPayouts,
   businessAddons,
   businessTapBranding,
+  donationCampaigns,
+  donationCampaignMembers,
+  donations,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -52,6 +55,8 @@ import {
   type CoordinatorPayout,
   type BusinessAddon,
   type BusinessTapBranding,
+  type DonationCampaign,
+  type InsertDonationCampaign,
   type SalesData,
   type InsertSalesData,
   type MonthlySalesSummary,
@@ -102,7 +107,7 @@ export interface IStorage {
   deleteNFCTag(id: string): Promise<boolean>;
   
   // Tap operations
-  processTap(tap: InsertTap, opts?: { latitude?: number; longitude?: number }): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[] }>;
+  processTap(tap: InsertTap, opts?: { latitude?: number; longitude?: number }): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[]; donations?: any[] }>;
   getTaps(businessId?: string, customerEmail?: string): Promise<Tap[]>;
   
   // Reward operations
@@ -931,6 +936,140 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
+  // ── CHR-34 / CHR-71: donation-per-tap campaigns ──
+  async createDonationCampaign(data: InsertDonationCampaign): Promise<DonationCampaign> {
+    const [row] = await db.insert(donationCampaigns).values(data).returning();
+    return row;
+  }
+
+  async getDonationCampaign(id: string): Promise<DonationCampaign | undefined> {
+    const [row] = await db.select().from(donationCampaigns).where(eq(donationCampaigns.id, id));
+    return row || undefined;
+  }
+
+  async addDonationCampaignMember(donationCampaignId: string, businessId: string): Promise<void> {
+    await db
+      .insert(donationCampaignMembers)
+      .values({ donationCampaignId, businessId })
+      .onConflictDoNothing({ target: [donationCampaignMembers.donationCampaignId, donationCampaignMembers.businessId] });
+  }
+
+  async getDonationCampaignsForNonprofit(nonprofitId: string): Promise<DonationCampaign[]> {
+    return await db
+      .select()
+      .from(donationCampaigns)
+      .where(eq(donationCampaigns.nonprofitId, nonprofitId))
+      .orderBy(desc(donationCampaigns.createdAt));
+  }
+
+  // Campaign + member stores (name/coords) + total raised so far.
+  async getDonationCampaignWithMembers(id: string): Promise<any | undefined> {
+    const campaign = await this.getDonationCampaign(id);
+    if (!campaign) return undefined;
+    const members = await db
+      .select({
+        businessId: donationCampaignMembers.businessId,
+        name: businesses.name,
+        latitude: businesses.latitude,
+        longitude: businesses.longitude,
+      })
+      .from(donationCampaignMembers)
+      .innerJoin(businesses, eq(donationCampaignMembers.businessId, businesses.id))
+      .where(eq(donationCampaignMembers.donationCampaignId, id));
+    const [{ raised }] = await db
+      .select({ raised: sql<number>`coalesce(sum(${donations.amountCents}), 0)` })
+      .from(donations)
+      .where(eq(donations.donationCampaignId, id));
+    return { ...campaign, members, totalRaisedCents: Number(raised) || 0 };
+  }
+
+  // CHR-72: active donation campaigns + members + nonprofit name + totals (map).
+  async getActiveDonationCampaignsWithMembers(): Promise<any[]> {
+    const rows = await db
+      .select()
+      .from(donationCampaigns)
+      .where(eq(donationCampaigns.isActive, true))
+      .orderBy(desc(donationCampaigns.createdAt));
+    const out: any[] = [];
+    for (const dc of rows) {
+      const full = await this.getDonationCampaignWithMembers(dc.id);
+      const nonprofit = await this.getBusiness(dc.nonprofitId);
+      out.push({ ...full, nonprofitName: nonprofit?.name || null });
+    }
+    return out;
+  }
+
+  // Accrue one donation per active campaign the tapped store belongs to.
+  // Idempotent per (campaign, tap). Returns the donations booked by this tap.
+  async recordDonationsForTap(
+    businessId: string,
+    tapId: string,
+    customerEmail?: string | null
+  ): Promise<{ campaignId: string; nonprofitId: string; amountCents: number; name: string }[]> {
+    const active = await db
+      .select({
+        id: donationCampaigns.id,
+        nonprofitId: donationCampaigns.nonprofitId,
+        donationPerTapCents: donationCampaigns.donationPerTapCents,
+        name: donationCampaigns.name,
+      })
+      .from(donationCampaignMembers)
+      .innerJoin(donationCampaigns, eq(donationCampaignMembers.donationCampaignId, donationCampaigns.id))
+      .where(and(eq(donationCampaignMembers.businessId, businessId), eq(donationCampaigns.isActive, true)));
+
+    const now = new Date();
+    const periodMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const out: { campaignId: string; nonprofitId: string; amountCents: number; name: string }[] = [];
+    for (const c of active) {
+      const [row] = await db
+        .insert(donations)
+        .values({
+          donationCampaignId: c.id,
+          nonprofitId: c.nonprofitId,
+          businessId,
+          tapId,
+          customerEmail: customerEmail ?? null,
+          amountCents: c.donationPerTapCents ?? 0,
+          periodMonth,
+        })
+        .onConflictDoNothing({ target: [donations.donationCampaignId, donations.tapId] })
+        .returning();
+      if (row) out.push({ campaignId: c.id, nonprofitId: c.nonprofitId, amountCents: row.amountCents, name: c.name });
+    }
+    return out;
+  }
+
+  // Donation totals attributed to a nonprofit (lifetime + per-campaign + per-store).
+  async getNonprofitDonationTotals(nonprofitId: string): Promise<any> {
+    const rows = await db.select().from(donations).where(eq(donations.nonprofitId, nonprofitId));
+    const campaigns = await this.getDonationCampaignsForNonprofit(nonprofitId);
+
+    const lifetimeCents = rows.reduce((s, r) => s + (r.amountCents || 0), 0);
+    const byCampaign = campaigns.map((c) => {
+      const cr = rows.filter((r) => r.donationCampaignId === c.id);
+      return {
+        id: c.id,
+        name: c.name,
+        isActive: c.isActive,
+        donationPerTapCents: c.donationPerTapCents,
+        raisedCents: cr.reduce((s, r) => s + (r.amountCents || 0), 0),
+        taps: cr.length,
+      };
+    });
+
+    const storeIds = Array.from(new Set(rows.map((r) => r.businessId).filter(Boolean))) as string[];
+    const storeRows = storeIds.length
+      ? await db.select().from(businesses).where(inArray(businesses.id, storeIds))
+      : [];
+    const nameById = new Map(storeRows.map((b) => [b.id, b.name]));
+    const byStore = storeIds.map((id) => {
+      const sr = rows.filter((r) => r.businessId === id);
+      return { businessId: id, name: nameById.get(id) || "Unknown", raisedCents: sr.reduce((s, r) => s + (r.amountCents || 0), 0), taps: sr.length };
+    }).sort((a, b) => b.raisedCents - a.raisedCents);
+
+    return { lifetimeCents, totalDonations: rows.length, byCampaign, byStore };
+  }
+
   // ── CHR-33 / CHR-56: multi-store group campaigns ──
   async createGroupCampaign(data: InsertGroupCampaign): Promise<GroupCampaign> {
     const [row] = await db.insert(groupCampaigns).values(data).returning();
@@ -1377,7 +1516,7 @@ export class DatabaseStorage implements IStorage {
   async processTap(
     tap: InsertTap,
     opts?: { latitude?: number; longitude?: number }
-  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[] }> {
+  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[]; donations?: any[] }> {
     try {
       const now = Date.now();
 
@@ -1523,11 +1662,20 @@ export class DatabaseStorage implements IStorage {
       );
       const groupUnlocked = groupProgress.some((g) => g.rewardUnlocked);
 
+      // CHR-71: accrue donation-per-tap for any active donation campaign this
+      // store participates in (idempotent per tap).
+      const donationsBooked = await this.recordDonationsForTap(
+        tap.businessId,
+        newTap.id,
+        tap.customerEmail
+      );
+
       return {
         success: true,
         reward,
         pointsEarned: points,
         groupProgress,
+        donations: donationsBooked,
         message: groupUnlocked
           ? "Group reward unlocked! You completed the trail."
           : reward
