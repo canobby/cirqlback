@@ -10,6 +10,7 @@ import {
   userTrailProgress,
   coordinators,
   territories,
+  regionalOffers,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -35,6 +36,8 @@ import {
   type InsertCoordinator,
   type Territory,
   type InsertTerritory,
+  type RegionalOffer,
+  type InsertRegionalOffer,
   type SalesData,
   type InsertSalesData,
   type MonthlySalesSummary,
@@ -510,6 +513,29 @@ export class DatabaseStorage implements IStorage {
     const business = await this.getBusiness(businessId);
     if (!business?.territoryId) return false;
     return this.coordinatorOwnsTerritory(coordinatorId, business.territoryId);
+  }
+
+  // CHR-55: regional settings + discount/trial offers.
+  async updateTerritory(id: string, updates: Partial<Territory>): Promise<Territory> {
+    const [row] = await db
+      .update(territories)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(territories.id, id))
+      .returning();
+    return row;
+  }
+
+  async createRegionalOffer(data: InsertRegionalOffer): Promise<RegionalOffer> {
+    const [row] = await db.insert(regionalOffers).values(data).returning();
+    return row;
+  }
+
+  async getRegionalOffersByCoordinator(coordinatorId: string): Promise<RegionalOffer[]> {
+    return await db
+      .select()
+      .from(regionalOffers)
+      .where(eq(regionalOffers.coordinatorId, coordinatorId))
+      .orderBy(desc(regionalOffers.createdAt));
   }
 
   // Campaign operations

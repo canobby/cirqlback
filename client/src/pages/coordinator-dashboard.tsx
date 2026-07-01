@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus } from "lucide-react";
+import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare } from "lucide-react";
 
 interface Territory {
   id: string;
@@ -139,6 +139,67 @@ export default function CoordinatorDashboard() {
       refresh();
     },
     onError: () => toast({ title: "Couldn't update verification", variant: "destructive" }),
+  });
+
+  // CHR-55: templates library + regional admin tools
+  const { data: campaignTemplates } = useQuery<{ key: string; label: string; type: string; pointsAwarded: number }[]>({
+    queryKey: ["/api/coordinator/campaign-templates"],
+    enabled: isAuthenticated && !isError,
+    retry: false,
+  });
+  const { data: offers } = useQuery<
+    { id: string; code: string; offerType: string; value: string | null; description: string | null }[]
+  >({
+    queryKey: ["/api/coordinator/offers"],
+    enabled: isAuthenticated && !isError,
+    retry: false,
+  });
+
+  const firstTerritory = data?.territories?.[0];
+  const [welcome, setWelcome] = useState("");
+  useEffect(() => {
+    setWelcome((firstTerritory as any)?.welcomeMessage || "");
+  }, [firstTerritory]);
+
+  const [offerForm, setOfferForm] = useState({ code: "", offerType: "percent", value: "", description: "" });
+
+  const applyTemplate = useMutation({
+    mutationFn: async (key: string) =>
+      apiRequest("POST", `/api/coordinator/campaign-templates/${key}/apply`, {
+        businessIds: (overview?.stores || []).map((s) => s.id),
+      }),
+    onSuccess: (r: any) => {
+      toast({ title: "Template applied", description: `Created ${r?.applied ?? 0} campaign(s).` });
+      refresh();
+    },
+    onError: () => toast({ title: "Couldn't apply template", variant: "destructive" }),
+  });
+
+  const saveWelcome = useMutation({
+    mutationFn: async () =>
+      apiRequest("PATCH", `/api/coordinator/territories/${firstTerritory?.id}`, { welcomeMessage: welcome }),
+    onSuccess: () => {
+      toast({ title: "Regional welcome saved" });
+      queryClient.invalidateQueries({ queryKey: ["/api/coordinator/me"] });
+    },
+    onError: () => toast({ title: "Couldn't save welcome", variant: "destructive" }),
+  });
+
+  const createOffer = useMutation({
+    mutationFn: async () =>
+      apiRequest("POST", "/api/coordinator/offers", {
+        code: offerForm.code,
+        offerType: offerForm.offerType,
+        value: offerForm.value || undefined,
+        description: offerForm.description || undefined,
+        territoryId: firstTerritory?.id,
+      }),
+    onSuccess: () => {
+      toast({ title: "Offer created" });
+      setOfferForm({ code: "", offerType: "percent", value: "", description: "" });
+      queryClient.invalidateQueries({ queryKey: ["/api/coordinator/offers"] });
+    },
+    onError: () => toast({ title: "Couldn't create offer (code may already exist)", variant: "destructive" }),
   });
 
   if (authLoading) return <Shell><p className="text-gray-500 text-center mt-16">Loading…</p></Shell>;
@@ -314,6 +375,137 @@ export default function CoordinatorDashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* CHR-55: Templates library */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+            <Sparkles className="h-5 w-5 text-purple-600" />
+            Campaign templates
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {(campaignTemplates || []).map((t) => (
+              <div
+                key={t.key}
+                className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col"
+              >
+                <div className="font-semibold text-gray-900 dark:text-white">{t.label}</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-3 capitalize">
+                  {t.type} · {t.pointsAwarded} pts
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-auto"
+                  disabled={!overview?.stores?.length || applyTemplate.isPending}
+                  onClick={() => applyTemplate.mutate(t.key)}
+                >
+                  Apply to all my stores
+                </Button>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* CHR-55: Regional admin tools */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+              <MessageSquare className="h-5 w-5 text-purple-600" />
+              Regional welcome message
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {firstTerritory ? (
+              <>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                  Shown to new businesses in <span className="font-medium">{firstTerritory.name}</span>.
+                </p>
+                <textarea
+                  value={welcome}
+                  onChange={(e) => setWelcome(e.target.value)}
+                  rows={4}
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-3 text-sm"
+                  placeholder="Welcome to the neighborhood! Here's how Cirqlback works in our region…"
+                />
+                <Button
+                  size="sm"
+                  className="mt-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+                  disabled={saveWelcome.isPending}
+                  onClick={() => saveWelcome.mutate()}
+                >
+                  Save welcome
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No territory to configure yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+              <Ticket className="h-5 w-5 text-purple-600" />
+              Regional discount & trial codes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
+              <Input
+                placeholder="CODE"
+                value={offerForm.code}
+                onChange={(e) => setOfferForm({ ...offerForm, code: e.target.value.toUpperCase() })}
+                className="sm:w-28"
+              />
+              <select
+                value={offerForm.offerType}
+                onChange={(e) => setOfferForm({ ...offerForm, offerType: e.target.value })}
+                className="h-10 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 text-sm"
+              >
+                <option value="percent">% off</option>
+                <option value="fixed">$ off</option>
+                <option value="trial">trial days</option>
+              </select>
+              <Input
+                placeholder="Value"
+                value={offerForm.value}
+                onChange={(e) => setOfferForm({ ...offerForm, value: e.target.value })}
+                className="sm:w-24"
+              />
+              <Button
+                size="sm"
+                disabled={!offerForm.code || createOffer.isPending}
+                onClick={() => createOffer.mutate()}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+              >
+                Create
+              </Button>
+            </div>
+            {(offers || []).length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No codes yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {(offers || []).map((o) => (
+                  <div
+                    key={o.id}
+                    className="flex items-center justify-between text-sm p-2 rounded bg-gray-50 dark:bg-gray-800"
+                  >
+                    <span className="font-mono font-semibold text-gray-900 dark:text-white">{o.code}</span>
+                    <span className="text-gray-500 dark:text-gray-400">
+                      {o.value ?? ""} {o.offerType === "percent" ? "%" : o.offerType === "fixed" ? "$" : "days"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>

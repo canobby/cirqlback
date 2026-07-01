@@ -19,6 +19,25 @@ const STORE_TEMPLATES: Record<string, { label: string; defaults: Record<string, 
   },
 };
 
+// CHR-55: preloaded campaign templates a coordinator can 1-click assign to stores.
+const CAMPAIGN_TEMPLATES: Record<
+  string,
+  { label: string; campaign: { name: string; type: string; description: string; pointsAwarded: number; value: string } }
+> = {
+  summer_loyalty: {
+    label: "Summer Loyalty Boost",
+    campaign: { name: "Summer Loyalty Boost", type: "loyalty", description: "Earn bonus points all summer.", pointsAwarded: 50, value: "0.00" },
+  },
+  scavenger_hunt: {
+    label: "Neighborhood Scavenger Hunt",
+    campaign: { name: "Neighborhood Scavenger Hunt", type: "trail", description: "Tap across local shops to win a prize.", pointsAwarded: 100, value: "0.00" },
+  },
+  holiday_bonus: {
+    label: "Holiday Bonus Reward",
+    campaign: { name: "Holiday Bonus Reward", type: "discount", description: "Seasonal discount for tapping in.", pointsAwarded: 25, value: "15.00" },
+  },
+};
+
 // CHR-51/52/53: Community Coordinator API. Every route here is gated by
 // `isCoordinator` in the composition root, so req.coordinator is always set.
 export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
@@ -166,6 +185,117 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
     } catch (error) {
       console.error("Coordinator reset tag error:", error);
       res.status(500).json({ error: "Failed to reset tag" });
+    }
+  });
+
+  // ── CHR-55: templates library + regional admin tools ──────────────────────
+
+  app.get("/api/coordinator/campaign-templates", (_req, res) => {
+    res.json(
+      Object.entries(CAMPAIGN_TEMPLATES).map(([key, t]) => ({
+        key,
+        label: t.label,
+        type: t.campaign.type,
+        pointsAwarded: t.campaign.pointsAwarded,
+      }))
+    );
+  });
+
+  // 1-click assign a template as a live campaign to one or more of the
+  // coordinator's own stores.
+  app.post("/api/coordinator/campaign-templates/:key/apply", async (req, res) => {
+    try {
+      const coordinator = coordinatorOf(req);
+      const tmpl = CAMPAIGN_TEMPLATES[req.params.key];
+      if (!tmpl) return res.status(404).json({ error: "Unknown template" });
+
+      const businessIds: string[] = Array.isArray(req.body?.businessIds) ? req.body.businessIds : [];
+      if (businessIds.length === 0) {
+        return res.status(400).json({ error: "businessIds is required" });
+      }
+      for (const bid of businessIds) {
+        if (!(await storage.coordinatorOwnsBusiness(coordinator.id, bid))) {
+          return res.status(403).json({ error: `Business ${bid} is not in your territory` });
+        }
+      }
+
+      const campaignIds: string[] = [];
+      for (const bid of businessIds) {
+        const c = await storage.createCampaign({
+          businessId: bid,
+          name: tmpl.campaign.name,
+          type: tmpl.campaign.type,
+          description: tmpl.campaign.description,
+          pointsAwarded: tmpl.campaign.pointsAwarded,
+          value: tmpl.campaign.value,
+          isActive: true,
+        } as any);
+        campaignIds.push(c.id);
+      }
+      res.status(201).json({ applied: campaignIds.length, campaignIds });
+    } catch (error) {
+      console.error("Coordinator apply template error:", error);
+      res.status(500).json({ error: "Failed to apply template" });
+    }
+  });
+
+  // Regional settings (welcome default) on one of the coordinator's territories.
+  app.patch("/api/coordinator/territories/:id", async (req, res) => {
+    try {
+      const coordinator = coordinatorOf(req);
+      const { id } = req.params;
+      if (!(await storage.coordinatorOwnsTerritory(coordinator.id, id))) {
+        return res.status(403).json({ error: "That territory is not yours" });
+      }
+      const updates: Record<string, unknown> = {};
+      if (typeof req.body?.welcomeMessage === "string") updates.welcomeMessage = req.body.welcomeMessage;
+      if (typeof req.body?.name === "string") updates.name = req.body.name;
+      const territory = await storage.updateTerritory(id, updates as any);
+      res.json(territory);
+    } catch (error) {
+      console.error("Coordinator update territory error:", error);
+      res.status(500).json({ error: "Failed to update territory" });
+    }
+  });
+
+  app.get("/api/coordinator/offers", async (req, res) => {
+    try {
+      res.json(await storage.getRegionalOffersByCoordinator(coordinatorOf(req).id));
+    } catch (error) {
+      console.error("Coordinator offers error:", error);
+      res.status(500).json({ error: "Failed to load offers" });
+    }
+  });
+
+  // Create a regional discount/trial code, optionally scoped to one of the
+  // coordinator's territories.
+  app.post("/api/coordinator/offers", async (req, res) => {
+    try {
+      const coordinator = coordinatorOf(req);
+      const { code, description, offerType, value, territoryId, expiresAt } = req.body || {};
+      if (!code) return res.status(400).json({ error: "code is required" });
+      if (!["percent", "fixed", "trial"].includes(offerType)) {
+        return res.status(400).json({ error: "offerType must be percent | fixed | trial" });
+      }
+      if (territoryId && !(await storage.coordinatorOwnsTerritory(coordinator.id, territoryId))) {
+        return res.status(403).json({ error: "That territory is not yours" });
+      }
+      const offer = await storage.createRegionalOffer({
+        coordinatorId: coordinator.id,
+        territoryId: territoryId || null,
+        code: String(code).toUpperCase().trim(),
+        description,
+        offerType,
+        value: value != null ? String(value) : null,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+      } as any);
+      res.status(201).json(offer);
+    } catch (error) {
+      if ((error as any)?.code === "23505") {
+        return res.status(409).json({ error: "That code already exists" });
+      }
+      console.error("Coordinator create offer error:", error);
+      res.status(500).json({ error: "Failed to create offer" });
     }
   });
 }

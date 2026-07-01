@@ -179,7 +179,24 @@ export const territories = pgTable("territories", {
   centerLat: real("center_lat"),      // for map scoping / "is this business in my territory"
   centerLng: real("center_lng"),
   radiusMeters: integer("radius_meters"),
+  welcomeMessage: text("welcome_message"), // CHR-55: regional default shown to new businesses
   isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// CHR-55: regional discount codes & trial offers a coordinator issues within
+// their territory.
+export const regionalOffers = pgTable("regional_offers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coordinatorId: varchar("coordinator_id").references(() => coordinators.id).notNull(),
+  territoryId: varchar("territory_id").references(() => territories.id),
+  code: varchar("code").unique().notNull(),
+  description: varchar("description"),
+  offerType: varchar("offer_type").notNull().default("percent"), // percent, fixed, trial
+  value: varchar("value"), // e.g. "15" (percent), "5.00" (fixed), "30" (trial days)
+  isActive: boolean("is_active").default(true),
+  expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -442,6 +459,12 @@ export const insertTerritorySchema = createInsertSchema(territories).omit({
   updatedAt: true,
 });
 
+export const insertRegionalOfferSchema = createInsertSchema(regionalOffers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertCampaignSchema = createInsertSchema(campaigns).omit({ 
   id: true, 
   createdAt: true, 
@@ -686,6 +709,8 @@ export type Coordinator = typeof coordinators.$inferSelect;
 export type InsertCoordinator = z.infer<typeof insertCoordinatorSchema>;
 export type Territory = typeof territories.$inferSelect;
 export type InsertTerritory = z.infer<typeof insertTerritorySchema>;
+export type RegionalOffer = typeof regionalOffers.$inferSelect;
+export type InsertRegionalOffer = z.infer<typeof insertRegionalOfferSchema>;
 
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
