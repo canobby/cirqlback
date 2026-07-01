@@ -304,7 +304,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteNFCTag(id: string): Promise<boolean> {
     const result = await db.delete(nfcTags).where(eq(nfcTags.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getNFCTagAnalytics(businessId: string, timeRange: string): Promise<any[]> {
@@ -375,19 +375,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTaps(businessId?: string, customerEmail?: string): Promise<Tap[]> {
-    let query = db.select().from(taps);
-    
-    if (businessId && customerEmail) {
-      query = query.where(
-        and(eq(taps.businessId, businessId), eq(taps.customerEmail, customerEmail))
-      );
-    } else if (businessId) {
-      query = query.where(eq(taps.businessId, businessId));
-    } else if (customerEmail) {
-      query = query.where(eq(taps.customerEmail, customerEmail));
-    }
+    const conditions = [];
+    if (businessId) conditions.push(eq(taps.businessId, businessId));
+    if (customerEmail) conditions.push(eq(taps.customerEmail, customerEmail));
 
-    return await query.orderBy(desc(taps.createdAt));
+    return await db
+      .select()
+      .from(taps)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(taps.createdAt));
   }
 
   // Reward operations
@@ -582,93 +578,6 @@ export class DatabaseStorage implements IStorage {
 
   async getCustomerInsights(businessId: string): Promise<any> {
     return { businessId, insights: "placeholder" };
-  }
-
-  // Avatar operations
-  async getUserAvatar(userId: string): Promise<UserAvatar | undefined> {
-    try {
-      const [avatar] = await db.select().from(userAvatars).where(eq(userAvatars.userId, userId));
-      return avatar || undefined;
-    } catch (error) {
-      console.error("Database error in getUserAvatar:", error);
-      return undefined;
-    }
-  }
-
-  async createUserAvatar(avatar: InsertUserAvatar): Promise<UserAvatar> {
-    const [newAvatar] = await db
-      .insert(userAvatars)
-      .values(avatar)
-      .returning();
-    return newAvatar;
-  }
-
-  async updateUserAvatar(userId: string, updates: Partial<UserAvatar>): Promise<UserAvatar> {
-    const [updated] = await db
-      .update(userAvatars)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(userAvatars.userId, userId))
-      .returning();
-    return updated;
-  }
-
-  async getAvatarAssets(): Promise<AvatarAsset[]> {
-    try {
-      return await db.select().from(avatarAssets);
-    } catch (error) {
-      console.error("Database error in getAvatarAssets:", error);
-      return [];
-    }
-  }
-
-  async getUserAvatarAssets(userId: string): Promise<string[]> {
-    try {
-      const assets = await db
-        .select({ assetId: userAvatarAssets.assetId })
-        .from(userAvatarAssets)
-        .where(eq(userAvatarAssets.userId, userId));
-      return assets.map(asset => asset.assetId);
-    } catch (error) {
-      console.error("Database error in getUserAvatarAssets:", error);
-      return [];
-    }
-  }
-
-  async purchaseAvatarAsset(userId: string, assetId: string): Promise<void> {
-    await db.insert(userAvatarAssets).values({
-      userId,
-      assetId,
-      purchasedAt: new Date()
-    });
-  }
-
-  async getAvatarAchievements(): Promise<AvatarAchievement[]> {
-    try {
-      return await db.select().from(avatarAchievements);
-    } catch (error) {
-      console.error("Database error in getAvatarAchievements:", error);
-      return [];
-    }
-  }
-
-  async getUserAvatarAchievements(userId: string): Promise<any[]> {
-    try {
-      const achievements = await db
-        .select()
-        .from(userAvatarAchievements)
-        .where(eq(userAvatarAchievements.userId, userId));
-      return achievements;
-    } catch (error) {
-      console.error("Database error in getUserAvatarAchievements:", error);
-      return [];
-    }
-  }
-
-  async recordAvatarInteraction(interaction: Omit<AvatarInteraction, 'id' | 'createdAt'>): Promise<void> {
-    await db.insert(avatarInteractions).values({
-      ...interaction,
-      createdAt: new Date()
-    });
   }
 
   // Sales Data Input System Implementation

@@ -102,8 +102,8 @@ export class TranslationService {
       });
 
       // Convert speech response to buffer for audio URL
-      const audioBuffer = Buffer.from(await speechResponse.arrayBuffer());
-      const audioUrl = `data:audio/mp3;base64,${audioBuffer.toString('base64')}`;
+      const speechBuffer = Buffer.from(await speechResponse.arrayBuffer());
+      const audioUrl = `data:audio/mp3;base64,${speechBuffer.toString('base64')}`;
 
       return {
         originalText,
