@@ -12,9 +12,8 @@ import { useLocation } from "wouter";
 // Load Stripe - check multiple possible environment variable names
 const getStripePublicKey = () => {
   if (typeof window === 'undefined') return null;
-  return import.meta.env.VITE_STRIPE_PUBLIC_KEY || 
-         import.meta.env.Stripevite ||
-         'pk_live_51RvBnvHfTI7iuDsWQmpnpC7uvT1LjcwLfwpowIENWaoqstKYWvSDVmAXh09abw5FM3jFJOrnEEEbtniaYX2WM1nTRJ00KeOkBjBR';
+  // Never hardcode a key here — it comes only from the environment.
+  return import.meta.env.VITE_STRIPE_PUBLIC_KEY || null;
 };
 
 const stripePromise = getStripePublicKey() ? loadStripe(getStripePublicKey()) : null;
@@ -96,11 +95,18 @@ export default function Checkout() {
   const [clientSecret, setClientSecret] = useState("");
   const [, setLocation] = useLocation();
   
-  // Example checkout data (would come from props/query params in real app)
+  // The plan to purchase comes from the URL (?plan=&interval=), defaulting to
+  // Professional monthly. The PRICE is decided server-side from the plan id —
+  // the client never sends an amount.
+  const params = new URLSearchParams(window.location.search);
   const checkoutData = {
-    amount: 39.00,
-    description: "Professional Plan - Monthly subscription with unlimited campaigns"
+    planId: params.get("plan") || "professional",
+    billingInterval: params.get("interval") === "yearly" ? "yearly" : "monthly",
+    amount: 39.0, // cosmetic default; server response overrides via displayAmount
+    description: "Subscription",
   };
+  const [displayAmount, setDisplayAmount] = useState(checkoutData.amount);
+  const [planName, setPlanName] = useState("Subscription");
 
   useEffect(() => {
     // Create PaymentIntent when component loads
@@ -111,10 +117,16 @@ export default function Checkout() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ amount: checkoutData.amount }),
+          credentials: "include",
+          body: JSON.stringify({
+            planId: checkoutData.planId,
+            billingInterval: checkoutData.billingInterval,
+          }),
         });
         const data = await response.json();
         setClientSecret(data.clientSecret);
+        if (typeof data.amount === "number") setDisplayAmount(data.amount);
+        if (data.planName) setPlanName(data.planName);
       } catch (error) {
         console.error("Error creating payment intent:", error);
       }
@@ -216,7 +228,7 @@ export default function Checkout() {
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>${checkoutData.amount.toFixed(2)}</span>
+                    <span>${displayAmount.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Shipping</span>
@@ -224,7 +236,7 @@ export default function Checkout() {
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
                     <span>Total</span>
-                    <span>${checkoutData.amount.toFixed(2)}</span>
+                    <span>${displayAmount.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -252,7 +264,7 @@ export default function Checkout() {
             <CardContent>
               {stripePromise ? (
                 <Elements stripe={stripePromise} options={{ clientSecret }}>
-                  <CheckoutForm amount={checkoutData.amount} description={checkoutData.description} />
+                  <CheckoutForm amount={displayAmount} description={planName} />
                 </Elements>
               ) : (
                 <div className="text-center py-8 text-gray-500">

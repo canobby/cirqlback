@@ -18,6 +18,7 @@ import {
 } from './translation-service';
 import { getMapsConfig } from './maps-proxy';
 import { setupAuth, isAuthenticated, isAdminAuthenticated } from './auth';
+import { PLAN_PRICING, resolvePlanAmountCents, type BillingInterval } from './pricing';
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -2836,41 +2837,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Payment processing endpoint with real Stripe integration
-  app.post("/api/create-payment-intent", async (req, res) => {
+  app.post("/api/create-payment-intent", isAuthenticated, async (req, res) => {
     try {
-      // Use the actual Stripe key from environment (checking multiple possible names)
-      const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.Stripe1;
-      
+      // Price is resolved SERVER-SIDE from the plan id. Any client-supplied
+      // `amount` is ignored so a user cannot set their own price.
+      const planId = String(req.body?.planId || "");
+      const billingInterval: BillingInterval =
+        req.body?.billingInterval === "yearly" ? "yearly" : "monthly";
+      const amountCents = resolvePlanAmountCents(planId, billingInterval);
+      if (amountCents === null) {
+        return res.status(400).json({ error: "Unknown or non-purchasable plan" });
+      }
+
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
       if (!stripeSecretKey) {
-        return res.status(400).json({ 
-          error: "Payment processing not configured. Please add STRIPE_SECRET_KEY to environment variables." 
+        return res.status(400).json({
+          error: "Payment processing not configured. Please set STRIPE_SECRET_KEY.",
         });
       }
 
-      const { amount } = req.body;
-      
-      // Use Stripe with proper import
       const stripe = new (await import('stripe')).default(stripeSecretKey, {
         apiVersion: '2025-07-30.basil' as any,
       });
 
-      // Create real payment intent with Stripe
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(amount * 100), // Convert to cents
+        amount: amountCents,
         currency: 'usd',
         metadata: {
           platform: 'Cirqlback',
-          timestamp: new Date().toISOString()
-        }
+          planId,
+          billingInterval,
+          userId: (req.user as any).id,
+        },
       });
 
-      res.json({ 
+      res.json({
         clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id 
+        paymentIntentId: paymentIntent.id,
+        amount: amountCents / 100,
+        planName: PLAN_PRICING[planId].name,
+        billingInterval,
       });
     } catch (error: any) {
       console.error("Stripe payment intent creation error:", error);
-      res.status(500).json({ error: "Failed to create payment intent: " + error.message });
+      res.status(500).json({ error: "Failed to create payment intent" });
+    }
+  });
+
+  // Stripe webhook — verifies payment success SERVER-SIDE (never trust the
+  // client's "payment succeeded"). Uses the raw request body captured in
+  // server/index.ts for signature verification. Stripe calls this unauthenticated,
+  // so the signature IS the auth.
+  app.post("/api/stripe/webhook", async (req, res) => {
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!stripeSecretKey || !webhookSecret) {
+      return res.status(400).json({ error: "Stripe webhook not configured" });
+    }
+    const signature = req.headers["stripe-signature"];
+    if (!signature) {
+      return res.status(400).json({ error: "Missing stripe-signature header" });
+    }
+
+    const stripe = new (await import('stripe')).default(stripeSecretKey, {
+      apiVersion: '2025-07-30.basil' as any,
+    });
+
+    let event;
+    try {
+      const rawBody = (req as any).rawBody ?? req.body;
+      event = stripe.webhooks.constructEvent(rawBody, signature as string, webhookSecret);
+    } catch (err: any) {
+      console.error("Stripe webhook signature verification failed:", err.message);
+      return res.status(400).json({ error: "Webhook signature verification failed" });
+    }
+
+    try {
+      if (event.type === "payment_intent.succeeded") {
+        const pi = event.data.object as any;
+        const { userId, planId } = pi.metadata || {};
+        if (userId && planId && PLAN_PRICING[planId]) {
+          await storage.updateUserSubscription(userId, {
+            subscriptionTier: planId,
+            subscriptionStatus: "active",
+          });
+        }
+      }
+      return res.json({ received: true });
+    } catch (err) {
+      console.error("Stripe webhook handler error:", err);
+      return res.status(500).json({ error: "Webhook handler failed" });
     }
   });
 
