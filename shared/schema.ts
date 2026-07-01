@@ -97,6 +97,11 @@ export const businesses = pgTable("businesses", {
   territoryId: varchar("territory_id").references(() => territories.id), // CHR-31: coordinator territory scoping
   verificationStatus: varchar("verification_status").default("unverified"), // CHR-31: unverified, verified, rejected (coordinator-verified)
   isFeatured: boolean("is_featured").default(false), // CHR-54: coordinator-controlled map promotion (territory-scoped)
+  // CHR-34/70: 501(c)(3) nonprofit participation. A nonprofit is a business row
+  // flagged isNonprofit (free plan — no subscription charge).
+  isNonprofit: boolean("is_nonprofit").default(false),
+  ein: varchar("ein"), // 501(c)(3) tax id
+  nonprofitMission: text("nonprofit_mission"),
   isActive: boolean("is_active").default(true),
   totalTaps: integer("total_taps").default(0),
   totalRewardsGiven: integer("total_rewards_given").default(0),

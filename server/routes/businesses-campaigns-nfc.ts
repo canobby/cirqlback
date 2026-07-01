@@ -93,6 +93,55 @@ export function registerBusinessesCampaignsNfcRoutes(app: Express, deps: RouteDe
     }
   });
 
+  // ── CHR-34 / CHR-70: nonprofit (501c3) participation ──
+
+  // Public list of nonprofits (for the map / discovery).
+  app.get("/api/nonprofits", async (_req, res) => {
+    try {
+      const nonprofits = await storage.getNonprofits();
+      res.json(
+        nonprofits.map((n) => ({
+          id: n.id,
+          name: n.name,
+          description: n.description,
+          ein: n.ein,
+          mission: n.nonprofitMission,
+          latitude: n.latitude,
+          longitude: n.longitude,
+          logo: n.logo,
+        }))
+      );
+    } catch (error) {
+      console.error("Nonprofits list error:", error);
+      res.status(500).json({ error: "Failed to load nonprofits" });
+    }
+  });
+
+  // Onboard a nonprofit (self-serve, free — no subscription charge). The
+  // signed-in user becomes its owner.
+  app.post("/api/nonprofits", isAuthenticated, async (req, res) => {
+    try {
+      const { name, ein, mission, description, address, latitude, longitude } = req.body || {};
+      if (!name) return res.status(400).json({ error: "name is required" });
+      const business = await storage.createBusiness({
+        name,
+        description,
+        address,
+        latitude,
+        longitude,
+        ownerId: (req.user as any).id,
+        isNonprofit: true,
+        ein,
+        nonprofitMission: mission,
+        verificationStatus: "unverified",
+      } as any);
+      res.status(201).json(business);
+    } catch (error) {
+      console.error("Nonprofit onboard error:", error);
+      res.status(500).json({ error: "Failed to onboard nonprofit" });
+    }
+  });
+
   // Campaign routes
   app.get("/api/campaigns", async (req, res) => {
     try {

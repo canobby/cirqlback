@@ -387,6 +387,14 @@ export class DatabaseStorage implements IStorage {
     return business || undefined;
   }
 
+  // CHR-70: active nonprofit (501c3) entities.
+  async getNonprofits(): Promise<Business[]> {
+    return await db
+      .select()
+      .from(businesses)
+      .where(and(eq(businesses.isNonprofit, true), eq(businesses.isActive, true)));
+  }
+
   async getBusinessesByOwner(ownerId: string): Promise<Business[]> {
     return await db.select().from(businesses).where(eq(businesses.ownerId, ownerId));
   }

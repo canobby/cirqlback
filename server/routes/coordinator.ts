@@ -89,7 +89,7 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
   app.post("/api/coordinator/businesses", async (req, res) => {
     try {
       const coordinator = coordinatorOf(req);
-      const { name, territoryId, address, phone, email, ownerEmail, templateKey, latitude, longitude } =
+      const { name, territoryId, address, phone, email, ownerEmail, templateKey, latitude, longitude, isNonprofit, ein, nonprofitMission } =
         req.body || {};
       if (!name || !territoryId) {
         return res.status(400).json({ error: "name and territoryId are required" });
@@ -116,6 +116,10 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
         latitude,
         longitude,
         verificationStatus: "unverified",
+        // CHR-70: a coordinator can onboard a nonprofit into their territory.
+        isNonprofit: !!isNonprofit,
+        ein: ein || null,
+        nonprofitMission: nonprofitMission || null,
         ...templateDefaults,
       } as any);
       res.status(201).json(business);
