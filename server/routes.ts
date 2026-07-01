@@ -26,12 +26,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Must run before the route handlers below so req.user/isAuthenticated exist.
   setupAuth(app);
 
-  // Configure multer for file uploads
-  const upload = multer({ storage: multer.memoryStorage() });
+  // Configure multer for file uploads. (CHR-18) Cap size and restrict to audio
+  // MIME types so an unbounded/oversized upload can't OOM the server.
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype.startsWith("audio/")) return cb(null, true);
+      cb(new Error("Only audio uploads are allowed"));
+    },
+  });
   
   // Translation API Routes
   app.post('/api/translate/text', handleTextTranslation);
-  app.post('/api/translate/voice', upload.single('audio'), handleVoiceTranslation);
+  app.post('/api/translate/voice', isAuthenticated, upload.single('audio'), handleVoiceTranslation);
   app.post('/api/translate/text-to-speech', handleTextToSpeech);
   
   // Maps API configuration
