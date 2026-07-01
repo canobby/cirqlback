@@ -41,6 +41,8 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import BusinessWebsitePreview from "@/pages/business-website-preview";
 import AboutPage from "@/pages/about";
 import AuthPage from "@/pages/auth";
+import UserGuide from "@/pages/user-guide";
+import PlatformOverview from "@/pages/platform-overview";
 
 function Router() {
   const [location] = useLocation();
@@ -100,6 +102,8 @@ function Router() {
           
           {/* Footer Pages */}
           <Route path="/about" component={AboutPage} />
+          <Route path="/user-guide" component={UserGuide} />
+          <Route path="/platform-overview" component={PlatformOverview} />
           <Route path="/contact" component={ContactPage} />
           <Route path="/help-center" component={HelpCenterPage} />
           <Route path="/privacy-policy" component={PrivacyPolicyPage} />
