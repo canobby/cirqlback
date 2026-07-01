@@ -1,0 +1,409 @@
+import type { Express } from "express";
+import { storage } from "../storage";
+import { db } from "../db";
+import { adminUsers, adminCommunications, adminTrainingProgress, adminTrainingModules, adminKnowledgeItems } from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
+import { insertBusinessSchema, insertCampaignSchema, insertNfcTagSchema, insertTapSchema, insertRewardSchema, insertTapTrailSchema, insertReferralSchema, insertSubscriptionPlanSchema, insertUserSubscriptionSchema, insertApiUsageSchema, insertSalesDataSchema, insertMonthlySalesSummarySchema, insertBusinessGoalsSchema, salesData, monthlySalesSummary, businessGoals } from "@shared/schema";
+import { z } from "zod";
+import crypto from "crypto";
+import { openaiService } from "../openai-service";
+import { isAuthenticated, isAdminAuthenticated } from "../auth";
+import { PLAN_PRICING, resolvePlanAmountCents, type BillingInterval } from "../pricing";
+import type { RouteDeps } from "./_shared";
+
+export function registerAdminRoutes(app: Express, deps: RouteDeps) {
+  const { userOwnsBusiness } = deps;
+
+  // Admin Invitation and Management Routes - ADMIN ONLY ACCESS
+  // These routes are only accessible by admin users and hidden from regular users/customers
+  
+  app.post("/api/admin/invite", async (req, res) => {
+    try {
+      // Only master admins may invite other admins.
+      if ((req as any).adminUser?.adminLevel !== 'master') {
+        return res.status(403).json({ error: "Master admin access required" });
+      }
+
+      const { email, adminLevel, specializations, personalMessage, emergencyContact } = req.body;
+      
+      // Generate secure invitation token
+      const inviteToken = crypto.randomUUID();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days to accept
+
+      // Store invitation (mock implementation for now)
+      const invitation = {
+        id: crypto.randomUUID(),
+        invitationEmail: email,
+        adminLevel,
+        specializations,
+        inviteToken,
+        inviteExpiresAt: expiresAt,
+        personalMessage,
+        emergencyContact,
+        createdAt: new Date(),
+        status: 'pending'
+      };
+
+      // TODO: Send invitation email with training requirements
+      
+      res.json({ 
+        success: true, 
+        invitationId: invitation.id,
+        message: "Admin invitation sent with training requirements" 
+      });
+    } catch (error) {
+      console.error("Admin invitation error:", error);
+      res.status(500).json({ error: "Failed to send invitation" });
+    }
+  });
+
+  app.get("/api/admin/users", async (req, res) => {
+    try {
+      // Query actual admin users from database
+      const adminInvites = await db.select().from(adminUsers);
+      
+      const adminUsersList = adminInvites.map(invite => ({
+        id: invite.id,
+        user: {
+          email: invite.invitationEmail,
+          name: invite.invitationEmail || "Unnamed Admin"
+        },
+        adminLevel: invite.adminLevel,
+        permissions: invite.permissions || [],
+        trainingStatus: invite.trainingStatus || "not_started",
+        certificationLevel: invite.certificationLevel || "none",
+        specializations: invite.specializations || [],
+        isActive: invite.isActive ?? false,
+        lastActiveAt: invite.lastActiveAt || invite.createdAt,
+        invitedAt: invite.createdAt,
+        status: invite.isActive ? "accepted" : "inactive"
+      }));
+      
+      res.json(adminUsersList);
+    } catch (error) {
+      console.error("Error fetching admin users:", error);
+      res.status(500).json({ error: "Failed to fetch admin users" });
+    }
+  });
+
+  app.get("/api/admin/invitations/pending", async (req, res) => {
+    try {
+      // Query actual pending invitations from database
+      const pendingInvitations = await db.select()
+        .from(adminUsers)
+        .where(eq(adminUsers.isActive, false));
+      
+      res.json(pendingInvitations);
+    } catch (error) {
+      console.error("Error fetching pending invitations:", error);
+      res.status(500).json({ error: "Failed to fetch pending invitations" });
+    }
+  });
+
+  app.get("/api/admin/communications", async (req, res) => {
+    try {
+      // Query actual communications from database
+      const communications = await db.select()
+        .from(adminCommunications)
+        .orderBy(desc(adminCommunications.createdAt));
+      
+      res.json(communications);
+    } catch (error) {
+      console.error("Error fetching communications:", error);
+      res.status(500).json({ error: "Failed to fetch communications" });
+    }
+  });
+
+  app.post("/api/admin/communications/send", async (req, res) => {
+    try {
+      const { recipientType, recipientId, subject, content, priority, requiresAcknowledgment } = req.body;
+      
+      // Insert communication into database
+      const [communication] = await db.insert(adminCommunications).values({
+        id: crypto.randomUUID(),
+        senderId: "current_admin", // TODO: Get from authenticated session
+        recipientRole: recipientType === "role" ? recipientId : null,
+        recipientLevel: recipientType === "level" ? recipientId : null,
+        type: "announcement",
+        subject,
+        content,
+        priority: priority || "normal",
+        requiresAcknowledgment: requiresAcknowledgment || false,
+        isRead: false
+      }).returning();
+
+      res.json({ success: true, communicationId: communication.id });
+    } catch (error) {
+      console.error("Error sending communication:", error);
+      res.status(500).json({ error: "Failed to send communication" });
+    }
+  });
+
+  app.delete("/api/admin/invitations/:inviteId", async (req, res) => {
+    try {
+      const { inviteId } = req.params;
+      
+      // Delete invitation from database
+      await db.delete(adminUsers)
+        .where(eq(adminUsers.id, inviteId));
+      
+      res.json({ success: true, message: "Invitation revoked" });
+    } catch (error) {
+      console.error("Error revoking invitation:", error);
+      res.status(500).json({ error: "Failed to revoke invitation" });
+    }
+  });
+
+  app.patch("/api/admin/users/:adminId/status", async (req, res) => {
+    try {
+      const { adminId } = req.params;
+      const { isActive } = req.body;
+      
+      // Update admin status in database
+      await db.update(adminUsers)
+        .set({ 
+          isActive: isActive,
+          updatedAt: new Date()
+        })
+        .where(eq(adminUsers.id, adminId));
+      
+      res.json({ success: true, message: "Admin status updated" });
+    } catch (error) {
+      console.error("Error updating admin status:", error);
+      res.status(500).json({ error: "Failed to update admin status" });
+    }
+  });
+
+  // Admin Training Center Routes - ADMIN ONLY ACCESS
+  
+  app.get("/api/admin/training/progress", async (req, res) => {
+    try {
+      // Query actual training progress from database
+      const trainingProgress = await db.select()
+        .from(adminTrainingProgress)
+        .orderBy(desc(adminTrainingProgress.updatedAt));
+      
+      res.json(trainingProgress);
+    } catch (error) {
+      console.error("Error fetching training progress:", error);
+      res.status(500).json({ error: "Failed to fetch training progress" });
+    }
+  });
+
+  app.get("/api/admin/training/modules", async (req, res) => {
+    try {
+      // Query actual training modules from database
+      const modules = await db.select()
+        .from(adminTrainingModules)
+        .where(eq(adminTrainingModules.isActive, true))
+        .orderBy(adminTrainingModules.category, adminTrainingModules.requiredLevel);
+      
+      res.json(modules);
+    } catch (error) {
+      console.error("Error fetching training modules:", error);
+      res.status(500).json({ error: "Failed to fetch training modules" });
+    }
+  });
+
+  app.get("/api/admin/training/knowledge-checklist", async (req, res) => {
+    try {
+      // Query knowledge checklist items from database
+      const knowledgeItems = await db.select()
+        .from(adminKnowledgeItems)
+        .where(eq(adminKnowledgeItems.isActive, true))
+        .orderBy(adminKnowledgeItems.category, adminKnowledgeItems.importance);
+      
+      res.json(knowledgeItems);
+    } catch (error) {
+      console.error("Error fetching knowledge checklist:", error);
+      res.status(500).json({ error: "Failed to fetch knowledge checklist" });
+    }
+  });
+
+  app.post("/api/admin/training/progress", async (req, res) => {
+    try {
+      const { adminUserId, moduleId, status, score, answers } = req.body;
+      
+      // Insert or update training progress
+      const progressRecord = {
+        id: crypto.randomUUID(),
+        adminUserId,
+        moduleId,
+        status,
+        score,
+        answers,
+        timeSpent: req.body.timeSpent || 0,
+        attempts: 1,
+        lastAttemptAt: new Date(),
+        createdAt: new Date()
+      };
+      
+      await db.insert(adminTrainingProgress).values(progressRecord);
+      
+      res.json({ success: true, progressId: progressRecord.id });
+    } catch (error) {
+      console.error("Error updating training progress:", error);
+      res.status(500).json({ error: "Failed to update training progress" });
+    }
+  });
+
+  app.get("/api/admin/profile", async (req, res) => {
+    try {
+      // Mock admin profile data
+      const profile = {
+        id: "admin_1",
+        certificationLevel: "basic",
+        specializations: ["user_management"],
+        trainingStatus: "in_progress"
+      };
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch admin profile" });
+    }
+  });
+
+  app.post("/api/admin/training/modules/:moduleId/start", async (req, res) => {
+    try {
+      const { moduleId } = req.params;
+      // Mock start module logic
+      res.json({ success: true, message: "Module started" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to start module" });
+    }
+  });
+
+  app.post("/api/admin/training/modules/:moduleId/complete", async (req, res) => {
+    try {
+      const { moduleId } = req.params;
+      const { answers } = req.body;
+      
+      // Mock completion logic with scoring
+      const score = Math.floor(Math.random() * 30) + 70; // Random score 70-100
+      const passed = score >= 80;
+      
+      res.json({ success: true, score, passed });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to complete module" });
+    }
+  });
+
+  app.patch("/api/admin/training/knowledge-checklist", async (req, res) => {
+    try {
+      const { itemId, completed } = req.body;
+      // Mock checklist update
+      res.json({ success: true, message: "Checklist updated" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update checklist" });
+    }
+  });
+
+  // AI-powered endpoints using OpenAI
+  app.post("/api/ai/business-insights", async (req, res) => {
+    try {
+      const businessData = req.body;
+      const insights = await openaiService.generateBusinessInsights(businessData);
+      res.json({ insights });
+    } catch (error) {
+      console.error("Error generating business insights:", error);
+      res.status(500).json({ error: "Failed to generate business insights" });
+    }
+  });
+
+  app.post("/api/ai/campaign-suggestions", async (req, res) => {
+    try {
+      const businessContext = req.body;
+      const suggestion = await openaiService.generateCampaignSuggestion(businessContext);
+      res.json({ suggestion });
+    } catch (error) {
+      console.error("Error generating campaign suggestion:", error);
+      res.status(500).json({ error: "Failed to generate campaign suggestion" });
+    }
+  });
+
+  app.post("/api/ai/pricing-optimization", async (req, res) => {
+    try {
+      const pricingData = req.body;
+      const optimizations = await openaiService.analyzePricing(pricingData);
+      res.json({ optimizations });
+    } catch (error) {
+      console.error("Error analyzing pricing:", error);
+      res.status(500).json({ error: "Failed to analyze pricing" });
+    }
+  });
+
+  app.post("/api/ai/predictive-analytics", async (req, res) => {
+    try {
+      const historicalData = req.body;
+      const analytics = await openaiService.generatePredictiveAnalytics(historicalData);
+      res.json({ analytics });
+    } catch (error) {
+      console.error("Error generating predictive analytics:", error);
+      res.status(500).json({ error: "Failed to generate predictive analytics" });
+    }
+  });
+
+  app.post("/api/ai/customer-behavior", async (req, res) => {
+    try {
+      const customerData = req.body;
+      const analysis = await openaiService.analyzeCustomerBehavior(customerData);
+      res.json({ analysis });
+    } catch (error) {
+      console.error("Error analyzing customer behavior:", error);
+      res.status(500).json({ error: "Failed to analyze customer behavior" });
+    }
+  });
+
+  // Communication API routes
+  app.get("/api/communication/channels", async (req, res) => {
+    try {
+      const channels = [
+        {
+          id: "testing-main",
+          name: "Testing Partnership",
+          type: "testing",
+          participants: ["admin", "partner"],
+          unreadCount: 0
+        },
+        {
+          id: "merchants-general",
+          name: "Merchant Collaboration",
+          type: "group",
+          participants: ["merchant1", "merchant2", "merchant3"],
+          unreadCount: 2
+        },
+        {
+          id: "campaign-winter",
+          name: "Winter Campaign Planning",
+          type: "campaign",
+          participants: ["merchant1", "merchant2"],
+          unreadCount: 1
+        }
+      ];
+      res.json(channels);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch channels" });
+    }
+  });
+
+  app.get("/api/communication/messages/:channelId", async (req, res) => {
+    try {
+      const { channelId } = req.params;
+      const messages = [
+        {
+          id: "1",
+          senderId: "partner",
+          senderName: "Testing Partner",
+          content: "Ready to start testing the platform!",
+          timestamp: new Date(),
+          type: "text",
+          status: "read"
+        }
+      ];
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+}
