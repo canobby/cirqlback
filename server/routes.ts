@@ -17,9 +17,14 @@ import {
   handleTextToSpeech 
 } from './translation-service';
 import { getMapsConfig } from './maps-proxy';
+import { setupAuth } from './auth';
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
+
+  // Session + passport auth (register/login/logout, /api/auth/user).
+  // Must run before the route handlers below so req.user/isAuthenticated exist.
+  setupAuth(app);
+
   // Configure multer for file uploads
   const upload = multer({ storage: multer.memoryStorage() });
   
