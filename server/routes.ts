@@ -17,7 +17,7 @@ import {
   handleTextToSpeech 
 } from './translation-service';
 import { getMapsConfig } from './maps-proxy';
-import { setupAuth, isAuthenticated } from './auth';
+import { setupAuth, isAuthenticated, isAdminAuthenticated } from './auth';
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -77,6 +77,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   for (const prefix of privatePrefixes) {
     app.use(prefix, isAuthenticated);
   }
+
+  // CHR-14: every /api/admin/* route requires an active admin (session user
+  // with an admin_users record). Previously these were fully unauthenticated.
+  app.use('/api/admin', isAdminAuthenticated);
 
   // Starter tier expiration check route
   app.get('/api/account/check-expiration', async (req, res) => {
@@ -3719,11 +3723,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/admin/invite", async (req, res) => {
     try {
-      // Check admin permissions first
-      // const adminUser = await isAdminAuthenticated(req);
-      // if (!adminUser || adminUser.adminLevel !== 'master') {
-      //   return res.status(403).json({ error: "Admin access required" });
-      // }
+      // Only master admins may invite other admins.
+      if ((req as any).adminUser?.adminLevel !== 'master') {
+        return res.status(403).json({ error: "Master admin access required" });
+      }
 
       const { email, adminLevel, specializations, personalMessage, emergencyContact } = req.body;
       

@@ -7,9 +7,11 @@ import { randomBytes, scrypt, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { z } from "zod";
 
-import { pool } from "./db";
+import { eq } from "drizzle-orm";
+
+import { pool, db } from "./db";
 import { storage } from "./storage";
-import type { User } from "@shared/schema";
+import { adminUsers, type User } from "@shared/schema";
 
 const scryptAsync = promisify(scrypt);
 
@@ -40,6 +42,30 @@ function sanitize(user: User) {
 export const isAuthenticated: RequestHandler = (req, res, next) => {
   if (req.isAuthenticated?.() && req.user) return next();
   return res.status(401).json({ message: "Unauthorized" });
+};
+
+/**
+ * Requires a logged-in session user who ALSO has an active admin_users record.
+ * On success, attaches the admin row to req.adminUser (for adminLevel checks).
+ * 401 if not logged in, 403 if logged in but not an active admin.
+ */
+export const isAdminAuthenticated: RequestHandler = async (req, res, next) => {
+  if (!req.isAuthenticated?.() || !req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    const [admin] = await db
+      .select()
+      .from(adminUsers)
+      .where(eq(adminUsers.userId, (req.user as User).id));
+    if (!admin || admin.isActive === false) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    (req as any).adminUser = admin;
+    return next();
+  } catch (err) {
+    return next(err as Error);
+  }
 };
 
 // --- Setup ------------------------------------------------------------------
