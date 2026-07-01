@@ -3848,15 +3848,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const adminUsersList = adminInvites.map(invite => ({
         id: invite.id,
         user: {
-          email: invite.email,
-          name: invite.inviteeName || "Unnamed Admin"
+          email: invite.invitationEmail,
+          name: invite.invitationEmail || "Unnamed Admin"
         },
         adminLevel: invite.adminLevel,
         permissions: invite.permissions || [],
         trainingStatus: invite.trainingStatus || "not_started",
         certificationLevel: invite.certificationLevel || "none",
         specializations: invite.specializations || [],
-        isActive: invite.status === "accepted",
+        isActive: invite.isActive ?? false,
         lastActiveAt: invite.lastActiveAt || invite.createdAt,
         invitedAt: invite.createdAt,
         status: invite.isActive ? "accepted" : "inactive"
@@ -3907,7 +3907,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         senderId: "current_admin", // TODO: Get from authenticated session
         recipientRole: recipientType === "role" ? recipientId : null,
         recipientLevel: recipientType === "level" ? recipientId : null,
-        recipientType: recipientType,
         type: "announcement",
         subject,
         content,
@@ -4322,14 +4321,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await new Promise(resolve => setTimeout(resolve, 3000));
       
       const timestamp = new Date().toISOString().split('T')[0];
-      const formats = {
+      const formats: Record<string, string> = {
         csv: 'csv',
-        xlsx: 'xlsx', 
+        xlsx: 'xlsx',
         pdf: 'pdf',
         json: 'json'
       };
-      
-      const exportFiles = {
+
+      const exportFiles: Record<string, string> = {
         customers: `customer-database-${timestamp}.${formats[config.format]}`,
         financial: `financial-summary-${timestamp}.${formats[config.format]}`,
         campaigns: `campaign-analytics-${timestamp}.${formats[config.format]}`,
@@ -4354,7 +4353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { platform } = req.params;
       
       // Simulate OAuth URL generation for different platforms
-      const authUrls = {
+      const authUrls: Record<string, string> = {
         quickbooks: "https://appcenter.intuit.com/connect/oauth2?client_id=Q123&scope=com.intuit.quickbooks.accounting&redirect_uri=https://cirqlback.com/integrations/quickbooks/callback",
         mailchimp: "https://login.mailchimp.com/oauth2/authorize?response_type=code&client_id=MC123&redirect_uri=https://cirqlback.com/integrations/mailchimp/callback",
         hubspot: "https://app.hubspot.com/oauth/authorize?client_id=HS123&scope=contacts&redirect_uri=https://cirqlback.com/integrations/hubspot/callback",
