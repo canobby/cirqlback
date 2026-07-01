@@ -16,6 +16,7 @@ import {
   groupCampaignProgress,
   coordinatorEarnings,
   coordinatorPayouts,
+  businessAddons,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -48,6 +49,7 @@ import {
   type GroupCampaignMember,
   type CoordinatorEarning,
   type CoordinatorPayout,
+  type BusinessAddon,
   type SalesData,
   type InsertSalesData,
   type MonthlySalesSummary,
@@ -801,6 +803,76 @@ export class DatabaseStorage implements IStorage {
         .set({ payoutId: null })
         .where(eq(coordinatorEarnings.payoutId, id));
     }
+    return row;
+  }
+
+  // ── CHR-35 / CHR-65: per-business add-on entitlements ──
+
+  // Active (non-expired) add-on entitlements for a business.
+  async getBusinessAddons(businessId: string): Promise<BusinessAddon[]> {
+    const rows = await db
+      .select()
+      .from(businessAddons)
+      .where(and(eq(businessAddons.businessId, businessId), eq(businessAddons.status, "active")));
+    const nowMs = Date.now();
+    return rows.filter((r) => !r.expiresAt || r.expiresAt.getTime() > nowMs);
+  }
+
+  // Whether a business currently holds a specific add-on (the gate helper).
+  async businessHasAddon(businessId: string, addonKey: string): Promise<boolean> {
+    const [row] = await db
+      .select()
+      .from(businessAddons)
+      .where(
+        and(
+          eq(businessAddons.businessId, businessId),
+          eq(businessAddons.addonKey, addonKey),
+          eq(businessAddons.status, "active")
+        )
+      );
+    if (!row) return false;
+    return !row.expiresAt || row.expiresAt.getTime() > Date.now();
+  }
+
+  // Activate (or re-activate) an add-on for a business. Idempotent on the
+  // activating charge's payment-intent id; upserts on (businessId, addonKey).
+  async activateBusinessAddon(input: {
+    businessId: string;
+    addonKey: string;
+    source?: string;
+    stripePaymentIntentId?: string;
+    expiresAt?: Date | null;
+  }): Promise<BusinessAddon> {
+    if (input.stripePaymentIntentId) {
+      const [existing] = await db
+        .select()
+        .from(businessAddons)
+        .where(eq(businessAddons.stripePaymentIntentId, input.stripePaymentIntentId));
+      if (existing) return existing;
+    }
+    const [row] = await db
+      .insert(businessAddons)
+      .values({
+        businessId: input.businessId,
+        addonKey: input.addonKey,
+        status: "active",
+        source: input.source || "stripe",
+        stripePaymentIntentId: input.stripePaymentIntentId ?? null,
+        activatedAt: new Date(),
+        expiresAt: input.expiresAt ?? null,
+      })
+      .onConflictDoUpdate({
+        target: [businessAddons.businessId, businessAddons.addonKey],
+        set: {
+          status: "active",
+          source: input.source || "stripe",
+          stripePaymentIntentId: input.stripePaymentIntentId ?? null,
+          activatedAt: new Date(),
+          expiresAt: input.expiresAt ?? null,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
     return row;
   }
 

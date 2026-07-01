@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { openaiService } from "../openai-service";
 import { isAuthenticated, isAdminAuthenticated } from "../auth";
 import { PLAN_PRICING, resolvePlanAmountCents, type BillingInterval } from "../pricing";
+import { ADDON_CATALOG, resolveAddonAmountCents, isAddonKey } from "../addons";
 import type { RouteDeps } from "./_shared";
 
 export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
@@ -199,14 +200,45 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
   // Payment processing endpoint with real Stripe integration
   app.post("/api/create-payment-intent", isAuthenticated, async (req, res) => {
     try {
-      // Price is resolved SERVER-SIDE from the plan id. Any client-supplied
-      // `amount` is ignored so a user cannot set their own price.
-      const planId = String(req.body?.planId || "");
-      const billingInterval: BillingInterval =
-        req.body?.billingInterval === "yearly" ? "yearly" : "monthly";
-      const amountCents = resolvePlanAmountCents(planId, billingInterval);
+      // Price is resolved SERVER-SIDE. Any client-supplied `amount` is ignored so
+      // a user cannot set their own price. Two purchase kinds: subscription plan
+      // and (CHR-65) a per-business add-on.
+      const userId = (req.user as any).id;
+      const isAddon = req.body?.type === "addon";
+
+      let amountCents: number | null;
+      let metadata: Record<string, string>;
+      let responseExtra: Record<string, unknown>;
+
+      if (isAddon) {
+        const addonKey = String(req.body?.addonKey || "");
+        const businessId = String(req.body?.businessId || "");
+        if (!isAddonKey(addonKey)) {
+          return res.status(400).json({ error: "Unknown add-on" });
+        }
+        if (!businessId) {
+          return res.status(400).json({ error: "businessId is required" });
+        }
+        if (!(await userOwnsBusiness(userId, businessId))) {
+          return res.status(403).json({ error: "You don't own that business" });
+        }
+        amountCents = resolveAddonAmountCents(addonKey);
+        metadata = { platform: "Cirqlback", type: "addon", addonKey, businessId, userId };
+        responseExtra = { addonKey, addonName: ADDON_CATALOG[addonKey].name };
+      } else {
+        const planId = String(req.body?.planId || "");
+        const billingInterval: BillingInterval =
+          req.body?.billingInterval === "yearly" ? "yearly" : "monthly";
+        amountCents = resolvePlanAmountCents(planId, billingInterval);
+        if (amountCents === null) {
+          return res.status(400).json({ error: "Unknown or non-purchasable plan" });
+        }
+        metadata = { platform: "Cirqlback", planId, billingInterval, userId };
+        responseExtra = { planName: PLAN_PRICING[planId].name, billingInterval };
+      }
+
       if (amountCents === null) {
-        return res.status(400).json({ error: "Unknown or non-purchasable plan" });
+        return res.status(400).json({ error: "Nothing to charge" });
       }
 
       const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -223,20 +255,14 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amountCents,
         currency: 'usd',
-        metadata: {
-          platform: 'Cirqlback',
-          planId,
-          billingInterval,
-          userId: (req.user as any).id,
-        },
+        metadata,
       });
 
       res.json({
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
         amount: amountCents / 100,
-        planName: PLAN_PRICING[planId].name,
-        billingInterval,
+        ...responseExtra,
       });
     } catch (error: any) {
       console.error("Stripe payment intent creation error:", error);
@@ -275,28 +301,58 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
     try {
       if (event.type === "payment_intent.succeeded") {
         const pi = event.data.object as any;
-        const { userId, planId } = pi.metadata || {};
-        if (userId && planId && PLAN_PRICING[planId]) {
-          await storage.updateUserSubscription(userId, {
-            subscriptionTier: planId,
-            subscriptionStatus: "active",
+        const meta = pi.metadata || {};
+        const userId = meta.userId;
+        const addonKey = meta.addonKey;
+
+        if (meta.type === "addon" && isAddonKey(addonKey) && meta.businessId) {
+          // CHR-65: an add-on purchase — activate the entitlement (idempotent).
+          await storage.activateBusinessAddon({
+            businessId: meta.businessId,
+            addonKey,
+            source: "stripe",
+            stripePaymentIntentId: pi.id,
           });
-        }
-        // CHR-32/61: attribute the verified charge to the territory's coordinator
-        // (revenue share). Never let this break subscription activation.
-        if (userId) {
-          try {
-            await storage.recordCoordinatorEarning({
-              paymentIntentId: pi.id,
-              userId,
-              planId,
-              source: "subscription",
-              description: planId ? PLAN_PRICING[planId]?.name : undefined,
-              grossAmountCents: Number(pi.amount) || 0,
-              currency: pi.currency || "usd",
+          // Revenue share on the add-on charge (source='addon').
+          if (userId) {
+            try {
+              await storage.recordCoordinatorEarning({
+                paymentIntentId: pi.id,
+                userId,
+                source: "addon",
+                description: ADDON_CATALOG[addonKey].name,
+                grossAmountCents: Number(pi.amount) || 0,
+                currency: pi.currency || "usd",
+              });
+            } catch (attrErr) {
+              console.error("Add-on earning attribution failed:", attrErr);
+            }
+          }
+        } else {
+          // Subscription charge.
+          const planId = meta.planId;
+          if (userId && planId && PLAN_PRICING[planId]) {
+            await storage.updateUserSubscription(userId, {
+              subscriptionTier: planId,
+              subscriptionStatus: "active",
             });
-          } catch (attrErr) {
-            console.error("Coordinator earning attribution failed:", attrErr);
+          }
+          // CHR-32/61: attribute the charge to the territory's coordinator.
+          // Never let this break subscription activation.
+          if (userId) {
+            try {
+              await storage.recordCoordinatorEarning({
+                paymentIntentId: pi.id,
+                userId,
+                planId,
+                source: "subscription",
+                description: planId ? PLAN_PRICING[planId]?.name : undefined,
+                grossAmountCents: Number(pi.amount) || 0,
+                currency: pi.currency || "usd",
+              });
+            } catch (attrErr) {
+              console.error("Coordinator earning attribution failed:", attrErr);
+            }
           }
         }
       }
@@ -304,6 +360,33 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
     } catch (err) {
       console.error("Stripe webhook handler error:", err);
       return res.status(500).json({ error: "Webhook handler failed" });
+    }
+  });
+
+  // ── CHR-35 / CHR-65: add-on catalog + entitlements ────────────────────────
+
+  // Public catalog of purchasable add-ons (server-side prices).
+  app.get("/api/addons/catalog", (_req, res) => {
+    res.json(
+      Object.values(ADDON_CATALOG).map((a) => ({
+        key: a.key,
+        name: a.name,
+        priceCents: a.priceCents,
+        blurb: a.blurb,
+      }))
+    );
+  });
+
+  // A business's active add-on entitlements (owner-only).
+  app.get("/api/businesses/:id/addons", isAuthenticated, async (req, res) => {
+    try {
+      if (!(await userOwnsBusiness((req.user as any).id, req.params.id))) {
+        return res.status(403).json({ error: "You don't own that business" });
+      }
+      res.json(await storage.getBusinessAddons(req.params.id));
+    } catch (error) {
+      console.error("Business add-ons error:", error);
+      res.status(500).json({ error: "Failed to load add-ons" });
     }
   });
 

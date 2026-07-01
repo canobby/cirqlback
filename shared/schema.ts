@@ -245,6 +245,25 @@ export const coordinatorPayouts = pgTable("coordinator_payouts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ── CHR-35 / CHR-65: per-business add-on entitlements ──
+// A business unlocks a paid add-on (map priority, advanced analytics, custom
+// branding, scavenger builder) by purchasing it. Activation-based for now;
+// recurring/renewal billing is a documented follow-up.
+export const businessAddons = pgTable("business_addons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  addonKey: varchar("addon_key").notNull(), // map_priority | advanced_analytics | custom_branding | scavenger_builder
+  status: varchar("status").default("active"), // active | cancelled
+  source: varchar("source").default("stripe"), // stripe | manual
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"), // idempotency for the activating charge
+  activatedAt: timestamp("activated_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // null = no expiry (activation-based)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueEntitlement: unique("business_addons_unique").on(table.businessId, table.addonKey),
+}));
+
 // ── CHR-33: first-class multi-store group campaigns ──
 // Supersedes the older (all-mock, unused) business_partnerships / reward_pool_*
 // tables — those are slated for retirement in CHR-58.
@@ -571,6 +590,12 @@ export const insertCoordinatorPayoutSchema = createInsertSchema(coordinatorPayou
   updatedAt: true,
 });
 
+export const insertBusinessAddonSchema = createInsertSchema(businessAddons).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertGroupCampaignSchema = createInsertSchema(groupCampaigns).omit({
   id: true,
   createdAt: true,
@@ -838,6 +863,8 @@ export type CoordinatorEarning = typeof coordinatorEarnings.$inferSelect;
 export type InsertCoordinatorEarning = z.infer<typeof insertCoordinatorEarningSchema>;
 export type CoordinatorPayout = typeof coordinatorPayouts.$inferSelect;
 export type InsertCoordinatorPayout = z.infer<typeof insertCoordinatorPayoutSchema>;
+export type BusinessAddon = typeof businessAddons.$inferSelect;
+export type InsertBusinessAddon = z.infer<typeof insertBusinessAddonSchema>;
 export type GroupCampaign = typeof groupCampaigns.$inferSelect;
 export type InsertGroupCampaign = z.infer<typeof insertGroupCampaignSchema>;
 export type GroupCampaignMember = typeof groupCampaignMembers.$inferSelect;
