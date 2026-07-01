@@ -1634,6 +1634,87 @@ export class DatabaseStorage implements IStorage {
   // CHR-27: real analytics dashboard aggregation. Scoped to one business when
   // businessId is given, otherwise platform-wide. No random/hardcoded values —
   // everything is derived from taps, rewards, campaigns, sales-data, and tags.
+  // CHR-67: advanced analytics pack (add-on). Real aggregations beyond the base
+  // CHR-27 dashboard — deterministic, computed from taps/rewards/tags.
+  async getAdvancedAnalytics(businessId: string): Promise<any> {
+    const tapRows = await this.getTaps(businessId);
+    const tagRows = await this.getNFCTags(businessId);
+    const rewardRows = await db.select().from(rewards).where(eq(rewards.businessId, businessId));
+
+    const totalTaps = tapRows.length;
+
+    // Best-performing tag zones: taps per tag (by placement label).
+    const labelById = new Map<string, string>();
+    for (const tag of tagRows) labelById.set(tag.id, tag.location || tag.customLabel || "Unlabeled");
+    const tapsByTag = new Map<string, number>();
+    for (const t of tapRows) tapsByTag.set(t.tagId, (tapsByTag.get(t.tagId) ?? 0) + 1);
+    const bestTagZones = Array.from(tapsByTag.entries())
+      .map(([tagId, taps]) => ({
+        tagId,
+        zone: labelById.get(tagId) || "Unknown",
+        taps,
+        percentage: totalTaps > 0 ? Math.round((taps / totalTaps) * 1000) / 10 : 0,
+      }))
+      .sort((a, b) => b.taps - a.taps)
+      .slice(0, 10);
+
+    // Return-delay distribution: gaps between a customer's consecutive taps.
+    const byCustomer = new Map<string, number[]>();
+    for (const t of tapRows) {
+      if (!t.customerEmail || !t.createdAt) continue;
+      const arr = byCustomer.get(t.customerEmail) ?? [];
+      arr.push(new Date(t.createdAt).getTime());
+      byCustomer.set(t.customerEmail, arr);
+    }
+    const buckets = { under1h: 0, h1to24: 0, d1to7: 0, over7d: 0 };
+    let gapCount = 0;
+    let gapHoursTotal = 0;
+    let returningCustomers = 0;
+    for (const times of Array.from(byCustomer.values())) {
+      if (times.length < 2) continue;
+      returningCustomers += 1;
+      times.sort((a, b) => a - b);
+      for (let i = 1; i < times.length; i++) {
+        const hours = (times[i] - times[i - 1]) / 3_600_000;
+        gapHoursTotal += hours;
+        gapCount += 1;
+        if (hours < 1) buckets.under1h += 1;
+        else if (hours < 24) buckets.h1to24 += 1;
+        else if (hours < 24 * 7) buckets.d1to7 += 1;
+        else buckets.over7d += 1;
+      }
+    }
+    const returnDelay = {
+      buckets,
+      avgReturnHours: gapCount > 0 ? Math.round((gapHoursTotal / gapCount) * 10) / 10 : 0,
+      returningCustomers,
+    };
+
+    // Busiest hour-of-day (24) and day-of-week (Sun..Sat) buckets — heatmap-ready.
+    const byHour = Array.from({ length: 24 }, (_, hour) => ({ hour, taps: 0 }));
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const byDay = dayNames.map((day) => ({ day, taps: 0 }));
+    for (const t of tapRows) {
+      if (!t.createdAt) continue;
+      const d = new Date(t.createdAt);
+      byHour[d.getHours()].taps += 1;
+      byDay[d.getDay()].taps += 1;
+    }
+
+    // Redemption funnel: taps → rewards issued → redeemed.
+    const rewardsIssued = rewardRows.length;
+    const rewardsRedeemed = rewardRows.filter((r) => r.isRedeemed).length;
+    const redemptionFunnel = {
+      taps: totalTaps,
+      rewardsIssued,
+      rewardsRedeemed,
+      tapToRewardRate: totalTaps > 0 ? Math.round((rewardsIssued / totalTaps) * 1000) / 10 : 0,
+      redemptionRate: rewardsIssued > 0 ? Math.round((rewardsRedeemed / rewardsIssued) * 1000) / 10 : 0,
+    };
+
+    return { bestTagZones, returnDelay, busiestHours: byHour, busiestDays: byDay, redemptionFunnel };
+  }
+
   async getBusinessAnalytics(businessId?: string, customerEmail?: string): Promise<any> {
     const num = (v: unknown): number => {
       const n = parseFloat(String(v ?? "0"));

@@ -9,6 +9,7 @@ import {
   MapPin, Target, Zap, Gift,
   ArrowRight, Download, Filter, RefreshCw
 } from "lucide-react";
+import AdvancedAnalyticsSection from "@/components/merchant/advanced-analytics-section";
 
 interface AnalyticsResponse {
   totalTaps: number;
@@ -338,6 +339,9 @@ export default function AnalyticsBento() {
           </Card>
 
         </div>
+
+        {/* CHR-67: advanced analytics pack (add-on) */}
+        <AdvancedAnalyticsSection />
       </div>
     </div>
   );

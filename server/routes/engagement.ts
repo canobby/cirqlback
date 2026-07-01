@@ -34,6 +34,31 @@ export function registerEngagementRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // CHR-67: advanced analytics — gated behind the advanced_analytics add-on.
+  app.get("/api/analytics/advanced", isAuthenticated, async (req, res) => {
+    try {
+      let businessId = (req.query.businessId as string) || undefined;
+      const userId = (req.user as any).id;
+      if (businessId) {
+        if (!(await userOwnsBusiness(userId, businessId))) {
+          return res.status(403).json({ error: "You don't own that business" });
+        }
+      } else {
+        const owned = await storage.getBusinessesByOwner(userId);
+        if (owned.length === 0) return res.status(404).json({ error: "No business found" });
+        businessId = owned[0].id;
+      }
+      // Entitlement gate: 402 Payment Required when the add-on isn't held.
+      if (!(await storage.businessHasAddon(businessId, "advanced_analytics"))) {
+        return res.status(402).json({ error: "Advanced Analytics add-on required", addonKey: "advanced_analytics" });
+      }
+      res.json(await storage.getAdvancedAnalytics(businessId));
+    } catch (error) {
+      console.error("Advanced analytics error:", error);
+      res.status(500).json({ error: "Failed to fetch advanced analytics" });
+    }
+  });
+
   // Community routes
   app.get("/api/leaderboard", async (req, res) => {
     try {
