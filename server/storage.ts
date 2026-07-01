@@ -110,7 +110,7 @@ export interface IStorage {
   updateTrailProgress(userId: string, trailId: string, businessId: string): Promise<void>;
   
   // Analytics and reporting
-  getBusinessAnalytics(businessId: string): Promise<any>;
+  getBusinessAnalytics(businessId?: string, customerEmail?: string): Promise<any>;
   getUserActivity(userId: string): Promise<any>;
   getCustomerInsights(businessId: string): Promise<any>;
   
@@ -606,11 +606,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Placeholder analytics methods
-  async getBusinessAnalytics(businessId: string): Promise<any> {
-    return { businessId, analytics: "placeholder" };
-  }
-
   async getUserActivity(userId: string): Promise<any> {
     return { userId, activity: "placeholder" };
   }
@@ -639,6 +634,174 @@ export class DatabaseStorage implements IStorage {
       .from(salesData)
       .where(eq(salesData.businessId, businessId))
       .orderBy(desc(salesData.date));
+  }
+
+  // CHR-27: real analytics dashboard aggregation. Scoped to one business when
+  // businessId is given, otherwise platform-wide. No random/hardcoded values —
+  // everything is derived from taps, rewards, campaigns, sales-data, and tags.
+  async getBusinessAnalytics(businessId?: string, customerEmail?: string): Promise<any> {
+    const num = (v: unknown): number => {
+      const n = parseFloat(String(v ?? "0"));
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const tapRows = await this.getTaps(businessId, customerEmail);
+    const campaignRows = await this.getCampaigns(businessId);
+    const rewardRows = businessId
+      ? await db.select().from(rewards).where(eq(rewards.businessId, businessId))
+      : await db.select().from(rewards);
+    const salesRows = businessId
+      ? await this.getSalesData(businessId)
+      : await db.select().from(salesData).orderBy(desc(salesData.date));
+    const tagRows = businessId
+      ? await this.getNFCTags(businessId)
+      : await db.select().from(nfcTags);
+
+    // Core metrics
+    const totalTaps = tapRows.length;
+    const activeCustomers = new Set(
+      tapRows.map((t) => t.customerEmail).filter(Boolean)
+    ).size;
+    const rewardsIssued = rewardRows.length;
+    const rewardsRedeemed = rewardRows.filter((r) => r.isRedeemed).length;
+    const conversionRate =
+      rewardsIssued > 0
+        ? Math.round((rewardsRedeemed / rewardsIssued) * 1000) / 10
+        : 0;
+
+    // Revenue: prefer real sales-data; fall back to tap reward values.
+    const salesRevenue = salesRows.reduce((s, r) => s + num(r.totalSales), 0);
+    const cirqlDrivenRevenue = salesRows.reduce(
+      (s, r) => s + num(r.cirqlDrivenSales),
+      0
+    );
+    const tapRewardValue = tapRows.reduce((s, t) => s + num(t.rewardValue), 0);
+    const totalRevenue = salesRevenue > 0 ? salesRevenue : tapRewardValue;
+    const newCustomers = salesRows.reduce((s, r) => s + (r.newCustomers ?? 0), 0);
+    const returningCustomers = salesRows.reduce(
+      (s, r) => s + (r.returningCustomers ?? 0),
+      0
+    );
+    const salesCustomerCount = salesRows.reduce(
+      (s, r) => s + (r.customerCount ?? 0),
+      0
+    );
+    const avgOrderValue =
+      salesCustomerCount > 0
+        ? Math.round((salesRevenue / salesCustomerCount) * 100) / 100
+        : activeCustomers > 0
+        ? Math.round((totalRevenue / activeCustomers) * 100) / 100
+        : 0;
+
+    // Hourly buckets from tap timestamps
+    const hourlyData = Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      taps: 0,
+      revenue: 0,
+    }));
+    for (const t of tapRows) {
+      const h = t.createdAt ? new Date(t.createdAt).getHours() : 0;
+      hourlyData[h].taps += 1;
+      hourlyData[h].revenue += num(t.rewardValue);
+    }
+    const fmtHour = (h: number): string => {
+      const am = h < 12;
+      const hr = h % 12 === 0 ? 12 : h % 12;
+      return `${hr} ${am ? "AM" : "PM"}`;
+    };
+    const peak = hourlyData.reduce(
+      (best, cur) => (cur.taps > best.taps ? cur : best),
+      hourlyData[0]
+    );
+    const peakHour =
+      totalTaps > 0
+        ? `${fmtHour(peak.hour)}-${fmtHour((peak.hour + 2) % 24)}`
+        : "—";
+
+    // Top campaigns by tap volume
+    const tapsByCampaign = new Map<string, number>();
+    const revByCampaign = new Map<string, number>();
+    for (const t of tapRows) {
+      if (!t.campaignId) continue;
+      tapsByCampaign.set(t.campaignId, (tapsByCampaign.get(t.campaignId) ?? 0) + 1);
+      revByCampaign.set(
+        t.campaignId,
+        (revByCampaign.get(t.campaignId) ?? 0) + num(t.rewardValue)
+      );
+    }
+    const topCampaigns = campaignRows
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        taps: tapsByCampaign.get(c.id) ?? 0,
+        revenue: Math.round((revByCampaign.get(c.id) ?? 0) * 100) / 100,
+      }))
+      .sort((a, b) => b.taps - a.taps)
+      .slice(0, 5);
+
+    // Top locations by tag placement
+    const tagLocation = new Map<string, string>();
+    for (const tag of tagRows) {
+      tagLocation.set(tag.id, tag.location || tag.customLabel || "Unlabeled");
+    }
+    const tapsByLocation = new Map<string, number>();
+    for (const t of tapRows) {
+      const loc = tagLocation.get(t.tagId) || "Unknown";
+      tapsByLocation.set(loc, (tapsByLocation.get(loc) ?? 0) + 1);
+    }
+    const topLocations = Array.from(tapsByLocation.entries())
+      .map(([name, taps]) => ({
+        name,
+        taps,
+        percentage: totalTaps > 0 ? Math.round((taps / totalTaps) * 1000) / 10 : 0,
+      }))
+      .sort((a, b) => b.taps - a.taps)
+      .slice(0, 5);
+
+    // Recent activity: latest taps + latest redemptions, merged by time
+    const tapActivity = tapRows.slice(0, 8).map((t) => ({
+      kind: "tap" as const,
+      action: `Tap${t.customerName ? ` by ${t.customerName}` : ""}`,
+      at: t.createdAt ? new Date(t.createdAt).getTime() : 0,
+      timestamp: t.createdAt ? new Date(t.createdAt).toISOString() : null,
+      value: `+${t.pointsEarned ?? 0} pts`,
+    }));
+    const redemptionActivity = rewardRows
+      .filter((r) => r.isRedeemed && r.redeemedAt)
+      .map((r) => ({
+        kind: "redemption" as const,
+        action: `Reward redeemed — ${r.title}`,
+        at: new Date(r.redeemedAt as Date).getTime(),
+        timestamp: new Date(r.redeemedAt as Date).toISOString(),
+        value: r.value ? `$${num(r.value).toFixed(2)}` : "",
+      }));
+    const recentActivity = [...tapActivity, ...redemptionActivity]
+      .sort((a, b) => b.at - a.at)
+      .slice(0, 6)
+      .map(({ kind, action, timestamp, value }) => ({
+        kind,
+        action,
+        timestamp,
+        value,
+      }));
+
+    return {
+      totalTaps,
+      totalRevenue,
+      activeCustomers,
+      conversionRate,
+      avgOrderValue,
+      cirqlDrivenRevenue,
+      rewardsIssued,
+      rewardsRedeemed,
+      newCustomers,
+      returningCustomers,
+      peakHour,
+      topCampaigns,
+      topLocations,
+      recentActivity,
+      hourlyData,
+    };
   }
 
   async getRealVsPlatformComparison(businessId: string): Promise<any> {

@@ -16,43 +16,17 @@ export function registerEngagementRoutes(app: Express, deps: RouteDeps) {
 
   app.get("/api/analytics/dashboard", async (req, res) => {
     try {
-      const timeRange = req.query.range as string || "7d";
-      const businessId = req.query.businessId as string;
-      const customerEmail = req.query.customerEmail as string;
-      
-      // Return comprehensive analytics data for testing
-      const analytics = {
-        totalTaps: Math.floor(Math.random() * 10000) + 1000,
-        totalRevenue: Math.floor(Math.random() * 50000) + 5000,
-        activeCustomers: Math.floor(Math.random() * 5000) + 500,
-        conversionRate: Math.floor(Math.random() * 25) + 5,
-        topCampaigns: [
-          { id: "demo_campaign_1", name: "Welcome Coffee Reward", taps: 156, revenue: 1250 },
-          { id: "demo_campaign_2", name: "Lunch Special", taps: 89, revenue: 890 }
-        ],
-        recentActivity: [
-          { action: "New customer tap at Coffee Corner", timestamp: "2 minutes ago", value: "+50 pts", businessId: businessId || "demo_biz_1" },
-          { action: "Campaign 'Free Coffee Friday' completed", timestamp: "5 minutes ago", value: "$25", businessId: businessId || "demo_biz_1" },
-          { action: "Referral bonus earned", timestamp: "8 minutes ago", value: "+$5", customerEmail: customerEmail || "demo@example.com" }
-        ],
-        hourlyData: Array.from({ length: 24 }, (_, i) => ({
-          hour: i,
-          taps: Math.floor(Math.random() * 50) + 10,
-          revenue: Math.floor(Math.random() * 500) + 50
-        })),
-        locationData: [
-          { location: "Downtown", taps: 245, revenue: 2450 },
-          { location: "Uptown", taps: 156, revenue: 1560 },
-          { location: "Midtown", taps: 89, revenue: 890 }
-        ],
-        customerInsights: {
-          newCustomers: 45,
-          returningCustomers: 123,
-          averageSpend: 15.75,
-          topLocation: "Downtown"
-        }
-      };
-      
+      let businessId = (req.query.businessId as string) || undefined;
+      const customerEmail = (req.query.customerEmail as string) || undefined;
+
+      // Scope to the authenticated user's business when no explicit id is
+      // supplied; fall back to platform-wide aggregation when logged out.
+      if (!businessId && req.user) {
+        const owned = await storage.getBusinessesByOwner((req.user as any).id);
+        if (owned.length > 0) businessId = owned[0].id;
+      }
+
+      const analytics = await storage.getBusinessAnalytics(businessId, customerEmail);
       res.json(analytics);
     } catch (error) {
       console.error("Analytics fetch error:", error);
