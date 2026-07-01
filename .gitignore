@@ -4,3 +4,9 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Local environment / secrets — never commit real keys.
+# .env.example IS committed as the template.
+.env
+.env.*
+!.env.example

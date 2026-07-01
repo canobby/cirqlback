@@ -168,8 +168,8 @@ export default function GoogleMapComponent() {
     };
   };
 
-  // Access the Google Maps API key from environment
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBHLett8djBo62dDXj0EjCpF92A_SWMnwI';
+  // Access the Google Maps API key from environment (never hardcode a key here)
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
   return (
     <div className="space-y-4">
