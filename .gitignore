@@ -13,3 +13,11 @@ vite.config.ts.*
 
 # Playwright MCP scratch output (snapshots/screenshots from local testing)
 .playwright-mcp/
+
+# Replit agent local state / local tooling config (not part of the app)
+.local/
+.mcp.json
+
+# Generated / local docs artifacts (keep local, don't commit)
+Cirqlback-Linear-Checklist.pdf
+NEXT.md

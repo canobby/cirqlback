@@ -8,9 +8,6 @@ import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 
 // import NotificationCenter from "@/components/global/notification-center";
-import Home from "@/pages/home";
-import Customer from "@/pages/customer";
-import Merchant from "@/pages/merchant";
 // Core Pages - Streamlined for first deployment
 import Account from "@/pages/account";
 import TapPage from "@/pages/tap";
@@ -27,8 +24,6 @@ import HelpCenterPage from "@/pages/help-center";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TermsOfServicePage from "@/pages/terms-of-service";
 import NfcWriterPage from "@/pages/nfc-writer";
-import CampaignSetupWizard from "@/pages/campaign-setup-wizard";
-import NFCSetupWizard from "@/pages/nfc-setup-wizard";
 import MerchantBento from "@/pages/merchant-bento";
 import CampaignSetupBento from "@/pages/campaign-setup-bento";
 import CustomerBento from "@/pages/customer-bento";

@@ -32,7 +32,6 @@ import {
   Video,
   Sparkles
 } from "lucide-react";
-import ARIntegrationPanel from "@/components/global/ar-integration-panel";
 import cirqlbackLogo from "@assets/cirqlback-logo-transparent.png";
 
 export default function ViralCommunityHub() {
