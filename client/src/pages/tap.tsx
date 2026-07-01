@@ -63,11 +63,23 @@ export default function TapPage() {
   const [loading, setLoading] = useState(false);
   const [tapResult, setTapResult] = useState<any>(null);
   const [hasArEnabled, setHasArEnabled] = useState(true);
+  // CHR-68: custom tap-screen branding (only present when the business is entitled).
+  const [branding, setBranding] = useState<any>(null);
 
   // Simulate getting tag info (normally from NFC scan)
   useEffect(() => {
     loadTagInfo();
   }, []);
+
+  // CHR-68: fetch branding once we know the business (null = default styling).
+  useEffect(() => {
+    const businessId = tagInfo?.business?.id;
+    if (!businessId) return;
+    fetch(`/api/tap-branding/${businessId}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => setBranding(b))
+      .catch(() => setBranding(null));
+  }, [tagInfo?.business?.id]);
 
   const loadTagInfo = async () => {
     try {
@@ -166,14 +178,42 @@ export default function TapPage() {
     <div className="bg-gradient-to-br from-primary/10 to-secondary/10 p-4 min-h-[80vh]">
       <div className="max-w-md mx-auto space-y-6 pt-8">
         
-        {/* Business Info */}
+        {/* Business Info (CHR-68: custom branding when entitled) */}
         <Card className="card-hover glow-effect">
           <CardHeader className="text-center pb-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-primary to-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-              <Zap className="h-8 w-8 text-white" />
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden bg-gradient-to-r from-primary to-secondary"
+              style={branding?.brandColor ? { background: branding.accentColor ? `linear-gradient(to right, ${branding.brandColor}, ${branding.accentColor})` : branding.brandColor } : undefined}
+            >
+              {branding?.logoUrl ? (
+                <img src={branding.logoUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <Zap className="h-8 w-8 text-white" />
+              )}
             </div>
-            <CardTitle className="gradient-text text-xl">{tagInfo.business?.name}</CardTitle>
-            <p className="text-muted-foreground">{tagInfo.business?.description}</p>
+            <CardTitle
+              className="gradient-text text-xl"
+              style={branding?.brandColor ? { color: branding.brandColor, WebkitTextFillColor: branding.brandColor } : undefined}
+            >
+              {tagInfo.business?.name}
+            </CardTitle>
+            <p className="text-muted-foreground">{branding?.slogan || tagInfo.business?.description}</p>
+            {Array.isArray(branding?.links) && branding.links.length > 0 && (
+              <div className="flex flex-wrap gap-3 justify-center mt-3">
+                {branding.links.map((l: any, i: number) => (
+                  <a
+                    key={i}
+                    href={l.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm underline"
+                    style={branding?.brandColor ? { color: branding.brandColor } : undefined}
+                  >
+                    {l.label || l.url}
+                  </a>
+                ))}
+              </div>
+            )}
           </CardHeader>
         </Card>
 

@@ -264,6 +264,21 @@ export const businessAddons = pgTable("business_addons", {
   uniqueEntitlement: unique("business_addons_unique").on(table.businessId, table.addonKey),
 }));
 
+// ── CHR-35 / CHR-68: custom tap-screen branding (add-on) ──
+// Per-business branding for the customer tap page. Applied only while the
+// business holds the custom_branding entitlement (enforced in the routes).
+export const businessTapBranding = pgTable("business_tap_branding", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull().unique(),
+  brandColor: varchar("brand_color"), // primary hex
+  accentColor: varchar("accent_color"),
+  slogan: varchar("slogan"),
+  logoUrl: varchar("logo_url"),
+  links: jsonb("links").default(sql`'[]'`), // [{ label, url }]
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // ── CHR-33: first-class multi-store group campaigns ──
 // Supersedes the older (all-mock, unused) business_partnerships / reward_pool_*
 // tables — those are slated for retirement in CHR-58.
@@ -596,6 +611,12 @@ export const insertBusinessAddonSchema = createInsertSchema(businessAddons).omit
   updatedAt: true,
 });
 
+export const insertBusinessTapBrandingSchema = createInsertSchema(businessTapBranding).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertGroupCampaignSchema = createInsertSchema(groupCampaigns).omit({
   id: true,
   createdAt: true,
@@ -865,6 +886,8 @@ export type CoordinatorPayout = typeof coordinatorPayouts.$inferSelect;
 export type InsertCoordinatorPayout = z.infer<typeof insertCoordinatorPayoutSchema>;
 export type BusinessAddon = typeof businessAddons.$inferSelect;
 export type InsertBusinessAddon = z.infer<typeof insertBusinessAddonSchema>;
+export type BusinessTapBranding = typeof businessTapBranding.$inferSelect;
+export type InsertBusinessTapBranding = z.infer<typeof insertBusinessTapBrandingSchema>;
 export type GroupCampaign = typeof groupCampaigns.$inferSelect;
 export type InsertGroupCampaign = z.infer<typeof insertGroupCampaignSchema>;
 export type GroupCampaignMember = typeof groupCampaignMembers.$inferSelect;

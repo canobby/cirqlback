@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import GroupCampaignsPanel from "@/components/merchant/group-campaigns-panel";
 import AddonsPanel from "@/components/merchant/addons-panel";
+import TapBrandingEditor from "@/components/merchant/tap-branding-editor";
 
 export default function MerchantBento() {
   const [selectedBusiness] = useState("business-1");
@@ -58,6 +59,9 @@ export default function MerchantBento() {
 
         {/* CHR-35/66: add-on entitlement status */}
         <AddonsPanel />
+
+        {/* CHR-68: custom tap-screen branding editor (add-on) */}
+        <TapBrandingEditor />
 
         {/* Bento Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-6 auto-rows-min">

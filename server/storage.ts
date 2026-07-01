@@ -17,6 +17,7 @@ import {
   coordinatorEarnings,
   coordinatorPayouts,
   businessAddons,
+  businessTapBranding,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -50,6 +51,7 @@ import {
   type CoordinatorEarning,
   type CoordinatorPayout,
   type BusinessAddon,
+  type BusinessTapBranding,
   type SalesData,
   type InsertSalesData,
   type MonthlySalesSummary,
@@ -884,6 +886,38 @@ export class DatabaseStorage implements IStorage {
           expiresAt: input.expiresAt ?? null,
           updatedAt: new Date(),
         },
+      })
+      .returning();
+    return row;
+  }
+
+  // ── CHR-68: custom tap-screen branding (add-on) ──
+  async getTapBranding(businessId: string): Promise<BusinessTapBranding | undefined> {
+    const [row] = await db
+      .select()
+      .from(businessTapBranding)
+      .where(eq(businessTapBranding.businessId, businessId));
+    return row || undefined;
+  }
+
+  async upsertTapBranding(
+    businessId: string,
+    data: { brandColor?: string | null; accentColor?: string | null; slogan?: string | null; logoUrl?: string | null; links?: unknown }
+  ): Promise<BusinessTapBranding> {
+    const values = {
+      businessId,
+      brandColor: data.brandColor ?? null,
+      accentColor: data.accentColor ?? null,
+      slogan: data.slogan ?? null,
+      logoUrl: data.logoUrl ?? null,
+      links: (data.links as any) ?? [],
+    };
+    const [row] = await db
+      .insert(businessTapBranding)
+      .values(values)
+      .onConflictDoUpdate({
+        target: businessTapBranding.businessId,
+        set: { ...values, updatedAt: new Date() },
       })
       .returning();
     return row;

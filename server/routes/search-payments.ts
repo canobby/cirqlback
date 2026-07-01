@@ -390,5 +390,55 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // ── CHR-68: custom tap-screen branding (add-on) ──
+
+  // Public: branding for the tap page — only when the business is entitled.
+  app.get("/api/tap-branding/:businessId", async (req, res) => {
+    try {
+      if (!(await storage.businessHasAddon(req.params.businessId, "custom_branding"))) {
+        return res.json(null); // default styling
+      }
+      res.json((await storage.getTapBranding(req.params.businessId)) ?? null);
+    } catch (error) {
+      console.error("Tap branding read error:", error);
+      res.status(500).json({ error: "Failed to load branding" });
+    }
+  });
+
+  // Owner: current branding + whether the add-on is held (for the editor).
+  app.get("/api/businesses/:id/tap-branding", isAuthenticated, async (req, res) => {
+    try {
+      if (!(await userOwnsBusiness((req.user as any).id, req.params.id))) {
+        return res.status(403).json({ error: "You don't own that business" });
+      }
+      const entitled = await storage.businessHasAddon(req.params.id, "custom_branding");
+      res.json({ entitled, branding: (await storage.getTapBranding(req.params.id)) ?? null });
+    } catch (error) {
+      console.error("Owner tap branding error:", error);
+      res.status(500).json({ error: "Failed to load branding" });
+    }
+  });
+
+  // Owner + entitled: save branding. 402 when the add-on isn't held.
+  app.put("/api/businesses/:id/tap-branding", isAuthenticated, async (req, res) => {
+    try {
+      if (!(await userOwnsBusiness((req.user as any).id, req.params.id))) {
+        return res.status(403).json({ error: "You don't own that business" });
+      }
+      if (!(await storage.businessHasAddon(req.params.id, "custom_branding"))) {
+        return res.status(402).json({ error: "Custom Branding add-on required", addonKey: "custom_branding" });
+      }
+      const { brandColor, accentColor, slogan, logoUrl, links } = req.body || {};
+      const branding = await storage.upsertTapBranding(req.params.id, {
+        brandColor, accentColor, slogan, logoUrl,
+        links: Array.isArray(links) ? links : undefined,
+      });
+      res.json(branding);
+    } catch (error) {
+      console.error("Save tap branding error:", error);
+      res.status(500).json({ error: "Failed to save branding" });
+    }
+  });
+
   // Business data endpoint for analytics
 }
