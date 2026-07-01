@@ -90,7 +90,7 @@ export interface IStorage {
   deleteNFCTag(id: string): Promise<boolean>;
   
   // Tap operations
-  processTap(tap: InsertTap): Promise<{ success: boolean; reward?: Reward; message: string }>;
+  processTap(tap: InsertTap): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string }>;
   getTaps(businessId?: string, customerEmail?: string): Promise<Tap[]>;
   
   // Reward operations
@@ -315,31 +315,56 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Tap operations
-  async processTap(tap: InsertTap): Promise<{ success: boolean; reward?: Reward; message: string }> {
+  async processTap(tap: InsertTap): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string }> {
     try {
-      // Create the tap record
-      const [newTap] = await db.insert(taps).values(tap).returning();
+      // Anti-abuse: reject a repeat tap of the same tag by the same customer
+      // within a short cooldown window.
+      const COOLDOWN_MS = 60 * 1000;
+      const [recent] = await db
+        .select()
+        .from(taps)
+        .where(and(eq(taps.tagId, tap.tagId), eq(taps.customerEmail, tap.customerEmail)))
+        .orderBy(desc(taps.createdAt))
+        .limit(1);
+      if (recent?.createdAt && Date.now() - recent.createdAt.getTime() < COOLDOWN_MS) {
+        return {
+          success: false,
+          message: "You've already tapped this tag. Please wait a moment before tapping again.",
+        };
+      }
 
-      // Update tag tap count
+      // Resolve the campaign (if any) to determine reward + points.
+      const campaign = tap.campaignId ? await this.getCampaign(tap.campaignId) : undefined;
+      const campaignActive = !!campaign && campaign.isActive === true;
+      const points = campaignActive ? (campaign!.pointsAwarded ?? 0) : 0;
+      const customer = tap.customerEmail ? await this.getUserByEmail(tap.customerEmail) : undefined;
+
+      // Record the tap (with the points earned).
+      const [newTap] = await db
+        .insert(taps)
+        .values({ ...tap, pointsEarned: points })
+        .returning();
+
+      // Update tap counters.
       await db
         .update(nfcTags)
-        .set({ totalTaps: sql`${nfcTags.totalTaps} + 1` })
+        .set({ totalTaps: sql`${nfcTags.totalTaps} + 1`, lastTapAt: new Date() })
         .where(eq(nfcTags.id, tap.tagId));
-
-      // Update business tap count
       await db
         .update(businesses)
         .set({ totalTaps: sql`${businesses.totalTaps} + 1` })
         .where(eq(businesses.id, tap.businessId));
 
-      // Create reward if campaign is associated
+      // Create a reward from the active campaign, owned by the customer (if they
+      // have an account) so they can later redeem it.
       let reward: Reward | undefined;
-      if (tap.campaignId) {
-        const campaign = await this.getCampaign(tap.campaignId);
-        if (campaign && campaign.isActive) {
-          const rewardData: InsertReward = {
+      if (campaignActive && campaign) {
+        const [newReward] = await db
+          .insert(rewards)
+          .values({
+            userId: customer?.id ?? null,
             businessId: tap.businessId,
-            campaignId: tap.campaignId,
+            campaignId: campaign.id,
             tapId: newTap.id,
             type: campaign.type,
             title: `${campaign.name} Reward`,
@@ -347,23 +372,37 @@ export class DatabaseStorage implements IStorage {
             value: campaign.value,
             code: `CIRQ${Date.now()}`,
             expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-          };
+          })
+          .returning();
+        reward = newReward;
 
-          const [newReward] = await db.insert(rewards).values(rewardData).returning();
-          reward = newReward;
+        await db
+          .update(campaigns)
+          .set({ currentRedemptions: sql`${campaigns.currentRedemptions} + 1` })
+          .where(eq(campaigns.id, campaign.id));
+      }
 
-          // Update campaign redemption count
-          await db
-            .update(campaigns)
-            .set({ currentRedemptions: sql`${campaigns.currentRedemptions} + 1` })
-            .where(eq(campaigns.id, tap.campaignId));
-        }
+      // Award points to the customer's account (if they have one).
+      if (points > 0 && customer) {
+        await db
+          .update(users)
+          .set({
+            totalPoints: sql`${users.totalPoints} + ${points}`,
+            availablePoints: sql`${users.availablePoints} + ${points}`,
+            totalPointsEarned: sql`${users.totalPointsEarned} + ${points}`,
+          })
+          .where(eq(users.id, customer.id));
       }
 
       return {
         success: true,
         reward,
-        message: reward ? "Tap successful! Reward earned." : "Tap recorded successfully.",
+        pointsEarned: points,
+        message: reward
+          ? "Tap successful! Reward earned."
+          : points > 0
+          ? "Tap successful! Points earned."
+          : "Tap recorded successfully.",
       };
     } catch (error) {
       console.error("Error processing tap:", error);

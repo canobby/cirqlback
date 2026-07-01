@@ -688,59 +688,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing required fields: tagId, customerEmail, businessId" });
       }
       
-      try {
-        const validatedData = insertTapSchema.parse(req.body);
-        // Process the tap (this handles reward creation automatically)
-        const result = await storage.processTap(validatedData);
-        
-        if (result && result.success) {
-          // Broadcast real-time update via WebSocket
-          const broadcastToClients = (global as any).broadcastToClients;
-          if (broadcastToClients) {
-            broadcastToClients({
-              type: 'new_tap',
-              data: result
-            });
-          }
-          
-          res.json(result);
-          return;
-        } else if (result && !result.success) {
-          res.status(400).json({ error: result.message });
-          return;
-        }
-      } catch (dbError) {
-        console.error("Database error in tap processing:", dbError);
+      // Real tap processing (records the tap, awards points/reward, enforces
+      // the anti-abuse cooldown). No more simulated fallback.
+      const validatedData = insertTapSchema.parse(req.body);
+      const result = await storage.processTap(validatedData);
+
+      if (!result.success) {
+        return res.status(409).json({ error: result.message });
       }
-      
-      // Fallback: return successful tap simulation
-      const simulatedResult = {
-        success: true,
-        tap: {
-          id: crypto.randomUUID(),
-          tagId,
-          customerEmail,
-          businessId,
-          tappedAt: new Date(),
-          pointsEarned: 50,
-          location: req.body.location
-        },
-        reward: {
-          id: crypto.randomUUID(),
-          customerEmail,
-          businessId,
-          campaignId: "demo_campaign_1",
-          type: "discount",
-          value: "10.00",
-          description: "10% off your next purchase",
-          isRedeemed: false,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          createdAt: new Date()
-        },
-        message: "Tap successful! You earned a discount reward."
-      };
-      
-      res.json(simulatedResult);
+
+      const broadcastToClients = (global as any).broadcastToClients;
+      if (broadcastToClients) {
+        broadcastToClients({ type: 'new_tap', data: result });
+      }
+      res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
@@ -2245,21 +2206,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cirql Platform API routes
   app.post("/api/cirql/tap", async (req, res) => {
     try {
-      // API key authentication would happen here
-      const { tagId, customerEmail } = req.body;
-      const response = {
+      const { tagIdentifier, tagId, customerEmail, customerName } = req.body;
+      if (!customerEmail) {
+        return res.status(400).json({ error: "customerEmail is required" });
+      }
+
+      // Resolve the scanned tag by its printed identifier (preferred) or internal id.
+      const tag = tagIdentifier
+        ? await storage.getNFCTagByIdentifier(tagIdentifier)
+        : tagId
+        ? await storage.getNFCTag(tagId)
+        : undefined;
+      if (!tag) {
+        return res.status(404).json({ error: "Unknown or unregistered Cirql tag" });
+      }
+      if (tag.isActive === false) {
+        return res.status(400).json({ error: "This Cirql tag is not active" });
+      }
+
+      const result = await storage.processTap({
+        tagId: tag.id,
+        businessId: tag.businessId,
+        campaignId: tag.campaignId ?? undefined,
+        customerEmail: String(customerEmail).toLowerCase().trim(),
+        customerName,
+      });
+
+      if (!result.success) {
+        // Cooldown / anti-abuse rejection.
+        return res.status(429).json({ platform: "cirql", success: false, message: result.message });
+      }
+
+      const broadcast = (global as any).broadcastToClients;
+      if (broadcast) broadcast({ type: "new_tap", data: result });
+
+      res.json({
         platform: "cirql",
         success: true,
-        reward: {
-          type: "discount",
-          value: "20% off",
-          description: "Great choice! Enjoy 20% off your next purchase.",
-          code: "CIRQL20"
-        },
-        pointsEarned: 50
-      };
-      res.json(response);
+        reward: result.reward ?? null,
+        pointsEarned: result.pointsEarned ?? 0,
+        message: result.message,
+      });
     } catch (error) {
+      console.error("Cirql tap error:", error);
       res.status(500).json({ error: "Failed to process Cirql tap" });
     }
   });
