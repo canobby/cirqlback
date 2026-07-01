@@ -201,6 +201,56 @@ export const regionalOffers = pgTable("regional_offers", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ── CHR-33: first-class multi-store group campaigns ──
+// Supersedes the older (all-mock, unused) business_partnerships / reward_pool_*
+// tables — those are slated for retirement in CHR-58.
+export const groupCampaigns = pgTable("group_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  ruleType: varchar("rule_type").notNull().default("any_n"), // any_n = tap N of M | all
+  requiredStores: integer("required_stores").default(1), // N for any_n
+  rewardType: varchar("reward_type").default("discount"), // discount, free_item, points
+  rewardTitle: varchar("reward_title"),
+  rewardValue: decimal("reward_value", { precision: 10, scale: 2 }),
+  rewardPoints: integer("reward_points").default(0),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  creatorType: varchar("creator_type").default("business"), // business | coordinator
+  territoryId: varchar("territory_id").references(() => territories.id), // set for coordinator city-wide
+  isOpen: boolean("is_open").default(false), // businesses may self-join
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const groupCampaignMembers = pgTable("group_campaign_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupCampaignId: varchar("group_campaign_id").references(() => groupCampaigns.id).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  status: varchar("status").default("joined"), // invited | joined
+  joinedAt: timestamp("joined_at").defaultNow(),
+}, (table) => ({
+  uniqueMember: unique("group_campaign_members_unique").on(table.groupCampaignId, table.businessId),
+}));
+
+// One row per (campaign, customer). Customer is identified WITHOUT an account —
+// by email and/or the CHR-48 device fingerprint. Tracks which member stores
+// have been visited and, once complete, the unlocked reward.
+export const groupCampaignProgress = pgTable("group_campaign_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupCampaignId: varchar("group_campaign_id").references(() => groupCampaigns.id).notNull(),
+  customerEmail: varchar("customer_email"),
+  deviceFingerprint: varchar("device_fingerprint"),
+  visitedBusinessIds: jsonb("visited_business_ids").default(sql`'[]'`), // array of member business ids
+  visitCount: integer("visit_count").default(0),
+  completedAt: timestamp("completed_at"),
+  rewardId: varchar("reward_id").references(() => rewards.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Campaigns table
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -465,6 +515,23 @@ export const insertRegionalOfferSchema = createInsertSchema(regionalOffers).omit
   updatedAt: true,
 });
 
+export const insertGroupCampaignSchema = createInsertSchema(groupCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertGroupCampaignMemberSchema = createInsertSchema(groupCampaignMembers).omit({
+  id: true,
+  joinedAt: true,
+});
+
+export const insertGroupCampaignProgressSchema = createInsertSchema(groupCampaignProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertCampaignSchema = createInsertSchema(campaigns).omit({ 
   id: true, 
   createdAt: true, 
@@ -711,6 +778,12 @@ export type Territory = typeof territories.$inferSelect;
 export type InsertTerritory = z.infer<typeof insertTerritorySchema>;
 export type RegionalOffer = typeof regionalOffers.$inferSelect;
 export type InsertRegionalOffer = z.infer<typeof insertRegionalOfferSchema>;
+export type GroupCampaign = typeof groupCampaigns.$inferSelect;
+export type InsertGroupCampaign = z.infer<typeof insertGroupCampaignSchema>;
+export type GroupCampaignMember = typeof groupCampaignMembers.$inferSelect;
+export type InsertGroupCampaignMember = z.infer<typeof insertGroupCampaignMemberSchema>;
+export type GroupCampaignProgress = typeof groupCampaignProgress.$inferSelect;
+export type InsertGroupCampaignProgress = z.infer<typeof insertGroupCampaignProgressSchema>;
 
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;

@@ -8,6 +8,7 @@ import { setupAuth, isAuthenticated, isAdminAuthenticated, isCoordinator } from 
 import { storage } from "./storage";
 import type { RouteDeps } from "./routes/_shared";
 import { registerCoordinatorRoutes } from "./routes/coordinator";
+import { registerGroupCampaignRoutes } from "./routes/group-campaigns";
 import { registerAccountSubscriptionRoutes } from "./routes/account-subscription";
 import { registerBusinessesCampaignsNfcRoutes } from "./routes/businesses-campaigns-nfc";
 import { registerTapsRewardsRoutes } from "./routes/taps-rewards";
@@ -98,6 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAdminRoutes(app, deps);
   registerProfileQuestSalesRoutes(app, deps);
   registerCoordinatorRoutes(app, deps);
+  registerGroupCampaignRoutes(app, deps);
 
   const httpServer = createServer(app);
 

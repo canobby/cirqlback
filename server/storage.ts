@@ -11,6 +11,8 @@ import {
   coordinators,
   territories,
   regionalOffers,
+  groupCampaigns,
+  groupCampaignMembers,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -38,6 +40,9 @@ import {
   type InsertTerritory,
   type RegionalOffer,
   type InsertRegionalOffer,
+  type GroupCampaign,
+  type InsertGroupCampaign,
+  type GroupCampaignMember,
   type SalesData,
   type InsertSalesData,
   type MonthlySalesSummary,
@@ -536,6 +541,66 @@ export class DatabaseStorage implements IStorage {
       .from(regionalOffers)
       .where(eq(regionalOffers.coordinatorId, coordinatorId))
       .orderBy(desc(regionalOffers.createdAt));
+  }
+
+  // ── CHR-33 / CHR-56: multi-store group campaigns ──
+  async createGroupCampaign(data: InsertGroupCampaign): Promise<GroupCampaign> {
+    const [row] = await db.insert(groupCampaigns).values(data).returning();
+    return row;
+  }
+
+  async getGroupCampaign(id: string): Promise<GroupCampaign | undefined> {
+    const [row] = await db.select().from(groupCampaigns).where(eq(groupCampaigns.id, id));
+    return row || undefined;
+  }
+
+  async addGroupCampaignMember(
+    groupCampaignId: string,
+    businessId: string,
+    status: string = "joined"
+  ): Promise<GroupCampaignMember | undefined> {
+    // Idempotent: skip if this business is already a member.
+    const [existing] = await db
+      .select()
+      .from(groupCampaignMembers)
+      .where(
+        and(
+          eq(groupCampaignMembers.groupCampaignId, groupCampaignId),
+          eq(groupCampaignMembers.businessId, businessId)
+        )
+      );
+    if (existing) return existing;
+    const [row] = await db
+      .insert(groupCampaignMembers)
+      .values({ groupCampaignId, businessId, status })
+      .returning();
+    return row;
+  }
+
+  async getGroupCampaignMembers(groupCampaignId: string): Promise<GroupCampaignMember[]> {
+    return await db
+      .select()
+      .from(groupCampaignMembers)
+      .where(eq(groupCampaignMembers.groupCampaignId, groupCampaignId));
+  }
+
+  // Campaign + its member businesses (name + coordinates for the map).
+  async getGroupCampaignWithMembers(id: string): Promise<any | undefined> {
+    const campaign = await this.getGroupCampaign(id);
+    if (!campaign) return undefined;
+    const memberRows = await db
+      .select({
+        id: groupCampaignMembers.id,
+        businessId: groupCampaignMembers.businessId,
+        status: groupCampaignMembers.status,
+        name: businesses.name,
+        latitude: businesses.latitude,
+        longitude: businesses.longitude,
+      })
+      .from(groupCampaignMembers)
+      .innerJoin(businesses, eq(groupCampaignMembers.businessId, businesses.id))
+      .where(eq(groupCampaignMembers.groupCampaignId, id));
+    return { ...campaign, members: memberRows };
   }
 
   // Campaign operations
