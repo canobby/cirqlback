@@ -278,6 +278,7 @@ export function registerDiscoveryMarketingRoutes(app: Express, deps: RouteDeps) 
         success: true,
         reward: result.reward ?? null,
         pointsEarned: result.pointsEarned ?? 0,
+        groupProgress: result.groupProgress ?? [],
         message: result.message,
       });
     } catch (error) {

@@ -13,6 +13,7 @@ import {
   regionalOffers,
   groupCampaigns,
   groupCampaignMembers,
+  groupCampaignProgress,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -51,7 +52,7 @@ import {
   type InsertBusinessGoals,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
+import { eq, desc, and, or, sql, count, inArray } from "drizzle-orm";
 import { tierForPoints, levelForPoints, pointsToNextLevel } from "./gamification";
 
 export interface IStorage {
@@ -93,7 +94,7 @@ export interface IStorage {
   deleteNFCTag(id: string): Promise<boolean>;
   
   // Tap operations
-  processTap(tap: InsertTap, opts?: { latitude?: number; longitude?: number }): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string }>;
+  processTap(tap: InsertTap, opts?: { latitude?: number; longitude?: number }): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[] }>;
   getTaps(businessId?: string, customerEmail?: string): Promise<Tap[]>;
   
   // Reward operations
@@ -603,6 +604,142 @@ export class DatabaseStorage implements IStorage {
     return { ...campaign, members: memberRows };
   }
 
+  // CHR-57: a tap at `businessId` advances the customer's progress in every
+  // active group campaign that store belongs to; completing the rule unlocks
+  // the group reward exactly once. Customer identity works without an account
+  // (matched by email and/or device fingerprint). Returns per-campaign status.
+  private async advanceGroupCampaigns(
+    businessId: string,
+    customerEmail: string | null | undefined,
+    deviceFingerprint: string | null | undefined,
+    customer: User | undefined
+  ): Promise<any[]> {
+    const memberOf = await db
+      .select({
+        id: groupCampaigns.id,
+        name: groupCampaigns.name,
+        ruleType: groupCampaigns.ruleType,
+        requiredStores: groupCampaigns.requiredStores,
+        rewardType: groupCampaigns.rewardType,
+        rewardTitle: groupCampaigns.rewardTitle,
+        rewardValue: groupCampaigns.rewardValue,
+        rewardPoints: groupCampaigns.rewardPoints,
+      })
+      .from(groupCampaignMembers)
+      .innerJoin(groupCampaigns, eq(groupCampaignMembers.groupCampaignId, groupCampaigns.id))
+      .where(and(eq(groupCampaignMembers.businessId, businessId), eq(groupCampaigns.isActive, true)));
+
+    const requiredFor = async (gc: (typeof memberOf)[number]): Promise<number> => {
+      if (gc.ruleType === "all") {
+        const [{ c }] = await db
+          .select({ c: count() })
+          .from(groupCampaignMembers)
+          .where(eq(groupCampaignMembers.groupCampaignId, gc.id));
+        return Number(c) || 1;
+      }
+      return gc.requiredStores ?? 1;
+    };
+
+    const summaries: any[] = [];
+    for (const gc of memberOf) {
+      // Resolve (or create) this customer's progress row for the campaign.
+      const idConds = [];
+      if (customerEmail) idConds.push(eq(groupCampaignProgress.customerEmail, customerEmail));
+      if (deviceFingerprint) idConds.push(eq(groupCampaignProgress.deviceFingerprint, deviceFingerprint));
+      let progress = idConds.length
+        ? (
+            await db
+              .select()
+              .from(groupCampaignProgress)
+              .where(and(eq(groupCampaignProgress.groupCampaignId, gc.id), or(...idConds)))
+          )[0]
+        : undefined;
+      if (!progress) {
+        [progress] = await db
+          .insert(groupCampaignProgress)
+          .values({
+            groupCampaignId: gc.id,
+            customerEmail: customerEmail ?? null,
+            deviceFingerprint: deviceFingerprint ?? null,
+            visitedBusinessIds: [],
+            visitCount: 0,
+          })
+          .returning();
+      }
+
+      const visited: string[] = Array.isArray(progress.visitedBusinessIds)
+        ? (progress.visitedBusinessIds as string[])
+        : [];
+      const alreadyComplete = !!progress.completedAt;
+      const required = await requiredFor(gc);
+
+      if (visited.includes(businessId) || alreadyComplete) {
+        summaries.push({
+          groupCampaignId: gc.id,
+          name: gc.name,
+          visited: visited.length,
+          required,
+          completed: alreadyComplete,
+          rewardUnlocked: false,
+        });
+        continue;
+      }
+
+      visited.push(businessId);
+      const nowComplete = visited.length >= required;
+      let rewardId = progress.rewardId ?? null;
+
+      if (nowComplete && !rewardId) {
+        const [gr] = await db
+          .insert(rewards)
+          .values({
+            userId: customer?.id ?? null,
+            businessId,
+            campaignId: null,
+            type: gc.rewardType ?? "discount",
+            title: gc.rewardTitle ?? `${gc.name} Reward`,
+            description: `Completed ${gc.name}`,
+            value: gc.rewardValue,
+            code: `GRP${Date.now()}`,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          })
+          .returning();
+        rewardId = gr.id;
+        if ((gc.rewardPoints ?? 0) > 0 && customer) {
+          await db
+            .update(users)
+            .set({
+              totalPoints: sql`${users.totalPoints} + ${gc.rewardPoints}`,
+              availablePoints: sql`${users.availablePoints} + ${gc.rewardPoints}`,
+              totalPointsEarned: sql`${users.totalPointsEarned} + ${gc.rewardPoints}`,
+            })
+            .where(eq(users.id, customer.id));
+        }
+      }
+
+      await db
+        .update(groupCampaignProgress)
+        .set({
+          visitedBusinessIds: visited,
+          visitCount: visited.length,
+          completedAt: nowComplete ? new Date() : null,
+          rewardId,
+          updatedAt: new Date(),
+        })
+        .where(eq(groupCampaignProgress.id, progress.id));
+
+      summaries.push({
+        groupCampaignId: gc.id,
+        name: gc.name,
+        visited: visited.length,
+        required,
+        completed: nowComplete,
+        rewardUnlocked: nowComplete && !!rewardId,
+      });
+    }
+    return summaries;
+  }
+
   // Campaign operations
   async getCampaigns(businessId?: string): Promise<Campaign[]> {
     if (businessId) {
@@ -679,7 +816,7 @@ export class DatabaseStorage implements IStorage {
   async processTap(
     tap: InsertTap,
     opts?: { latitude?: number; longitude?: number }
-  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string }> {
+  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[] }> {
     try {
       const now = Date.now();
 
@@ -816,11 +953,23 @@ export class DatabaseStorage implements IStorage {
           .where(eq(users.id, customer.id));
       }
 
+      // CHR-57: advance any multi-store group campaigns this store belongs to.
+      const groupProgress = await this.advanceGroupCampaigns(
+        tap.businessId,
+        tap.customerEmail,
+        (tap as any).deviceFingerprint,
+        customer
+      );
+      const groupUnlocked = groupProgress.some((g) => g.rewardUnlocked);
+
       return {
         success: true,
         reward,
         pointsEarned: points,
-        message: reward
+        groupProgress,
+        message: groupUnlocked
+          ? "Group reward unlocked! You completed the trail."
+          : reward
           ? "Tap successful! Reward earned."
           : points > 0
           ? "Tap successful! Points earned."
