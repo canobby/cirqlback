@@ -9,6 +9,7 @@ import {
   MessageSquare, Calendar, DollarSign, Crown, Trophy
 } from "lucide-react";
 import GroupCampaignsPanel from "@/components/merchant/group-campaigns-panel";
+import AddonsPanel from "@/components/merchant/addons-panel";
 
 export default function MerchantBento() {
   const [selectedBusiness] = useState("business-1");
@@ -54,6 +55,9 @@ export default function MerchantBento() {
 
         {/* CHR-58: real multi-store group-campaign membership */}
         <GroupCampaignsPanel />
+
+        {/* CHR-35/66: add-on entitlement status */}
+        <AddonsPanel />
 
         {/* Bento Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-6 auto-rows-min">

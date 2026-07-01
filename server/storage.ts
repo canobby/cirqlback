@@ -818,6 +818,19 @@ export class DatabaseStorage implements IStorage {
     return rows.filter((r) => !r.expiresAt || r.expiresAt.getTime() > nowMs);
   }
 
+  // CHR-66: the set of business ids currently holding a given add-on (active,
+  // non-expired) — for bulk gating like the discovery map.
+  async getBusinessIdsWithAddon(addonKey: string): Promise<Set<string>> {
+    const rows = await db
+      .select()
+      .from(businessAddons)
+      .where(and(eq(businessAddons.addonKey, addonKey), eq(businessAddons.status, "active")));
+    const nowMs = Date.now();
+    return new Set(
+      rows.filter((r) => !r.expiresAt || r.expiresAt.getTime() > nowMs).map((r) => r.businessId)
+    );
+  }
+
   // Whether a business currently holds a specific add-on (the gate helper).
   async businessHasAddon(businessId: string, addonKey: string): Promise<boolean> {
     const [row] = await db

@@ -352,6 +352,9 @@ export function registerDiscoveryMarketingRoutes(app: Express, deps: RouteDeps) 
   app.get("/api/map/businesses", async (req, res) => {
     try {
       const all = await storage.getBusinesses();
+      // CHR-66: a business is featured if a coordinator promoted it (CHR-54
+      // isFeatured) OR it holds the map_priority add-on entitlement.
+      const boosted = await storage.getBusinessIdsWithAddon("map_priority");
       // Only businesses that have been geocoded can appear as map markers.
       const mapBusinesses = all
         .filter((b) => b.latitude != null && b.longitude != null)
@@ -364,7 +367,7 @@ export function registerDiscoveryMarketingRoutes(app: Express, deps: RouteDeps) 
           description: b.description,
           category: (b.establishmentType && b.establishmentType[0]) || "business",
           isActive: b.isActive ?? true,
-          featured: b.isFeatured ?? false, // CHR-54: coordinator map promotion
+          featured: (b.isFeatured ?? false) || boosted.has(b.id), // CHR-54 coordinator + CHR-66 add-on
         }));
       res.json(mapBusinesses);
     } catch (error) {
