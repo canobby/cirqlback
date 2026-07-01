@@ -43,7 +43,7 @@ import {
   type InsertBusinessGoals,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, count } from "drizzle-orm";
+import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
 import { tierForPoints, levelForPoints, pointsToNextLevel } from "./gamification";
 
 export interface IStorage {
@@ -419,6 +419,68 @@ export class DatabaseStorage implements IStorage {
 
   async getBusinessesByTerritory(territoryId: string): Promise<Business[]> {
     return await db.select().from(businesses).where(eq(businesses.territoryId, territoryId));
+  }
+
+  // CHR-52: real territory-scoped overview for a coordinator — totals + per-store
+  // engagement across every business in the coordinator's territories. All data
+  // is derived from taps/rewards (no random/hardcoded values).
+  async getTerritoryOverview(coordinatorId: string): Promise<any> {
+    const territoriesOwned = await this.getTerritoriesByCoordinator(coordinatorId);
+    const territoryIds = territoriesOwned.map((t) => t.id);
+
+    const bizRows = territoryIds.length
+      ? await db.select().from(businesses).where(inArray(businesses.territoryId, territoryIds))
+      : [];
+    const businessIds = bizRows.map((b) => b.id);
+
+    if (businessIds.length === 0) {
+      return {
+        territories: territoriesOwned,
+        totals: {
+          businesses: 0,
+          verifiedBusinesses: 0,
+          totalTaps: 0,
+          activeCustomers: 0,
+          rewardsIssued: 0,
+          rewardsRedeemed: 0,
+          pointsAwarded: 0,
+        },
+        stores: [],
+      };
+    }
+
+    const tapRows = await db.select().from(taps).where(inArray(taps.businessId, businessIds));
+    const rewardRows = await db.select().from(rewards).where(inArray(rewards.businessId, businessIds));
+
+    const totals = {
+      businesses: bizRows.length,
+      verifiedBusinesses: bizRows.filter((b) => b.verificationStatus === "verified").length,
+      totalTaps: tapRows.length,
+      activeCustomers: new Set(tapRows.map((t) => t.customerEmail).filter(Boolean)).size,
+      rewardsIssued: rewardRows.length,
+      rewardsRedeemed: rewardRows.filter((r) => r.isRedeemed).length,
+      pointsAwarded: tapRows.reduce((s, t) => s + (t.pointsEarned ?? 0), 0),
+    };
+
+    const stores = bizRows
+      .map((b) => {
+        const bt = tapRows.filter((t) => t.businessId === b.id);
+        const br = rewardRows.filter((r) => r.businessId === b.id);
+        return {
+          id: b.id,
+          name: b.name,
+          verificationStatus: b.verificationStatus ?? "unverified",
+          latitude: b.latitude,
+          longitude: b.longitude,
+          taps: bt.length,
+          customers: new Set(bt.map((t) => t.customerEmail).filter(Boolean)).size,
+          rewardsIssued: br.length,
+          rewardsRedeemed: br.filter((r) => r.isRedeemed).length,
+        };
+      })
+      .sort((a, b) => b.taps - a.taps);
+
+    return { territories: territoriesOwned, totals, stores };
   }
 
   async assignBusinessToTerritory(businessId: string, territoryId: string | null): Promise<Business> {

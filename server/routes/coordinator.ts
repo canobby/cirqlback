@@ -16,4 +16,17 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
       res.status(500).json({ error: "Failed to load coordinator profile" });
     }
   });
+
+  // CHR-52: real territory overview — totals + per-store engagement, scoped to
+  // the coordinator's own territories.
+  app.get("/api/coordinator/territory/overview", async (req, res) => {
+    try {
+      const coordinator = (req as any).coordinator;
+      const overview = await storage.getTerritoryOverview(coordinator.id);
+      res.json(overview);
+    } catch (error) {
+      console.error("Territory overview error:", error);
+      res.status(500).json({ error: "Failed to load territory overview" });
+    }
+  });
 }

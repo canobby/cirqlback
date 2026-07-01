@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Globe, MapPin, Lock } from "lucide-react";
+import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle } from "lucide-react";
 
 interface Territory {
   id: string;
@@ -17,6 +17,43 @@ interface Territory {
 interface CoordinatorMe {
   coordinator: { id: string; displayName?: string | null; planStatus?: string | null };
   territories: Territory[];
+}
+
+interface StoreRow {
+  id: string;
+  name: string;
+  verificationStatus: string;
+  taps: number;
+  customers: number;
+  rewardsIssued: number;
+  rewardsRedeemed: number;
+}
+
+interface TerritoryOverview {
+  totals: {
+    businesses: number;
+    verifiedBusinesses: number;
+    totalTaps: number;
+    activeCustomers: number;
+    rewardsIssued: number;
+    rewardsRedeemed: number;
+    pointsAwarded: number;
+  };
+  stores: StoreRow[];
+}
+
+function MetricCard({ icon: Icon, label, value }: { icon: typeof Store; label: string; value: number }) {
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>
+          <Icon className="h-4 w-4 text-purple-600" />
+        </div>
+        <div className="text-2xl font-bold text-gray-900 dark:text-white">{value.toLocaleString()}</div>
+      </CardContent>
+    </Card>
+  );
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -55,6 +92,11 @@ export default function CoordinatorDashboard() {
     enabled: isAuthenticated,
     retry: false,
   });
+  const { data: overview } = useQuery<TerritoryOverview>({
+    queryKey: ["/api/coordinator/territory/overview"],
+    enabled: isAuthenticated && !isError,
+    retry: false,
+  });
 
   if (authLoading) return <Shell><p className="text-gray-500 text-center mt-16">Loading…</p></Shell>;
   if (!isAuthenticated)
@@ -91,6 +133,73 @@ export default function CoordinatorDashboard() {
           </Badge>
         )}
       </div>
+
+      {overview && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+          <MetricCard icon={Store} label="Businesses" value={overview.totals.businesses} />
+          <MetricCard icon={CheckCircle} label="Verified" value={overview.totals.verifiedBusinesses} />
+          <MetricCard icon={Zap} label="Total Taps" value={overview.totals.totalTaps} />
+          <MetricCard icon={Users} label="Customers" value={overview.totals.activeCustomers} />
+          <MetricCard icon={Gift} label="Rewards Issued" value={overview.totals.rewardsIssued} />
+          <MetricCard icon={Gift} label="Redeemed" value={overview.totals.rewardsRedeemed} />
+        </div>
+      )}
+
+      {overview && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+              <Store className="h-5 w-5 text-purple-600" />
+              Businesses in your territory
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {overview.stores.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                No businesses assigned to your territory yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                      <th className="py-2 pr-4 font-medium">Business</th>
+                      <th className="py-2 px-2 font-medium">Status</th>
+                      <th className="py-2 px-2 font-medium text-right">Taps</th>
+                      <th className="py-2 px-2 font-medium text-right">Customers</th>
+                      <th className="py-2 px-2 font-medium text-right">Issued</th>
+                      <th className="py-2 pl-2 font-medium text-right">Redeemed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {overview.stores.map((s) => (
+                      <tr key={s.id} className="border-b border-gray-100 dark:border-gray-800">
+                        <td className="py-2 pr-4 font-medium text-gray-900 dark:text-white">{s.name}</td>
+                        <td className="py-2 px-2">
+                          <Badge
+                            variant="outline"
+                            className={`text-xs capitalize ${
+                              s.verificationStatus === "verified"
+                                ? "border-green-300 text-green-700"
+                                : "border-gray-300 text-gray-500"
+                            }`}
+                          >
+                            {s.verificationStatus}
+                          </Badge>
+                        </td>
+                        <td className="py-2 px-2 text-right text-gray-900 dark:text-white">{s.taps.toLocaleString()}</td>
+                        <td className="py-2 px-2 text-right text-gray-700 dark:text-gray-300">{s.customers.toLocaleString()}</td>
+                        <td className="py-2 px-2 text-right text-gray-700 dark:text-gray-300">{s.rewardsIssued.toLocaleString()}</td>
+                        <td className="py-2 pl-2 text-right text-gray-700 dark:text-gray-300">{s.rewardsRedeemed.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
