@@ -298,6 +298,57 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // ── CHR-32 / CHR-64: coordinator payouts (reporting-only) ─────────────────
+  // Admin-gated via the /api/admin prefix (isAdminAuthenticated in the root).
+
+  // List a coordinator's payouts.
+  app.get("/api/admin/coordinators/:coordinatorId/payouts", async (req, res) => {
+    try {
+      res.json(await storage.getCoordinatorPayouts(req.params.coordinatorId));
+    } catch (error) {
+      console.error("Admin list payouts error:", error);
+      res.status(500).json({ error: "Failed to load payouts" });
+    }
+  });
+
+  // Generate a pending payout from the coordinator's unpaid earnings (optionally
+  // scoped to one ?month / body.periodMonth). 409 when nothing is unpaid.
+  app.post("/api/admin/coordinators/:coordinatorId/payouts", async (req, res) => {
+    try {
+      const coordinator = await storage.getCoordinator(req.params.coordinatorId);
+      if (!coordinator) return res.status(404).json({ error: "Coordinator not found" });
+      const periodMonth =
+        typeof req.body?.periodMonth === "string" ? req.body.periodMonth : undefined;
+      const payout = await storage.generateCoordinatorPayout(coordinator.id, periodMonth);
+      if (!payout) return res.status(409).json({ error: "No unpaid earnings to pay out" });
+      res.status(201).json(payout);
+    } catch (error) {
+      console.error("Admin generate payout error:", error);
+      res.status(500).json({ error: "Failed to generate payout" });
+    }
+  });
+
+  // Mark a payout paid (or void to release its earnings).
+  // TODO(CHR-32 follow-up): automated Stripe Connect path — create a Connect
+  // account per coordinator + `stripe.transfers.create({ amount: totalShareCents,
+  // destination: acct })`, set method='stripe_connect' and reference=transfer.id.
+  app.post("/api/admin/payouts/:id/pay", async (req, res) => {
+    try {
+      const payout = await storage.getCoordinatorPayout(req.params.id);
+      if (!payout) return res.status(404).json({ error: "Payout not found" });
+      const status = req.body?.status === "void" ? "void" : "paid";
+      const updated = await storage.updateCoordinatorPayout(req.params.id, {
+        status,
+        reference: req.body?.reference,
+        notes: req.body?.notes,
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Admin pay payout error:", error);
+      res.status(500).json({ error: "Failed to update payout" });
+    }
+  });
+
   // AI-powered endpoints using OpenAI
   app.post("/api/ai/business-insights", async (req, res) => {
     try {

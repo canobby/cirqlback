@@ -222,7 +222,27 @@ export const coordinatorEarnings = pgTable("coordinator_earnings", {
   currency: varchar("currency").default("usd"),
   stripePaymentIntentId: varchar("stripe_payment_intent_id").unique(), // idempotency key
   periodMonth: varchar("period_month"), // YYYY-MM for monthly aggregation
+  payoutId: varchar("payout_id"), // CHR-64: set once this earning is rolled into a payout
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ── CHR-32 / CHR-64: coordinator payouts (reporting-only ledger) ──
+// A payout rolls up a coordinator's unpaid earnings for a period. Reporting-only
+// for now (status/mark-paid tracked by an admin); Stripe Connect transfers are a
+// documented follow-up (method='stripe_connect').
+export const coordinatorPayouts = pgTable("coordinator_payouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coordinatorId: varchar("coordinator_id").references(() => coordinators.id).notNull(),
+  periodMonth: varchar("period_month"), // YYYY-MM (or null for ad-hoc)
+  totalShareCents: integer("total_share_cents").notNull(),
+  currency: varchar("currency").default("usd"),
+  status: varchar("status").default("pending"), // pending | paid | void
+  method: varchar("method").default("manual"), // manual | stripe_connect
+  reference: varchar("reference"), // external payout/transfer reference
+  notes: text("notes"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // ── CHR-33: first-class multi-store group campaigns ──
@@ -545,6 +565,12 @@ export const insertCoordinatorEarningSchema = createInsertSchema(coordinatorEarn
   createdAt: true,
 });
 
+export const insertCoordinatorPayoutSchema = createInsertSchema(coordinatorPayouts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertGroupCampaignSchema = createInsertSchema(groupCampaigns).omit({
   id: true,
   createdAt: true,
@@ -810,6 +836,8 @@ export type RegionalOffer = typeof regionalOffers.$inferSelect;
 export type InsertRegionalOffer = z.infer<typeof insertRegionalOfferSchema>;
 export type CoordinatorEarning = typeof coordinatorEarnings.$inferSelect;
 export type InsertCoordinatorEarning = z.infer<typeof insertCoordinatorEarningSchema>;
+export type CoordinatorPayout = typeof coordinatorPayouts.$inferSelect;
+export type InsertCoordinatorPayout = z.infer<typeof insertCoordinatorPayoutSchema>;
 export type GroupCampaign = typeof groupCampaigns.$inferSelect;
 export type InsertGroupCampaign = z.infer<typeof insertGroupCampaignSchema>;
 export type GroupCampaignMember = typeof groupCampaignMembers.$inferSelect;

@@ -471,4 +471,14 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
       res.status(500).json({ error: "Failed to load earnings" });
     }
   });
+
+  // CHR-64: the coordinator's payout history (read-only; admins create/pay them).
+  app.get("/api/coordinator/payouts", async (req, res) => {
+    try {
+      res.json(await storage.getCoordinatorPayouts(coordinatorOf(req).id));
+    } catch (error) {
+      console.error("Coordinator payouts error:", error);
+      res.status(500).json({ error: "Failed to load payouts" });
+    }
+  });
 }

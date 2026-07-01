@@ -15,6 +15,7 @@ import {
   groupCampaignMembers,
   groupCampaignProgress,
   coordinatorEarnings,
+  coordinatorPayouts,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -46,6 +47,7 @@ import {
   type InsertGroupCampaign,
   type GroupCampaignMember,
   type CoordinatorEarning,
+  type CoordinatorPayout,
   type SalesData,
   type InsertSalesData,
   type MonthlySalesSummary,
@@ -54,7 +56,7 @@ import {
   type InsertBusinessGoals,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, sql, count, inArray } from "drizzle-orm";
+import { eq, desc, and, or, sql, count, inArray, isNull } from "drizzle-orm";
 import { tierForPoints, levelForPoints, pointsToNextLevel } from "./gamification";
 
 export interface IStorage {
@@ -717,10 +719,89 @@ export class DatabaseStorage implements IStorage {
       lifetime: tally(rows),
       currentMonth: { month: currentMonth, ...tally(rows.filter((r) => r.periodMonth === currentMonth)) },
       trailing12Months: tally(rows.filter((r) => r.periodMonth && last12Set.has(r.periodMonth))),
+      // CHR-64: not-yet-paid earnings (no payout linked) = the next pending payout.
+      unpaid: tally(rows.filter((r) => !r.payoutId)),
       bySource: { subscription: bySource("subscription"), addon: bySource("addon") },
       monthly,
       recent,
     };
+  }
+
+  // ── CHR-64: coordinator payouts (reporting-only) ──
+
+  // Roll a coordinator's UNPAID earnings for a period into a pending payout and
+  // link them so they aren't re-counted. Null when there's nothing unpaid.
+  async generateCoordinatorPayout(
+    coordinatorId: string,
+    periodMonth?: string
+  ): Promise<CoordinatorPayout | null> {
+    const conds = [
+      eq(coordinatorEarnings.coordinatorId, coordinatorId),
+      isNull(coordinatorEarnings.payoutId),
+    ];
+    if (periodMonth) conds.push(eq(coordinatorEarnings.periodMonth, periodMonth));
+    const unpaid = await db.select().from(coordinatorEarnings).where(and(...conds));
+    if (unpaid.length === 0) return null;
+
+    const total = unpaid.reduce((s, r) => s + (r.shareAmountCents || 0), 0);
+    const [payout] = await db
+      .insert(coordinatorPayouts)
+      .values({
+        coordinatorId,
+        periodMonth: periodMonth ?? null,
+        totalShareCents: total,
+        currency: unpaid[0].currency || "usd",
+        status: "pending",
+        method: "manual",
+      })
+      .returning();
+
+    await db
+      .update(coordinatorEarnings)
+      .set({ payoutId: payout.id })
+      .where(inArray(coordinatorEarnings.id, unpaid.map((r) => r.id)));
+
+    return payout;
+  }
+
+  async getCoordinatorPayout(id: string): Promise<CoordinatorPayout | undefined> {
+    const [row] = await db.select().from(coordinatorPayouts).where(eq(coordinatorPayouts.id, id));
+    return row || undefined;
+  }
+
+  async getCoordinatorPayouts(coordinatorId: string): Promise<CoordinatorPayout[]> {
+    return await db
+      .select()
+      .from(coordinatorPayouts)
+      .where(eq(coordinatorPayouts.coordinatorId, coordinatorId))
+      .orderBy(desc(coordinatorPayouts.createdAt));
+  }
+
+  // Mark a payout paid (reporting-only). Voiding a payout releases its earnings.
+  async updateCoordinatorPayout(
+    id: string,
+    updates: { status?: string; reference?: string; notes?: string }
+  ): Promise<CoordinatorPayout> {
+    const set: Record<string, unknown> = { updatedAt: new Date() };
+    if (updates.reference !== undefined) set.reference = updates.reference;
+    if (updates.notes !== undefined) set.notes = updates.notes;
+    if (updates.status) {
+      set.status = updates.status;
+      set.paidAt = updates.status === "paid" ? new Date() : null;
+    }
+    const [row] = await db
+      .update(coordinatorPayouts)
+      .set(set)
+      .where(eq(coordinatorPayouts.id, id))
+      .returning();
+    // Voiding frees the earnings to be re-paid later.
+    if (updates.status === "void") {
+      await db
+        .update(coordinatorEarnings)
+        .set({ payoutId: null })
+        .where(eq(coordinatorEarnings.payoutId, id));
+    }
+    return row;
   }
 
   // ── CHR-33 / CHR-56: multi-store group campaigns ──

@@ -65,6 +65,7 @@ interface EarningsSummary {
   lifetime: EarningsTotal;
   currentMonth: { month: string } & EarningsTotal;
   trailing12Months: EarningsTotal;
+  unpaid: EarningsTotal;
   bySource: { subscription: EarningsTotal; addon: EarningsTotal };
   monthly: ({ month: string } & EarningsTotal)[];
   recent: {
@@ -76,6 +77,17 @@ interface EarningsSummary {
     sharePct: number;
     shareCents: number;
   }[];
+}
+
+// CHR-64: coordinator payout record (read-only in the dashboard).
+interface Payout {
+  id: string;
+  periodMonth: string | null;
+  totalShareCents: number;
+  status: string;
+  method: string;
+  paidAt: string | null;
+  createdAt: string | null;
 }
 
 interface TerritoryOverview {
@@ -275,6 +287,12 @@ export default function CoordinatorDashboard() {
   // CHR-63: revenue & licensing
   const { data: earnings } = useQuery<EarningsSummary>({
     queryKey: ["/api/coordinator/earnings/summary"],
+    enabled: isAuthenticated && !isError,
+    retry: false,
+  });
+  // CHR-64: read-only payout history
+  const { data: payouts } = useQuery<Payout[]>({
+    queryKey: ["/api/coordinator/payouts"],
     enabled: isAuthenticated && !isError,
     retry: false,
   });
@@ -606,6 +624,42 @@ export default function CoordinatorDashboard() {
                 </div>
               );
             })()}
+
+            {/* CHR-64: payout status (read-only; admins generate + mark paid) */}
+            <div className="mb-6 border-t border-gray-100 dark:border-gray-800 pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Payouts</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  Pending (unpaid): <span className="font-semibold text-gray-900 dark:text-white">{usd(earnings.unpaid.shareCents)}</span>
+                </span>
+              </div>
+              {(payouts || []).length === 0 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  No payouts yet. Your coordinator earnings are tracked above; payouts are issued by Cirqlback.
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {(payouts || []).map((p) => (
+                    <div key={p.id} className="flex items-center justify-between text-sm p-2 rounded bg-gray-50 dark:bg-gray-800">
+                      <span className="text-gray-700 dark:text-gray-300">{p.periodMonth || "Ad-hoc"}</span>
+                      <span className="text-gray-900 dark:text-white font-medium">{usd(p.totalShareCents)}</span>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs capitalize ${
+                          p.status === "paid"
+                            ? "border-green-300 text-green-700"
+                            : p.status === "void"
+                            ? "border-gray-300 text-gray-400"
+                            : "border-amber-300 text-amber-600"
+                        }`}
+                      >
+                        {p.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="flex flex-wrap items-end gap-3 border-t border-gray-100 dark:border-gray-800 pt-4">
               <div>
