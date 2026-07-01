@@ -44,12 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Maps API configuration
   app.get('/api/maps/config', getMapsConfig);
-  
-  // Serve test page
-  app.get('/test-quest', (req, res) => {
-    res.sendFile('/home/runner/workspace/test-quest.html');
-  });
-  
+
   // Derive subscription context from the authenticated session user.
   // (Previously hardcoded 'professional' for everyone.) No-op when logged out.
   const checkSubscriptionLimits = async (req: any, res: any, next: any) => {
