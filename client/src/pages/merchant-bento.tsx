@@ -11,6 +11,7 @@ import {
 import GroupCampaignsPanel from "@/components/merchant/group-campaigns-panel";
 import AddonsPanel from "@/components/merchant/addons-panel";
 import TapBrandingEditor from "@/components/merchant/tap-branding-editor";
+import ScavengerBuilder from "@/components/merchant/scavenger-builder";
 
 export default function MerchantBento() {
   const [selectedBusiness] = useState("business-1");
@@ -62,6 +63,9 @@ export default function MerchantBento() {
 
         {/* CHR-68: custom tap-screen branding editor (add-on) */}
         <TapBrandingEditor />
+
+        {/* CHR-69: contest & scavenger-hunt builder (add-on) */}
+        <ScavengerBuilder />
 
         {/* Bento Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-6 auto-rows-min">

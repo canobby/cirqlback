@@ -77,6 +77,60 @@ export function registerGroupCampaignRoutes(app: Express, _deps: RouteDeps) {
     }
   });
 
+  // CHR-69: contest & scavenger-hunt builder (add-on). A paid layer over the
+  // group-campaign model — gated by the scavenger_builder entitlement on the
+  // host business. Produces a normal group campaign that runs on the existing
+  // tap/progress loop (CHR-57).
+  app.post("/api/scavenger-hunts", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const { businessId, name, description, storeIds, requiredStores, rewardTitle, rewardType, rewardValue, rewardPoints } =
+        req.body || {};
+      if (!name) return res.status(400).json({ error: "name is required" });
+      if (!businessId) return res.status(400).json({ error: "businessId (host) is required" });
+
+      const host = await storage.getBusiness(businessId);
+      if (!host || host.ownerId !== userId) {
+        return res.status(403).json({ error: "Not your business" });
+      }
+      if (!(await storage.businessHasAddon(businessId, "scavenger_builder"))) {
+        return res.status(402).json({ error: "Contest & Scavenger Hunt Builder add-on required", addonKey: "scavenger_builder" });
+      }
+
+      // Members = the host + any of the merchant's own stores selected.
+      const ids: string[] = Array.from(new Set([businessId, ...(Array.isArray(storeIds) ? storeIds : [])]));
+
+      const campaign = await storage.createGroupCampaign({
+        name,
+        description,
+        ruleType: "any_n",
+        requiredStores: Number(requiredStores) > 0 ? Number(requiredStores) : Math.max(1, ids.length),
+        rewardType: rewardType || "points",
+        rewardTitle,
+        rewardValue: rewardValue != null ? String(rewardValue) : null,
+        rewardPoints: Number(rewardPoints) || 0,
+        createdByUserId: userId,
+        creatorType: "business",
+        isOpen: false,
+      } as any);
+
+      let added = 0;
+      for (const bid of ids) {
+        const biz = await storage.getBusiness(bid);
+        if (biz && biz.ownerId === userId) {
+          await storage.addGroupCampaignMember(campaign.id, bid, "joined");
+          added++;
+        }
+      }
+
+      const full = await storage.getGroupCampaignWithMembers(campaign.id);
+      res.status(201).json({ ...full, addedMembers: added });
+    } catch (error) {
+      console.error("Create scavenger hunt error:", error);
+      res.status(500).json({ error: "Failed to create scavenger hunt" });
+    }
+  });
+
   // CHR-58: the current merchant's own businesses (for the group-campaign UI).
   app.get("/api/my/businesses", isAuthenticated, async (req, res) => {
     try {
