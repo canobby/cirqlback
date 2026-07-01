@@ -226,7 +226,7 @@ export function registerDiscoveryMarketingRoutes(app: Express, deps: RouteDeps) 
   // Cirql Platform API routes
   app.post("/api/cirql/tap", async (req, res) => {
     try {
-      const { tagIdentifier, tagId, customerEmail, customerName } = req.body;
+      const { tagIdentifier, tagId, customerEmail, customerName, deviceFingerprint, latitude, longitude } = req.body;
       if (!customerEmail) {
         return res.status(400).json({ error: "customerEmail is required" });
       }
@@ -244,17 +244,30 @@ export function registerDiscoveryMarketingRoutes(app: Express, deps: RouteDeps) 
         return res.status(400).json({ error: "This Cirql tag is not active" });
       }
 
-      const result = await storage.processTap({
-        tagId: tag.id,
-        businessId: tag.businessId,
-        campaignId: tag.campaignId ?? undefined,
-        customerEmail: String(customerEmail).toLowerCase().trim(),
-        customerName,
-      });
+      const result = await storage.processTap(
+        {
+          tagId: tag.id,
+          businessId: tag.businessId,
+          campaignId: tag.campaignId ?? undefined,
+          customerEmail: String(customerEmail).toLowerCase().trim(),
+          customerName,
+          deviceFingerprint: typeof deviceFingerprint === "string" ? deviceFingerprint : undefined,
+        },
+        {
+          latitude: typeof latitude === "number" ? latitude : undefined,
+          longitude: typeof longitude === "number" ? longitude : undefined,
+        }
+      );
 
       if (!result.success) {
-        // Cooldown / anti-abuse rejection.
-        return res.status(429).json({ platform: "cirql", success: false, message: result.message });
+        // Map the anti-abuse reason to an HTTP status.
+        const status =
+          result.reason === "too_far" || result.reason === "location_required"
+            ? 403
+            : result.reason === "device_throttled" || result.reason === "cooldown"
+            ? 429
+            : 400;
+        return res.status(status).json({ platform: "cirql", success: false, reason: result.reason, message: result.message });
       }
 
       const broadcast = (global as any).broadcastToClients;

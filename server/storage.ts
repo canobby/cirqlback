@@ -79,7 +79,7 @@ export interface IStorage {
   deleteNFCTag(id: string): Promise<boolean>;
   
   // Tap operations
-  processTap(tap: InsertTap): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string }>;
+  processTap(tap: InsertTap, opts?: { latitude?: number; longitude?: number }): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string }>;
   getTaps(businessId?: string, customerEmail?: string): Promise<Tap[]>;
   
   // Reward operations
@@ -109,6 +109,18 @@ export interface IStorage {
   getRealVsPlatformComparison(businessId: string): Promise<any>;
   addBusinessGoal(goal: InsertBusinessGoals): Promise<BusinessGoals>;
   getBusinessGoals(businessId: string): Promise<BusinessGoals[]>;
+}
+
+// CHR-48: great-circle distance between two lat/lng points, in metres.
+function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6_371_000; // Earth radius in metres
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 export class DatabaseStorage implements IStorage {
@@ -447,9 +459,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Tap operations
-  async processTap(tap: InsertTap): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string }> {
+  async processTap(
+    tap: InsertTap,
+    opts?: { latitude?: number; longitude?: number }
+  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string }> {
     try {
-      // Anti-abuse: reject a repeat tap of the same tag by the same customer
+      const now = Date.now();
+
+      // Anti-abuse 1: reject a repeat tap of the same tag by the same customer
       // within a short cooldown window.
       const COOLDOWN_MS = 60 * 1000;
       const [recent] = await db
@@ -458,16 +475,72 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(taps.tagId, tap.tagId), eq(taps.customerEmail, tap.customerEmail)))
         .orderBy(desc(taps.createdAt))
         .limit(1);
-      if (recent?.createdAt && Date.now() - recent.createdAt.getTime() < COOLDOWN_MS) {
+      if (recent?.createdAt && now - recent.createdAt.getTime() < COOLDOWN_MS) {
         return {
           success: false,
+          reason: "cooldown",
           message: "You've already tapped this tag. Please wait a moment before tapping again.",
         };
+      }
+
+      // Anti-abuse 2: per-device rate limit across ALL tags. No-account
+      // customers are identified only by a device fingerprint, so a single
+      // device hammering many tags/emails is throttled here.
+      const DEVICE_WINDOW_MS = 60 * 1000;
+      const DEVICE_MAX = 8;
+      if (tap.deviceFingerprint) {
+        const since = new Date(now - DEVICE_WINDOW_MS);
+        const [{ c }] = await db
+          .select({ c: count() })
+          .from(taps)
+          .where(
+            and(
+              eq(taps.deviceFingerprint, tap.deviceFingerprint),
+              sql`${taps.createdAt} >= ${since}`
+            )
+          );
+        if (Number(c) >= DEVICE_MAX) {
+          return {
+            success: false,
+            reason: "device_throttled",
+            message: "Too many taps from this device. Please slow down and try again shortly.",
+          };
+        }
       }
 
       // Resolve the campaign (if any) to determine reward + points.
       const campaign = tap.campaignId ? await this.getCampaign(tap.campaignId) : undefined;
       const campaignActive = !!campaign && campaign.isActive === true;
+
+      // Anti-abuse 3: optional per-campaign GPS proximity gate. Only unlock the
+      // reward when the customer is within the configured radius of the business.
+      if (campaignActive && campaign!.gpsRequired) {
+        if (opts?.latitude == null || opts?.longitude == null) {
+          return {
+            success: false,
+            reason: "location_required",
+            message: "Please enable location to earn this reward.",
+          };
+        }
+        const business = await this.getBusiness(tap.businessId);
+        if (business?.latitude != null && business?.longitude != null) {
+          const radius = campaign!.gpsRadius ?? 100;
+          const distance = haversineMeters(
+            opts.latitude,
+            opts.longitude,
+            business.latitude,
+            business.longitude
+          );
+          if (distance > radius) {
+            return {
+              success: false,
+              reason: "too_far",
+              message: `You must be within ${radius}m of ${business.name} to earn this reward.`,
+            };
+          }
+        }
+      }
+
       const points = campaignActive ? (campaign!.pointsAwarded ?? 0) : 0;
       const customer = tap.customerEmail ? await this.getUserByEmail(tap.customerEmail) : undefined;
 

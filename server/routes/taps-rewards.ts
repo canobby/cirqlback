@@ -23,12 +23,22 @@ export function registerTapsRewardsRoutes(app: Express, deps: RouteDeps) {
       }
       
       // Real tap processing (records the tap, awards points/reward, enforces
-      // the anti-abuse cooldown). No more simulated fallback.
+      // the anti-abuse cooldown, per-device throttle, and optional GPS gate).
       const validatedData = insertTapSchema.parse(req.body);
-      const result = await storage.processTap(validatedData);
+      const { latitude, longitude } = req.body;
+      const result = await storage.processTap(validatedData, {
+        latitude: typeof latitude === "number" ? latitude : undefined,
+        longitude: typeof longitude === "number" ? longitude : undefined,
+      });
 
       if (!result.success) {
-        return res.status(409).json({ error: result.message });
+        const status =
+          result.reason === "too_far" || result.reason === "location_required"
+            ? 403
+            : result.reason === "device_throttled" || result.reason === "cooldown"
+            ? 429
+            : 409;
+        return res.status(status).json({ error: result.message, reason: result.reason });
       }
 
       const broadcastToClients = (global as any).broadcastToClients;

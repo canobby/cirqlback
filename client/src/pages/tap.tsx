@@ -8,6 +8,46 @@ import { useToast } from "@/hooks/use-toast";
 import { Zap, Gift, Star, CheckCircle, Clock, Camera, Sparkles, Play, Share2 } from "lucide-react";
 import { useLocation } from "wouter";
 
+// CHR-48: a stable per-browser device id for anti-abuse. Combines a hash of
+// device attributes with a random suffix persisted in localStorage, so the
+// same device reports the same fingerprint across taps (no account needed).
+function getDeviceFingerprint(): string {
+  const KEY = "cirql_device_id";
+  try {
+    let id = localStorage.getItem(KEY);
+    if (!id) {
+      const seed = [
+        navigator.userAgent,
+        screen.width,
+        screen.height,
+        screen.colorDepth,
+        Intl.DateTimeFormat().resolvedOptions().timeZone,
+        navigator.language,
+      ].join("|");
+      let h = 0;
+      for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+      id = `dev_${(h >>> 0).toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch {
+    return "dev_unknown";
+  }
+}
+
+// CHR-48: best-effort geolocation for the optional per-campaign GPS gate.
+// Resolves empty (never rejects) if unavailable or denied.
+function getGeo(): Promise<{ latitude?: number; longitude?: number }> {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve({});
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      () => resolve({}),
+      { timeout: 5000, maximumAge: 60000 }
+    );
+  });
+}
+
 export default function TapPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -75,6 +115,7 @@ export default function TapPage() {
 
     setLoading(true);
     try {
+      const geo = await getGeo();
       const result = await apiRequest("POST", "/api/taps", {
         tagId: tagInfo?.tag?.id || "demo_tag_1",
         businessId: tagInfo?.business?.id || "demo_business_1",
@@ -83,6 +124,9 @@ export default function TapPage() {
         customerName: tapData.customerName,
         pointsEarned: tagInfo?.campaign?.pointsAwarded || 100,
         rewardValue: tagInfo?.campaign?.value || "10.00",
+        deviceFingerprint: getDeviceFingerprint(),
+        latitude: geo.latitude,
+        longitude: geo.longitude,
       });
 
       setTapResult(result);
@@ -90,13 +134,6 @@ export default function TapPage() {
         title: "Tap Successful! 🎉",
         description: "You've earned a reward!",
       });
-
-      // Trigger AR experience if enabled
-      if (tagInfo?.campaign?.arEnabled && hasArEnabled) {
-        setTimeout(() => {
-          setLocation(`/ar/${tagInfo.tag.id}`);
-        }, 1500);
-      }
     } catch (error) {
       toast({
         title: "Tap Failed",

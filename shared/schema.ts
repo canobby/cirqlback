@@ -155,6 +155,8 @@ export const campaigns = pgTable("campaigns", {
   pointsAwarded: integer("points_awarded").default(0),
   maxRedemptions: integer("max_redemptions"),
   currentRedemptions: integer("current_redemptions").default(0),
+  gpsRequired: boolean("gps_required").default(false), // CHR-48: gate reward on proximity
+  gpsRadius: integer("gps_radius"), // CHR-48: allowed distance from business in metres (default applied in code)
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   isActive: boolean("is_active").default(true),
@@ -189,6 +191,7 @@ export const taps = pgTable("taps", {
   customerName: varchar("customer_name"),
   pointsEarned: integer("points_earned").default(0),
   rewardValue: decimal("reward_value", { precision: 10, scale: 2 }),
+  deviceFingerprint: varchar("device_fingerprint"), // CHR-48: client device id for anti-abuse (no-account customers)
   metadata: jsonb("metadata"), // additional data like device info, location
   createdAt: timestamp("created_at").defaultNow(),
 });
