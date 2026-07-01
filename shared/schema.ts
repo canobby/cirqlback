@@ -11,6 +11,7 @@ import {
   decimal,
   uuid,
   primaryKey,
+  unique,
   real,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -929,7 +930,7 @@ export const teamMemberships = pgTable("team_memberships", {
   pointsContributed: integer("points_contributed").default(0),
   isActive: boolean("is_active").default(true),
 }, (table) => ({
-  uniqueTeamUser: primaryKey({ columns: [table.teamId, table.userId] })
+  uniqueTeamUser: unique("team_memberships_team_user_unique").on(table.teamId, table.userId)
 }));
 
 // Community Challenges
@@ -968,7 +969,7 @@ export const userChallengeProgress = pgTable("user_challenge_progress", {
   badgesEarned: text("badges_earned").array().default(sql`'{}'`),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
-  uniqueUserChallenge: primaryKey({ columns: [table.userId, table.challengeId] })
+  uniqueUserChallenge: unique("user_challenge_progress_user_challenge_unique").on(table.userId, table.challengeId)
 }));
 
 // ADVANCED AR & GAMING
@@ -1023,7 +1024,7 @@ export const arHuntProgress = pgTable("ar_hunt_progress", {
   totalTime: integer("total_time"), // minutes taken to complete
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
-  uniqueUserHunt: primaryKey({ columns: [table.userId, table.huntId] })
+  uniqueUserHunt: unique("ar_hunt_progress_user_hunt_unique").on(table.userId, table.huntId)
 }));
 
 // HYPERLOCAL AI ANALYTICS
@@ -1089,7 +1090,7 @@ export const friendConnections = pgTable("friend_connections", {
   mutualRewards: integer("mutual_rewards").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
-  uniqueFriendship: primaryKey({ columns: [table.userAId, table.userBId] })
+  uniqueFriendship: unique("friend_connections_user_pair_unique").on(table.userAId, table.userBId)
 }));
 
 // Viral Campaigns

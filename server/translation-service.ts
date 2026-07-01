@@ -1,11 +1,26 @@
 import OpenAI from "openai";
 import { Request, Response } from "express";
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY environment variable must be set");
+// Lazily construct the OpenAI client so the server can boot without an
+// OPENAI_API_KEY. Translation endpoints only fail (with a clear message) if
+// actually called without a key, rather than crashing the server at startup.
+let openaiClient: OpenAI | null = null;
+function getOpenAIClient(): OpenAI {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY environment variable must be set to use AI features");
+  }
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openaiClient;
 }
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new Proxy({} as OpenAI, {
+  get(_target, prop, receiver) {
+    const client = getOpenAIClient();
+    const value = Reflect.get(client as any, prop, receiver);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
 
 // Language mapping for OpenAI
 const LANGUAGE_MAPPING: Record<string, string> = {
