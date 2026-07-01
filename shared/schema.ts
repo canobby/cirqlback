@@ -87,6 +87,8 @@ export const businesses = pgTable("businesses", {
   name: varchar("name").notNull(),
   description: text("description"),
   address: varchar("address"),
+  latitude: real("latitude"),   // for the discovery map
+  longitude: real("longitude"),
   phone: varchar("phone"),
   email: varchar("email"),
   website: varchar("website"),
