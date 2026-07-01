@@ -94,6 +94,7 @@ export interface IStorage {
   getTaps(businessId?: string, customerEmail?: string): Promise<Tap[]>;
   
   // Reward operations
+  getReward(id: string): Promise<Reward | undefined>;
   getRewardsByUser(userId: string): Promise<Reward[]>;
   getRewardsByEmail(email: string): Promise<Reward[]>;
   redeemReward(rewardId: string): Promise<Reward>;
@@ -165,6 +166,11 @@ export class DatabaseStorage implements IStorage {
   async createUser(userData: UpsertUser): Promise<User> {
     const [user] = await db.insert(users).values(userData).returning();
     return user;
+  }
+
+  async getReward(id: string): Promise<Reward | undefined> {
+    const [reward] = await db.select().from(rewards).where(eq(rewards.id, id));
+    return reward || undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {

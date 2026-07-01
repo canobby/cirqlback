@@ -91,6 +91,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // with an admin_users record). Previously these were fully unauthenticated.
   app.use('/api/admin', isAdminAuthenticated);
 
+  // CHR-16: does the authenticated user own the business behind a resource?
+  const userOwnsBusiness = async (userId: string, businessId?: string | null): Promise<boolean> => {
+    if (!businessId) return false;
+    const business = await storage.getBusiness(businessId);
+    return !!business && business.ownerId === userId;
+  };
+
   // Starter tier expiration check route
   app.get('/api/account/check-expiration', async (req, res) => {
     try {
@@ -362,16 +369,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/campaigns/:id", async (req, res) => {
+  app.patch("/api/campaigns/:id", isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
-      const updates = req.body;
-      const campaign = await storage.updateCampaign(id, updates);
-      if (!campaign) {
+      const existing = await storage.getCampaign(id);
+      if (!existing) {
         return res.status(404).json({ error: "Campaign not found" });
       }
+      if (!(await userOwnsBusiness((req.user as any).id, existing.businessId))) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      // Validate + strip unknown fields (prevents mass-assignment of arbitrary columns).
+      const updates = insertCampaignSchema.partial().parse(req.body);
+      const campaign = await storage.updateCampaign(id, updates);
       res.json(campaign);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Failed to update campaign" });
     }
   });
@@ -492,49 +507,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update NFC tag
-  app.patch("/api/nfc-tags/:id", async (req, res) => {
+  app.patch("/api/nfc-tags/:id", isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
-      const updates = req.body;
-      
-      try {
-        const tag = await storage.updateNFCTag(id, updates);
-        if (!tag) {
-          return res.status(404).json({ error: "NFC tag not found" });
-        }
-        res.json(tag);
-      } catch (dbError) {
-        console.error("Database error updating NFC tag:", dbError);
-        
-        // Return success response for testing
-        res.json({
-          id,
-          ...updates,
-          updatedAt: new Date()
-        });
+      const existing = await storage.getNFCTag(id);
+      if (!existing) {
+        return res.status(404).json({ error: "NFC tag not found" });
       }
+      if (!(await userOwnsBusiness((req.user as any).id, existing.businessId))) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const updates = insertNfcTagSchema.partial().parse(req.body);
+      const tag = await storage.updateNFCTag(id, updates);
+      res.json(tag);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Failed to update NFC tag" });
     }
   });
 
   // Delete NFC tag
-  app.delete("/api/nfc-tags/:id", async (req, res) => {
+  app.delete("/api/nfc-tags/:id", isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
-      
-      try {
-        const success = await storage.deleteNFCTag(id);
-        if (!success) {
-          return res.status(404).json({ error: "NFC tag not found" });
-        }
-        res.json({ success: true, message: "NFC tag deleted successfully" });
-      } catch (dbError) {
-        console.error("Database error deleting NFC tag:", dbError);
-        
-        // Return success response for testing
-        res.json({ success: true, message: "NFC tag deleted successfully" });
+      const existing = await storage.getNFCTag(id);
+      if (!existing) {
+        return res.status(404).json({ error: "NFC tag not found" });
       }
+      if (!(await userOwnsBusiness((req.user as any).id, existing.businessId))) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const success = await storage.deleteNFCTag(id);
+      if (!success) {
+        return res.status(404).json({ error: "NFC tag not found" });
+      }
+      res.json({ success: true, message: "NFC tag deleted successfully" });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete NFC tag" });
     }
@@ -810,13 +819,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/rewards/:id/redeem", async (req, res) => {
+  app.patch("/api/rewards/:id/redeem", isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
-      const reward = await storage.redeemReward(id);
-      if (!reward) {
+      const existing = await storage.getReward(id);
+      if (!existing) {
         return res.status(404).json({ error: "Reward not found" });
       }
+      // A reward can only be redeemed by the user it belongs to.
+      if (existing.userId !== (req.user as any).id) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const reward = await storage.redeemReward(id);
       res.json(reward);
     } catch (error) {
       res.status(500).json({ error: "Failed to redeem reward" });
