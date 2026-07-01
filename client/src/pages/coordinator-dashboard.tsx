@@ -1,10 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle } from "lucide-react";
+import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus } from "lucide-react";
 
 interface Territory {
   id: string;
@@ -97,6 +101,45 @@ export default function CoordinatorDashboard() {
     enabled: isAuthenticated && !isError,
     retry: false,
   });
+  const { data: templates } = useQuery<{ key: string; label: string }[]>({
+    queryKey: ["/api/coordinator/store-templates"],
+    enabled: isAuthenticated && !isError,
+    retry: false,
+  });
+
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [form, setForm] = useState({ name: "", territoryId: "", templateKey: "" });
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/coordinator/territory/overview"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/coordinator/businesses"] });
+  };
+
+  const onboard = useMutation({
+    mutationFn: async () =>
+      apiRequest("POST", "/api/coordinator/businesses", {
+        name: form.name,
+        territoryId: form.territoryId,
+        templateKey: form.templateKey || undefined,
+      }),
+    onSuccess: () => {
+      toast({ title: "Business onboarded", description: `${form.name} added to your territory.` });
+      setForm({ name: "", territoryId: "", templateKey: "" });
+      refresh();
+    },
+    onError: () => toast({ title: "Couldn't onboard business", variant: "destructive" }),
+  });
+
+  const verify = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) =>
+      apiRequest("PATCH", `/api/coordinator/businesses/${id}/verify`, { status }),
+    onSuccess: () => {
+      toast({ title: "Verification updated" });
+      refresh();
+    },
+    onError: () => toast({ title: "Couldn't update verification", variant: "destructive" }),
+  });
 
   if (authLoading) return <Shell><p className="text-gray-500 text-center mt-16">Loading…</p></Shell>;
   if (!isAuthenticated)
@@ -134,6 +177,52 @@ export default function CoordinatorDashboard() {
         )}
       </div>
 
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+            <Plus className="h-5 w-5 text-purple-600" />
+            Onboard a business
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-3">
+            <Input
+              placeholder="Business name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="md:flex-1"
+            />
+            <select
+              value={form.territoryId}
+              onChange={(e) => setForm({ ...form, territoryId: e.target.value })}
+              className="h-10 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 text-sm"
+            >
+              <option value="">Select territory…</option>
+              {(data.territories || []).map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            <select
+              value={form.templateKey}
+              onChange={(e) => setForm({ ...form, templateKey: e.target.value })}
+              className="h-10 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 text-sm"
+            >
+              <option value="">No template</option>
+              {(templates || []).map((t) => (
+                <option key={t.key} value={t.key}>{t.label}</option>
+              ))}
+            </select>
+            <Button
+              onClick={() => onboard.mutate()}
+              disabled={!form.name || !form.territoryId || onboard.isPending}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+            >
+              Onboard
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {overview && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <MetricCard icon={Store} label="Businesses" value={overview.totals.businesses} />
@@ -168,7 +257,8 @@ export default function CoordinatorDashboard() {
                       <th className="py-2 px-2 font-medium text-right">Taps</th>
                       <th className="py-2 px-2 font-medium text-right">Customers</th>
                       <th className="py-2 px-2 font-medium text-right">Issued</th>
-                      <th className="py-2 pl-2 font-medium text-right">Redeemed</th>
+                      <th className="py-2 px-2 font-medium text-right">Redeemed</th>
+                      <th className="py-2 pl-2 font-medium text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -190,7 +280,31 @@ export default function CoordinatorDashboard() {
                         <td className="py-2 px-2 text-right text-gray-900 dark:text-white">{s.taps.toLocaleString()}</td>
                         <td className="py-2 px-2 text-right text-gray-700 dark:text-gray-300">{s.customers.toLocaleString()}</td>
                         <td className="py-2 px-2 text-right text-gray-700 dark:text-gray-300">{s.rewardsIssued.toLocaleString()}</td>
-                        <td className="py-2 pl-2 text-right text-gray-700 dark:text-gray-300">{s.rewardsRedeemed.toLocaleString()}</td>
+                        <td className="py-2 px-2 text-right text-gray-700 dark:text-gray-300">{s.rewardsRedeemed.toLocaleString()}</td>
+                        <td className="py-2 pl-2 text-right">
+                          <div className="flex gap-1 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              disabled={s.verificationStatus === "verified" || verify.isPending}
+                              onClick={() => verify.mutate({ id: s.id, status: "verified" })}
+                            >
+                              Verify
+                            </Button>
+                            {s.verificationStatus !== "rejected" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs text-red-600 hover:text-red-700"
+                                disabled={verify.isPending}
+                                onClick={() => verify.mutate({ id: s.id, status: "rejected" })}
+                              >
+                                Reject
+                              </Button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

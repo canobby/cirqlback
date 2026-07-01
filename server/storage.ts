@@ -492,6 +492,26 @@ export class DatabaseStorage implements IStorage {
     return business;
   }
 
+  // CHR-53: all businesses across the coordinator's territories (for management).
+  async getBusinessesForCoordinator(coordinatorId: string): Promise<Business[]> {
+    const owned = await this.getTerritoriesByCoordinator(coordinatorId);
+    const ids = owned.map((t) => t.id);
+    if (ids.length === 0) return [];
+    return await db.select().from(businesses).where(inArray(businesses.territoryId, ids));
+  }
+
+  // CHR-53: authorization — does this coordinator own the given territory / business?
+  async coordinatorOwnsTerritory(coordinatorId: string, territoryId: string): Promise<boolean> {
+    const owned = await this.getTerritoriesByCoordinator(coordinatorId);
+    return owned.some((t) => t.id === territoryId);
+  }
+
+  async coordinatorOwnsBusiness(coordinatorId: string, businessId: string): Promise<boolean> {
+    const business = await this.getBusiness(businessId);
+    if (!business?.territoryId) return false;
+    return this.coordinatorOwnsTerritory(coordinatorId, business.territoryId);
+  }
+
   // Campaign operations
   async getCampaigns(businessId?: string): Promise<Campaign[]> {
     if (businessId) {
