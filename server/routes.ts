@@ -17,7 +17,7 @@ import {
   handleTextToSpeech 
 } from './translation-service';
 import { getMapsConfig } from './maps-proxy';
-import { setupAuth } from './auth';
+import { setupAuth, isAuthenticated } from './auth';
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -41,20 +41,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile('/home/runner/workspace/test-quest.html');
   });
   
-  // Check subscription limits middleware
+  // Derive subscription context from the authenticated session user.
+  // (Previously hardcoded 'professional' for everyone.) No-op when logged out.
   const checkSubscriptionLimits = async (req: any, res: any, next: any) => {
-    // For now, just pass through - will implement auth checking later
-    req.cirqlUser = { subscriptionTier: 'professional', subscriptionStatus: 'active' };
+    if (req.user) {
+      req.cirqlUser = {
+        subscriptionTier: req.user.subscriptionTier || 'starter',
+        subscriptionStatus: req.user.subscriptionStatus || 'active',
+      };
+    }
     next();
   };
+
+  // CHR-13: require a valid session for user-private route groups. Identity
+  // inside these handlers comes from req.user — never from a client-supplied
+  // userId/customerId. Public discovery endpoints (businesses, campaigns, map,
+  // search, taps, subscription plans, translate) intentionally stay open.
+  const privatePrefixes = [
+    '/api/account',
+    '/api/customer/profile',
+    '/api/settings',
+    '/api/subscription/trial-discount',
+    '/api/subscription/update',
+    '/api/avatar',
+    '/api/gamification',
+    '/api/teams',
+    '/api/battles',
+    '/api/family',
+    '/api/corporate',
+    '/api/events',
+    '/api/quest',
+    '/api/friends',
+    '/api/profile',
+  ];
+  for (const prefix of privatePrefixes) {
+    app.use(prefix, isAuthenticated);
+  }
 
   // Starter tier expiration check route
   app.get('/api/account/check-expiration', async (req, res) => {
     try {
-      const userId = req.query.userId as string;
-      if (!userId) {
-        return res.status(400).json({ error: "User ID required" });
-      }
+      const userId = (req.user as any).id;
 
       try {
         let user = await storage.getUser(userId);
@@ -1208,7 +1235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Customer profile routes
   app.get("/api/customer/profile", async (req, res) => {
     try {
-      const customerId = req.query.customerId || "demo_customer_1";
+      const customerId = (req.user as any).id;
       
       // In a real implementation, this would fetch from database
       const profile = {
@@ -1248,7 +1275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         visitFrequency,
         averageSpendRange
       } = req.body;
-      const customerId = req.body.customerId || "demo_customer_1";
+      const customerId = (req.user as any).id;
       
       // In a real implementation, this would update the database
       res.json({
@@ -1416,7 +1443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Avatar API routes
   app.get("/api/avatar/me", async (req, res) => {
     try {
-      const userId = req.query.userId as string || "demo_user_1";
+      const userId = (req.user as any).id;
       const avatar = await storage.getUserAvatar(userId);
       
       if (!avatar) {
@@ -1448,7 +1475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/avatar/assets", async (req, res) => {
     try {
       const assets = await storage.getAvatarAssets();
-      const userOwnedAssets = await storage.getUserAvatarAssets("demo_user_1");
+      const userOwnedAssets = await storage.getUserAvatarAssets((req.user as any).id);
       
       const sampleAssets = [
         { id: "hair_1", type: "hair", name: "Classic Brown", rarity: "common", cost: 0, isOwned: true, previewUrl: "" },
@@ -1470,7 +1497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/avatar/achievements", async (req, res) => {
     try {
-      const achievements = await storage.getUserAvatarAchievements("demo_user_1");
+      const achievements = await storage.getUserAvatarAchievements((req.user as any).id);
       
       const sampleAchievements = [
         { id: "ach_1", title: "First Steps", description: "Complete your first tap", type: "taps", target: 1, progress: 1, reward: "50 coins", rarity: "common", completed: true },
@@ -1486,7 +1513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/avatar/save", async (req, res) => {
     try {
-      const userId = req.body.userId || "demo_user_1";
+      const userId = (req.user as any).id;
       const avatarData = req.body;
       
       const updatedAvatar = await storage.updateUserAvatar(userId, avatarData);
@@ -1634,7 +1661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/gamification/start-hunt/:huntId", async (req, res) => {
     try {
       const { huntId } = req.params;
-      const userId = req.body.userId || "demo_user_1";
+      const userId = (req.user as any).id;
       
       // Record hunt participation
       res.json({ 
@@ -1652,7 +1679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/gamification/join-competition/:compId", async (req, res) => {
     try {
       const { compId } = req.params;
-      const userId = req.body.userId || "demo_user_1";
+      const userId = (req.user as any).id;
       
       res.json({
         success: true,
@@ -1669,7 +1696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/gamification/accept-trade/:tradeId", async (req, res) => {
     try {
       const { tradeId } = req.params;
-      const userId = req.body.userId || "demo_user_1";
+      const userId = (req.user as any).id;
       
       res.json({
         success: true,
@@ -1687,7 +1714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/teams/invite", async (req, res) => {
     try {
       const { email, teamId, message } = req.body;
-      const userId = req.body.userId || "demo_user_1";
+      const userId = (req.user as any).id;
       
       // Send invitation logic here
       res.json({
@@ -1734,7 +1761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/teams/create", async (req, res) => {
     try {
       const { name, description } = req.body;
-      const userId = req.body.userId || "demo_user_1";
+      const userId = (req.user as any).id;
       
       const newTeam = {
         id: `team_${Date.now()}`,
@@ -1764,7 +1791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/teams/accept-invitation/:inviteId", async (req, res) => {
     try {
       const { inviteId } = req.params;
-      const userId = req.body.userId || "demo_user_1";
+      const userId = (req.user as any).id;
       
       res.json({
         success: true,
@@ -1813,7 +1840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/battles/challenge-team", async (req, res) => {
     try {
       const { targetTeamId, challengeType, wager } = req.body;
-      const userId = req.body.userId || "demo_user_1";
+      const userId = (req.user as any).id;
       
       res.json({
         success: true,
@@ -1872,7 +1899,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/family/create", async (req, res) => {
     try {
       const { planId, familyName, inviteEmails } = req.body;
-      const userId = req.body.userId || "demo_user_1";
+      const userId = (req.user as any).id;
       
       res.json({
         success: true,
@@ -1926,7 +1953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/corporate/invite-company", async (req, res) => {
     try {
       const { companyName, contactEmail, employeeCount, message } = req.body;
-      const userId = req.body.userId || "demo_user_1";
+      const userId = (req.user as any).id;
       
       res.json({
         success: true,
@@ -1964,7 +1991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/events/join-flash/:eventId", async (req, res) => {
     try {
       const { eventId } = req.params;
-      const userId = req.body.userId || "demo_user_1";
+      const userId = (req.user as any).id;
       
       res.json({
         success: true,
