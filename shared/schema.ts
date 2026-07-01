@@ -284,6 +284,27 @@ export const businessTapBranding = pgTable("business_tap_branding", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ── CHR-36 / CHR-75: customer favorites + business reminders ──
+// Anonymous-friendly: a customer is identified by email and/or the CHR-48 device
+// fingerprint (no account needed).
+export const customerFavorites = pgTable("customer_favorites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  customerEmail: varchar("customer_email"),
+  deviceFingerprint: varchar("device_fingerprint"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// A stored prompt a business posts to its favoriters. Delivery (email/push) is a
+// documented future follow-up; this is the feed source.
+export const businessReminders = pgTable("business_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  message: text("message").notNull(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // ── CHR-34 / CHR-71: donation-per-tap campaigns ──
 // A nonprofit runs "tap at these shops to support us — each store donates $X per
 // tap." Donations accrue per tap and are attributed to the nonprofit.

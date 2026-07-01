@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Gift, Star, CheckCircle, Clock, Camera, Sparkles, Play, Share2 } from "lucide-react";
+import { Zap, Gift, Star, CheckCircle, Clock, Camera, Sparkles, Play, Share2, Heart } from "lucide-react";
 import { useLocation } from "wouter";
 
 // CHR-48: a stable per-browser device id for anti-abuse. Combines a hash of
@@ -65,6 +65,25 @@ export default function TapPage() {
   const [hasArEnabled, setHasArEnabled] = useState(true);
   // CHR-68: custom tap-screen branding (only present when the business is entitled).
   const [branding, setBranding] = useState<any>(null);
+  // CHR-75: favorite state for the tapped business.
+  const [favorited, setFavorited] = useState(false);
+
+  const toggleFavorite = async () => {
+    const businessId = tagInfo?.business?.id;
+    if (!businessId) return;
+    const path = favorited ? "/api/favorites/remove" : "/api/favorites";
+    try {
+      await apiRequest("POST", path, {
+        businessId,
+        email: tapData.customerEmail || undefined,
+        deviceFingerprint: getDeviceFingerprint(),
+      });
+      setFavorited(!favorited);
+      toast({ title: favorited ? "Removed from favorites" : "Added to favorites ♥" });
+    } catch {
+      toast({ title: "Couldn't update favorite", variant: "destructive" });
+    }
+  };
 
   // Simulate getting tag info (normally from NFC scan)
   useEffect(() => {
@@ -198,6 +217,15 @@ export default function TapPage() {
               {tagInfo.business?.name}
             </CardTitle>
             <p className="text-muted-foreground">{branding?.slogan || tagInfo.business?.description}</p>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={toggleFavorite}
+              className={`mt-2 mx-auto ${favorited ? "text-rose-600" : "text-muted-foreground"}`}
+            >
+              <Heart className={`h-4 w-4 mr-1 ${favorited ? "fill-current" : ""}`} />
+              {favorited ? "Favorited" : "Favorite"}
+            </Button>
             {Array.isArray(branding?.links) && branding.links.length > 0 && (
               <div className="flex flex-wrap gap-3 justify-center mt-3">
                 {branding.links.map((l: any, i: number) => (

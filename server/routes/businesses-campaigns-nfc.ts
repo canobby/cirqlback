@@ -206,6 +206,76 @@ export function registerBusinessesCampaignsNfcRoutes(app: Express, deps: RouteDe
     }
   });
 
+  // ── CHR-36 / CHR-75: favorites + reminders ──
+
+  // Favorite / unfavorite a business — no account needed (email/fingerprint).
+  app.post("/api/favorites", async (req, res) => {
+    try {
+      const { businessId, email, deviceFingerprint } = req.body || {};
+      if (!businessId) return res.status(400).json({ error: "businessId is required" });
+      if (!email && !deviceFingerprint) return res.status(400).json({ error: "email or deviceFingerprint required" });
+      await storage.favoriteBusiness({ businessId, email, deviceFingerprint });
+      res.status(201).json({ ok: true });
+    } catch (error) {
+      console.error("Favorite error:", error);
+      res.status(500).json({ error: "Failed to favorite" });
+    }
+  });
+
+  app.post("/api/favorites/remove", async (req, res) => {
+    try {
+      const { businessId, email, deviceFingerprint } = req.body || {};
+      if (!businessId) return res.status(400).json({ error: "businessId is required" });
+      const removed = await storage.unfavoriteBusiness({ businessId, email, deviceFingerprint });
+      res.json({ removed });
+    } catch (error) {
+      console.error("Unfavorite error:", error);
+      res.status(500).json({ error: "Failed to unfavorite" });
+    }
+  });
+
+  // A customer's favorites + reminder feed (by identity).
+  app.get("/api/favorites", async (req, res) => {
+    try {
+      const email = typeof req.query.email === "string" ? req.query.email : undefined;
+      const deviceFingerprint = typeof req.query.deviceFingerprint === "string" ? req.query.deviceFingerprint : undefined;
+      const [favorites, reminders] = await Promise.all([
+        storage.getFavorites(email, deviceFingerprint),
+        storage.getRemindersForCustomer(email, deviceFingerprint),
+      ]);
+      res.json({ favorites, reminders });
+    } catch (error) {
+      console.error("Get favorites error:", error);
+      res.status(500).json({ error: "Failed to load favorites" });
+    }
+  });
+
+  // Public favoriter count for a business.
+  app.get("/api/businesses/:id/favoriter-count", async (req, res) => {
+    try {
+      res.json({ count: await storage.getFavoriterCount(req.params.id) });
+    } catch (error) {
+      console.error("Favoriter count error:", error);
+      res.status(500).json({ error: "Failed to load count" });
+    }
+  });
+
+  // Owner posts a reminder to their favoriters.
+  app.post("/api/businesses/:id/reminders", isAuthenticated, async (req, res) => {
+    try {
+      if (!(await userOwnsBusiness((req.user as any).id, req.params.id))) {
+        return res.status(403).json({ error: "You don't own that business" });
+      }
+      const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+      if (!message) return res.status(400).json({ error: "message is required" });
+      const reminder = await storage.createReminder({ businessId: req.params.id, message, createdByUserId: (req.user as any).id });
+      res.status(201).json(reminder);
+    } catch (error) {
+      console.error("Create reminder error:", error);
+      res.status(500).json({ error: "Failed to post reminder" });
+    }
+  });
+
   // Campaign routes
   app.get("/api/campaigns", async (req, res) => {
     try {

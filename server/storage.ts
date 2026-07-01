@@ -21,6 +21,8 @@ import {
   donationCampaigns,
   donationCampaignMembers,
   donations,
+  customerFavorites,
+  businessReminders,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -1074,6 +1076,87 @@ export class DatabaseStorage implements IStorage {
     }).sort((a, b) => b.raisedCents - a.raisedCents);
 
     return { lifetimeCents, totalDonations: rows.length, byCampaign, byStore };
+  }
+
+  // ── CHR-75: customer favorites + business reminders ──
+  async favoriteBusiness(input: { businessId: string; email?: string | null; deviceFingerprint?: string | null }): Promise<void> {
+    const idConds = [];
+    if (input.email) idConds.push(eq(customerFavorites.customerEmail, input.email));
+    if (input.deviceFingerprint) idConds.push(eq(customerFavorites.deviceFingerprint, input.deviceFingerprint));
+    if (idConds.length) {
+      const [existing] = await db
+        .select()
+        .from(customerFavorites)
+        .where(and(eq(customerFavorites.businessId, input.businessId), or(...idConds)));
+      if (existing) return; // idempotent
+    }
+    await db.insert(customerFavorites).values({
+      businessId: input.businessId,
+      customerEmail: input.email ?? null,
+      deviceFingerprint: input.deviceFingerprint ?? null,
+    });
+  }
+
+  async unfavoriteBusiness(input: { businessId: string; email?: string | null; deviceFingerprint?: string | null }): Promise<boolean> {
+    const idConds = [];
+    if (input.email) idConds.push(eq(customerFavorites.customerEmail, input.email));
+    if (input.deviceFingerprint) idConds.push(eq(customerFavorites.deviceFingerprint, input.deviceFingerprint));
+    if (!idConds.length) return false;
+    const res = await db
+      .delete(customerFavorites)
+      .where(and(eq(customerFavorites.businessId, input.businessId), or(...idConds)));
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  private async getFavoriteBusinessIds(email?: string | null, deviceFingerprint?: string | null): Promise<string[]> {
+    const idConds = [];
+    if (email) idConds.push(eq(customerFavorites.customerEmail, email));
+    if (deviceFingerprint) idConds.push(eq(customerFavorites.deviceFingerprint, deviceFingerprint));
+    if (!idConds.length) return [];
+    const rows = await db.select().from(customerFavorites).where(or(...idConds));
+    return Array.from(new Set(rows.map((r) => r.businessId)));
+  }
+
+  async getFavorites(email?: string | null, deviceFingerprint?: string | null): Promise<any[]> {
+    const ids = await this.getFavoriteBusinessIds(email, deviceFingerprint);
+    if (!ids.length) return [];
+    const rows = await db.select().from(businesses).where(inArray(businesses.id, ids));
+    return rows.map((b) => ({ id: b.id, name: b.name, description: b.description, latitude: b.latitude, longitude: b.longitude, isNonprofit: b.isNonprofit ?? false }));
+  }
+
+  async getFavoriterCount(businessId: string): Promise<number> {
+    const [{ c }] = await db
+      .select({ c: count() })
+      .from(customerFavorites)
+      .where(eq(customerFavorites.businessId, businessId));
+    return Number(c) || 0;
+  }
+
+  async createReminder(input: { businessId: string; message: string; createdByUserId?: string | null }): Promise<any> {
+    const [row] = await db
+      .insert(businessReminders)
+      .values({ businessId: input.businessId, message: input.message, createdByUserId: input.createdByUserId ?? null })
+      .returning();
+    return row;
+  }
+
+  // Reminders from businesses the customer favorites (their feed).
+  async getRemindersForCustomer(email?: string | null, deviceFingerprint?: string | null): Promise<any[]> {
+    const ids = await this.getFavoriteBusinessIds(email, deviceFingerprint);
+    if (!ids.length) return [];
+    return await db
+      .select({
+        id: businessReminders.id,
+        businessId: businessReminders.businessId,
+        businessName: businesses.name,
+        message: businessReminders.message,
+        createdAt: businessReminders.createdAt,
+      })
+      .from(businessReminders)
+      .innerJoin(businesses, eq(businessReminders.businessId, businesses.id))
+      .where(inArray(businessReminders.businessId, ids))
+      .orderBy(desc(businessReminders.createdAt))
+      .limit(50);
   }
 
   // CHR-73: a customer's tap count toward a campaign (punch-card progress).
