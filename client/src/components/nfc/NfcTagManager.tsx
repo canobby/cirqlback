@@ -62,13 +62,13 @@ export default function NfcTagManager({ businessId }: NfcTagManagerProps) {
   const queryClient = useQueryClient();
 
   // Fetch NFC tags
-  const { data: tags = [], isLoading } = useQuery({
+  const { data: tags = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/nfc-tags?businessId=${businessId}`],
     enabled: !!businessId
   });
 
   // Fetch campaigns for reference
-  const { data: campaigns = [] } = useQuery({
+  const { data: campaigns = [] } = useQuery<any[]>({
     queryKey: [`/api/campaigns?businessId=${businessId}`],
     enabled: !!businessId
   });

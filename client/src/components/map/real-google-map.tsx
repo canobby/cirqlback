@@ -98,6 +98,7 @@ export default function RealGoogleMap() {
 
   // Skip Google Maps integration - use enhanced interactive map directly
   const loadError = true; // Force fallback to avoid API errors
+  const isLoaded = false; // CHR-25 will wire useJsApiLoader; the fallback map is used for now
 
   if (loadError) {
     // Fall back to enhanced interactive map if Google Maps fails

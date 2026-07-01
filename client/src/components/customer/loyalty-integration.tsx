@@ -49,7 +49,7 @@ interface Offer {
   title: string;
   distance: string;
   points: number;
-  type: "tap_trail" | "ar_game" | "loyalty";
+  type: "tap_trail" | "ar_game" | "loyalty" | "tap_challenge";
 }
 
 export default function LoyaltyIntegration() {

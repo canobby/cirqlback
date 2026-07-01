@@ -77,7 +77,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   
   // AI Platform Insights Query
-  const { data: aiPlatformInsights, isLoading: aiLoading, refetch: refetchAI } = useQuery({
+  const { data: aiPlatformInsights, isLoading: aiLoading, refetch: refetchAI } = useQuery<any>({
     queryKey: ['/api/ai/admin-insights'],
     queryFn: async () => {
       const platformData = {

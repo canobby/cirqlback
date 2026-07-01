@@ -15,11 +15,11 @@ export default function TrialDiscount() {
   const queryClient = useQueryClient();
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
 
-  const { data: profile } = useQuery({
+  const { data: profile } = useQuery<any>({
     queryKey: ["/api/account/profile"],
   });
 
-  const { data: expirationData } = useQuery({
+  const { data: expirationData } = useQuery<any>({
     queryKey: ["/api/account/check-expiration", { userId: profile?.id }],
     enabled: !!profile?.id,
   });
@@ -113,7 +113,7 @@ export default function TrialDiscount() {
   };
 
   const daysRemaining = expirationData?.daysRemaining || 0;
-  const discountSavings = selectedTier ? plans.find(p => p.id === selectedTier)?.originalPrice * 0.5 * (daysRemaining / 30) : 0;
+  const discountSavings = selectedTier ? (plans.find((p: any) => p.id === selectedTier)?.originalPrice ?? 0) * 0.5 * (daysRemaining / 30) : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 p-6">

@@ -38,12 +38,7 @@ interface NDEFReadingEvent extends Event {
 
 declare global {
   interface Window {
-    NDEFReader: {
-      new(): {
-        write: (data: { records: Array<{ recordType: string; data: string }> }) => Promise<void>;
-        addEventListener: (event: string, handler: (event: NDEFReadingEvent) => void) => void;
-      };
-    };
+    NDEFReader?: any;
   }
 }
 

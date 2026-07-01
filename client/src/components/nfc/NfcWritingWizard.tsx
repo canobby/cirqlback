@@ -101,7 +101,7 @@ export default function NfcWritingWizard({ businessId, onComplete }: NfcWritingW
         description: config.description,
         placementNotes: config.placementNotes
       });
-      return response;
+      return (await response.json()) as WriteTagResponse;
     },
     onSuccess: (data: WriteTagResponse) => {
       setWrittenTag(data);

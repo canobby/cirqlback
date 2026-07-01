@@ -295,9 +295,10 @@ export default function CampaignBuilder() {
         targetAudience: campaignData.targetAudience || "local customers",
         goals: ["engagement", "loyalty", "growth"]
       };
-      return await apiRequest("POST", "/api/ai/campaign-suggestions", generationData);
+      const res = await apiRequest("POST", "/api/ai/campaign-suggestions", generationData);
+      return await res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       if (data?.suggestions?.length > 0) {
         const aiCampaign = data.suggestions[0];
         setAiSuggestion(aiCampaign.name + ": " + aiCampaign.description);

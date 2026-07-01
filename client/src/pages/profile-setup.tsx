@@ -241,7 +241,7 @@ export default function ProfileSetup() {
     }
   });
 
-  const updateField = (field: keyof ProfileData, value: string | string[]) => {
+  const updateField = (field: keyof ProfileData, value: string | string[] | boolean) => {
     setProfileData(prev => ({ ...prev, [field]: value }));
   };
 

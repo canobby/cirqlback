@@ -16,15 +16,15 @@ export default function Account() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: profile } = useQuery({
+  const { data: profile } = useQuery<any>({
     queryKey: ["/api/account/profile"],
   });
 
-  const { data: plans } = useQuery({
+  const { data: plans } = useQuery<any[]>({
     queryKey: ["/api/subscription/plans"],
   });
 
-  const { data: usage } = useQuery({
+  const { data: usage } = useQuery<any>({
     queryKey: ["/api/account/usage"],
   });
 

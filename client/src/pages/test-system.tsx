@@ -698,7 +698,7 @@ export default function TestSystem() {
                   Close
                 </Button>
               </div>
-              <CommunicationHub />
+              <CommunicationHub context="testing" />
             </div>
           </div>
         )}

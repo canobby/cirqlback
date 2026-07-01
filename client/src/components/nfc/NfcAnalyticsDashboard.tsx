@@ -48,13 +48,13 @@ export default function NfcAnalyticsDashboard({ businessId }: NfcAnalyticsDashbo
   const [selectedTag, setSelectedTag] = useState<string>("all");
 
   // Fetch tag analytics
-  const { data: tagAnalytics = [], isLoading } = useQuery({
+  const { data: tagAnalytics = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/nfc-analytics?businessId=${businessId}&range=${selectedTimeRange}`],
     enabled: !!businessId
   });
 
   // Fetch NFC tags for filter
-  const { data: tags = [] } = useQuery({
+  const { data: tags = [] } = useQuery<any[]>({
     queryKey: [`/api/nfc-tags?businessId=${businessId}`],
     enabled: !!businessId
   });

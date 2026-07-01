@@ -168,8 +168,8 @@ export default function HowItWorksPage() {
                 justifyContent: 'center',
                 transition: 'background-color 0.2s'
               }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
             >
               Try a Cirql Tap
               <ChevronRight className="ml-2 h-5 w-5" />
@@ -190,8 +190,8 @@ export default function HowItWorksPage() {
                 justifyContent: 'center',
                 transition: 'background-color 0.2s'
               }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               For Businesses
             </div>
@@ -367,8 +367,8 @@ export default function HowItWorksPage() {
                 justifyContent: 'center',
                 transition: 'background 0.2s'
               }}
-              onMouseEnter={(e) => e.target.style.background = 'linear-gradient(to right, #2563eb, #4338ca)'}
-              onMouseLeave={(e) => e.target.style.background = 'linear-gradient(to right, #3b82f6, #4f46e5)'}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(to right, #2563eb, #4338ca)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(to right, #3b82f6, #4f46e5)'}
             >
               Start Growing Your Business
               <ChevronRight className="ml-2 h-5 w-5" />

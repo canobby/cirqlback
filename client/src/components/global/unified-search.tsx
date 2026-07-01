@@ -101,7 +101,7 @@ export default function UnifiedSearch({ onClose }: { onClose?: () => void }) {
       result.tags.some(tag => tag.includes(searchQuery.toLowerCase()))
     );
 
-    setResults(mockResults);
+    setResults(mockResults as SearchResult[]);
     setIsLoading(false);
   };
 
