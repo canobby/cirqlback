@@ -10,3 +10,6 @@ vite.config.ts.*
 .env
 .env.*
 !.env.example
+
+# Playwright MCP scratch output (snapshots/screenshots from local testing)
+.playwright-mcp/

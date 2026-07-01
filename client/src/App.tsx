@@ -45,6 +45,7 @@ import TestSystem from "@/pages/test-system";
 import AdminDashboard from "@/pages/admin-dashboard";
 import BusinessWebsitePreview from "@/pages/business-website-preview";
 import AboutPage from "@/pages/about";
+import AuthPage from "@/pages/auth";
 
 function Router() {
   const [location] = useLocation();
@@ -70,6 +71,11 @@ function Router() {
           <Route path="/nfc-setup-wizard" component={NFCSetupWizardBento} />
           <Route path="/nfc-writer" component={NfcWriterPage} />
           
+          {/* Auth */}
+          <Route path="/auth" component={AuthPage} />
+          <Route path="/login" component={AuthPage} />
+          <Route path="/register" component={AuthPage} />
+
           {/* Essential Features */}
           <Route path="/account" component={Account} />
           <Route path="/tap" component={TapPage} />
