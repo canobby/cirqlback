@@ -37,49 +37,22 @@ export function registerEngagementRoutes(app: Express, deps: RouteDeps) {
   // Community routes
   app.get("/api/leaderboard", async (req, res) => {
     try {
-      // Mock leaderboard data
-      const leaderboard = [
-        { id: 1, name: "Sarah Chen", tier: "Platinum", location: "Downtown", points: 15420, avatar: null },
-        { id: 2, name: "Mike Johnson", tier: "Gold", location: "Uptown", points: 12350, avatar: null },
-        { id: 3, name: "Emily Davis", tier: "Gold", location: "Midtown", points: 11200, avatar: null },
-        { id: 4, name: "Alex Kim", tier: "Silver", location: "West Side", points: 9800, avatar: null },
-        { id: 5, name: "Jessica Liu", tier: "Silver", location: "East End", points: 8900, avatar: null }
-      ];
+      const leaderboard = await storage.getLeaderboard(10);
       res.json(leaderboard);
     } catch (error) {
+      console.error("Leaderboard fetch error:", error);
       res.status(500).json({ error: "Failed to fetch leaderboard" });
     }
   });
 
-  // Community routes - challenges
+  // Community routes - daily challenges with real per-user progress (CHR-28)
   app.get("/api/community/challenges", async (req, res) => {
     try {
-      const challenges = [
-        {
-          id: 1,
-          title: "Coffee Trail Explorer",
-          description: "Visit 5 different coffee shops this week",
-          difficulty: "Easy",
-          progress: 60,
-          timeLeft: "3 days",
-          participants: 234,
-          reward: 500,
-          joined: false
-        },
-        {
-          id: 2,
-          title: "Local Foodie Challenge",
-          description: "Try 10 different restaurants this month",
-          difficulty: "Medium",
-          progress: 30,
-          timeLeft: "12 days",
-          participants: 156,
-          reward: 1000,
-          joined: true
-        }
-      ];
+      const email = (req.user as any)?.email as string | undefined;
+      const challenges = await storage.getDailyChallenges(email);
       res.json(challenges);
     } catch (error) {
+      console.error("Challenges fetch error:", error);
       res.status(500).json({ error: "Failed to fetch challenges" });
     }
   });
@@ -118,17 +91,26 @@ export function registerEngagementRoutes(app: Express, deps: RouteDeps) {
 
   app.get("/api/user-stats", async (req, res) => {
     try {
-      // Mock user stats
-      const stats = {
-        rank: 42,
-        totalPoints: 7850,
-        tier: "Silver",
-        challengesCompleted: 8,
-        referralCode: "CIRQL2025",
-        earnedThisMonth: 1200
-      };
-      res.json(stats);
+      const userId = (req.user as any)?.id as string | undefined;
+      if (!userId) {
+        // Logged-out visitors see an empty/default scoreboard, not fake data.
+        return res.json({
+          rank: 0,
+          totalPoints: 0,
+          totalPointsEarned: 0,
+          availablePoints: 0,
+          tier: "Bronze",
+          level: 1,
+          currentStreak: 0,
+          challengesCompleted: 0,
+          referralCode: null,
+          earnedThisMonth: 0,
+        });
+      }
+      const stats = await storage.getUserGamificationStats(userId);
+      res.json(stats ?? {});
     } catch (error) {
+      console.error("User stats fetch error:", error);
       res.status(500).json({ error: "Failed to fetch user stats" });
     }
   });

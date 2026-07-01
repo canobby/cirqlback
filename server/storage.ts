@@ -50,6 +50,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, count } from "drizzle-orm";
+import { tierForPoints, levelForPoints, pointsToNextLevel } from "./gamification";
 
 export interface IStorage {
   // User operations (required for auth)
@@ -192,6 +193,160 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId));
+  }
+
+  // CHR-28: real leaderboard — top players by lifetime points earned.
+  async getLeaderboard(limit = 10): Promise<any[]> {
+    const rows = await db
+      .select()
+      .from(users)
+      .orderBy(desc(users.totalPointsEarned))
+      .limit(limit);
+    return rows.map((u, i) => {
+      const points = u.totalPointsEarned ?? 0;
+      return {
+        id: u.id,
+        rank: i + 1,
+        name:
+          [u.firstName, u.lastName].filter(Boolean).join(" ").trim() ||
+          u.email ||
+          "Cirqler",
+        tier: tierForPoints(points),
+        level: levelForPoints(points),
+        location: "",
+        points,
+        avatar: u.profileImageUrl ?? null,
+      };
+    });
+  }
+
+  // CHR-28: streamlined daily challenges with real, per-user progress derived
+  // from today's taps and reward redemptions. No separate progress table.
+  async getDailyChallenges(email?: string): Promise<any[]> {
+    const now = new Date();
+    const dayStart = new Date(now);
+    dayStart.setHours(0, 0, 0, 0);
+    const hoursLeft = Math.max(
+      1,
+      Math.round((dayStart.getTime() + 86_400_000 - now.getTime()) / 3_600_000)
+    );
+    const timeLeft = `${hoursLeft}h left`;
+
+    let todayTaps = 0;
+    let todayPoints = 0;
+    let todayRedemptions = 0;
+    if (email) {
+      const userTaps = (await this.getTaps(undefined, email)).filter(
+        (t) => t.createdAt && new Date(t.createdAt) >= dayStart
+      );
+      todayTaps = userTaps.length;
+      todayPoints = userTaps.reduce((s, t) => s + (t.pointsEarned ?? 0), 0);
+      const user = await this.getUserByEmail(email);
+      if (user) {
+        const userRewards = await this.getRewardsByUser(user.id);
+        todayRedemptions = userRewards.filter(
+          (r) => r.isRedeemed && r.redeemedAt && new Date(r.redeemedAt) >= dayStart
+        ).length;
+      }
+    }
+
+    // Participants: distinct customers active platform-wide today.
+    const allTapsToday = (await this.getTaps()).filter(
+      (t) => t.createdAt && new Date(t.createdAt) >= dayStart
+    );
+    const participants = new Set(
+      allTapsToday.map((t) => t.customerEmail).filter(Boolean)
+    ).size;
+
+    const pct = (have: number, need: number) =>
+      need <= 0 ? 0 : Math.min(100, Math.round((have / need) * 100));
+
+    return [
+      {
+        id: "daily-tap",
+        title: "Daily Tap",
+        description: "Make your first tap today",
+        difficulty: "Easy",
+        goal: 1,
+        current: todayTaps,
+        progress: pct(todayTaps, 1),
+        reward: 20,
+        timeLeft,
+        participants,
+        joined: true,
+      },
+      {
+        id: "point-collector",
+        title: "Point Collector",
+        description: "Earn 100 points today",
+        difficulty: "Medium",
+        goal: 100,
+        current: todayPoints,
+        progress: pct(todayPoints, 100),
+        reward: 50,
+        timeLeft,
+        participants,
+        joined: true,
+      },
+      {
+        id: "reward-redeemer",
+        title: "Reward Redeemer",
+        description: "Redeem a reward today",
+        difficulty: "Medium",
+        goal: 1,
+        current: todayRedemptions,
+        progress: pct(todayRedemptions, 1),
+        reward: 40,
+        timeLeft,
+        participants,
+        joined: true,
+      },
+    ];
+  }
+
+  // CHR-28: the authenticated player's real stats (rank, tier, level, streak,
+  // points, monthly earnings, and today's completed daily challenges).
+  async getUserGamificationStats(userId: string): Promise<any> {
+    const user = await this.getUser(userId);
+    if (!user) return null;
+
+    const points = user.totalPointsEarned ?? 0;
+    const higher = await db
+      .select({ c: count() })
+      .from(users)
+      .where(sql`COALESCE(${users.totalPointsEarned}, 0) > ${points}`);
+    const rank = Number(higher[0]?.c ?? 0) + 1;
+
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const earnedThisMonth = user.email
+      ? (await this.getTaps(undefined, user.email))
+          .filter((t) => t.createdAt && new Date(t.createdAt) >= monthStart)
+          .reduce((s, t) => s + (t.pointsEarned ?? 0), 0)
+      : 0;
+
+    const daily = await this.getDailyChallenges(user.email ?? undefined);
+    const challengesCompleted = daily.filter((c) => c.progress >= 100).length;
+
+    const referralCode =
+      user.referralCode ||
+      "CIRQL" + userId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase();
+
+    return {
+      rank,
+      totalPoints: user.totalPoints ?? 0,
+      totalPointsEarned: points,
+      availablePoints: user.availablePoints ?? 0,
+      tier: tierForPoints(points),
+      level: levelForPoints(points),
+      pointsToNextLevel: pointsToNextLevel(points),
+      currentStreak: user.currentStreak ?? 0,
+      longestStreak: user.longestStreak ?? 0,
+      challengesCompleted,
+      referralCode,
+      earnedThisMonth,
+    };
   }
 
   async updateUserSubscription(userId: string, updates: { 
