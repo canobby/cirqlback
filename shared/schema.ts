@@ -37,7 +37,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").default("customer"), // customer, merchant, admin
+  role: varchar("role").default("customer"), // customer, merchant, admin, coordinator
   subscriptionTier: varchar("subscription_tier").default("starter"), // starter, professional, business, enterprise
   subscriptionStatus: varchar("subscription_status").default("active"), // active, cancelled, expired
   starterExpiresAt: timestamp("starter_expires_at"), // 6 months from signup for starter tier
@@ -94,6 +94,8 @@ export const businesses = pgTable("businesses", {
   website: varchar("website"),
   logo: varchar("logo"),
   ownerId: varchar("owner_id").references(() => users.id),
+  territoryId: varchar("territory_id").references(() => territories.id), // CHR-31: coordinator territory scoping
+  verificationStatus: varchar("verification_status").default("unverified"), // CHR-31: unverified, verified, rejected (coordinator-verified)
   isActive: boolean("is_active").default(true),
   totalTaps: integer("total_taps").default(0),
   totalRewardsGiven: integer("total_rewards_given").default(0),
@@ -140,6 +142,44 @@ export const businesses = pgTable("businesses", {
   websitePublished: boolean("website_published").default(false),
   websiteViews: integer("website_views").default(0),
   websiteLastUpdated: timestamp("website_last_updated"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ── Community Coordinator / territory system (CHR-31) ──
+// A coordinator is a `users` row (role='coordinator') PLUS a `coordinators`
+// record — mirroring how an admin is a `users` row plus an `admin_users` record.
+// The coordinators record is the real gate; it holds coordinator-specific state.
+export const coordinators = pgTable("coordinators", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  displayName: varchar("display_name"),
+  planStatus: varchar("plan_status").default("trial"), // trial, active, past_due, cancelled
+  planRenewsAt: timestamp("plan_renews_at"),
+  // Invitation (mirrors the admin invite flow)
+  invitedBy: varchar("invited_by").references(() => users.id),
+  inviteToken: varchar("invite_token").unique(),
+  inviteExpiresAt: timestamp("invite_expires_at"),
+  inviteAcceptedAt: timestamp("invite_accepted_at"),
+  invitationEmail: varchar("invitation_email"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// A licensed region managed by one coordinator. Region starts simple (city/state
+// + an optional circular area); polygon bounds can come later.
+export const territories = pgTable("territories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coordinatorId: varchar("coordinator_id").references(() => coordinators.id).notNull(),
+  name: varchar("name").notNull(),
+  city: varchar("city"),
+  state: varchar("state"),
+  country: varchar("country").default("US"),
+  centerLat: real("center_lat"),      // for map scoping / "is this business in my territory"
+  centerLng: real("center_lng"),
+  radiusMeters: integer("radius_meters"),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -381,12 +421,25 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true 
 });
 
-export const insertBusinessSchema = createInsertSchema(businesses).omit({ 
-  id: true, 
-  createdAt: true, 
+export const insertBusinessSchema = createInsertSchema(businesses).omit({
+  id: true,
+  createdAt: true,
   updatedAt: true,
   totalTaps: true,
   totalRewardsGiven: true,
+});
+
+// CHR-31 coordinator/territory model
+export const insertCoordinatorSchema = createInsertSchema(coordinators).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTerritorySchema = createInsertSchema(territories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const insertCampaignSchema = createInsertSchema(campaigns).omit({ 
@@ -629,6 +682,10 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Business = typeof businesses.$inferSelect;
 export type InsertBusiness = z.infer<typeof insertBusinessSchema>;
+export type Coordinator = typeof coordinators.$inferSelect;
+export type InsertCoordinator = z.infer<typeof insertCoordinatorSchema>;
+export type Territory = typeof territories.$inferSelect;
+export type InsertTerritory = z.infer<typeof insertTerritorySchema>;
 
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;

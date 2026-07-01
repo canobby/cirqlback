@@ -8,6 +8,8 @@ import {
   referrals,
   tapTrails,
   userTrailProgress,
+  coordinators,
+  territories,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -29,6 +31,10 @@ import {
   type InsertTapTrail,
   type UserTrailProgress,
   type InsertUserTrailProgress,
+  type Coordinator,
+  type InsertCoordinator,
+  type Territory,
+  type InsertTerritory,
   type SalesData,
   type InsertSalesData,
   type MonthlySalesSummary,
@@ -382,6 +388,44 @@ export class DatabaseStorage implements IStorage {
       .update(businesses)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(businesses.id, id))
+      .returning();
+    return business;
+  }
+
+  // CHR-31 (CHR-50): coordinator / territory model + territory-scoped businesses.
+  async createCoordinator(data: InsertCoordinator): Promise<Coordinator> {
+    const [row] = await db.insert(coordinators).values(data).returning();
+    return row;
+  }
+
+  async getCoordinator(id: string): Promise<Coordinator | undefined> {
+    const [row] = await db.select().from(coordinators).where(eq(coordinators.id, id));
+    return row || undefined;
+  }
+
+  async getCoordinatorByUserId(userId: string): Promise<Coordinator | undefined> {
+    const [row] = await db.select().from(coordinators).where(eq(coordinators.userId, userId));
+    return row || undefined;
+  }
+
+  async createTerritory(data: InsertTerritory): Promise<Territory> {
+    const [row] = await db.insert(territories).values(data).returning();
+    return row;
+  }
+
+  async getTerritoriesByCoordinator(coordinatorId: string): Promise<Territory[]> {
+    return await db.select().from(territories).where(eq(territories.coordinatorId, coordinatorId));
+  }
+
+  async getBusinessesByTerritory(territoryId: string): Promise<Business[]> {
+    return await db.select().from(businesses).where(eq(businesses.territoryId, territoryId));
+  }
+
+  async assignBusinessToTerritory(businessId: string, territoryId: string | null): Promise<Business> {
+    const [business] = await db
+      .update(businesses)
+      .set({ territoryId, updatedAt: new Date() })
+      .where(eq(businesses.id, businessId))
       .returning();
     return business;
   }
