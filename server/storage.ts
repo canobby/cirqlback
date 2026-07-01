@@ -642,6 +642,87 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // ── CHR-62: coordinator earnings aggregation ──
+
+  // Itemized earnings for a coordinator, optionally for one YYYY-MM period.
+  async getCoordinatorEarnings(
+    coordinatorId: string,
+    opts?: { month?: string }
+  ): Promise<CoordinatorEarning[]> {
+    const conds = [eq(coordinatorEarnings.coordinatorId, coordinatorId)];
+    if (opts?.month) conds.push(eq(coordinatorEarnings.periodMonth, opts.month));
+    return await db
+      .select()
+      .from(coordinatorEarnings)
+      .where(and(...conds))
+      .orderBy(desc(coordinatorEarnings.createdAt));
+  }
+
+  // Lifetime / current-month / trailing-12-month income + share, split by
+  // source, with a 12-month series and a recent-charge breakdown. All server-
+  // computed from stored rows; clean zeros when there are none.
+  async getCoordinatorEarningsSummary(coordinatorId: string): Promise<any> {
+    const rows = await db
+      .select()
+      .from(coordinatorEarnings)
+      .where(eq(coordinatorEarnings.coordinatorId, coordinatorId));
+    const coord = await this.getCoordinator(coordinatorId);
+
+    const now = new Date();
+    const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const currentMonth = monthKey(now);
+    const last12: string[] = [];
+    for (let i = 11; i >= 0; i--) {
+      last12.push(monthKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+    }
+    const last12Set = new Set(last12);
+
+    const tally = (arr: CoordinatorEarning[]) =>
+      arr.reduce(
+        (a, r) => ({
+          grossCents: a.grossCents + (r.grossAmountCents || 0),
+          shareCents: a.shareCents + (r.shareAmountCents || 0),
+          count: a.count + 1,
+        }),
+        { grossCents: 0, shareCents: 0, count: 0 }
+      );
+
+    const bySource = (src: string) =>
+      tally(rows.filter((r) => (r.source || "subscription") === src));
+
+    const monthly = last12.map((m) => ({
+      month: m,
+      ...tally(rows.filter((r) => r.periodMonth === m)),
+    }));
+
+    const recent = [...rows]
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
+      .slice(0, 10)
+      .map((r) => ({
+        id: r.id,
+        createdAt: r.createdAt,
+        source: r.source,
+        planId: r.planId,
+        description: r.description,
+        grossCents: r.grossAmountCents,
+        sharePct: r.sharePct,
+        shareCents: r.shareAmountCents,
+        periodMonth: r.periodMonth,
+        businessId: r.businessId,
+      }));
+
+    return {
+      currency: rows[0]?.currency || "usd",
+      sharePct: coord?.sharePct ?? 85,
+      lifetime: tally(rows),
+      currentMonth: { month: currentMonth, ...tally(rows.filter((r) => r.periodMonth === currentMonth)) },
+      trailing12Months: tally(rows.filter((r) => r.periodMonth && last12Set.has(r.periodMonth))),
+      bySource: { subscription: bySource("subscription"), addon: bySource("addon") },
+      monthly,
+      recent,
+    };
+  }
+
   // ── CHR-33 / CHR-56: multi-store group campaigns ──
   async createGroupCampaign(data: InsertGroupCampaign): Promise<GroupCampaign> {
     const [row] = await db.insert(groupCampaigns).values(data).returning();

@@ -401,4 +401,28 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
       res.status(500).json({ error: "Failed to update business" });
     }
   });
+
+  // ── CHR-32 / CHR-62: coordinator earnings (revenue share) ─────────────────
+
+  // Income + share summary (lifetime / current-month / trailing-12, by source,
+  // 12-month series, recent charges).
+  app.get("/api/coordinator/earnings/summary", async (req, res) => {
+    try {
+      res.json(await storage.getCoordinatorEarningsSummary(coordinatorOf(req).id));
+    } catch (error) {
+      console.error("Coordinator earnings summary error:", error);
+      res.status(500).json({ error: "Failed to load earnings summary" });
+    }
+  });
+
+  // Itemized earnings, optionally scoped to one ?month=YYYY-MM.
+  app.get("/api/coordinator/earnings", async (req, res) => {
+    try {
+      const month = typeof req.query.month === "string" ? req.query.month : undefined;
+      res.json(await storage.getCoordinatorEarnings(coordinatorOf(req).id, { month }));
+    } catch (error) {
+      console.error("Coordinator earnings error:", error);
+      res.status(500).json({ error: "Failed to load earnings" });
+    }
+  });
 }
