@@ -31,7 +31,6 @@ import AnalyticsBento from "@/pages/analytics-bento";
 import HomeBento from "@/pages/home-bento";
 import NFCSetupWizardBento from "@/pages/nfc-setup-wizard-bento";
 import MapWorking from "@/pages/map-working";
-import MapTest from "@/pages/map-test";
 import Marketing from "@/pages/marketing";
 import Communication from "@/pages/communication";
 import Community from "@/pages/community";
@@ -63,7 +62,6 @@ function Router() {
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />
           <Route path="/map" component={MapWorking} />
-          <Route path="/map-test" component={MapTest} />
           <Route path="/campaign-setup-wizard" component={CampaignSetupBento} />
           <Route path="/nfc-setup-wizard" component={NFCSetupWizardBento} />
           <Route path="/nfc-writer" component={NfcWriterPage} />
