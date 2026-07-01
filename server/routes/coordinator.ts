@@ -298,4 +298,107 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
       res.status(500).json({ error: "Failed to create offer" });
     }
   });
+
+  // ── CHR-54: region-scoped multi-store campaign builder + map placement ─────
+  // Reuses the CHR-33/56 group-campaign model (creatorType='coordinator').
+
+  // The coordinator's own multi-store campaigns + per-location performance.
+  app.get("/api/coordinator/group-campaigns", async (req, res) => {
+    try {
+      res.json(await storage.getCoordinatorGroupCampaigns(coordinatorOf(req).userId));
+    } catch (error) {
+      console.error("Coordinator group campaigns error:", error);
+      res.status(500).json({ error: "Failed to load campaigns" });
+    }
+  });
+
+  // Create a multi-store campaign spanning the coordinator's OWN stores. Member
+  // stores outside the coordinator's territories are silently skipped.
+  app.post("/api/coordinator/group-campaigns", async (req, res) => {
+    try {
+      const coordinator = coordinatorOf(req);
+      const {
+        name, description, ruleType, requiredStores, rewardType,
+        rewardTitle, rewardValue, rewardPoints, territoryId, businessIds, isOpen,
+      } = req.body || {};
+      if (!name) return res.status(400).json({ error: "name is required" });
+
+      let scopedTerritoryId: string | null = null;
+      if (territoryId) {
+        if (!(await storage.coordinatorOwnsTerritory(coordinator.id, territoryId))) {
+          return res.status(403).json({ error: "That territory is not yours" });
+        }
+        scopedTerritoryId = territoryId;
+      }
+
+      const ids: string[] = Array.isArray(businessIds) ? businessIds : [];
+      const ownedIds: string[] = [];
+      for (const bid of ids) {
+        if (await storage.coordinatorOwnsBusiness(coordinator.id, bid)) ownedIds.push(bid);
+      }
+
+      const campaign = await storage.createGroupCampaign({
+        name,
+        description,
+        ruleType: ruleType === "all" ? "all" : "any_n",
+        requiredStores: Number(requiredStores) > 0 ? Number(requiredStores) : 1,
+        rewardType,
+        rewardTitle,
+        rewardValue: rewardValue != null ? String(rewardValue) : null,
+        rewardPoints: Number(rewardPoints) || 0,
+        createdByUserId: coordinator.userId,
+        creatorType: "coordinator",
+        territoryId: scopedTerritoryId,
+        isOpen: !!isOpen,
+      } as any);
+
+      for (const bid of ownedIds) {
+        await storage.addGroupCampaignMember(campaign.id, bid, "joined");
+      }
+
+      const full = await storage.getGroupCampaignWithMembers(campaign.id);
+      res.status(201).json({ ...full, addedMembers: ownedIds.length, skippedMembers: ids.length - ownedIds.length });
+    } catch (error) {
+      console.error("Coordinator create group campaign error:", error);
+      res.status(500).json({ error: "Failed to create campaign" });
+    }
+  });
+
+  // Promote/demote one of the coordinator's OWN campaigns on the discovery map.
+  app.patch("/api/coordinator/group-campaigns/:id/feature", async (req, res) => {
+    try {
+      const coordinator = coordinatorOf(req);
+      const campaign = await storage.getGroupCampaign(req.params.id);
+      if (
+        !campaign ||
+        campaign.creatorType !== "coordinator" ||
+        campaign.createdByUserId !== coordinator.userId
+      ) {
+        return res.status(403).json({ error: "That campaign is not yours" });
+      }
+      const featured = req.body?.featured !== false;
+      const updated = await storage.updateGroupCampaign(req.params.id, { isFeatured: featured });
+      res.json(updated);
+    } catch (error) {
+      console.error("Coordinator feature campaign error:", error);
+      res.status(500).json({ error: "Failed to update campaign" });
+    }
+  });
+
+  // Feature/unfeature a business on the discovery map (territory-scoped).
+  app.patch("/api/coordinator/businesses/:id/feature", async (req, res) => {
+    try {
+      const coordinator = coordinatorOf(req);
+      const { id } = req.params;
+      if (!(await storage.coordinatorOwnsBusiness(coordinator.id, id))) {
+        return res.status(403).json({ error: "That business is not in your territory" });
+      }
+      const featured = req.body?.featured !== false;
+      const business = await storage.updateBusiness(id, { isFeatured: featured } as any);
+      res.json(business);
+    } catch (error) {
+      console.error("Coordinator feature business error:", error);
+      res.status(500).json({ error: "Failed to update business" });
+    }
+  });
 }

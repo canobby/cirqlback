@@ -479,6 +479,7 @@ export class DatabaseStorage implements IStorage {
           id: b.id,
           name: b.name,
           verificationStatus: b.verificationStatus ?? "unverified",
+          isFeatured: b.isFeatured ?? false, // CHR-54
           latitude: b.latitude,
           longitude: b.longitude,
           taps: bt.length,
@@ -604,6 +605,69 @@ export class DatabaseStorage implements IStorage {
     return { ...campaign, members: memberRows };
   }
 
+  // CHR-54: partial update of a group campaign (feature toggle, activation, etc.).
+  async updateGroupCampaign(id: string, updates: Partial<GroupCampaign>): Promise<GroupCampaign> {
+    const [row] = await db
+      .update(groupCampaigns)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(groupCampaigns.id, id))
+      .returning();
+    return row;
+  }
+
+  // CHR-54: a coordinator's own multi-store campaigns, each with member stores
+  // (name + coords), per-location tap performance, and completion counts.
+  async getCoordinatorGroupCampaigns(coordinatorUserId: string): Promise<any[]> {
+    const campaigns = await db
+      .select()
+      .from(groupCampaigns)
+      .where(
+        and(
+          eq(groupCampaigns.createdByUserId, coordinatorUserId),
+          eq(groupCampaigns.creatorType, "coordinator")
+        )
+      )
+      .orderBy(desc(groupCampaigns.createdAt));
+
+    const out: any[] = [];
+    for (const gc of campaigns) {
+      const members = await db
+        .select({
+          businessId: groupCampaignMembers.businessId,
+          name: businesses.name,
+          latitude: businesses.latitude,
+          longitude: businesses.longitude,
+        })
+        .from(groupCampaignMembers)
+        .innerJoin(businesses, eq(groupCampaignMembers.businessId, businesses.id))
+        .where(eq(groupCampaignMembers.groupCampaignId, gc.id));
+
+      const memberIds = members.map((m) => m.businessId);
+      const tapRows = memberIds.length
+        ? await db.select().from(taps).where(inArray(taps.businessId, memberIds))
+        : [];
+      const progressRows = await db
+        .select()
+        .from(groupCampaignProgress)
+        .where(eq(groupCampaignProgress.groupCampaignId, gc.id));
+
+      const stores = members.map((m) => ({
+        ...m,
+        taps: tapRows.filter((t) => t.businessId === m.businessId).length,
+      }));
+      const required = gc.ruleType === "all" ? members.length : gc.requiredStores ?? 1;
+
+      out.push({
+        ...gc,
+        requiredStores: required,
+        stores,
+        participants: progressRows.length,
+        completions: progressRows.filter((p) => p.completedAt).length,
+      });
+    }
+    return out;
+  }
+
   // CHR-58: open/joinable group campaigns (with member counts).
   async getOpenGroupCampaigns(): Promise<any[]> {
     const rows = await db
@@ -679,6 +743,7 @@ export class DatabaseStorage implements IStorage {
         ruleType: gc.ruleType,
         requiredStores: required,
         rewardTitle: gc.rewardTitle,
+        isFeatured: gc.isFeatured ?? false, // CHR-54: coordinator map promotion
         members,
       });
     }

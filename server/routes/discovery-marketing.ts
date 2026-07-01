@@ -364,6 +364,7 @@ export function registerDiscoveryMarketingRoutes(app: Express, deps: RouteDeps) 
           description: b.description,
           category: (b.establishmentType && b.establishmentType[0]) || "business",
           isActive: b.isActive ?? true,
+          featured: b.isFeatured ?? false, // CHR-54: coordinator map promotion
         }));
       res.json(mapBusinesses);
     } catch (error) {

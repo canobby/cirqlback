@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare } from "lucide-react";
+import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare, Route, Star } from "lucide-react";
 
 interface Territory {
   id: string;
@@ -27,10 +27,30 @@ interface StoreRow {
   id: string;
   name: string;
   verificationStatus: string;
+  isFeatured?: boolean;
   taps: number;
   customers: number;
   rewardsIssued: number;
   rewardsRedeemed: number;
+}
+
+// CHR-54: a coordinator's multi-store group campaign + per-location performance.
+interface CampaignStore {
+  businessId: string;
+  name: string;
+  taps: number;
+}
+interface CoordinatorCampaign {
+  id: string;
+  name: string;
+  ruleType: string;
+  requiredStores: number;
+  rewardTitle: string | null;
+  isOpen: boolean;
+  isFeatured: boolean;
+  participants: number;
+  completions: number;
+  stores: CampaignStore[];
 }
 
 interface TerritoryOverview {
@@ -156,6 +176,77 @@ export default function CoordinatorDashboard() {
   });
 
   const firstTerritory = data?.territories?.[0];
+  const firstTerritoryId = firstTerritory?.id;
+
+  // CHR-54: multi-store campaign builder + map placement
+  const { data: groupCampaigns } = useQuery<CoordinatorCampaign[]>({
+    queryKey: ["/api/coordinator/group-campaigns"],
+    enabled: isAuthenticated && !isError,
+    retry: false,
+  });
+
+  const [campaignForm, setCampaignForm] = useState<{
+    name: string;
+    ruleType: string;
+    requiredStores: string;
+    rewardTitle: string;
+    rewardPoints: string;
+    businessIds: string[];
+  }>({ name: "", ruleType: "any_n", requiredStores: "2", rewardTitle: "", rewardPoints: "50", businessIds: [] });
+
+  const toggleCampaignStore = (id: string) =>
+    setCampaignForm((f) => ({
+      ...f,
+      businessIds: f.businessIds.includes(id)
+        ? f.businessIds.filter((x) => x !== id)
+        : [...f.businessIds, id],
+    }));
+
+  const refreshCampaigns = () =>
+    queryClient.invalidateQueries({ queryKey: ["/api/coordinator/group-campaigns"] });
+
+  const createCampaign = useMutation({
+    mutationFn: async () =>
+      apiRequest("POST", "/api/coordinator/group-campaigns", {
+        name: campaignForm.name,
+        ruleType: campaignForm.ruleType,
+        requiredStores: Number(campaignForm.requiredStores) || 1,
+        rewardTitle: campaignForm.rewardTitle || undefined,
+        rewardPoints: Number(campaignForm.rewardPoints) || 0,
+        territoryId: firstTerritoryId,
+        businessIds: campaignForm.businessIds,
+      }),
+    onSuccess: (r: any) => {
+      toast({
+        title: "Campaign created",
+        description: `${r?.addedMembers ?? 0} store(s) added${r?.skippedMembers ? `, ${r.skippedMembers} skipped` : ""}.`,
+      });
+      setCampaignForm({ name: "", ruleType: "any_n", requiredStores: "2", rewardTitle: "", rewardPoints: "50", businessIds: [] });
+      refreshCampaigns();
+    },
+    onError: () => toast({ title: "Couldn't create campaign", variant: "destructive" }),
+  });
+
+  const featureCampaign = useMutation({
+    mutationFn: async ({ id, featured }: { id: string; featured: boolean }) =>
+      apiRequest("PATCH", `/api/coordinator/group-campaigns/${id}/feature`, { featured }),
+    onSuccess: () => {
+      toast({ title: "Map placement updated" });
+      refreshCampaigns();
+    },
+    onError: () => toast({ title: "Couldn't update placement", variant: "destructive" }),
+  });
+
+  const featureBusiness = useMutation({
+    mutationFn: async ({ id, featured }: { id: string; featured: boolean }) =>
+      apiRequest("PATCH", `/api/coordinator/businesses/${id}/feature`, { featured }),
+    onSuccess: () => {
+      toast({ title: "Map placement updated" });
+      refresh();
+    },
+    onError: () => toast({ title: "Couldn't update placement", variant: "destructive" }),
+  });
+
   const [welcome, setWelcome] = useState("");
   useEffect(() => {
     setWelcome((firstTerritory as any)?.welcomeMessage || "");
@@ -346,6 +437,16 @@ export default function CoordinatorDashboard() {
                           <div className="flex gap-1 justify-end">
                             <Button
                               size="sm"
+                              variant="ghost"
+                              title={s.isFeatured ? "Remove from featured map placement" : "Feature on the discovery map"}
+                              className={`h-7 px-2 text-xs ${s.isFeatured ? "text-amber-500 hover:text-amber-600" : "text-gray-400 hover:text-amber-500"}`}
+                              disabled={featureBusiness.isPending}
+                              onClick={() => featureBusiness.mutate({ id: s.id, featured: !s.isFeatured })}
+                            >
+                              <Star className={`h-4 w-4 ${s.isFeatured ? "fill-current" : ""}`} />
+                            </Button>
+                            <Button
+                              size="sm"
                               variant="outline"
                               className="h-7 px-2 text-xs"
                               disabled={s.verificationStatus === "verified" || verify.isPending}
@@ -375,6 +476,151 @@ export default function CoordinatorDashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* CHR-54: Multi-store campaign builder + map placement */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+            <Route className="h-5 w-5 text-purple-600" />
+            Multi-store campaigns
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Run a campaign across several stores in your territory (e.g. "Tap 3 shops for a prize").
+            Customers make progress by tapping at each participating store.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <Input
+              placeholder="Campaign name (e.g. Coffee Loop Challenge)"
+              value={campaignForm.name}
+              onChange={(e) => setCampaignForm({ ...campaignForm, name: e.target.value })}
+            />
+            <Input
+              placeholder="Reward title (e.g. Free pastry)"
+              value={campaignForm.rewardTitle}
+              onChange={(e) => setCampaignForm({ ...campaignForm, rewardTitle: e.target.value })}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3 mb-3">
+            <select
+              value={campaignForm.ruleType}
+              onChange={(e) => setCampaignForm({ ...campaignForm, ruleType: e.target.value })}
+              className="h-10 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 text-sm"
+            >
+              <option value="any_n">Tap N of the stores</option>
+              <option value="all">Tap all stores</option>
+            </select>
+            {campaignForm.ruleType === "any_n" && (
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span>Required stores</span>
+                <Input
+                  type="number"
+                  min={1}
+                  value={campaignForm.requiredStores}
+                  onChange={(e) => setCampaignForm({ ...campaignForm, requiredStores: e.target.value })}
+                  className="w-20"
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <span>Reward points</span>
+              <Input
+                type="number"
+                min={0}
+                value={campaignForm.rewardPoints}
+                onChange={(e) => setCampaignForm({ ...campaignForm, rewardPoints: e.target.value })}
+                className="w-24"
+              />
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Participating stores ({campaignForm.businessIds.length} selected)
+            </div>
+            {(overview?.stores || []).length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Onboard businesses into your territory first.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {(overview?.stores || []).map((s) => {
+                  const on = campaignForm.businessIds.includes(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleCampaignStore(s.id)}
+                      className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                        on
+                          ? "bg-purple-600 text-white border-purple-600"
+                          : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700"
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <Button
+            onClick={() => createCampaign.mutate()}
+            disabled={!campaignForm.name || campaignForm.businessIds.length < 2 || createCampaign.isPending}
+            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+          >
+            Create campaign
+          </Button>
+
+          {(groupCampaigns || []).length > 0 && (
+            <div className="mt-6 space-y-3">
+              {(groupCampaigns || []).map((c) => (
+                <div
+                  key={c.id}
+                  className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        {c.name}
+                        {c.isFeatured && (
+                          <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">Featured</Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {c.ruleType === "all" ? `Tap all ${c.stores.length}` : `Tap ${c.requiredStores} of ${c.stores.length}`} stores
+                        {c.rewardTitle ? ` · ${c.rewardTitle}` : ""} · {c.participants} participant(s) · {c.completions} completed
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={c.isFeatured ? "default" : "outline"}
+                      className={`h-7 px-2 text-xs ${c.isFeatured ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
+                      disabled={featureCampaign.isPending}
+                      onClick={() => featureCampaign.mutate({ id: c.id, featured: !c.isFeatured })}
+                    >
+                      <Star className={`h-3.5 w-3.5 mr-1 ${c.isFeatured ? "fill-current" : ""}`} />
+                      {c.isFeatured ? "Featured" : "Feature on map"}
+                    </Button>
+                  </div>
+                  {c.stores.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
+                      {c.stores.map((s) => (
+                        <span key={s.businessId}>
+                          {s.name}: <span className="font-medium text-gray-900 dark:text-white">{s.taps} taps</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* CHR-55: Templates library */}
       <Card className="mb-8">

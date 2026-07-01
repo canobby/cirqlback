@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { QuickTranslate } from "@/components/ui/translated-text";
-import { MapPin, ArrowRight, Navigation, Store, Gift, Footprints, Check } from "lucide-react";
+import { MapPin, ArrowRight, Navigation, Store, Gift, Footprints, Check, Star } from "lucide-react";
 
 interface MapBusiness {
   id: string;
@@ -17,6 +17,7 @@ interface MapBusiness {
   description: string | null;
   category: string;
   isActive: boolean;
+  featured?: boolean; // CHR-54: coordinator map promotion
 }
 
 interface TrailMember {
@@ -32,6 +33,7 @@ interface Trail {
   ruleType: string;
   requiredStores: number;
   rewardTitle: string | null;
+  isFeatured?: boolean; // CHR-54: coordinator map promotion
   members: TrailMember[];
 }
 interface TrailProgress {
@@ -79,6 +81,15 @@ export default function MapWorking() {
       return r.json();
     },
   });
+  // CHR-54: featured (coordinator-promoted) placements float to the top.
+  const sortedBusinesses = useMemo(
+    () => [...businesses].sort((a, b) => Number(!!b.featured) - Number(!!a.featured)),
+    [businesses],
+  );
+  const sortedTrails = useMemo(
+    () => [...trails].sort((a, b) => Number(!!b.isFeatured) - Number(!!a.isFeatured)),
+    [trails],
+  );
   const selectedTrail = trails.find((t) => t.id === selectedTrailId) || null;
   const highlightedIds = useMemo(
     () => new Set((selectedTrail?.members || []).map((m) => m.businessId)),
@@ -149,6 +160,8 @@ export default function MapWorking() {
                     icon={
                       selectedTrailId && highlightedIds.has(b.id)
                         ? { url: "http://maps.google.com/mapfiles/ms/icons/purple-dot.png" }
+                        : b.featured
+                        ? { url: "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png" }
                         : undefined
                     }
                   />
@@ -201,16 +214,23 @@ export default function MapWorking() {
               highlight its stops on the map.
             </p>
             <div className="space-y-3">
-              {trails.map((t) => {
+              {sortedTrails.map((t) => {
                 const isSel = t.id === selectedTrailId;
                 return (
-                  <div key={t.id} className={`rounded-lg border ${isSel ? "border-purple-300 bg-purple-50/50" : "border-gray-200"}`}>
+                  <div key={t.id} className={`rounded-lg border ${isSel ? "border-purple-300 bg-purple-50/50" : t.isFeatured ? "border-amber-300 bg-amber-50/40" : "border-gray-200"}`}>
                     <button
                       className="w-full flex items-center justify-between p-3 text-left"
                       onClick={() => { setSelectedTrailId(isSel ? null : t.id); }}
                     >
                       <div>
-                        <div className="font-medium text-gray-900">{t.name}</div>
+                        <div className="font-medium text-gray-900 flex items-center gap-2">
+                          {t.name}
+                          {t.isFeatured && (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-600">
+                              <Star className="h-3 w-3 fill-current" /> Featured
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500">
                           Tap {t.requiredStores} of {t.members.length} stores
                           {t.rewardTitle ? ` · ${t.rewardTitle}` : ""}
@@ -265,18 +285,23 @@ export default function MapWorking() {
             <p className="text-gray-500 text-sm">No businesses on the map yet.</p>
           ) : (
             <div className="space-y-3">
-              {businesses.map((b) => (
+              {sortedBusinesses.map((b) => (
                 <div
                   key={b.id}
-                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors border"
+                  className={`flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors border ${b.featured ? "border-amber-300 bg-amber-50/40" : ""}`}
                   onClick={() => setSelected(b)}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2 rounded-lg bg-green-100 text-green-600 flex-shrink-0">
-                      <Store className="h-4 w-4" />
+                    <div className={`p-2 rounded-lg flex-shrink-0 ${b.featured ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"}`}>
+                      {b.featured ? <Star className="h-4 w-4 fill-current" /> : <Store className="h-4 w-4" />}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{b.name}</p>
+                      <p className="font-medium text-gray-900 truncate flex items-center gap-2">
+                        {b.name}
+                        {b.featured && (
+                          <span className="text-xs text-amber-600 font-normal">Featured</span>
+                        )}
+                      </p>
                       <p className="text-sm text-gray-600 truncate">
                         {b.address || b.description}
                       </p>

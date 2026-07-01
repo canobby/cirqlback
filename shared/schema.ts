@@ -96,6 +96,7 @@ export const businesses = pgTable("businesses", {
   ownerId: varchar("owner_id").references(() => users.id),
   territoryId: varchar("territory_id").references(() => territories.id), // CHR-31: coordinator territory scoping
   verificationStatus: varchar("verification_status").default("unverified"), // CHR-31: unverified, verified, rejected (coordinator-verified)
+  isFeatured: boolean("is_featured").default(false), // CHR-54: coordinator-controlled map promotion (territory-scoped)
   isActive: boolean("is_active").default(true),
   totalTaps: integer("total_taps").default(0),
   totalRewardsGiven: integer("total_rewards_given").default(0),
@@ -218,6 +219,7 @@ export const groupCampaigns = pgTable("group_campaigns", {
   creatorType: varchar("creator_type").default("business"), // business | coordinator
   territoryId: varchar("territory_id").references(() => territories.id), // set for coordinator city-wide
   isOpen: boolean("is_open").default(false), // businesses may self-join
+  isFeatured: boolean("is_featured").default(false), // CHR-54: coordinator promotes this campaign on the discovery map
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   isActive: boolean("is_active").default(true),
