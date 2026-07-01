@@ -14,6 +14,7 @@ import {
   groupCampaigns,
   groupCampaignMembers,
   groupCampaignProgress,
+  coordinatorEarnings,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -44,6 +45,7 @@ import {
   type GroupCampaign,
   type InsertGroupCampaign,
   type GroupCampaignMember,
+  type CoordinatorEarning,
   type SalesData,
   type InsertSalesData,
   type MonthlySalesSummary,
@@ -543,6 +545,101 @@ export class DatabaseStorage implements IStorage {
       .from(regionalOffers)
       .where(eq(regionalOffers.coordinatorId, coordinatorId))
       .orderBy(desc(regionalOffers.createdAt));
+  }
+
+  // ── CHR-32 / CHR-61: coordinator revenue-share attribution ──
+
+  // Resolve a paying user to the coordinator who earns on that charge: the
+  // payer's business → its territory → the (active) coordinator. Null if the
+  // payer has no territory-assigned business or no active coordinator.
+  async resolveCoordinatorForPayer(
+    userId: string
+  ): Promise<{ coordinator: Coordinator; territoryId: string; businessId: string } | null> {
+    const owned = await this.getBusinessesByOwner(userId);
+    const biz = owned.find((b) => b.territoryId);
+    if (!biz?.territoryId) return null;
+    const [terr] = await db.select().from(territories).where(eq(territories.id, biz.territoryId));
+    if (!terr) return null;
+    const coordinator = await this.getCoordinator(terr.coordinatorId);
+    if (!coordinator || coordinator.isActive === false) return null;
+    return { coordinator, territoryId: terr.id, businessId: biz.id };
+  }
+
+  // Record one verified charge as coordinator earnings. Idempotent on the Stripe
+  // payment-intent id (webhook retries never double-record). Returns null when
+  // there is no coordinator to attribute the charge to (recorded nothing).
+  async recordCoordinatorEarning(input: {
+    paymentIntentId?: string;
+    userId?: string;
+    planId?: string;
+    source?: string;
+    description?: string;
+    grossAmountCents: number;
+    currency?: string;
+    coordinatorId?: string;
+    territoryId?: string;
+    businessId?: string;
+  }): Promise<CoordinatorEarning | null> {
+    // Idempotency: a charge we've already recorded returns the existing row.
+    if (input.paymentIntentId) {
+      const [existing] = await db
+        .select()
+        .from(coordinatorEarnings)
+        .where(eq(coordinatorEarnings.stripePaymentIntentId, input.paymentIntentId));
+      if (existing) return existing;
+    }
+
+    let { coordinatorId, territoryId, businessId } = input;
+    let sharePct = 85;
+    if (!coordinatorId) {
+      if (!input.userId) return null;
+      const resolved = await this.resolveCoordinatorForPayer(input.userId);
+      if (!resolved) return null; // no coordinator → nothing to attribute
+      coordinatorId = resolved.coordinator.id;
+      territoryId = resolved.territoryId;
+      businessId = resolved.businessId;
+      sharePct = resolved.coordinator.sharePct ?? 85;
+    } else {
+      const coord = await this.getCoordinator(coordinatorId);
+      sharePct = coord?.sharePct ?? 85;
+    }
+
+    const gross = Math.round(input.grossAmountCents);
+    const shareAmountCents = Math.round((gross * sharePct) / 100);
+    const now = new Date();
+    const periodMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    try {
+      const [row] = await db
+        .insert(coordinatorEarnings)
+        .values({
+          coordinatorId,
+          territoryId: territoryId ?? null,
+          businessId: businessId ?? null,
+          userId: input.userId ?? null,
+          source: input.source || "subscription",
+          planId: input.planId ?? null,
+          description: input.description ?? null,
+          grossAmountCents: gross,
+          sharePct,
+          shareAmountCents,
+          currency: input.currency || "usd",
+          stripePaymentIntentId: input.paymentIntentId ?? null,
+          periodMonth,
+        })
+        .returning();
+      return row;
+    } catch (e: any) {
+      // Concurrent webhook delivery raced us to the unique payment-intent id.
+      if (e?.code === "23505" && input.paymentIntentId) {
+        const [existing] = await db
+          .select()
+          .from(coordinatorEarnings)
+          .where(eq(coordinatorEarnings.stripePaymentIntentId, input.paymentIntentId));
+        if (existing) return existing;
+      }
+      throw e;
+    }
   }
 
   // ── CHR-33 / CHR-56: multi-store group campaigns ──

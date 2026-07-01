@@ -157,6 +157,7 @@ export const coordinators = pgTable("coordinators", {
   displayName: varchar("display_name"),
   planStatus: varchar("plan_status").default("trial"), // trial, active, past_due, cancelled
   planRenewsAt: timestamp("plan_renews_at"),
+  sharePct: integer("share_pct").default(85), // CHR-32/61: revenue-share % (80–90 band)
   // Invitation (mirrors the admin invite flow)
   invitedBy: varchar("invited_by").references(() => users.id),
   inviteToken: varchar("invite_token").unique(),
@@ -200,6 +201,28 @@ export const regionalOffers = pgTable("regional_offers", {
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ── CHR-32 / CHR-61: coordinator revenue-share ledger ──
+// One row per verified charge attributed to a territory's coordinator. Written
+// from the Stripe webhook (payment_intent.succeeded). Idempotent on the payment
+// intent id so webhook retries never double-record.
+export const coordinatorEarnings = pgTable("coordinator_earnings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coordinatorId: varchar("coordinator_id").references(() => coordinators.id).notNull(),
+  territoryId: varchar("territory_id").references(() => territories.id),
+  businessId: varchar("business_id").references(() => businesses.id), // payer's business
+  userId: varchar("user_id").references(() => users.id), // the payer
+  source: varchar("source").default("subscription"), // subscription | addon
+  planId: varchar("plan_id"),
+  description: varchar("description"),
+  grossAmountCents: integer("gross_amount_cents").notNull(),
+  sharePct: integer("share_pct").notNull(), // snapshot of coordinator rate at time of charge
+  shareAmountCents: integer("share_amount_cents").notNull(),
+  currency: varchar("currency").default("usd"),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id").unique(), // idempotency key
+  periodMonth: varchar("period_month"), // YYYY-MM for monthly aggregation
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // ── CHR-33: first-class multi-store group campaigns ──
@@ -517,6 +540,11 @@ export const insertRegionalOfferSchema = createInsertSchema(regionalOffers).omit
   updatedAt: true,
 });
 
+export const insertCoordinatorEarningSchema = createInsertSchema(coordinatorEarnings).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertGroupCampaignSchema = createInsertSchema(groupCampaigns).omit({
   id: true,
   createdAt: true,
@@ -780,6 +808,8 @@ export type Territory = typeof territories.$inferSelect;
 export type InsertTerritory = z.infer<typeof insertTerritorySchema>;
 export type RegionalOffer = typeof regionalOffers.$inferSelect;
 export type InsertRegionalOffer = z.infer<typeof insertRegionalOfferSchema>;
+export type CoordinatorEarning = typeof coordinatorEarnings.$inferSelect;
+export type InsertCoordinatorEarning = z.infer<typeof insertCoordinatorEarningSchema>;
 export type GroupCampaign = typeof groupCampaigns.$inferSelect;
 export type InsertGroupCampaign = z.infer<typeof insertGroupCampaignSchema>;
 export type GroupCampaignMember = typeof groupCampaignMembers.$inferSelect;

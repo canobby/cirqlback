@@ -282,6 +282,23 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
             subscriptionStatus: "active",
           });
         }
+        // CHR-32/61: attribute the verified charge to the territory's coordinator
+        // (revenue share). Never let this break subscription activation.
+        if (userId) {
+          try {
+            await storage.recordCoordinatorEarning({
+              paymentIntentId: pi.id,
+              userId,
+              planId,
+              source: "subscription",
+              description: planId ? PLAN_PRICING[planId]?.name : undefined,
+              grossAmountCents: Number(pi.amount) || 0,
+              currency: pi.currency || "usd",
+            });
+          } catch (attrErr) {
+            console.error("Coordinator earning attribution failed:", attrErr);
+          }
+        }
       }
       return res.json({ received: true });
     } catch (err) {
