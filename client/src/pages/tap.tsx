@@ -356,6 +356,16 @@ export default function TapPage() {
                         30 days
                       </div>
                     </div>
+                    {tapResult.reward.code && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full mt-3 border-green-300 text-green-700 hover:bg-green-50"
+                        onClick={() => setLocation(`/reward?code=${tapResult.reward.code}`)}
+                      >
+                        View / redeem reward
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

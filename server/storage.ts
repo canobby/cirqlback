@@ -191,6 +191,12 @@ export class DatabaseStorage implements IStorage {
     return reward || undefined;
   }
 
+  // CHR-74: public reward lookup by redemption code (customer-facing).
+  async getRewardByCode(code: string): Promise<Reward | undefined> {
+    const [reward] = await db.select().from(rewards).where(eq(rewards.code, code));
+    return reward || undefined;
+  }
+
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
       const [user] = await db.select().from(users).where(eq(users.email, email));

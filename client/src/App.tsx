@@ -39,6 +39,7 @@ import TestSystem from "@/pages/test-system";
 import AdminDashboard from "@/pages/admin-dashboard";
 import CoordinatorDashboard from "@/pages/coordinator-dashboard";
 import NonprofitDashboard from "@/pages/nonprofit-dashboard";
+import RewardPage from "@/pages/reward";
 import BusinessWebsitePreview from "@/pages/business-website-preview";
 import AboutPage from "@/pages/about";
 import AuthPage from "@/pages/auth";
@@ -77,6 +78,7 @@ function Router() {
           {/* Essential Features */}
           <Route path="/account" component={Account} />
           <Route path="/tap" component={TapPage} />
+          <Route path="/reward" component={RewardPage} />
           <Route path="/how-it-works" component={HowItWorksPage} />
           <Route path="/settings" component={SettingsPage} />
           <Route path="/checkout" component={Checkout} />

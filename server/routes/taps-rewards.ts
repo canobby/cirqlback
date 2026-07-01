@@ -14,6 +14,34 @@ import type { RouteDeps } from "./_shared";
 export function registerTapsRewardsRoutes(app: Express, deps: RouteDeps) {
   const { userOwnsBusiness } = deps;
 
+  // CHR-74: public reward lookup by code — the customer-facing view. Returns a
+  // safe status (valid | redeemed | expired) with the business + expiry. The
+  // actual redeem stays business-gated (CHR-16); the customer just shows this.
+  app.get("/api/rewards/lookup", async (req, res) => {
+    try {
+      const code = typeof req.query.code === "string" ? req.query.code.trim() : "";
+      if (!code) return res.status(400).json({ error: "code is required" });
+      const reward = await storage.getRewardByCode(code);
+      if (!reward) return res.status(404).json({ error: "Reward not found" });
+      const business = await storage.getBusiness(reward.businessId);
+      const expired = reward.expiresAt ? new Date(reward.expiresAt).getTime() < Date.now() : false;
+      const status = reward.isRedeemed ? "redeemed" : expired ? "expired" : "valid";
+      res.json({
+        code: reward.code,
+        title: reward.title,
+        description: reward.description,
+        value: reward.value,
+        businessName: business?.name ?? null,
+        status,
+        expiresAt: reward.expiresAt,
+        redeemedAt: reward.redeemedAt ?? null,
+      });
+    } catch (error) {
+      console.error("Reward lookup error:", error);
+      res.status(500).json({ error: "Failed to look up reward" });
+    }
+  });
+
   app.post("/api/taps", async (req, res) => {
     try {
       // Validate basic required fields
