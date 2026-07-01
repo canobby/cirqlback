@@ -148,6 +148,31 @@ export function registerGroupCampaignRoutes(app: Express, _deps: RouteDeps) {
     }
   });
 
+  // CHR-59: active group campaigns + member stores (for the discovery map).
+  app.get("/api/group-campaigns/active", async (_req, res) => {
+    try {
+      res.json(await storage.getActiveGroupCampaignsWithMembers());
+    } catch (error) {
+      console.error("Active group campaigns error:", error);
+      res.status(500).json({ error: "Failed to load active campaigns" });
+    }
+  });
+
+  // CHR-59: a customer's cross-store progress toward a campaign (no account
+  // needed — identified by ?email and/or ?deviceFingerprint).
+  app.get("/api/group-campaigns/:id/progress", async (req, res) => {
+    try {
+      const email = ((req.query.email as string) || "").toLowerCase().trim() || undefined;
+      const deviceFingerprint = (req.query.deviceFingerprint as string) || undefined;
+      const progress = await storage.getCustomerGroupProgress(req.params.id, email, deviceFingerprint);
+      if (!progress) return res.status(404).json({ error: "Group campaign not found" });
+      res.json(progress);
+    } catch (error) {
+      console.error("Group campaign progress error:", error);
+      res.status(500).json({ error: "Failed to load progress" });
+    }
+  });
+
   // Public read: the campaign + its member stores (name + coordinates).
   app.get("/api/group-campaigns/:id", async (req, res) => {
     try {

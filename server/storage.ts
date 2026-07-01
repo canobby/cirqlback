@@ -652,6 +652,68 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
+  // CHR-59: active group campaigns with their member stores (for the map).
+  async getActiveGroupCampaignsWithMembers(): Promise<any[]> {
+    const rows = await db
+      .select()
+      .from(groupCampaigns)
+      .where(eq(groupCampaigns.isActive, true))
+      .orderBy(desc(groupCampaigns.createdAt));
+    const out: any[] = [];
+    for (const gc of rows) {
+      const members = await db
+        .select({
+          businessId: groupCampaignMembers.businessId,
+          name: businesses.name,
+          latitude: businesses.latitude,
+          longitude: businesses.longitude,
+        })
+        .from(groupCampaignMembers)
+        .innerJoin(businesses, eq(groupCampaignMembers.businessId, businesses.id))
+        .where(eq(groupCampaignMembers.groupCampaignId, gc.id));
+      const required = gc.ruleType === "all" ? members.length : gc.requiredStores ?? 1;
+      out.push({
+        id: gc.id,
+        name: gc.name,
+        description: gc.description,
+        ruleType: gc.ruleType,
+        requiredStores: required,
+        rewardTitle: gc.rewardTitle,
+        members,
+      });
+    }
+    return out;
+  }
+
+  // CHR-59: a customer's progress toward a group campaign (no account needed —
+  // matched by email and/or device fingerprint).
+  async getCustomerGroupProgress(
+    groupCampaignId: string,
+    email?: string,
+    deviceFingerprint?: string
+  ): Promise<any | null> {
+    const gc = await this.getGroupCampaign(groupCampaignId);
+    if (!gc) return null;
+    const members = await this.getGroupCampaignMembers(groupCampaignId);
+    const required = gc.ruleType === "all" ? members.length : gc.requiredStores ?? 1;
+    let visited: string[] = [];
+    let completed = false;
+    if (email || deviceFingerprint) {
+      const conds = [];
+      if (email) conds.push(eq(groupCampaignProgress.customerEmail, email));
+      if (deviceFingerprint) conds.push(eq(groupCampaignProgress.deviceFingerprint, deviceFingerprint));
+      const [p] = await db
+        .select()
+        .from(groupCampaignProgress)
+        .where(and(eq(groupCampaignProgress.groupCampaignId, groupCampaignId), or(...conds)));
+      if (p) {
+        visited = Array.isArray(p.visitedBusinessIds) ? (p.visitedBusinessIds as string[]) : [];
+        completed = !!p.completedAt;
+      }
+    }
+    return { groupCampaignId, required, visited, visitedCount: visited.length, completed };
+  }
+
   // CHR-57: a tap at `businessId` advances the customer's progress in every
   // active group campaign that store belongs to; completing the rule unlocks
   // the group reward exactly once. Customer identity works without an account
