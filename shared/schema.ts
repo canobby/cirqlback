@@ -385,6 +385,7 @@ export const campaigns = pgTable("campaigns", {
   type: varchar("type").notNull(), // discount, loyalty, referral, trail
   value: decimal("value", { precision: 10, scale: 2 }),
   pointsAwarded: integer("points_awarded").default(0),
+  tapGoal: integer("tap_goal").default(1), // CHR-73: taps needed per reward (>1 = punch-card)
   maxRedemptions: integer("max_redemptions"),
   currentRedemptions: integer("current_redemptions").default(0),
   gpsRequired: boolean("gps_required").default(false), // CHR-48: gate reward on proximity

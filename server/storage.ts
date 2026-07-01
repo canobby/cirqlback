@@ -107,7 +107,7 @@ export interface IStorage {
   deleteNFCTag(id: string): Promise<boolean>;
   
   // Tap operations
-  processTap(tap: InsertTap, opts?: { latitude?: number; longitude?: number }): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[]; donations?: any[] }>;
+  processTap(tap: InsertTap, opts?: { latitude?: number; longitude?: number }): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[]; donations?: any[]; progress?: { count: number; goal: number; rewardEarned: boolean } }>;
   getTaps(businessId?: string, customerEmail?: string): Promise<Tap[]>;
   
   // Reward operations
@@ -1070,6 +1070,26 @@ export class DatabaseStorage implements IStorage {
     return { lifetimeCents, totalDonations: rows.length, byCampaign, byStore };
   }
 
+  // CHR-73: a customer's tap count toward a campaign (punch-card progress).
+  // Works with no account — identified by email and/or device fingerprint.
+  async getCustomerCampaignProgress(
+    campaignId: string,
+    email?: string | null,
+    deviceFingerprint?: string | null
+  ): Promise<{ count: number; goal: number }> {
+    const [c] = await db.select().from(campaigns).where(eq(campaigns.id, campaignId));
+    const goal = (c?.tapGoal ?? 1) > 1 ? (c!.tapGoal as number) : 1;
+    const idConds = [];
+    if (email) idConds.push(eq(taps.customerEmail, email));
+    if (deviceFingerprint) idConds.push(eq(taps.deviceFingerprint, deviceFingerprint));
+    if (idConds.length === 0) return { count: 0, goal };
+    const [{ n }] = await db
+      .select({ n: count() })
+      .from(taps)
+      .where(and(eq(taps.campaignId, campaignId), or(...idConds)));
+    return { count: Number(n) || 0, goal };
+  }
+
   // ── CHR-33 / CHR-56: multi-store group campaigns ──
   async createGroupCampaign(data: InsertGroupCampaign): Promise<GroupCampaign> {
     const [row] = await db.insert(groupCampaigns).values(data).returning();
@@ -1516,7 +1536,7 @@ export class DatabaseStorage implements IStorage {
   async processTap(
     tap: InsertTap,
     opts?: { latitude?: number; longitude?: number }
-  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[]; donations?: any[] }> {
+  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[]; donations?: any[]; progress?: { count: number; goal: number; rewardEarned: boolean } }> {
     try {
       const now = Date.now();
 
@@ -1562,8 +1582,12 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      // Resolve the campaign (if any) to determine reward + points.
-      const campaign = tap.campaignId ? await this.getCampaign(tap.campaignId) : undefined;
+      // Resolve the campaign (if any) to determine reward + points. Fall back to
+      // the scanned tag's campaign when the client didn't pass one (e.g. the NFC
+      // scan path), so tag→campaign is authoritative for punch-card progress.
+      const tagRow = tap.tagId ? await this.getNFCTag(tap.tagId) : undefined;
+      const resolvedCampaignId = tap.campaignId ?? tagRow?.campaignId ?? undefined;
+      const campaign = resolvedCampaignId ? await this.getCampaign(resolvedCampaignId) : undefined;
       const campaignActive = !!campaign && campaign.isActive === true;
 
       // Anti-abuse 3: optional per-campaign GPS proximity gate. Only unlock the
@@ -1598,10 +1622,11 @@ export class DatabaseStorage implements IStorage {
       const points = campaignActive ? (campaign!.pointsAwarded ?? 0) : 0;
       const customer = tap.customerEmail ? await this.getUserByEmail(tap.customerEmail) : undefined;
 
-      // Record the tap (with the points earned).
+      // Record the tap (with the points earned). Stamp campaignId so punch-card
+      // progress (CHR-73) can be counted per campaign.
       const [newTap] = await db
         .insert(taps)
-        .values({ ...tap, pointsEarned: points })
+        .values({ ...tap, campaignId: campaign?.id ?? (tap as any).campaignId ?? null, pointsEarned: points })
         .returning();
 
       // Update tap counters.
@@ -1614,10 +1639,27 @@ export class DatabaseStorage implements IStorage {
         .set({ totalTaps: sql`${businesses.totalTaps} + 1` })
         .where(eq(businesses.id, tap.businessId));
 
+      // CHR-73: punch-card progress. For a tapGoal>1 campaign the reward issues
+      // only once the customer reaches the goal (every goal-th tap); tapGoal<=1
+      // keeps the per-tap behaviour. Identity works with no account.
+      let progress: { count: number; goal: number; rewardEarned: boolean } | undefined;
+      let rewardEarned = campaignActive;
+      if (campaignActive && campaign) {
+        const goal = (campaign.tapGoal ?? 1) > 1 ? (campaign.tapGoal as number) : 1;
+        const prog = await this.getCustomerCampaignProgress(
+          campaign.id,
+          tap.customerEmail,
+          (tap as any).deviceFingerprint
+        );
+        const total = prog.count; // includes the tap just inserted
+        rewardEarned = total % goal === 0;
+        progress = { count: total % goal === 0 ? goal : total % goal, goal, rewardEarned };
+      }
+
       // Create a reward from the active campaign, owned by the customer (if they
       // have an account) so they can later redeem it.
       let reward: Reward | undefined;
-      if (campaignActive && campaign) {
+      if (campaignActive && campaign && rewardEarned) {
         const [newReward] = await db
           .insert(rewards)
           .values({
@@ -1676,6 +1718,7 @@ export class DatabaseStorage implements IStorage {
         pointsEarned: points,
         groupProgress,
         donations: donationsBooked,
+        progress,
         message: groupUnlocked
           ? "Group reward unlocked! You completed the trail."
           : reward

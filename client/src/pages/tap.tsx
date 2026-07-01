@@ -311,6 +311,28 @@ export default function TapPage() {
               <div className="text-center">
                 <p className="text-green-700 mb-4">{tapResult.message}</p>
                 
+                {/* CHR-73: punch-card progress toward a multi-tap reward */}
+                {tapResult.progress && tapResult.progress.goal > 1 && (
+                  <div className="p-3 bg-white rounded-lg border-2 border-primary/20 mb-4 text-left">
+                    <p className="text-sm font-medium text-gray-900 mb-2">
+                      {tapResult.progress.rewardEarned
+                        ? "Punch card complete! 🎉"
+                        : `You're on tap ${tapResult.progress.count} of ${tapResult.progress.goal}`}
+                    </p>
+                    <div className="flex gap-1">
+                      {Array.from({ length: tapResult.progress.goal }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-3 flex-1 rounded-full ${i < tapResult.progress.count ? "bg-primary" : "bg-gray-200"}`}
+                        />
+                      ))}
+                    </div>
+                    {!tapResult.progress.rewardEarned && (
+                      <p className="text-xs text-gray-500 mt-2">Keep tapping to earn your reward!</p>
+                    )}
+                  </div>
+                )}
+
                 {/* CHR-72: donation-per-tap acknowledgement */}
                 {Array.isArray(tapResult.donations) && tapResult.donations.length > 0 && (
                   <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 mb-4 text-left">
