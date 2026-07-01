@@ -77,6 +77,77 @@ export function registerGroupCampaignRoutes(app: Express, _deps: RouteDeps) {
     }
   });
 
+  // CHR-58: the current merchant's own businesses (for the group-campaign UI).
+  app.get("/api/my/businesses", isAuthenticated, async (req, res) => {
+    try {
+      res.json(await storage.getBusinessesByOwner((req.user as any).id));
+    } catch (error) {
+      console.error("My businesses error:", error);
+      res.status(500).json({ error: "Failed to load businesses" });
+    }
+  });
+
+  // CHR-58: open/joinable group campaigns (public discovery list).
+  app.get("/api/group-campaigns/open", async (_req, res) => {
+    try {
+      res.json(await storage.getOpenGroupCampaigns());
+    } catch (error) {
+      console.error("Open group campaigns error:", error);
+      res.status(500).json({ error: "Failed to load open campaigns" });
+    }
+  });
+
+  // CHR-58: the group campaigns a business belongs to (owner-authorized).
+  app.get("/api/group-campaigns/joined/:businessId", isAuthenticated, async (req, res) => {
+    try {
+      const biz = await storage.getBusiness(req.params.businessId);
+      if (!biz || biz.ownerId !== (req.user as any).id) {
+        return res.status(403).json({ error: "Not your business" });
+      }
+      res.json(await storage.getGroupCampaignsForBusiness(req.params.businessId));
+    } catch (error) {
+      console.error("Joined group campaigns error:", error);
+      res.status(500).json({ error: "Failed to load joined campaigns" });
+    }
+  });
+
+  // CHR-58: a business joins an OPEN group campaign (owner-authorized).
+  app.post("/api/group-campaigns/:id/join", isAuthenticated, async (req, res) => {
+    try {
+      const { businessId } = req.body || {};
+      if (!businessId) return res.status(400).json({ error: "businessId is required" });
+      const biz = await storage.getBusiness(businessId);
+      if (!biz || biz.ownerId !== (req.user as any).id) {
+        return res.status(403).json({ error: "Not your business" });
+      }
+      const campaign = await storage.getGroupCampaign(req.params.id);
+      if (!campaign) return res.status(404).json({ error: "Group campaign not found" });
+      if (!campaign.isOpen) return res.status(403).json({ error: "This campaign is not open to join" });
+      const member = await storage.addGroupCampaignMember(req.params.id, businessId, "joined");
+      res.status(201).json(member);
+    } catch (error) {
+      console.error("Join group campaign error:", error);
+      res.status(500).json({ error: "Failed to join campaign" });
+    }
+  });
+
+  // CHR-58: a business leaves a group campaign (owner-authorized).
+  app.post("/api/group-campaigns/:id/leave", isAuthenticated, async (req, res) => {
+    try {
+      const { businessId } = req.body || {};
+      if (!businessId) return res.status(400).json({ error: "businessId is required" });
+      const biz = await storage.getBusiness(businessId);
+      if (!biz || biz.ownerId !== (req.user as any).id) {
+        return res.status(403).json({ error: "Not your business" });
+      }
+      const removed = await storage.removeGroupCampaignMember(req.params.id, businessId);
+      res.json({ removed });
+    } catch (error) {
+      console.error("Leave group campaign error:", error);
+      res.status(500).json({ error: "Failed to leave campaign" });
+    }
+  });
+
   // Public read: the campaign + its member stores (name + coordinates).
   app.get("/api/group-campaigns/:id", async (req, res) => {
     try {

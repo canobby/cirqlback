@@ -604,6 +604,54 @@ export class DatabaseStorage implements IStorage {
     return { ...campaign, members: memberRows };
   }
 
+  // CHR-58: open/joinable group campaigns (with member counts).
+  async getOpenGroupCampaigns(): Promise<any[]> {
+    const rows = await db
+      .select()
+      .from(groupCampaigns)
+      .where(and(eq(groupCampaigns.isOpen, true), eq(groupCampaigns.isActive, true)))
+      .orderBy(desc(groupCampaigns.createdAt));
+    const result: any[] = [];
+    for (const gc of rows) {
+      const [{ c }] = await db
+        .select({ c: count() })
+        .from(groupCampaignMembers)
+        .where(eq(groupCampaignMembers.groupCampaignId, gc.id));
+      result.push({ ...gc, memberCount: Number(c) });
+    }
+    return result;
+  }
+
+  // CHR-58: group campaigns a business belongs to.
+  async getGroupCampaignsForBusiness(businessId: string): Promise<any[]> {
+    return await db
+      .select({
+        id: groupCampaigns.id,
+        name: groupCampaigns.name,
+        ruleType: groupCampaigns.ruleType,
+        requiredStores: groupCampaigns.requiredStores,
+        isOpen: groupCampaigns.isOpen,
+        isActive: groupCampaigns.isActive,
+        status: groupCampaignMembers.status,
+      })
+      .from(groupCampaignMembers)
+      .innerJoin(groupCampaigns, eq(groupCampaignMembers.groupCampaignId, groupCampaigns.id))
+      .where(eq(groupCampaignMembers.businessId, businessId));
+  }
+
+  // CHR-58: a business leaves a group campaign.
+  async removeGroupCampaignMember(groupCampaignId: string, businessId: string): Promise<boolean> {
+    const result = await db
+      .delete(groupCampaignMembers)
+      .where(
+        and(
+          eq(groupCampaignMembers.groupCampaignId, groupCampaignId),
+          eq(groupCampaignMembers.businessId, businessId)
+        )
+      );
+    return (result.rowCount ?? 0) > 0;
+  }
+
   // CHR-57: a tap at `businessId` advances the customer's progress in every
   // active group campaign that store belongs to; completing the rule unlocks
   // the group reward exactly once. Customer identity works without an account

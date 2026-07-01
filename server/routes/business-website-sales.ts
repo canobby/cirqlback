@@ -483,86 +483,9 @@ export function registerBusinessWebsiteSalesRoutes(app: Express, deps: RouteDeps
     res.json({ success: true, message: "Win-back campaign created and sent" });
   });
 
-  // PARTNERSHIP ROUTES
-
-  // Get business partnerships
-  app.get("/api/partnerships", (req, res) => {
-    const mockPartnerships = [
-      {
-        id: "1",
-        businessAId: "business-1",
-        businessBId: "business-2",
-        businessA: {
-          name: "Brew & Bytes Cafe",
-          category: "Coffee Shop",
-          address: "123 Main St",
-          rating: 4.5
-        },
-        businessB: {
-          name: "Pages & Prose Bookstore",
-          category: "Bookstore",
-          address: "125 Main St",
-          rating: 4.7
-        },
-        partnershipType: "cross_promotion",
-        status: "active",
-        commissionRate: 5.0,
-        sharedBudget: 500.00,
-        totalReferrals: 45,
-        totalRevenue: 1250.75,
-        terms: "Cross-promote each other's businesses. Coffee shop customers get 10% off books, bookstore customers get free pastry with coffee purchase.",
-        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString()
-      }
-    ];
-    res.json(mockPartnerships);
-  });
-
-  // Get potential partners
-  app.get("/api/partnerships/potential", (req, res) => {
-    const mockPotentialPartners = [
-      {
-        id: "business-4",
-        name: "Artisan Bakery",
-        category: "Bakery",
-        address: "150 Elm Street",
-        rating: 4.8,
-        reviewCount: 156,
-        description: "Fresh artisan breads and pastries made daily with organic ingredients.",
-        compatibilityScore: 92
-      }
-    ];
-    res.json(mockPotentialPartners);
-  });
-
-  // Get cross-business rewards
-  app.get("/api/partnerships/cross-rewards", (req, res) => {
-    const mockCrossRewards = [
-      {
-        id: "1",
-        partnershipId: "1",
-        triggerBusinessId: "business-1",
-        rewardBusinessId: "business-2",
-        rewardType: "discount",
-        rewardValue: 10.00,
-        description: "10% off any book purchase",
-        conditions: "Must show coffee receipt from same day",
-        isActive: true
-      }
-    ];
-    res.json(mockCrossRewards);
-  });
-
-  // Create partnership
-  app.post("/api/partnerships", (req, res) => {
-    res.json({ success: true, id: "new-partnership-id" });
-  });
-
-  // Update partnership status
-  app.put("/api/partnerships/:id/status", (req, res) => {
-    res.json({ success: true });
-  });
+  // (CHR-58) The mock /api/partnerships/* endpoints were removed. Multi-store
+  // collaboration is now the real group-campaign model — see
+  // server/routes/group-campaigns.ts.
 
   // TEAM CHALLENGE ROUTES
 

@@ -3,11 +3,12 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Store, Users, Share2, TrendingUp, Coffee, Zap, Smartphone, 
-  BarChart3, Target, Gift, ArrowRight, Settings, Globe, 
+import {
+  Store, Users, Share2, TrendingUp, Coffee, Zap, Smartphone,
+  BarChart3, Target, Gift, ArrowRight, Settings, Globe,
   MessageSquare, Calendar, DollarSign, Crown, Trophy
 } from "lucide-react";
+import GroupCampaignsPanel from "@/components/merchant/group-campaigns-panel";
 
 export default function MerchantBento() {
   const [selectedBusiness] = useState("business-1");
@@ -50,6 +51,9 @@ export default function MerchantBento() {
             </div>
           </div>
         </div>
+
+        {/* CHR-58: real multi-store group-campaign membership */}
+        <GroupCampaignsPanel />
 
         {/* Bento Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-6 auto-rows-min">
