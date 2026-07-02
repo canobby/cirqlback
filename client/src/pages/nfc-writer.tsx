@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import UniversalNFCWriter from "@/components/nfc/ios-nfc-writer";
+import TagProgrammer from "@/components/nfc/tag-programmer";
 import { ArrowLeft, Zap } from "lucide-react";
 
 export default function NFCWriter() {
@@ -34,21 +34,9 @@ export default function NFCWriter() {
           </p>
         </div>
 
-        {/* Unified NFC Writer */}
+        {/* Real self-write flow: pick business + campaign → mint tag → program it */}
         <div className="flex justify-center">
-          <UniversalNFCWriter 
-            tagData={{
-              url: "https://cirqlback.com/tap/demo123",
-              campaignId: "campaign_001", 
-              businessName: "Demo Business",
-              campaignType: "Summer Special - 20% off all drinks"
-            }}
-            onWriteComplete={(success) => {
-              if (success) {
-                setLocation('/merchant-bento');
-              }
-            }}
-          />
+          <TagProgrammer />
         </div>
 
         {/* Info Cards */}

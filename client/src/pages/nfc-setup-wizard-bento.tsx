@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import UniversalNFCWriter from "@/components/nfc/ios-nfc-writer";
+import TagProgrammer from "@/components/nfc/tag-programmer";
 import { 
   Smartphone, Wifi, CheckCircle, AlertTriangle, ArrowRight, 
   ArrowLeft, Zap, Target, Settings, RefreshCw, Play
@@ -16,8 +16,6 @@ export default function NFCSetupWizardBento() {
   const [, setLocation] = useLocation();
   const [nfcSupported, setNfcSupported] = useState(false);
   const [nfcEnabled, setNfcEnabled] = useState(false);
-  const [tagWritten, setTagWritten] = useState(false);
-  const [isWriting, setIsWriting] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState({
     isIOS: false,
     isAndroid: false,
@@ -47,27 +45,6 @@ export default function NFCSetupWizardBento() {
       setNfcSupported(false);
     }
   }, []);
-
-  const handleWriteTag = async () => {
-    if (!nfcSupported) return;
-    
-    setIsWriting(true);
-    try {
-      const ndef = new (window as any).NDEFReader();
-      await ndef.write({
-        records: [
-          { recordType: "text", data: "Hello from Cirqlback!" },
-          { recordType: "url", data: "https://cirqlback.com/tap/demo123" }
-        ]
-      });
-      setTagWritten(true);
-      setTimeout(() => setStep(4), 1000);
-    } catch (error) {
-      console.error("NFC write failed:", error);
-    } finally {
-      setIsWriting(false);
-    }
-  };
 
   const progress = (step / 5) * 100;
 
@@ -319,23 +296,14 @@ export default function NFCSetupWizardBento() {
             </>
           )}
 
-          {/* Step 4: Universal NFC Writer */}
-          {step === 4 && !tagWritten && (
-            <div className="md:col-span-6 lg:col-span-8">
-              <UniversalNFCWriter 
-                tagData={{
-                  url: "https://cirqlback.com/tap/demo123",
-                  campaignId: "campaign_001",
-                  businessName: "Demo Business",
-                  campaignType: "Summer Special - 20% off all drinks"
-                }}
-                onWriteComplete={(success) => {
-                  if (success) {
-                    setTagWritten(true);
-                    setStep(5); // Go to success step
-                  }
-                }}
-              />
+          {/* Step 4: real tag programmer (pick business + campaign → mint → write) */}
+          {step === 4 && (
+            <div className="md:col-span-6 lg:col-span-8 flex flex-col items-center gap-4">
+              <TagProgrammer />
+              <Button variant="outline" size="lg" onClick={() => setStep(5)}>
+                Done — I’ve written my tag
+                <ArrowRight className="h-5 w-5 ml-2" />
+              </Button>
             </div>
           )}
 
