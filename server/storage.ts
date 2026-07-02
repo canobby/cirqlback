@@ -1438,19 +1438,22 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(groupCampaigns, eq(groupCampaignMembers.groupCampaignId, groupCampaigns.id))
       .where(and(eq(groupCampaignMembers.businessId, businessId), eq(groupCampaigns.isActive, true)));
 
-    const requiredFor = async (gc: (typeof memberOf)[number]): Promise<number> => {
-      if (gc.ruleType === "all") {
-        const [{ c }] = await db
-          .select({ c: count() })
-          .from(groupCampaignMembers)
-          .where(eq(groupCampaignMembers.groupCampaignId, gc.id));
-        return Number(c) || 1;
-      }
-      return gc.requiredStores ?? 1;
+    // Current member business ids for a campaign. Used both to size `required`
+    // (rule "all") and to count only visits to CURRENT members (CHR-79).
+    const memberIdsFor = async (gcId: string): Promise<Set<string>> => {
+      const rows = await db
+        .select({ b: groupCampaignMembers.businessId })
+        .from(groupCampaignMembers)
+        .where(eq(groupCampaignMembers.groupCampaignId, gcId));
+      return new Set(rows.map((r) => r.b));
     };
 
     const summaries: any[] = [];
     for (const gc of memberOf) {
+      const memberIds = await memberIdsFor(gc.id);
+      const required =
+        gc.ruleType === "all" ? memberIds.size || 1 : gc.requiredStores ?? 1;
+
       // Resolve (or create) this customer's progress row for the campaign.
       const idConds = [];
       if (customerEmail) idConds.push(eq(groupCampaignProgress.customerEmail, customerEmail));
@@ -1474,19 +1477,36 @@ export class DatabaseStorage implements IStorage {
             visitCount: 0,
           })
           .returning();
+      } else {
+        // CHR-79: backfill a missing identifier so a later tap that carries only
+        // the other identifier resolves to THIS row instead of spawning a
+        // duplicate progress row that splits the visited set.
+        const patch: any = {};
+        if (customerEmail && !progress.customerEmail) patch.customerEmail = customerEmail;
+        if (deviceFingerprint && !progress.deviceFingerprint) patch.deviceFingerprint = deviceFingerprint;
+        if (Object.keys(patch).length) {
+          await db
+            .update(groupCampaignProgress)
+            .set(patch)
+            .where(eq(groupCampaignProgress.id, progress.id));
+          Object.assign(progress, patch);
+        }
       }
 
       const visited: string[] = Array.isArray(progress.visitedBusinessIds)
         ? (progress.visitedBusinessIds as string[])
         : [];
       const alreadyComplete = !!progress.completedAt;
-      const required = await requiredFor(gc);
+      // Count only distinct visits to stores that are STILL members — a store
+      // that later left must not count toward `required` (CHR-79).
+      const distinctCurrent = (ids: string[]) =>
+        new Set(ids.filter((id) => memberIds.has(id))).size;
 
       if (visited.includes(businessId) || alreadyComplete) {
         summaries.push({
           groupCampaignId: gc.id,
           name: gc.name,
-          visited: visited.length,
+          visited: distinctCurrent(visited),
           required,
           completed: alreadyComplete,
           rewardUnlocked: false,
@@ -1495,7 +1515,8 @@ export class DatabaseStorage implements IStorage {
       }
 
       visited.push(businessId);
-      const nowComplete = visited.length >= required;
+      const effectiveVisited = distinctCurrent(visited);
+      const nowComplete = effectiveVisited >= required;
       let rewardId = progress.rewardId ?? null;
 
       if (nowComplete && !rewardId) {
@@ -1530,7 +1551,7 @@ export class DatabaseStorage implements IStorage {
         .update(groupCampaignProgress)
         .set({
           visitedBusinessIds: visited,
-          visitCount: visited.length,
+          visitCount: effectiveVisited,
           completedAt: nowComplete ? new Date() : null,
           rewardId,
           updatedAt: new Date(),
@@ -1540,7 +1561,7 @@ export class DatabaseStorage implements IStorage {
       summaries.push({
         groupCampaignId: gc.id,
         name: gc.name,
-        visited: visited.length,
+        visited: effectiveVisited,
         required,
         completed: nowComplete,
         rewardUnlocked: nowComplete && !!rewardId,
@@ -1690,21 +1711,29 @@ export class DatabaseStorage implements IStorage {
           };
         }
         const business = await this.getBusiness(tap.businessId);
-        if (business?.latitude != null && business?.longitude != null) {
-          const radius = campaign!.gpsRadius ?? 100;
-          const distance = haversineMeters(
-            opts.latitude,
-            opts.longitude,
-            business.latitude,
-            business.longitude
-          );
-          if (distance > radius) {
-            return {
-              success: false,
-              reason: "too_far",
-              message: `You must be within ${radius}m of ${business.name} to earn this reward.`,
-            };
-          }
+        // CHR-78: fail closed when the campaign requires proximity but the
+        // business has no coordinates to measure against — otherwise the gate is
+        // silently skipped and the reward is granted from any distance.
+        if (business?.latitude == null || business?.longitude == null) {
+          return {
+            success: false,
+            reason: "location_required",
+            message: "This reward requires location, but the business location hasn't been set up yet.",
+          };
+        }
+        const radius = campaign!.gpsRadius ?? 100;
+        const distance = haversineMeters(
+          opts.latitude,
+          opts.longitude,
+          business.latitude,
+          business.longitude
+        );
+        if (distance > radius) {
+          return {
+            success: false,
+            reason: "too_far",
+            message: `You must be within ${radius}m of ${business.name} to earn this reward.`,
+          };
         }
       }
 
