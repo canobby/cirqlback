@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { CoordinatorSharePanel } from "@/components/admin/coordinator-share-panel";
 import { 
   Shield,
   Users,
@@ -374,12 +375,13 @@ export default function AdminDashboard() {
 
         <Tabs defaultValue="users" className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="grid grid-cols-6 min-w-max lg:w-full">
+            <TabsList className="grid grid-cols-7 min-w-max lg:w-full">
               <TabsTrigger value="users" className="px-2 text-xs lg:px-3 lg:text-sm">Users</TabsTrigger>
               <TabsTrigger value="templates" className="px-2 text-xs lg:px-3 lg:text-sm">Templates</TabsTrigger>
               <TabsTrigger value="subscriptions" className="px-2 text-xs lg:px-3 lg:text-sm">Subscriptions</TabsTrigger>
               <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Analytics</TabsTrigger>
               <TabsTrigger value="payments" className="px-2 text-xs lg:px-3 lg:text-sm">Payments</TabsTrigger>
+              <TabsTrigger value="coordinators" className="px-2 text-xs lg:px-3 lg:text-sm">Coordinators</TabsTrigger>
               <TabsTrigger value="platform" className="px-2 text-xs lg:px-3 lg:text-sm">Platform</TabsTrigger>
             </TabsList>
           </div>
@@ -817,6 +819,11 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Coordinator revenue share */}
+          <TabsContent value="coordinators" className="space-y-6">
+            <CoordinatorSharePanel />
           </TabsContent>
 
           {/* Platform Settings */}

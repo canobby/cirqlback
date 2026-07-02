@@ -476,6 +476,25 @@ export class DatabaseStorage implements IStorage {
     return row || undefined;
   }
 
+  // CHR-32: all coordinators (with their user email/name) for the admin dashboard.
+  async listCoordinators(): Promise<any[]> {
+    return await db
+      .select({
+        id: coordinators.id,
+        userId: coordinators.userId,
+        displayName: coordinators.displayName,
+        sharePct: coordinators.sharePct,
+        planStatus: coordinators.planStatus,
+        isActive: coordinators.isActive,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(coordinators)
+      .innerJoin(users, eq(users.id, coordinators.userId))
+      .orderBy(desc(coordinators.createdAt));
+  }
+
   // CHR-32: admin sets a coordinator's revenue-share %. Band-validated by the
   // caller (COORDINATOR_SHARE_MIN..MAX). Applies to all future earnings.
   async updateCoordinatorSharePct(id: string, sharePct: number): Promise<Coordinator | undefined> {

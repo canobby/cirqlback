@@ -298,6 +298,16 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // CHR-32: list all coordinators (for the admin dashboard share control).
+  app.get("/api/admin/coordinators", async (_req, res) => {
+    try {
+      res.json(await storage.listCoordinators());
+    } catch (error) {
+      console.error("Admin list coordinators error:", error);
+      res.status(500).json({ error: "Failed to load coordinators" });
+    }
+  });
+
   // CHR-32: set a coordinator's revenue-share % — admin discretion within the
   // 50–100 band (default is 70). Applies to all future earnings; per-charge rows
   // snapshot the rate at time of charge, so past earnings are unaffected.
