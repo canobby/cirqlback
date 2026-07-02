@@ -492,6 +492,11 @@ export class DatabaseStorage implements IStorage {
     return newBusiness;
   }
 
+  async deleteBusiness(id: string): Promise<boolean> {
+    await db.delete(businesses).where(eq(businesses.id, id));
+    return true;
+  }
+
   async updateBusiness(id: string, updates: Partial<Business>): Promise<Business> {
     const [business] = await db
       .update(businesses)
@@ -612,6 +617,10 @@ export class DatabaseStorage implements IStorage {
           isFeatured: b.isFeatured ?? false, // CHR-54
           latitude: b.latitude,
           longitude: b.longitude,
+          // Category + claim state so coordinators can review/cull sales prospects.
+          category: (b.establishmentType && b.establishmentType[0]) || null,
+          address: b.address ?? null,
+          claimed: b.ownerId != null,
           taps: bt.length,
           customers: new Set(bt.map((t) => t.customerEmail).filter(Boolean)).size,
           rewardsIssued: br.length,

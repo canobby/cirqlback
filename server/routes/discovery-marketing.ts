@@ -355,9 +355,12 @@ export function registerDiscoveryMarketingRoutes(app: Express, deps: RouteDeps) 
       // CHR-66: a business is featured if a coordinator promoted it (CHR-54
       // isFeatured) OR it holds the map_priority add-on entitlement.
       const boosted = await storage.getBusinessIdsWithAddon("map_priority");
-      // Only businesses that have been geocoded can appear as map markers.
+      // Only businesses that have been geocoded can appear as map markers, and
+      // only CLAIMED businesses (an owner has signed up) are shown publicly —
+      // unclaimed sales prospects live in the coordinator's Leads view, not on
+      // the customer discovery map. Nonprofits are shown even if unclaimed.
       const mapBusinesses = all
-        .filter((b) => b.latitude != null && b.longitude != null)
+        .filter((b) => b.latitude != null && b.longitude != null && (b.ownerId != null || b.isNonprofit))
         .map((b) => ({
           id: b.id,
           name: b.name,

@@ -149,6 +149,28 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
     }
   });
 
+  // Remove an unclaimed sales prospect from the territory (cull the seeded list).
+  // Refuses to delete a business that has already been claimed by an owner.
+  app.delete("/api/coordinator/businesses/:id", async (req, res) => {
+    try {
+      const coordinator = coordinatorOf(req);
+      const { id } = req.params;
+      if (!(await storage.coordinatorOwnsBusiness(coordinator.id, id))) {
+        return res.status(403).json({ error: "That business is not in your territory" });
+      }
+      const biz = await storage.getBusiness(id);
+      if (!biz) return res.status(404).json({ error: "Business not found" });
+      if (biz.ownerId) {
+        return res.status(409).json({ error: "This business has been claimed by an owner — it can't be removed here." });
+      }
+      await storage.deleteBusiness(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Coordinator delete business error:", error);
+      res.status(500).json({ error: "Failed to remove business" });
+    }
+  });
+
   // CHR-53: the NFC tags for a business in the coordinator's territory.
   app.get("/api/coordinator/businesses/:id/tags", async (req, res) => {
     try {

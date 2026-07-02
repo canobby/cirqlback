@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare, Route, Star, DollarSign, Download, TrendingUp } from "lucide-react";
+import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare, Route, Star, DollarSign, Download, TrendingUp, Trash2 } from "lucide-react";
 
 interface Territory {
   id: string;
@@ -28,6 +28,9 @@ interface StoreRow {
   name: string;
   verificationStatus: string;
   isFeatured?: boolean;
+  category?: string | null;
+  address?: string | null;
+  claimed?: boolean;
   taps: number;
   customers: number;
   rewardsIssued: number;
@@ -196,6 +199,16 @@ export default function CoordinatorDashboard() {
       refresh();
     },
     onError: () => toast({ title: "Couldn't update verification", variant: "destructive" }),
+  });
+
+  // Remove a seeded sales prospect that isn't a fit (unclaimed businesses only).
+  const removeBusiness = useMutation({
+    mutationFn: async (id: string) => apiRequest("DELETE", `/api/coordinator/businesses/${id}`),
+    onSuccess: () => {
+      toast({ title: "Prospect removed" });
+      refresh();
+    },
+    onError: () => toast({ title: "Couldn't remove", variant: "destructive" }),
   });
 
   // CHR-55: templates library + regional admin tools
@@ -484,6 +497,7 @@ export default function CoordinatorDashboard() {
                   <thead>
                     <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                       <th className="py-2 pr-4 font-medium">Business</th>
+                      <th className="py-2 px-2 font-medium">Category</th>
                       <th className="py-2 px-2 font-medium">Status</th>
                       <th className="py-2 px-2 font-medium text-right">Taps</th>
                       <th className="py-2 px-2 font-medium text-right">Customers</th>
@@ -495,7 +509,11 @@ export default function CoordinatorDashboard() {
                   <tbody>
                     {overview.stores.map((s) => (
                       <tr key={s.id} className="border-b border-gray-100 dark:border-gray-800">
-                        <td className="py-2 pr-4 font-medium text-gray-900 dark:text-white">{s.name}</td>
+                        <td className="py-2 pr-4 font-medium text-gray-900 dark:text-white">
+                          {s.name}
+                          {s.address ? <div className="text-xs text-gray-400 font-normal">{s.address}</div> : null}
+                        </td>
+                        <td className="py-2 px-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">{s.category || "—"}</td>
                         <td className="py-2 px-2">
                           <Badge
                             variant="outline"
@@ -542,6 +560,18 @@ export default function CoordinatorDashboard() {
                                 onClick={() => verify.mutate({ id: s.id, status: "rejected" })}
                               >
                                 Reject
+                              </Button>
+                            )}
+                            {!s.claimed && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                title="Remove this prospect from your list (unclaimed only)"
+                                className="h-7 px-2 text-xs text-gray-400 hover:text-red-600"
+                                disabled={removeBusiness.isPending}
+                                onClick={() => { if (confirm(`Remove "${s.name}" from your prospect list?`)) removeBusiness.mutate(s.id); }}
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             )}
                           </div>
