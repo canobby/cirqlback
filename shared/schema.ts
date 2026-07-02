@@ -787,28 +787,6 @@ export const campaignTemplates = pgTable("campaign_templates", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const campaignPartners = pgTable("campaign_partners", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: varchar("campaign_id").references(() => campaigns.id).notNull(),
-  businessId: varchar("business_id").notNull(),
-  businessName: varchar("business_name").notNull(),
-  businessCategory: varchar("business_category").notNull(),
-  joinedAt: timestamp("joined_at").defaultNow(),
-  status: varchar("status").default("active"), // 'active', 'pending', 'declined'
-  contribution: jsonb("contribution"), // What this partner contributes
-});
-
-export const campaignParticipations = pgTable("campaign_participations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: varchar("campaign_id").references(() => campaigns.id).notNull(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  businessId: varchar("business_id"), // Which partner business they interacted with
-  progress: jsonb("progress").notNull(), // Track completion status
-  rewardsEarned: jsonb("rewards_earned").default(sql`'[]'::jsonb`),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 // Admin Management Tables
 export const adminUsers = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -939,8 +917,6 @@ export const auditLogs = pgTable("audit_logs", {
 });
 
 export type CampaignTemplate = typeof campaignTemplates.$inferSelect;
-export type CampaignPartner = typeof campaignPartners.$inferSelect;
-export type CampaignParticipation = typeof campaignParticipations.$inferSelect;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type PlatformSetting = typeof platformSettings.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
@@ -1034,130 +1010,6 @@ export const winBackCampaigns = pgTable("winback_campaigns", {
   clickedAt: timestamp("clicked_at"),
   redeemedAt: timestamp("redeemed_at"),
   isSuccess: boolean("is_success").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// CROSS-BUSINESS PARTNERSHIPS
-
-// Business Partnerships
-export const businessPartnerships = pgTable("business_partnerships", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  businessAId: varchar("business_a_id").references(() => businesses.id).notNull(),
-  businessBId: varchar("business_b_id").references(() => businesses.id).notNull(),
-  partnershipType: varchar("partnership_type").notNull(), // referral, joint_campaign, cross_promotion, shared_rewards
-  status: varchar("status").default("pending"), // pending, active, paused, ended
-  commissionRate: real("commission_rate"), // percentage for referrals
-  sharedBudget: decimal("shared_budget", { precision: 10, scale: 2 }),
-  totalReferrals: integer("total_referrals").default(0),
-  totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).default(sql`0`),
-  terms: text("terms"), // partnership agreement details
-  startDate: timestamp("start_date"),
-  endDate: timestamp("end_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Cross-Business Rewards
-export const crossBusinessRewards = pgTable("cross_business_rewards", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  partnershipId: varchar("partnership_id").references(() => businessPartnerships.id).notNull(),
-  triggerBusinessId: varchar("trigger_business_id").references(() => businesses.id).notNull(),
-  rewardBusinessId: varchar("reward_business_id").references(() => businesses.id).notNull(),
-  rewardType: varchar("reward_type").notNull(), // discount, free_item, points, cashback
-  rewardValue: decimal("reward_value", { precision: 10, scale: 2 }),
-  description: text("description"),
-  conditions: text("conditions"), // e.g., "spend $50+ at partner business"
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Multi-Merchant Reward Cost-Sharing System
-export const rewardPoolCampaigns = pgTable("reward_pool_campaigns", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(),
-  description: text("description"),
-  totalPoolValue: decimal("total_pool_value", { precision: 10, scale: 2 }),
-  status: varchar("status").default("active"), // active, completed, cancelled
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
-  settlementMethod: varchar("settlement_method").notNull(), // financial_compensation, product_exchange, service_credits, mixed
-  autoSettlement: boolean("auto_settlement").default(true),
-  settlementSchedule: varchar("settlement_schedule").default("monthly"), // weekly, monthly, campaign_end
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  createdBy: varchar("created_by").references(() => businesses.id),
-});
-
-export const merchantPoolParticipants = pgTable("merchant_pool_participants", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: varchar("campaign_id").references(() => rewardPoolCampaigns.id),
-  businessId: varchar("business_id").references(() => businesses.id),
-  agreedContribution: decimal("agreed_contribution", { precision: 10, scale: 2 }).notNull(),
-  contributionType: varchar("contribution_type").notNull(), // cash, products, services, discount_value
-  contributionDescription: text("contribution_description"),
-  currentBalance: decimal("current_balance", { precision: 10, scale: 2 }).default("0"),
-  totalRewardsGiven: decimal("total_rewards_given", { precision: 10, scale: 2 }).default("0"),
-  settlementPreference: varchar("settlement_preference").notNull(), // receive_cash, provide_products, service_credits
-  joinedAt: timestamp("joined_at").defaultNow(),
-  status: varchar("status").default("active"), // active, pending, withdrawn
-  autoApproveRewards: boolean("auto_approve_rewards").default(false),
-  maxDailyRewardValue: decimal("max_daily_reward_value", { precision: 10, scale: 2 }),
-});
-
-export const poolRewardTransactions = pgTable("pool_reward_transactions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: varchar("campaign_id").references(() => rewardPoolCampaigns.id),
-  rewardingBusinessId: varchar("rewarding_business_id").references(() => businesses.id), // business giving the reward
-  rewardValue: decimal("reward_value", { precision: 10, scale: 2 }).notNull(),
-  rewardType: varchar("reward_type").notNull(), // discount, free_item, service, points
-  rewardDescription: text("reward_description"),
-  customerId: varchar("customer_id").references(() => users.id),
-  tapId: varchar("tap_id").references(() => taps.id),
-  timestamp: timestamp("timestamp").defaultNow(),
-  status: varchar("status").default("pending"), // pending, approved, settled
-  settlementAmount: decimal("settlement_amount", { precision: 10, scale: 2 }),
-  settlementMethod: varchar("settlement_method"), // cash_payment, product_credit, service_exchange
-  settlementDate: timestamp("settlement_date"),
-  notes: text("notes"),
-});
-
-export const poolSettlements = pgTable("pool_settlements", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: varchar("campaign_id").references(() => rewardPoolCampaigns.id),
-  settlementPeriod: varchar("settlement_period").notNull(), // 2024-01, week-1-2024, etc
-  totalPoolRewards: decimal("total_pool_rewards", { precision: 10, scale: 2 }).notNull(),
-  averageRewardPerMerchant: decimal("average_reward_per_merchant", { precision: 10, scale: 2 }).notNull(),
-  status: varchar("status").default("pending"), // pending, processing, completed, failed
-  createdAt: timestamp("created_at").defaultNow(),
-  processedAt: timestamp("processed_at"),
-  processingNotes: text("processing_notes"),
-});
-
-export const merchantSettlementDetails = pgTable("merchant_settlement_details", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  settlementId: varchar("settlement_id").references(() => poolSettlements.id),
-  businessId: varchar("business_id").references(() => businesses.id),
-  rewardsGiven: decimal("rewards_given", { precision: 10, scale: 2 }).notNull(),
-  rewardsReceived: decimal("rewards_received", { precision: 10, scale: 2 }).notNull(),
-  netBalance: decimal("net_balance", { precision: 10, scale: 2 }).notNull(), // positive = owed money, negative = owes money
-  settlementType: varchar("settlement_type").notNull(), // payment_due, credit_due, balanced
-  paymentMethod: varchar("payment_method"), // stripe_transfer, bank_transfer, platform_credit, product_exchange
-  paymentReference: varchar("payment_reference"),
-  status: varchar("status").default("pending"), // pending, processing, completed, failed
-  processedAt: timestamp("processed_at"),
-  failureReason: text("failure_reason"),
-});
-
-export const rewardPoolInvoices = pgTable("reward_pool_invoices", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  settlementDetailId: varchar("settlement_detail_id").references(() => merchantSettlementDetails.id),
-  invoiceNumber: varchar("invoice_number").unique().notNull(),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  dueDate: timestamp("due_date").notNull(),
-  status: varchar("status").default("pending"), // pending, sent, paid, overdue, cancelled
-  sentAt: timestamp("sent_at"),
-  paidAt: timestamp("paid_at"),
-  paymentMethod: varchar("payment_method"),
-  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1373,8 +1225,6 @@ export const eventBusinessCampaigns = pgTable("event_business_campaigns", {
 // New Advanced Feature Types
 export type CustomerHealthScore = typeof customerHealthScores.$inferSelect;
 export type WinBackCampaign = typeof winBackCampaigns.$inferSelect;
-export type BusinessPartnership = typeof businessPartnerships.$inferSelect;
-export type CrossBusinessReward = typeof crossBusinessRewards.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type TeamMembership = typeof teamMemberships.$inferSelect;
 export type CommunityChallenge = typeof communityChallenges.$inferSelect;
@@ -1387,28 +1237,6 @@ export type ViralCampaign = typeof viralCampaigns.$inferSelect;
 export type WeatherTrigger = typeof weatherTriggers.$inferSelect;
 export type LocalEvent = typeof localEvents.$inferSelect;
 export type EventBusinessCampaign = typeof eventBusinessCampaigns.$inferSelect;
-
-// Multi-Merchant Pool System Types
-export const insertRewardPoolCampaignSchema = createInsertSchema(rewardPoolCampaigns);
-export const insertMerchantPoolParticipantSchema = createInsertSchema(merchantPoolParticipants);
-export const insertPoolRewardTransactionSchema = createInsertSchema(poolRewardTransactions);
-export const insertPoolSettlementSchema = createInsertSchema(poolSettlements);
-export const insertMerchantSettlementDetailSchema = createInsertSchema(merchantSettlementDetails);
-export const insertRewardPoolInvoiceSchema = createInsertSchema(rewardPoolInvoices);
-
-export type RewardPoolCampaign = typeof rewardPoolCampaigns.$inferSelect;
-export type MerchantPoolParticipant = typeof merchantPoolParticipants.$inferSelect;
-export type PoolRewardTransaction = typeof poolRewardTransactions.$inferSelect;
-export type PoolSettlement = typeof poolSettlements.$inferSelect;
-export type MerchantSettlementDetail = typeof merchantSettlementDetails.$inferSelect;
-export type RewardPoolInvoice = typeof rewardPoolInvoices.$inferSelect;
-
-export type InsertRewardPoolCampaign = z.infer<typeof insertRewardPoolCampaignSchema>;
-export type InsertMerchantPoolParticipant = z.infer<typeof insertMerchantPoolParticipantSchema>;
-export type InsertPoolRewardTransaction = z.infer<typeof insertPoolRewardTransactionSchema>;
-export type InsertPoolSettlement = z.infer<typeof insertPoolSettlementSchema>;
-export type InsertMerchantSettlementDetail = z.infer<typeof insertMerchantSettlementDetailSchema>;
-export type InsertRewardPoolInvoice = z.infer<typeof insertRewardPoolInvoiceSchema>;
 
 // Business Pairing & Recommendation System
 export const businessPairingScores = pgTable("business_pairing_scores", {
