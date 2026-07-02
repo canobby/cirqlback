@@ -203,7 +203,6 @@ export function registerProfileSettingsRoutes(app: Express, deps: RouteDeps) {
           hasAiInsights: false,
           hasPrioritySupport: false,
           hasWebsiteBuilder: false,
-          hasArExperiences: false,
           hasTeamChallenges: false
         },
         {
@@ -213,7 +212,7 @@ export function registerProfileSettingsRoutes(app: Express, deps: RouteDeps) {
           price: 49.99,
           yearlyPrice: 499.90,
           billingInterval: "monthly",
-          features: ["1 business location", "Unlimited campaigns", "500 customer taps/month", "Advanced analytics dashboard", "20 Cirql tags included", "Custom campaign templates", "Cross-business partnerships", "AR experience integration", "Email + chat support", "Website builder (basic)"],
+          features: ["1 business location", "Unlimited campaigns", "500 customer taps/month", "Advanced analytics dashboard", "20 Cirql tags included", "Custom campaign templates", "Cross-business partnerships", "Email + chat support", "Website builder (basic)"],
           maxBusinesses: 1,
           maxCampaigns: null,
           maxTaps: 500,
@@ -222,7 +221,6 @@ export function registerProfileSettingsRoutes(app: Express, deps: RouteDeps) {
           hasAiInsights: false,
           hasPrioritySupport: false,
           hasWebsiteBuilder: true,
-          hasArExperiences: true,
           hasTeamChallenges: false
         },
         {
@@ -241,7 +239,6 @@ export function registerProfileSettingsRoutes(app: Express, deps: RouteDeps) {
           hasAiInsights: true,
           hasPrioritySupport: true,
           hasWebsiteBuilder: true,
-          hasArExperiences: true,
           hasTeamChallenges: true
         },
         {
@@ -251,7 +248,7 @@ export function registerProfileSettingsRoutes(app: Express, deps: RouteDeps) {
           price: 149,
           yearlyPrice: 1490,
           billingInterval: "monthly",
-          features: ["Unlimited locations", "White-label branding options", "100 Cirql tags included", "Custom integrations (POS, CRM)", "Advanced team management", "Dedicated campaign manager", "Custom AR experiences", "API access", "Phone + priority support", "Revenue share opportunities"],
+          features: ["Unlimited locations", "White-label branding options", "100 Cirql tags included", "Custom integrations (POS, CRM)", "Advanced team management", "Dedicated campaign manager", "API access", "Phone + priority support", "Revenue share opportunities"],
           maxBusinesses: null,
           maxCampaigns: null,
           maxTaps: null,
@@ -260,7 +257,6 @@ export function registerProfileSettingsRoutes(app: Express, deps: RouteDeps) {
           hasAiInsights: true,
           hasPrioritySupport: true,
           hasWebsiteBuilder: true,
-          hasArExperiences: true,
           hasTeamChallenges: true
         }
       ];
