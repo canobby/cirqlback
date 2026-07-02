@@ -115,27 +115,9 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
         }
       });
 
-      // AR Experience searches
-      const arExperiences = [
-        { id: "ar1", name: "Golden Coffee Bean Discovery", description: "Rare collectible AR experience", business: "Joe's Coffee Shop" },
-        { id: "ar2", name: "Strength Badge Unlock", description: "Achievement progress visualization", business: "Fitness First Gym" },
-        { id: "ar3", name: "Taco Trail Completion", description: "Multi-restaurant challenge completion", business: "Taco Libre" }
-      ];
-
-      arExperiences.forEach(ar => {
-        if (ar.name.toLowerCase().includes(query) || 
-            ar.description.toLowerCase().includes(query) ||
-            ar.business.toLowerCase().includes(query)) {
-          searchResults.push({
-            id: ar.id,
-            type: 'ar-experience',
-            title: ar.name,
-            description: `${ar.description} - ${ar.business}`,
-            url: `/community?ar=${ar.id}`,
-            badge: 'AR Experience'
-          });
-        }
-      });
+      // CHR-81: removed the fake "AR Experience" search results — the AR feature
+      // was deleted in CHR-29, so these hard-coded entries surfaced bogus hits
+      // that linked nowhere.
 
       // Analytics searches
       if (query.includes('analytic') || query.includes('report') || query.includes('metric') || query.includes('dashboard')) {

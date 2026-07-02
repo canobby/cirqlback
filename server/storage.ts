@@ -1747,15 +1747,18 @@ export class DatabaseStorage implements IStorage {
         .values({ ...tap, campaignId: campaign?.id ?? (tap as any).campaignId ?? null, pointsEarned: points })
         .returning();
 
-      // Update tap counters.
-      await db
-        .update(nfcTags)
-        .set({ totalTaps: sql`${nfcTags.totalTaps} + 1`, lastTapAt: new Date() })
-        .where(eq(nfcTags.id, tap.tagId));
-      await db
-        .update(businesses)
-        .set({ totalTaps: sql`${businesses.totalTaps} + 1` })
-        .where(eq(businesses.id, tap.businessId));
+      // Update tap counters. The tag and business rows are independent, so run
+      // the two increments concurrently (CHR-81).
+      await Promise.all([
+        db
+          .update(nfcTags)
+          .set({ totalTaps: sql`${nfcTags.totalTaps} + 1`, lastTapAt: new Date() })
+          .where(eq(nfcTags.id, tap.tagId)),
+        db
+          .update(businesses)
+          .set({ totalTaps: sql`${businesses.totalTaps} + 1` })
+          .where(eq(businesses.id, tap.businessId)),
+      ]);
 
       // CHR-73: punch-card progress. For a tapGoal>1 campaign the reward issues
       // only once the customer reaches the goal (every goal-th tap); tapGoal<=1
