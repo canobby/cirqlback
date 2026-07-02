@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare, Route, Star, DollarSign, Download, TrendingUp, Trash2 } from "lucide-react";
+import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare, Route, Star, DollarSign, Download, TrendingUp, Trash2, Search } from "lucide-react";
 
 interface Territory {
   id: string;
@@ -346,6 +346,19 @@ export default function CoordinatorDashboard() {
 
   const [offerForm, setOfferForm] = useState({ code: "", offerType: "percent", value: "", description: "" });
 
+  // Filter the territory business table by name / category / address.
+  const [storeSearch, setStoreSearch] = useState("");
+  const filteredStores = (() => {
+    const q = storeSearch.trim().toLowerCase();
+    const stores = overview?.stores || [];
+    if (!q) return stores;
+    return stores.filter((s) =>
+      [s.name, s.category, s.address]
+        .filter(Boolean)
+        .some((field) => (field as string).toLowerCase().includes(q))
+    );
+  })();
+
   const applyTemplate = useMutation({
     mutationFn: async (key: string) =>
       apiRequest("POST", `/api/coordinator/campaign-templates/${key}/apply`, {
@@ -480,16 +493,31 @@ export default function CoordinatorDashboard() {
 
       {overview && (
         <Card className="mb-8">
-          <CardHeader>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
               <Store className="h-5 w-5 text-purple-600" />
               Businesses in your territory
             </CardTitle>
+            {overview.stores.length > 0 && (
+              <div className="relative w-full sm:w-64">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  value={storeSearch}
+                  onChange={(e) => setStoreSearch(e.target.value)}
+                  placeholder="Search businesses…"
+                  className="pl-9"
+                />
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {overview.stores.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 No businesses assigned to your territory yet.
+              </div>
+            ) : filteredStores.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                No businesses match "{storeSearch}".
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -507,7 +535,7 @@ export default function CoordinatorDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {overview.stores.map((s) => (
+                    {filteredStores.map((s) => (
                       <tr key={s.id} className="border-b border-gray-100 dark:border-gray-800">
                         <td className="py-2 pr-4 font-medium text-gray-900 dark:text-white">
                           {s.name}
