@@ -359,14 +359,14 @@ export default function CustomerBento() {
                   <span className="text-sm">My Progress</span>
                 </Button>
                 
-                <Button 
-                  onClick={() => setLocation('/map')}
+                <Button
+                  onClick={() => setLocation('/community')}
                   className="h-20 flex-col gap-2 bg-gradient-to-br from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
                     <div className="w-4 h-4 bg-white rounded-full"></div>
                   </div>
-                  <span className="text-sm">Rewards Store</span>
+                  <span className="text-sm">Community</span>
                 </Button>
               </div>
             </CardContent>

@@ -51,7 +51,7 @@ export default function Footer() {
               <li><Link href="/help-center" className="text-muted-foreground hover:text-primary transition-colors"><QuickTranslate text="Help Center" /></Link></li>
               <li><Link href="/user-guide" className="text-muted-foreground hover:text-secondary transition-colors"><QuickTranslate text="Documentation" /></Link></li>
               <li><Link href="/contact" className="text-muted-foreground hover:text-accent transition-colors"><QuickTranslate text="Contact Us" /></Link></li>
-              <li><Link href="/platform-overview" className="text-muted-foreground hover:text-primary transition-colors"><QuickTranslate text="System Status" /></Link></li>
+              <li><Link href="/platform-overview" className="text-muted-foreground hover:text-primary transition-colors"><QuickTranslate text="Platform Overview" /></Link></li>
             </ul>
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function Footer() {
           <div className="flex space-x-6 mt-4 md:mt-0">
             <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary text-sm transition-colors"><QuickTranslate text="Privacy Policy" /></Link>
             <Link href="/terms-of-service" className="text-muted-foreground hover:text-secondary text-sm transition-colors"><QuickTranslate text="Terms of Service" /></Link>
-            <Link href="/help-center" className="text-muted-foreground hover:text-accent text-sm transition-colors"><QuickTranslate text="Cookie Policy" /></Link>
+            <Link href="/privacy-policy" className="text-muted-foreground hover:text-accent text-sm transition-colors"><QuickTranslate text="Cookie Policy" /></Link>
           </div>
         </div>
       </div>

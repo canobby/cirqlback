@@ -27,20 +27,15 @@ const platformSections = [
     description: "AI-powered dashboards and unified portals",
     pages: [
       { path: "/", name: "Home Dashboard", icon: Home, description: "Comprehensive platform overview with AI insights and quick access" },
-      { path: "/customer", name: "Customer Portal", icon: User, description: "AR adventures, team challenges, viral campaigns, and predictive rewards" },
-      { path: "/merchant", name: "Merchant Dashboard", icon: Store, description: "AI-powered business intelligence, partnerships, and growth optimization" },
+      { path: "/customer", name: "Customer Portal", icon: User, description: "Points, rewards, challenges, leaderboard, and the discovery map" },
+      { path: "/merchant", name: "Merchant Dashboard", icon: Store, description: "Campaigns, NFC tags, analytics, add-ons, and customer messaging" },
     ]
   },
   {
-    title: "Advanced Features",
-    description: "AI-powered business intelligence and growth automation",
+    title: "Campaigns",
+    description: "Build and run loyalty campaigns",
     pages: [
-      { path: "/campaign-builder", name: "Campaign Builder", icon: Zap, description: "Pre-made templates with seasonal rotation and cross-business collaboration" },
-      { path: "/ai-insights", name: "AI Business Intelligence", icon: BarChart3, description: "Customer health scoring, predictive pricing, and market intelligence" },
-      { path: "/partnerships", name: "Smart Business Partnerships", icon: Users, description: "AI-powered partnership recommendations with compatibility scoring and campaign collaboration" },
-      { path: "/team-challenges", name: "Team Challenges", icon: Zap, description: "Multi-tier team system with corporate integration and social gamification" },
-
-      { path: "/viral-campaigns", name: "Viral Growth Engine", icon: Zap, description: "Exponential referral systems with social proof automation and network effects" },
+      { path: "/campaign-builder", name: "Campaign Builder", icon: Zap, description: "Create discount, loyalty, and multi-store campaigns from templates" },
     ]
   },
   {
@@ -57,9 +52,8 @@ const platformSections = [
     description: "AI-powered analytics, predictive marketing, and growth automation",
     pages: [
       { path: "/analytics", name: "Predictive Analytics Dashboard", icon: BarChart3, description: "AI-powered customer health scoring, churn prediction, and revenue optimization" },
-      { path: "/marketing", name: "Viral Marketing Suite", icon: Zap, description: "Cross-business campaigns, automated win-back strategies, and exponential growth mechanics" },
-      { path: "/multi-merchant-pools", name: "Multi-Merchant Reward Pools", icon: Users, description: "Collaborative reward cost-sharing with automatic settlements and financial optimization" },
-      { path: "/website-preview", name: "Complete Website Platform", icon: Globe, description: "Professional websites with integrated campaigns, AR showcases, and partnership displays" },
+      { path: "/marketing", name: "Marketing Suite", icon: Zap, description: "Reminders, offers, and customer win-back campaigns" },
+      { path: "/website-preview", name: "Business Website", icon: Globe, description: "A simple website for your business with integrated campaigns" },
     ]
   },
   {
@@ -155,10 +149,10 @@ export default function PlatformOverview() {
                   Start as Merchant
                 </Button>
               </Link>
-              <Link href="/ar-hub">
+              <Link href="/map">
                 <Button variant="secondary" className="gap-2">
-                  <Gamepad2 className="h-4 w-4" />
-                  Try AR Gaming
+                  <Map className="h-4 w-4" />
+                  Explore the Map
                 </Button>
               </Link>
             </div>

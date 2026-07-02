@@ -238,7 +238,7 @@ export default function TrialDiscount() {
         <div className="text-center mt-8 text-sm text-gray-600">
           <p>No commitment required • Cancel anytime • Keep your data</p>
           <p className="mt-2">
-            Questions? <button className="text-purple-600 hover:underline">Contact our support team</button>
+            Questions? <button onClick={() => setLocation('/contact')} className="text-purple-600 hover:underline">Contact our support team</button>
           </p>
         </div>
 
