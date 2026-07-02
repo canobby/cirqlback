@@ -42,6 +42,57 @@ export function registerTapsRewardsRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // Public tag-info lookup that powers the tap landing page. A physical Cirql
+  // tag stores the URL /tap/<id>; when any modern phone (iPhone or Android)
+  // taps it the OS opens that URL, so this endpoint must resolve the id — by
+  // internal tag id (the form the writer mints) or by the printed identifier —
+  // and return the business + campaign the page renders BEFORE the customer
+  // taps. Without this the page fell back to hardcoded demo data on every scan.
+  app.get("/api/tap/:id", async (req, res) => {
+    try {
+      const raw = String(req.params.id || "").trim();
+      if (!raw) return res.status(400).json({ error: "Tag id is required" });
+
+      const tag =
+        (await storage.getNFCTag(raw)) || (await storage.getNFCTagByIdentifier(raw));
+      if (!tag) return res.status(404).json({ error: "Unknown or unregistered Cirql tag" });
+      if (tag.isActive === false) {
+        return res.status(410).json({ error: "This Cirql tag is not active" });
+      }
+
+      const business = await storage.getBusiness(tag.businessId);
+      const campaign = tag.campaignId ? await storage.getCampaign(tag.campaignId) : undefined;
+
+      res.json({
+        tag: {
+          id: tag.id,
+          tagIdentifier: tag.tagIdentifier,
+          location: tag.location,
+          businessId: tag.businessId,
+          campaignId: tag.campaignId,
+        },
+        business: business
+          ? { id: business.id, name: business.name, description: business.description, logo: business.logo }
+          : null,
+        campaign: campaign
+          ? {
+              id: campaign.id,
+              name: campaign.name,
+              description: campaign.description,
+              type: campaign.type,
+              value: campaign.value,
+              pointsAwarded: campaign.pointsAwarded,
+              tapGoal: campaign.tapGoal,
+              isActive: campaign.isActive,
+            }
+          : null,
+      });
+    } catch (error) {
+      console.error("Tag info lookup error:", error);
+      res.status(500).json({ error: "Failed to load tag information" });
+    }
+  });
+
   app.post("/api/taps", async (req, res) => {
     try {
       // Validate basic required fields

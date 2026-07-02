@@ -6,7 +6,25 @@ import { Badge } from "@/components/ui/badge";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Zap, Gift, Star, CheckCircle, Clock, Camera, Sparkles, Play, Share2, Heart } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
+
+// Preview data for the bare /tap entry point (menu links / "how it works"),
+// where no physical tag id is present. A real scan always carries /tap/<id>.
+const DEMO_TAG_INFO = {
+  tag: { id: "demo_tag_1", tagIdentifier: "nfc_tag_001", location: "Counter", businessId: "demo_business_1" },
+  business: { id: "demo_business_1", name: "Demo Coffee Shop", description: "Great coffee and pastries" },
+  campaign: {
+    id: "demo_campaign_1",
+    name: "Welcome Reward",
+    description: "Get 10% off your first order",
+    type: "discount",
+    value: "10.00",
+    pointsAwarded: 100,
+    arEnabled: true,
+    arScene: "coffee_cup_rising",
+    collectibles: ["Golden Coffee Bean Badge", "First Timer Trophy"],
+  },
+};
 
 // CHR-48: a stable per-browser device id for anti-abuse. Combines a hash of
 // device attributes with a random suffix persisted in localStorage, so the
@@ -51,15 +69,27 @@ function getGeo(): Promise<{ latitude?: number; longitude?: number }> {
 export default function TapPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
-  // Simulated NFC tap data (in real app this would come from NFC scan)
+
+  // The physical tag encodes /tap/<tagId>; read it from the route (with a
+  // ?tag= / ?t= query fallback for QR/short links). Empty => demo preview.
+  const params = useParams<{ tagId?: string }>();
+  const tagId = (() => {
+    if (params?.tagId) return params.tagId;
+    try {
+      const q = new URLSearchParams(window.location.search);
+      return q.get("tag") || q.get("t") || "";
+    } catch {
+      return "";
+    }
+  })();
+
   const [tapData, setTapData] = useState({
-    tagId: "nfc_tag_001",
     customerEmail: "",
     customerName: "",
   });
-  
+
   const [tagInfo, setTagInfo] = useState<any>(null);
+  const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(false);
   const [tapResult, setTapResult] = useState<any>(null);
   const [hasArEnabled, setHasArEnabled] = useState(true);
@@ -85,10 +115,10 @@ export default function TapPage() {
     }
   };
 
-  // Simulate getting tag info (normally from NFC scan)
+  // Load the tapped tag's business + campaign (re-runs if the id changes).
   useEffect(() => {
     loadTagInfo();
-  }, []);
+  }, [tagId]);
 
   // CHR-68: fetch branding once we know the business (null = default styling).
   useEffect(() => {
@@ -101,36 +131,21 @@ export default function TapPage() {
   }, [tagInfo?.business?.id]);
 
   const loadTagInfo = async () => {
+    // No id in the URL → this is the demo/preview entry (menu, "how it works").
+    if (!tagId) {
+      setTagInfo(DEMO_TAG_INFO);
+      setNotFound(false);
+      return;
+    }
     try {
-      // For demo, create a sample tag if none exists
-      const response = await apiRequest("GET", `/api/tap/${tapData.tagId}`);
-      setTagInfo(response);
+      const response = await apiRequest("GET", `/api/tap/${encodeURIComponent(tagId)}`);
+      setTagInfo(await response.json());
+      setNotFound(false);
     } catch (error) {
-      // Create demo data if no tag exists
-      setTagInfo({
-        tag: {
-          id: "demo_tag_1",
-          tagIdentifier: "nfc_tag_001",
-          location: "Counter",
-          businessId: "demo_business_1"
-        },
-        business: {
-          id: "demo_business_1",
-          name: "Demo Coffee Shop",
-          description: "Great coffee and pastries"
-        },
-        campaign: {
-          id: "demo_campaign_1",
-          name: "Welcome Reward",
-          description: "Get 10% off your first order",
-          type: "discount",
-          value: "10.00",
-          pointsAwarded: 100,
-          arEnabled: true,
-          arScene: "coffee_cup_rising",
-          collectibles: ["Golden Coffee Bean Badge", "First Timer Trophy"]
-        }
-      });
+      // A real tag id that doesn't resolve — show a clear error instead of
+      // silently pretending it's the demo coffee shop.
+      setTagInfo(null);
+      setNotFound(true);
     }
   };
 
@@ -147,20 +162,20 @@ export default function TapPage() {
     setLoading(true);
     try {
       const geo = await getGeo();
-      const result = await apiRequest("POST", "/api/taps", {
-        tagId: tagInfo?.tag?.id || "demo_tag_1",
-        businessId: tagInfo?.business?.id || "demo_business_1",
-        campaignId: tagInfo?.campaign?.id || "demo_campaign_1",
+      const response = await apiRequest("POST", "/api/taps", {
+        tagId: tagInfo?.tag?.id,
+        businessId: tagInfo?.business?.id,
+        campaignId: tagInfo?.campaign?.id || undefined,
         customerEmail: tapData.customerEmail,
         customerName: tapData.customerName,
-        pointsEarned: tagInfo?.campaign?.pointsAwarded || 100,
-        rewardValue: tagInfo?.campaign?.value || "10.00",
+        pointsEarned: tagInfo?.campaign?.pointsAwarded ?? 0,
+        rewardValue: tagInfo?.campaign?.value || undefined,
         deviceFingerprint: getDeviceFingerprint(),
         latitude: geo.latitude,
         longitude: geo.longitude,
       });
 
-      setTapResult(result);
+      setTapResult(await response.json());
       toast({
         title: "Tap Successful! 🎉",
         description: "You've earned a reward!",
@@ -179,6 +194,28 @@ export default function TapPage() {
   const handleViewRewards = () => {
     setLocation(`/customer?email=${tapData.customerEmail}`);
   };
+
+  if (notFound) {
+    return (
+      <div className="bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center p-4 min-h-[80vh]">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center space-y-3">
+            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <Zap className="h-7 w-7 text-muted-foreground" />
+            </div>
+            <h2 className="text-lg font-semibold">Cirql tag not recognized</h2>
+            <p className="text-muted-foreground text-sm">
+              This tag isn’t registered or is no longer active. Ask the business to check
+              its Cirql tag setup, or explore nearby participating shops.
+            </p>
+            <Button variant="outline" className="w-full" onClick={() => setLocation("/map")}>
+              Discover nearby businesses
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!tagInfo) {
     return (

@@ -78,6 +78,9 @@ function Router() {
           {/* Essential Features */}
           <Route path="/account" component={Account} />
           <Route path="/tap" component={TapPage} />
+          {/* A physical Cirql tag stores /tap/<tagId>; both iOS and Android open
+              this URL directly, so the id must reach the page as a route param. */}
+          <Route path="/tap/:tagId" component={TapPage} />
           <Route path="/reward" component={RewardPage} />
           <Route path="/how-it-works" component={HowItWorksPage} />
           <Route path="/settings" component={SettingsPage} />
