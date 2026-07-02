@@ -162,7 +162,7 @@ export const coordinators = pgTable("coordinators", {
   displayName: varchar("display_name"),
   planStatus: varchar("plan_status").default("trial"), // trial, active, past_due, cancelled
   planRenewsAt: timestamp("plan_renews_at"),
-  sharePct: integer("share_pct").default(85), // CHR-32/61: revenue-share % (80–90 band)
+  sharePct: integer("share_pct").default(70), // CHR-32/61: coordinator revenue-share % on gross (owner decision: 70/30 split)
   // Invitation (mirrors the admin invite flow)
   invitedBy: varchar("invited_by").references(() => users.id),
   inviteToken: varchar("invite_token").unique(),

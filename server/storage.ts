@@ -170,6 +170,11 @@ function identityConds(
   return conds;
 }
 
+// CHR-32/61: coordinator revenue share. Owner decision (2026-07-02): 70/30
+// coordinator/platform split on GROSS, applied to both subscriptions and add-ons.
+// The per-coordinator `coordinators.share_pct` can override this default.
+const DEFAULT_COORDINATOR_SHARE_PCT = 70;
+
 export class DatabaseStorage implements IStorage {
   // User operations (required for auth)
   async getUser(id: string): Promise<User | undefined> {
@@ -639,7 +644,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     let { coordinatorId, territoryId, businessId } = input;
-    let sharePct = 85;
+    let sharePct = DEFAULT_COORDINATOR_SHARE_PCT;
     if (!coordinatorId) {
       if (!input.userId) return null;
       const resolved = await this.resolveCoordinatorForPayer(input.userId);
@@ -647,10 +652,10 @@ export class DatabaseStorage implements IStorage {
       coordinatorId = resolved.coordinator.id;
       territoryId = resolved.territoryId;
       businessId = resolved.businessId;
-      sharePct = resolved.coordinator.sharePct ?? 85;
+      sharePct = resolved.coordinator.sharePct ?? DEFAULT_COORDINATOR_SHARE_PCT;
     } else {
       const coord = await this.getCoordinator(coordinatorId);
-      sharePct = coord?.sharePct ?? 85;
+      sharePct = coord?.sharePct ?? DEFAULT_COORDINATOR_SHARE_PCT;
     }
 
     const gross = Math.round(input.grossAmountCents);
@@ -762,7 +767,7 @@ export class DatabaseStorage implements IStorage {
 
     return {
       currency: rows[0]?.currency || "usd",
-      sharePct: coord?.sharePct ?? 85,
+      sharePct: coord?.sharePct ?? DEFAULT_COORDINATOR_SHARE_PCT,
       lifetime: tally(rows),
       currentMonth: { month: currentMonth, ...tally(rows.filter((r) => r.periodMonth === currentMonth)) },
       trailing12Months: tally(rows.filter((r) => r.periodMonth && last12Set.has(r.periodMonth))),
