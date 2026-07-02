@@ -1,0 +1,43 @@
+# Render Blueprint for Cirqlback (https://render.com).
+# Deploys the single Node/Express server that serves both the API and the built
+# React SPA. Create a service from this file via Render → New → Blueprint, then
+# fill in the secret env vars (marked sync:false) in the dashboard.
+services:
+  - type: web
+    name: cirqlback
+    runtime: node
+    plan: free # free web service: spins down when idle, ~50s cold start. Upgrade for always-on.
+    region: oregon
+    # --include=dev forces devDependencies (vite/esbuild) even though NODE_ENV=production.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      # Session signing secret — Render generates a strong random value.
+      - key: SESSION_SECRET
+        generateValue: true
+      # Reuse your existing Neon connection string (already has the schema + data),
+      # or point at a fresh Neon DB and run `npm run db:migrate` against it once.
+      - key: DATABASE_URL
+        sync: false
+      # After the first deploy, set this to your live URL, e.g.
+      # https://cirqlback.onrender.com  (production CORS is an exact allowlist).
+      - key: CORS_ORIGINS
+        sync: false
+      # Google Maps (VITE_* is baked into the client at build time — set before first build).
+      - key: VITE_GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+      # Stripe (test keys are fine for a preview).
+      - key: VITE_STRIPE_PUBLIC_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false

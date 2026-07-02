@@ -13,13 +13,17 @@ const app = express();
 // Fonts; a proper Content-Security-Policy is a separate, larger task.
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
+const isProdEnv = process.env.NODE_ENV === "production";
 const allowedOrigins = (process.env.CORS_ORIGINS ||
   "http://localhost:5000,http://127.0.0.1:5000")
   .split(",").map((s) => s.trim()).filter(Boolean);
 app.use(cors({
   origin(origin, cb) {
     // Allow same-origin / non-browser requests (no Origin header) + allowlist.
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    // In development, reflect any origin so the app can be shared over LAN or a
+    // tunnel (e.g. to show a partner) without editing CORS_ORIGINS per URL.
+    // Production stays strict — only the configured allowlist is accepted.
+    if (!origin || !isProdEnv || allowedOrigins.includes(origin)) return cb(null, true);
     return cb(new Error("Not allowed by CORS"));
   },
   credentials: true,
@@ -81,7 +85,9 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  const host = process.env.HOST || "127.0.0.1";
+  // Production hosts (Render/Railway/etc.) route to the container's public
+  // interface, so bind 0.0.0.0 there; keep localhost-only in development.
+  const host = process.env.HOST || (isProdEnv ? "0.0.0.0" : "127.0.0.1");
   server.listen(port, host, () => {
     log(`serving on http://${host}:${port}`);
   });
