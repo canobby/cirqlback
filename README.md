@@ -30,8 +30,8 @@ cp .env.example .env          # PowerShell: Copy-Item .env.example .env
 #     need a key return a clear error until you provide one. See .env.example
 #     for the full annotated list.
 
-# 3. Create the database schema (syncs shared/schema.ts to your DB)
-npm run db:push
+# 3. Create the database schema on a fresh database (see "Database migrations")
+npm run db:migrate
 
 # 4. Run the dev server (client + API on one port)
 npm run dev
@@ -48,7 +48,18 @@ Only `DATABASE_URL` is strictly required to boot. `OPENAI_API_KEY`, the Stripe k
 | `npm run build` | Build the client (Vite) and bundle the server (esbuild) into `dist/`. |
 | `npm start` | Run the production build from `dist/`. |
 | `npm run check` | TypeScript typecheck (`tsc`, no emit). |
-| `npm run db:push` | Sync `shared/schema.ts` to the database with `drizzle-kit push`. |
+| `npm run db:generate` | Emit a new SQL migration in `migrations/` from `shared/schema.ts` (`drizzle-kit generate`). |
+| `npm run db:migrate` | Apply the committed `migrations/` to `DATABASE_URL` — deterministic, use for fresh DBs and deploys. |
+| `npm run db:push` | Dev-only fast schema sync (`drizzle-kit push`); does not record a migration. |
+
+## Database migrations
+
+`shared/schema.ts` is the single source of truth; the committed SQL in `migrations/` is the reproducible record of it. `migrations/0000_baseline_schema.sql` is the full baseline.
+
+- **Fresh database** (new clone, staging, prod): `npm run db:migrate` creates every table/column. This is the reliable path — do **not** rely on `db:push` for a real deployment.
+- **Change the schema**: edit `shared/schema.ts` → `npm run db:generate` (writes a new `migrations/NNNN_*.sql`) → review the SQL → `npm run db:migrate`. Commit the generated migration alongside the schema change.
+- **`db:push`** stays for quick local iteration only; it applies the schema diff directly without recording a migration and can fail to reconcile pre-existing tables. Prefer generate + migrate.
+- **Existing databases created before migrations existed** (e.g. the current dev DB, built via `db:push`/ad-hoc scripts): they already have the schema, so the baseline must be marked applied rather than re-run — insert the baseline's hash into Drizzle's `__drizzle_migrations` journal (or run the baseline against a fresh copy) before applying later migrations.
 
 ## Project structure
 
