@@ -154,12 +154,22 @@ export class TranslationService {
 export const translationService = new TranslationService();
 
 // Route handlers
+// CHR-82: these endpoints are intentionally public (customers are anonymous —
+// they tap without an account and read offers in their language), so cost is
+// bounded by the CHR-17 rate limit PLUS a per-request input cap here, so a
+// single anonymous call can't push an unbounded payload to the OpenAI API.
+const MAX_TRANSLATE_CHARS = 2000;
+const MAX_TTS_CHARS = 1000;
+
 export async function handleTextTranslation(req: Request, res: Response) {
   try {
     const { text, targetLanguage, sourceLanguage = 'en' } = req.body;
 
     if (!text || !targetLanguage) {
       return res.status(400).json({ error: 'Text and target language are required' });
+    }
+    if (String(text).length > MAX_TRANSLATE_CHARS) {
+      return res.status(400).json({ error: `Text too long (max ${MAX_TRANSLATE_CHARS} characters)` });
     }
 
     const translatedText = await translationService.translateText(text, targetLanguage, sourceLanguage);
@@ -195,6 +205,9 @@ export async function handleTextToSpeech(req: Request, res: Response) {
 
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
+    }
+    if (String(text).length > MAX_TTS_CHARS) {
+      return res.status(400).json({ error: `Text too long (max ${MAX_TTS_CHARS} characters)` });
     }
 
     const audioBuffer = await translationService.textToSpeech(text, language);

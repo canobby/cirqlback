@@ -926,7 +926,9 @@ export class DatabaseStorage implements IStorage {
           source: input.source || "stripe",
           stripePaymentIntentId: input.stripePaymentIntentId ?? null,
           activatedAt: new Date(),
-          expiresAt: input.expiresAt ?? null,
+          // CHR-82: keep the LATER expiry so a renewal/re-purchase never shortens
+          // an existing entitlement. NULL = no expiry (infinite) wins over any date.
+          expiresAt: sql`CASE WHEN ${businessAddons.expiresAt} IS NULL OR excluded.expires_at IS NULL THEN NULL ELSE GREATEST(${businessAddons.expiresAt}, excluded.expires_at) END`,
           updatedAt: new Date(),
         },
       })
