@@ -85,10 +85,14 @@ export function registerAccountSubscriptionRoutes(app: Express, deps: RouteDeps)
   // Trial discount selection route
   app.post('/api/subscription/trial-discount', async (req, res) => {
     try {
-      const { userId, selectedTier } = req.body;
-      
-      if (!userId || !selectedTier) {
-        return res.status(400).json({ error: "User ID and selected tier required" });
+      // CHR-13 invariant: identity comes from the session, never a client-supplied
+      // userId. Trusting req.body.userId here let any authed user mutate another
+      // account's subscription (IDOR).
+      const userId = (req.user as any).id;
+      const { selectedTier } = req.body;
+
+      if (!selectedTier) {
+        return res.status(400).json({ error: "Selected tier required" });
       }
 
       const user = await storage.getUser(userId);
@@ -127,10 +131,14 @@ export function registerAccountSubscriptionRoutes(app: Express, deps: RouteDeps)
   // Update user subscription route
   app.post('/api/subscription/update', async (req, res) => {
     try {
-      const { userId, subscriptionTier, subscriptionStatus } = req.body;
-      
-      if (!userId || !subscriptionTier) {
-        return res.status(400).json({ error: "User ID and subscription tier required" });
+      // CHR-13 invariant: session-derived identity only. A client-supplied userId
+      // let any authed user set an arbitrary account's tier — including a free
+      // self-upgrade to a paid tier, bypassing Stripe.
+      const userId = (req.user as any).id;
+      const { subscriptionTier, subscriptionStatus } = req.body;
+
+      if (!subscriptionTier) {
+        return res.status(400).json({ error: "Subscription tier required" });
       }
 
       const user = await storage.updateUserSubscription(userId, {

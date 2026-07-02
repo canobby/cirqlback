@@ -322,9 +322,14 @@ export function registerBusinessesCampaignsNfcRoutes(app: Express, deps: RouteDe
     }
   });
 
-  app.post("/api/campaigns", async (req, res) => {
+  app.post("/api/campaigns", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertCampaignSchema.parse(req.body);
+      // CHR-16: only the owning business may create a campaign. Without this an
+      // anonymous caller could inject reward-granting campaigns onto any business.
+      if (!(await userOwnsBusiness((req.user as any).id, validatedData.businessId))) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
       const campaign = await storage.createCampaign(validatedData);
       res.json(campaign);
     } catch (error) {
@@ -408,10 +413,15 @@ export function registerBusinessesCampaignsNfcRoutes(app: Express, deps: RouteDe
     }
   });
 
-  app.post("/api/nfc-tags", async (req, res) => {
+  app.post("/api/nfc-tags", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertNfcTagSchema.parse(req.body);
-      
+      // CHR-16: only the owning business may mint NFC tags. Its PATCH/DELETE
+      // siblings were already gated; the create path was left open.
+      if (!(await userOwnsBusiness((req.user as any).id, validatedData.businessId))) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
       // Generate unique tag identifier if not provided
       if (!validatedData.tagIdentifier) {
         validatedData.tagIdentifier = `CIRQL-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
