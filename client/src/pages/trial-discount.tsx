@@ -60,6 +60,7 @@ export default function TrialDiscount() {
         "Tap & redemption analytics",
         "20 Cirql tags included",
         "Solo & multi-store group campaigns",
+        "Hosted business page add-on ($14.99/mo)",
         "Email support"
       ],
       highlight: false
@@ -75,6 +76,7 @@ export default function TrialDiscount() {
         "Up to 3 business locations",
         "Unlimited customer taps",
         "50 Cirql tags included",
+        "Hosted business page included",
         "Priority support",
         "Early access to new features",
         "Add-ons: analytics, branding, map priority, contests"

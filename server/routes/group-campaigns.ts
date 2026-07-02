@@ -92,7 +92,7 @@ export function registerGroupCampaignRoutes(app: Express, deps: RouteDeps) {
       if (!(await userOwnsBusiness(userId, businessId))) {
         return res.status(403).json({ error: "Not your business" });
       }
-      if (!(await storage.businessHasAddon(businessId, "scavenger_builder"))) {
+      if (!(await storage.businessHasAddonEffective(businessId, "scavenger_builder"))) {
         return res.status(402).json({ error: "Contest & Scavenger Hunt Builder add-on required", addonKey: "scavenger_builder" });
       }
 

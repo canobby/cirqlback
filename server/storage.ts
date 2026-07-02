@@ -69,6 +69,7 @@ import {
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull } from "drizzle-orm";
 import { tierForPoints, levelForPoints, pointsToNextLevel } from "./gamification";
+import { ADDON_CATALOG, isAddonIncludedInTier } from "./addons";
 
 export interface IStorage {
   // User operations (required for auth)
@@ -89,6 +90,7 @@ export interface IStorage {
   // Business operations
   getBusinesses(): Promise<Business[]>;
   getBusiness(id: string): Promise<Business | undefined>;
+  getBusinessBySlug(slug: string): Promise<Business | undefined>;
   getBusinessesByOwner(ownerId: string): Promise<Business[]>;
   getUserBusinesses(userId: string): Promise<Business[]>;
   createBusiness(business: InsertBusiness): Promise<Business>;
@@ -427,6 +429,12 @@ export class DatabaseStorage implements IStorage {
 
   async getBusiness(id: string): Promise<Business | undefined> {
     const [business] = await db.select().from(businesses).where(eq(businesses.id, id));
+    return business || undefined;
+  }
+
+  // Hosted Business Page (add-on): resolve a business by its public website slug.
+  async getBusinessBySlug(slug: string): Promise<Business | undefined> {
+    const [business] = await db.select().from(businesses).where(eq(businesses.websiteSlug, slug));
     return business || undefined;
   }
 
@@ -978,6 +986,42 @@ export class DatabaseStorage implements IStorage {
       );
     if (!row) return false;
     return !row.expiresAt || row.expiresAt.getTime() > Date.now();
+  }
+
+  // The subscription tier of a business's owner (drives tier-included add-ons).
+  async getBusinessOwnerTier(businessId: string): Promise<string | null> {
+    const business = await this.getBusiness(businessId);
+    if (!business?.ownerId) return null;
+    const owner = await this.getUser(business.ownerId);
+    return owner?.subscriptionTier ?? null;
+  }
+
+  // Effective entitlement: a business "has" an add-on if it purchased it OR its
+  // owner's plan includes it for free. This is the canonical gate used across
+  // the feature routes so tier-included add-ons work without a purchase row.
+  async businessHasAddonEffective(businessId: string, addonKey: string): Promise<boolean> {
+    if (await this.businessHasAddon(businessId, addonKey)) return true;
+    return isAddonIncludedInTier(addonKey, await this.getBusinessOwnerTier(businessId));
+  }
+
+  // Active entitlements for the owner UI, including synthesized "included" rows
+  // for add-ons the owner's plan grants for free (so the panel shows them as
+  // active without a purchase). Shape matches BusinessAddon for existing readers.
+  async getEffectiveBusinessAddons(businessId: string): Promise<Array<Record<string, any>>> {
+    const purchased = await this.getBusinessAddons(businessId);
+    const owned = new Set(purchased.map((r) => r.addonKey));
+    const tier = await this.getBusinessOwnerTier(businessId);
+    const included = Object.values(ADDON_CATALOG)
+      .filter((a) => !owned.has(a.key) && isAddonIncludedInTier(a.key, tier))
+      .map((a) => ({
+        id: `included:${a.key}`,
+        businessId,
+        addonKey: a.key,
+        status: "active",
+        source: "included",
+        expiresAt: null,
+      }));
+    return [...purchased, ...included];
   }
 
   // Activate (or re-activate) an add-on for a business. Idempotent on the

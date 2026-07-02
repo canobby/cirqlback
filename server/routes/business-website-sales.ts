@@ -10,240 +10,309 @@ import { openaiService } from "../openai-service";
 import { isAuthenticated, isAdminAuthenticated } from "../auth";
 import { PLAN_PRICING, resolvePlanAmountCents, type BillingInterval } from "../pricing";
 import type { RouteDeps } from "./_shared";
+import {
+  normalizeWebsiteContent,
+  defaultWebsiteContent,
+  slugifyName,
+  FONT_PRESETS,
+  DAYS,
+  type BusinessWebsiteContent,
+  type SectionKey,
+} from "@shared/business-website";
+
+const HOSTED_WEBSITE_ADDON = "hosted_website";
+
+// Read the stored website content off a business row, seeding sensible defaults
+// from the business profile when nothing has been saved yet.
+function readWebsiteContent(business: any): BusinessWebsiteContent {
+  const seed = {
+    businessName: business?.name || "",
+    description: business?.description || "",
+    phone: business?.phone || "",
+    email: business?.email || "",
+    address: business?.address || "",
+  };
+  return normalizeWebsiteContent(business?.websiteContent, defaultWebsiteContent(seed));
+}
+
+function escapeHtml(v: unknown): string {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+const DAY_LABELS: Record<string, string> = {
+  monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu",
+  friday: "Fri", saturday: "Sat", sunday: "Sun",
+};
+
+// Render the public one-page site from validated content + live campaigns.
+// Layout is fixed (always responsive); the customization knobs only feed CSS
+// custom properties and which section blocks render, so it can never break.
+function renderWebsiteHtml(
+  c: BusinessWebsiteContent,
+  campaigns: Array<{ name: string; description?: string | null }>,
+): string {
+  const font = FONT_PRESETS[c.fontPreset] || FONT_PRESETS.modern;
+  const accent = c.accentColor;
+  const name = escapeHtml(c.businessName || "Local Business");
+  const tagline = escapeHtml(c.tagline);
+
+  const heroInner = `<h1>${name}</h1>${tagline ? `<p class="tagline">${tagline}</p>` : ""}`;
+  let hero: string;
+  if ((c.heroStyle === "photo" || c.heroStyle === "overlay") && c.heroImage) {
+    const overlay = c.heroStyle === "overlay";
+    hero = `<header class="hero hero-photo${overlay ? " hero-overlay" : ""}" style="background-image:url('${escapeHtml(c.heroImage)}')"><div class="hero-inner">${heroInner}</div></header>`;
+  } else if (c.heroStyle === "split" && c.heroImage) {
+    hero = `<header class="hero hero-split"><div class="hero-text">${heroInner}</div><div class="hero-img" style="background-image:url('${escapeHtml(c.heroImage)}')"></div></header>`;
+  } else {
+    hero = `<header class="hero hero-gradient"><div class="hero-inner">${heroInner}</div></header>`;
+  }
+
+  const sectionHtml = (key: SectionKey): string => {
+    switch (key) {
+      case "about":
+        return c.about ? section("About", `<p>${escapeHtml(c.about)}</p>`) : "";
+      case "specials":
+        return c.specials ? section("Specials & Offers", `<p>${escapeHtml(c.specials)}</p>`) : "";
+      case "rewards":
+        return campaigns.length
+          ? section(
+              "🎯 Tap to Earn Rewards",
+              `<p class="rewards-lead">Look for our Cirql tags in-store to unlock these:</p><div class="rewards">${campaigns
+                .map((r) => `<div class="reward"><strong>${escapeHtml(r.name)}</strong>${r.description ? `<span>${escapeHtml(r.description)}</span>` : ""}</div>`)
+                .join("")}</div>`,
+              true,
+            )
+          : "";
+      case "hours": {
+        const rows = DAYS.map((d) => {
+          const h = c.hours[d];
+          const val = h?.closed ? "Closed" : `${escapeHtml(h?.open || "")} – ${escapeHtml(h?.close || "")}`;
+          return `<div class="hours-row"><span>${DAY_LABELS[d]}</span><span>${val}</span></div>`;
+        }).join("");
+        return section("Hours", `<div class="hours">${rows}</div>`);
+      }
+      case "gallery":
+        return c.gallery.length
+          ? section("Gallery", `<div class="gallery">${c.gallery.map((g) => `<img src="${escapeHtml(g)}" alt="" loading="lazy">`).join("")}</div>`)
+          : "";
+      case "contact": {
+        const parts = [
+          c.contact.address ? `<div>📍 ${escapeHtml(c.contact.address)}</div>` : "",
+          c.contact.phone ? `<div>📞 ${escapeHtml(c.contact.phone)}</div>` : "",
+          c.contact.email ? `<div>✉️ ${escapeHtml(c.contact.email)}</div>` : "",
+        ].filter(Boolean).join("");
+        return parts ? section("Contact", `<div class="contact">${parts}</div>`) : "";
+      }
+      case "social": {
+        const links = Object.entries(c.social)
+          .filter(([, v]) => v)
+          .map(([k, v]) => `<a href="${escapeHtml(v)}" rel="noopener noreferrer nofollow" target="_blank">${escapeHtml(k)}</a>`)
+          .join("");
+        return links ? section("Follow Us", `<div class="social">${links}</div>`) : "";
+      }
+      default:
+        return "";
+    }
+  };
+
+  function section(title: string, body: string, highlight = false): string {
+    return `<section class="block${highlight ? " highlight" : ""}"><h2>${escapeHtml(title)}</h2>${body}</section>`;
+  }
+
+  const body = c.sections.map(sectionHtml).join("");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${name}${tagline ? ` — ${tagline}` : ""}</title>
+<meta name="description" content="${escapeHtml(c.about || c.tagline || c.businessName)}">
+<style>
+:root{--accent:${accent};--font-h:${font.heading};--font-b:${font.body};}
+*{box-sizing:border-box;}
+body{margin:0;font-family:var(--font-b);color:#1f2937;background:#f8fafc;line-height:1.6;}
+h1,h2{font-family:var(--font-h);}
+.hero{color:#fff;padding:72px 24px;text-align:center;}
+.hero h1{font-size:2.4rem;margin:0;}
+.hero .tagline{font-size:1.15rem;opacity:.92;margin:.5rem 0 0;}
+.hero-gradient{background:linear-gradient(135deg,var(--accent),#111827);}
+.hero-photo{background-size:cover;background-position:center;}
+.hero-overlay .hero-inner,.hero-photo .hero-inner{background:rgba(0,0,0,.45);display:inline-block;padding:24px 32px;border-radius:12px;}
+.hero-split{display:flex;flex-wrap:wrap;text-align:left;padding:0;color:#111827;background:#fff;}
+.hero-split .hero-text{flex:1 1 320px;padding:56px 32px;border-top:6px solid var(--accent);}
+.hero-split .hero-img{flex:1 1 320px;min-height:260px;background-size:cover;background-position:center;}
+main{max-width:820px;margin:0 auto;padding:32px 20px 64px;}
+.block{background:#fff;border-radius:14px;padding:24px 28px;margin:18px 0;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.block h2{margin:0 0 12px;color:#111827;font-size:1.3rem;}
+.block.highlight{border:2px solid var(--accent);}
+.block.highlight h2{color:var(--accent);}
+.rewards-lead{margin:0 0 12px;color:#4b5563;}
+.rewards{display:grid;gap:10px;}
+.reward{background:#f9fafb;border-left:4px solid var(--accent);padding:10px 14px;border-radius:8px;}
+.reward span{display:block;font-size:.9rem;color:#6b7280;margin-top:2px;}
+.hours-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.gallery img{width:100%;height:140px;object-fit:cover;border-radius:8px;}
+.contact div{padding:3px 0;}
+.social{display:flex;gap:14px;flex-wrap:wrap;text-transform:capitalize;}
+.social a{color:var(--accent);text-decoration:none;font-weight:600;}
+footer{text-align:center;padding:24px;color:#9ca3af;font-size:.85rem;}
+footer a{color:#6b7280;}
+</style>
+</head>
+<body>
+${hero}
+<main>${body}</main>
+<footer>Powered by <a href="https://cirqlback.com" rel="noopener">Cirqlback</a></footer>
+</body>
+</html>`;
+}
 
 export function registerBusinessWebsiteSalesRoutes(app: Express, deps: RouteDeps) {
   const { userOwnsBusiness } = deps;
 
-  app.get("/api/businesses", async (req, res) => {
-    try {
-      const businesses = [
-        { id: "biz1", name: "Joe's Coffee Shop", type: "Coffee", status: "active" },
-        { id: "biz2", name: "Fitness First Gym", type: "Fitness", status: "active" },
-        { id: "biz3", name: "Taco Libre", type: "Restaurant", status: "active" }
-      ];
-      res.json(businesses);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch businesses" });
-    }
-  });
+  // ── Hosted Business Page add-on (server/addons.ts: hosted_website) ──
+  // Owner-facing editor API + a public one-page site at /biz/:slug. Content is
+  // persisted on the businesses.website_* columns (websiteContent jsonb holds
+  // the customization). Reads require ownership; writes/publish also require the
+  // active add-on entitlement.
 
-  // Auto-sync business data for website
-  app.post("/api/business/website/:businessId/sync", async (req, res) => {
+  // Owner: fetch editable website content + entitlement/publish state.
+  app.get("/api/business/website/:businessId", isAuthenticated, async (req, res) => {
     try {
       const { businessId } = req.params;
-      
-      // Fetch business profile data
-      const businessData = {
-        name: "Local Coffee House",
-        description: "Artisan coffee and fresh pastries in the heart of downtown",
-        address: "123 Main Street, Downtown",
-        phone: "(555) 123-4567",
-        email: "hello@localcoffeehouse.com",
-        socialMediaHandles: {
-          facebook: "LocalCoffeeHouse",
-          instagram: "@localcoffeehouse",
-          twitter: "@coffee_local"
-        },
-        businessHours: {
-          monday: { open: "7:00", close: "19:00", closed: false },
-          tuesday: { open: "7:00", close: "19:00", closed: false },
-          wednesday: { open: "7:00", close: "19:00", closed: false },
-          thursday: { open: "7:00", close: "19:00", closed: false },
-          friday: { open: "7:00", close: "20:00", closed: false },
-          saturday: { open: "8:00", close: "20:00", closed: false },
-          sunday: { open: "8:00", close: "18:00", closed: false }
-        }
-      };
+      if (!(await userOwnsBusiness((req.user as any).id, businessId))) {
+        return res.status(403).json({ error: "You don't own that business" });
+      }
+      const business = await storage.getBusiness(businessId);
+      if (!business) return res.status(404).json({ error: "Business not found" });
 
-      // Fetch active campaigns for menu sync
-      const activeCampaigns = [
-        {
-          name: "Signature Latte",
-          description: "Our house special with locally sourced beans",
-          price: "$4.50",
-          category: "Coffee"
-        },
-        {
-          name: "Fresh Croissant",
-          description: "Buttery, flaky pastry baked daily",
-          price: "$3.25",
-          category: "Pastries"
-        }
-      ];
-
-      const syncedWebsiteData = {
-        businessInfo: businessData,
-        menuItems: activeCampaigns,
-        lastSyncTime: new Date(),
-        syncedFields: ["businessInfo", "hours", "social", "menu"]
-      };
-
-      res.json({ success: true, syncedData: syncedWebsiteData });
+      const entitled = await storage.businessHasAddonEffective(businessId, HOSTED_WEBSITE_ADDON);
+      res.json({
+        entitled,
+        content: readWebsiteContent(business),
+        slug: business.websiteSlug ?? null,
+        published: Boolean(business.websitePublished),
+        views: business.websiteViews ?? 0,
+        publicUrl: business.websiteSlug ? `/biz/${business.websiteSlug}` : null,
+      });
     } catch (error) {
-      res.status(500).json({ error: "Failed to sync business data" });
-    }
-  });
-
-  // Business Website Builder & Hosting
-  app.get("/api/business/website/:businessId", async (req, res) => {
-    try {
-      const { businessId } = req.params;
-      const website = {
-        id: businessId,
-        websiteEnabled: true,
-        websiteSlug: "sample-business",
-        websiteTheme: "modern",
-        websiteContent: {
-          businessName: "Sample Local Business",
-          tagline: "Serving the community with excellence",
-          aboutText: "We're a local business passionate about providing quality service to our community. Visit us and discover what makes us special!",
-          contactInfo: "123 Main St, Your City | (555) 123-4567",
-          specialOffers: "New customer discount: 10% off your first visit!"
-        },
-        websiteMenu: {
-          categories: ["Popular Items", "Specialties", "Beverages"],
-          items: [
-            { category: "Popular Items", name: "Signature Dish", price: "$12.99", description: "Our most popular item" },
-            { category: "Beverages", name: "Fresh Coffee", price: "$3.50", description: "Locally roasted coffee" }
-          ]
-        },
-        websiteServices: {
-          services: [
-            { name: "Quality Service", description: "Professional and friendly service" },
-            { name: "Local Focus", description: "Supporting the local community" }
-          ]
-        },
-        websiteHours: {
-          monday: { open: "9:00", close: "17:00", closed: false },
-          tuesday: { open: "9:00", close: "17:00", closed: false },
-          wednesday: { open: "9:00", close: "17:00", closed: false },
-          thursday: { open: "9:00", close: "17:00", closed: false },
-          friday: { open: "9:00", close: "17:00", closed: false },
-          saturday: { open: "10:00", close: "16:00", closed: false },
-          sunday: { open: "", close: "", closed: true }
-        },
-        websiteSocialLinks: {
-          facebook: "https://facebook.com/samplebusiness",
-          instagram: "https://instagram.com/samplebusiness",
-          twitter: "https://twitter.com/samplebusiness"
-        },
-        websitePublished: true,
-        websiteViews: 245
-      };
-      res.json(website);
-    } catch (error) {
+      console.error("Get website error:", error);
       res.status(500).json({ error: "Failed to fetch website data" });
     }
   });
 
-  app.put("/api/business/website/:businessId", async (req, res) => {
+  // Owner: save website content (add-on required). Body is the full content
+  // object; it is normalized/sanitized before persistence.
+  app.put("/api/business/website/:businessId", isAuthenticated, async (req, res) => {
     try {
       const { businessId } = req.params;
-      const websiteData = req.body;
-      
-      // Here you would update the business website data in the database
-      const updatedWebsite = {
-        ...websiteData,
+      if (!(await userOwnsBusiness((req.user as any).id, businessId))) {
+        return res.status(403).json({ error: "You don't own that business" });
+      }
+      if (!(await storage.businessHasAddonEffective(businessId, HOSTED_WEBSITE_ADDON))) {
+        return res.status(402).json({ error: "Hosted Business Page add-on required", addonKey: HOSTED_WEBSITE_ADDON });
+      }
+      const business = await storage.getBusiness(businessId);
+      if (!business) return res.status(404).json({ error: "Business not found" });
+
+      const content = normalizeWebsiteContent(req.body?.content ?? req.body, readWebsiteContent(business));
+      const updated = await storage.updateBusiness(businessId, {
+        websiteEnabled: true,
+        websiteContent: content as any,
+        websiteTheme: content.fontPreset,
         websiteLastUpdated: new Date(),
-        id: businessId
-      };
-      
-      res.json({ success: true, website: updatedWebsite });
+      });
+      res.json({ success: true, content: readWebsiteContent(updated) });
     } catch (error) {
+      console.error("Update website error:", error);
       res.status(500).json({ error: "Failed to update website" });
     }
   });
 
-  app.post("/api/business/website/:businessId/publish", async (req, res) => {
+  // Owner: publish / unpublish (add-on required). Publishing mints a unique slug
+  // on first use.
+  app.post("/api/business/website/:businessId/publish", isAuthenticated, async (req, res) => {
     try {
       const { businessId } = req.params;
-      
-      // Here you would publish the website and make it live
-      const publishedWebsite = {
-        businessId,
-        websitePublished: true,
-        publishedAt: new Date(),
-        websiteUrl: `https://cirqlback.com/biz/${businessId}`,
-        seoOptimized: true,
-        mobileResponsive: true
-      };
-      
-      res.json({ success: true, website: publishedWebsite });
+      if (!(await userOwnsBusiness((req.user as any).id, businessId))) {
+        return res.status(403).json({ error: "You don't own that business" });
+      }
+      if (!(await storage.businessHasAddonEffective(businessId, HOSTED_WEBSITE_ADDON))) {
+        return res.status(402).json({ error: "Hosted Business Page add-on required", addonKey: HOSTED_WEBSITE_ADDON });
+      }
+      const business = await storage.getBusiness(businessId);
+      if (!business) return res.status(404).json({ error: "Business not found" });
+
+      const publish = req.body?.published !== false; // default true
+      let slug = business.websiteSlug ?? null;
+
+      if (publish && !slug) {
+        // Mint a unique slug from the business name (append a short suffix on
+        // collision — deterministic, no RNG).
+        const base = slugifyName(business.name || readWebsiteContent(business).businessName);
+        slug = base;
+        const existing = await storage.getBusinessBySlug(slug);
+        if (existing && existing.id !== businessId) {
+          slug = `${base}-${businessId.slice(0, 4)}`;
+        }
+      }
+
+      const updated = await storage.updateBusiness(businessId, {
+        websitePublished: publish,
+        ...(slug ? { websiteSlug: slug } : {}),
+        websiteLastUpdated: new Date(),
+      });
+      res.json({
+        success: true,
+        published: Boolean(updated.websitePublished),
+        slug: updated.websiteSlug ?? null,
+        publicUrl: updated.websiteSlug ? `/biz/${updated.websiteSlug}` : null,
+      });
     } catch (error) {
+      console.error("Publish website error:", error);
       res.status(500).json({ error: "Failed to publish website" });
     }
   });
 
-  // Public business website serving
+  // Public: serve the live one-page site. Only visible when published AND the
+  // business currently holds the add-on. Renders from real content + live
+  // campaigns; increments the view counter.
   app.get("/biz/:businessSlug", async (req, res) => {
     try {
-      const { businessSlug } = req.params;
-      
-      // This would serve the actual business website
-      // For now, we return a sample HTML template
-      const businessWebsite = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Sample Local Business - Serving the community with excellence</title>
-          <meta name="description" content="Local business passionate about providing quality service to our community.">
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; }
-            .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-            .header { text-align: center; padding: 40px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-            .content { padding: 40px 0; }
-            .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
-            .card { background: #f8f9fa; padding: 20px; border-radius: 8px; }
-            .cirql-banner { background: linear-gradient(135deg, #ff6b6b, #4ecdc4); color: white; text-align: center; padding: 20px; margin: 20px 0; border-radius: 8px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Sample Local Business</h1>
-            <p>Serving the community with excellence</p>
-          </div>
-          <div class="container">
-            <div class="cirql-banner">
-              <h3>🎯 Tap to Earn Rewards!</h3>
-              <p>Look for our Cirql tags in-store to unlock exclusive deals and join local discovery challenges!</p>
-              <div style="margin-top: 15px;">
-                <strong>Active Campaigns:</strong>
-                <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
-                  <span style="background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 15px; font-size: 12px;">💰 20% Off Coffee</span>
-                  <span style="background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 15px; font-size: 12px;">🏆 Loyalty Points 2x</span>
-                  <span style="background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 15px; font-size: 12px;">🗺️ Downtown Trail</span>
-                </div>
-              </div>
-            </div>
-            <div class="content">
-              <div class="grid">
-                <div class="card">
-                  <h3>About Us</h3>
-                  <p>We're a local business passionate about providing quality service to our community. Visit us and discover what makes us special!</p>
-                </div>
-                <div class="card">
-                  <h3>Hours</h3>
-                  <p>Mon-Fri: 9:00 AM - 5:00 PM<br>
-                     Sat: 10:00 AM - 4:00 PM<br>
-                     Sun: Closed</p>
-                </div>
-                <div class="card">
-                  <h3>Special Offers</h3>
-                  <p>New customer discount: 10% off your first visit!</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-      
-      res.setHeader('Content-Type', 'text/html');
-      res.send(businessWebsite);
+      const business = await storage.getBusinessBySlug(req.params.businessSlug);
+      if (!business || !business.websitePublished) {
+        return res.status(404).type("html").send("<!DOCTYPE html><meta charset='utf-8'><title>Not found</title><p style='font-family:sans-serif;text-align:center;margin-top:80px'>This page isn't available.</p>");
+      }
+      if (!(await storage.businessHasAddonEffective(business.id, HOSTED_WEBSITE_ADDON))) {
+        // Entitlement lapsed — treat as unpublished so a stale link 404s.
+        return res.status(404).type("html").send("<!DOCTYPE html><meta charset='utf-8'><title>Not found</title><p style='font-family:sans-serif;text-align:center;margin-top:80px'>This page isn't available.</p>");
+      }
+
+      const content = readWebsiteContent(business);
+      const campaigns = content.sections.includes("rewards")
+        ? (await storage.getCampaigns(business.id))
+            .filter((c) => c.isActive)
+            .slice(0, 6)
+            .map((c) => ({ name: c.name, description: c.description }))
+        : [];
+
+      // Fire-and-forget view increment (don't block the response on it).
+      storage
+        .updateBusiness(business.id, { websiteViews: (business.websiteViews ?? 0) + 1 })
+        .catch((e) => console.error("website view increment failed:", e));
+
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.send(renderWebsiteHtml(content, campaigns));
     } catch (error) {
-      res.status(500).json({ error: "Failed to load business website" });
+      console.error("Serve website error:", error);
+      res.status(500).type("html").send("<!DOCTYPE html><meta charset='utf-8'><title>Error</title><p style='font-family:sans-serif;text-align:center;margin-top:80px'>Something went wrong.</p>");
     }
   });
 

@@ -211,7 +211,7 @@ export function registerProfileSettingsRoutes(app: Express, deps: RouteDeps) {
           price: 19.99,
           yearlyPrice: 199.90,
           billingInterval: "monthly",
-          features: ["1 business location", "Unlimited campaigns", "500 customer taps/month", "Tap & redemption analytics", "20 Cirql tags included", "Solo & multi-store group campaigns", "Discovery map listing", "Email support", "Add-ons available"],
+          features: ["1 business location", "Unlimited campaigns", "500 customer taps/month", "Tap & redemption analytics", "20 Cirql tags included", "Solo & multi-store group campaigns", "Discovery map listing", "Email support", "Hosted business page add-on ($14.99/mo)", "Add-ons available"],
           maxBusinesses: 1,
           maxCampaigns: null,
           maxTaps: 500,
@@ -229,7 +229,7 @@ export function registerProfileSettingsRoutes(app: Express, deps: RouteDeps) {
           price: 49.99,
           yearlyPrice: 499.90,
           billingInterval: "monthly",
-          features: ["Everything in Core", "Up to 3 business locations", "Unlimited customer taps", "50 Cirql tags included", "Priority support", "Early access to new features", "Add-ons: analytics, branding, map priority, contests"],
+          features: ["Everything in Core", "Up to 3 business locations", "Unlimited customer taps", "50 Cirql tags included", "Hosted business page included", "Priority support", "Early access to new features", "Add-ons: analytics, branding, map priority, contests"],
           maxBusinesses: 3,
           maxCampaigns: null,
           maxTaps: null,
@@ -237,7 +237,7 @@ export function registerProfileSettingsRoutes(app: Express, deps: RouteDeps) {
           hasAdvancedAnalytics: false,
           hasAiInsights: false,
           hasPrioritySupport: true,
-          hasWebsiteBuilder: false,
+          hasWebsiteBuilder: true,
           hasTeamChallenges: false
         }
       ];

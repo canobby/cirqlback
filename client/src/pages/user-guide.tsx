@@ -380,6 +380,7 @@ export default function UserGuide() {
                         <li>• Tap & redemption analytics</li>
                         <li>• Solo & multi-store group campaigns</li>
                         <li>• Discovery map placement</li>
+                        <li>• Hosted business page add-on ($14.99/mo)</li>
                         <li>• Email support</li>
                       </ul>
                     </div>
@@ -389,6 +390,7 @@ export default function UserGuide() {
                         <li>• Everything in Core, plus:</li>
                         <li>• Up to 3 business locations</li>
                         <li>• Unlimited customer taps</li>
+                        <li>• Hosted business page included</li>
                         <li>• Priority support &amp; early access</li>
                         <li>• Add-ons: analytics, branding, map priority, contests</li>
                       </ul>

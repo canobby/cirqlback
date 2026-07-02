@@ -49,7 +49,7 @@ export function registerEngagementRoutes(app: Express, deps: RouteDeps) {
         businessId = owned[0].id;
       }
       // Entitlement gate: 402 Payment Required when the add-on isn't held.
-      if (!(await storage.businessHasAddon(businessId, "advanced_analytics"))) {
+      if (!(await storage.businessHasAddonEffective(businessId, "advanced_analytics"))) {
         return res.status(402).json({ error: "Advanced Analytics add-on required", addonKey: "advanced_analytics" });
       }
       res.json(await storage.getAdvancedAnalytics(businessId));

@@ -9,7 +9,7 @@ import crypto from "crypto";
 import { openaiService } from "../openai-service";
 import { isAuthenticated, isAdminAuthenticated } from "../auth";
 import { PLAN_PRICING, resolvePlanAmountCents, type BillingInterval } from "../pricing";
-import { ADDON_CATALOG, resolveAddonAmountCents, isAddonKey } from "../addons";
+import { ADDON_CATALOG, resolveAddonAmountCents, isAddonKey, isAddonIncludedInTier } from "../addons";
 import type { RouteDeps } from "./_shared";
 
 export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
@@ -204,6 +204,16 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
         if (!(await userOwnsBusiness(userId, businessId))) {
           return res.status(403).json({ error: "You don't own that business" });
         }
+        // Tier-included add-ons (e.g. hosted_website on Pro) are free — never
+        // charge for one, and don't create a purchase the owner doesn't need.
+        const ownerTier = await storage.getBusinessOwnerTier(businessId);
+        if (isAddonIncludedInTier(addonKey, ownerTier)) {
+          return res.status(400).json({
+            error: `${ADDON_CATALOG[addonKey].name} is already included with your plan.`,
+            included: true,
+            addonKey,
+          });
+        }
         amountCents = resolveAddonAmountCents(addonKey);
         metadata = { platform: "Cirqlback", type: "addon", addonKey, businessId, userId };
         responseExtra = { addonKey, addonName: ADDON_CATALOG[addonKey].name };
@@ -355,17 +365,19 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
         name: a.name,
         priceCents: a.priceCents,
         blurb: a.blurb,
+        includedInTiers: a.includedInTiers ?? [],
       }))
     );
   });
 
-  // A business's active add-on entitlements (owner-only).
+  // A business's active add-on entitlements (owner-only). Includes add-ons the
+  // owner's plan grants for free (source: "included") so the UI shows them active.
   app.get("/api/businesses/:id/addons", isAuthenticated, async (req, res) => {
     try {
       if (!(await userOwnsBusiness((req.user as any).id, req.params.id))) {
         return res.status(403).json({ error: "You don't own that business" });
       }
-      res.json(await storage.getBusinessAddons(req.params.id));
+      res.json(await storage.getEffectiveBusinessAddons(req.params.id));
     } catch (error) {
       console.error("Business add-ons error:", error);
       res.status(500).json({ error: "Failed to load add-ons" });
@@ -377,7 +389,7 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
   // Public: branding for the tap page — only when the business is entitled.
   app.get("/api/tap-branding/:businessId", async (req, res) => {
     try {
-      if (!(await storage.businessHasAddon(req.params.businessId, "custom_branding"))) {
+      if (!(await storage.businessHasAddonEffective(req.params.businessId, "custom_branding"))) {
         return res.json(null); // default styling
       }
       res.json((await storage.getTapBranding(req.params.businessId)) ?? null);
@@ -393,7 +405,7 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
       if (!(await userOwnsBusiness((req.user as any).id, req.params.id))) {
         return res.status(403).json({ error: "You don't own that business" });
       }
-      const entitled = await storage.businessHasAddon(req.params.id, "custom_branding");
+      const entitled = await storage.businessHasAddonEffective(req.params.id, "custom_branding");
       res.json({ entitled, branding: (await storage.getTapBranding(req.params.id)) ?? null });
     } catch (error) {
       console.error("Owner tap branding error:", error);
@@ -407,7 +419,7 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
       if (!(await userOwnsBusiness((req.user as any).id, req.params.id))) {
         return res.status(403).json({ error: "You don't own that business" });
       }
-      if (!(await storage.businessHasAddon(req.params.id, "custom_branding"))) {
+      if (!(await storage.businessHasAddonEffective(req.params.id, "custom_branding"))) {
         return res.status(402).json({ error: "Custom Branding add-on required", addonKey: "custom_branding" });
       }
       const { brandColor, accentColor, slogan, logoUrl, links } = req.body || {};
