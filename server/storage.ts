@@ -172,8 +172,11 @@ function identityConds(
 
 // CHR-32/61: coordinator revenue share. Owner decision (2026-07-02): 70/30
 // coordinator/platform split on GROSS, applied to both subscriptions and add-ons.
-// The per-coordinator `coordinators.share_pct` can override this default.
+// The per-coordinator `coordinators.share_pct` can override this default, but only
+// within the admin-discretion band below (50–100).
 const DEFAULT_COORDINATOR_SHARE_PCT = 70;
+export const COORDINATOR_SHARE_MIN = 50;
+export const COORDINATOR_SHARE_MAX = 100;
 
 export class DatabaseStorage implements IStorage {
   // User operations (required for auth)
@@ -470,6 +473,17 @@ export class DatabaseStorage implements IStorage {
 
   async getCoordinatorByUserId(userId: string): Promise<Coordinator | undefined> {
     const [row] = await db.select().from(coordinators).where(eq(coordinators.userId, userId));
+    return row || undefined;
+  }
+
+  // CHR-32: admin sets a coordinator's revenue-share %. Band-validated by the
+  // caller (COORDINATOR_SHARE_MIN..MAX). Applies to all future earnings.
+  async updateCoordinatorSharePct(id: string, sharePct: number): Promise<Coordinator | undefined> {
+    const [row] = await db
+      .update(coordinators)
+      .set({ sharePct, updatedAt: new Date() })
+      .where(eq(coordinators.id, id))
+      .returning();
     return row || undefined;
   }
 

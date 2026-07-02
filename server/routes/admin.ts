@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { storage } from "../storage";
+import { storage, COORDINATOR_SHARE_MIN, COORDINATOR_SHARE_MAX } from "../storage";
 import { db } from "../db";
 import { adminUsers, adminCommunications, adminTrainingProgress, adminTrainingModules, adminKnowledgeItems } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
@@ -295,6 +295,27 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
       res.json({ success: true, message: "Checklist updated" });
     } catch (error) {
       res.status(500).json({ error: "Failed to update checklist" });
+    }
+  });
+
+  // CHR-32: set a coordinator's revenue-share % — admin discretion within the
+  // 50–100 band (default is 70). Applies to all future earnings; per-charge rows
+  // snapshot the rate at time of charge, so past earnings are unaffected.
+  app.patch("/api/admin/coordinators/:coordinatorId/share", async (req, res) => {
+    try {
+      const coordinator = await storage.getCoordinator(req.params.coordinatorId);
+      if (!coordinator) return res.status(404).json({ error: "Coordinator not found" });
+      const pct = Number(req.body?.sharePct);
+      if (!Number.isInteger(pct) || pct < COORDINATOR_SHARE_MIN || pct > COORDINATOR_SHARE_MAX) {
+        return res.status(400).json({
+          error: `sharePct must be a whole number between ${COORDINATOR_SHARE_MIN} and ${COORDINATOR_SHARE_MAX}`,
+        });
+      }
+      const updated = await storage.updateCoordinatorSharePct(coordinator.id, pct);
+      res.json(updated);
+    } catch (error) {
+      console.error("Admin set coordinator share error:", error);
+      res.status(500).json({ error: "Failed to update coordinator share" });
     }
   });
 
