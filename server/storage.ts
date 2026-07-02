@@ -2068,8 +2068,10 @@ export class DatabaseStorage implements IStorage {
     for (const t of tapRows) {
       if (!t.createdAt) continue;
       const d = new Date(t.createdAt);
-      byHour[d.getHours()].taps += 1;
-      byDay[d.getDay()].taps += 1;
+      // CHR-83: bucket by the stored (UTC) hour/day, consistent with
+      // getBusinessAnalytics — getHours()/getDay() applied a process-local shift.
+      byHour[d.getUTCHours()].taps += 1;
+      byDay[d.getUTCDay()].taps += 1;
     }
 
     // Redemption funnel: taps → rewards issued → redeemed.
@@ -2092,11 +2094,9 @@ export class DatabaseStorage implements IStorage {
       return Number.isFinite(n) ? n : 0;
     };
 
-    const tapRows = await this.getTaps(businessId, customerEmail);
+    // Small tables loaded whole (bounded); the large taps/rewards tables are
+    // aggregated in SQL below (CHR-81) rather than fully materialized.
     const campaignRows = await this.getCampaigns(businessId);
-    const rewardRows = businessId
-      ? await db.select().from(rewards).where(eq(rewards.businessId, businessId))
-      : await db.select().from(rewards);
     const salesRows = businessId
       ? await this.getSalesData(businessId)
       : await db.select().from(salesData).orderBy(desc(salesData.date));
@@ -2104,13 +2104,34 @@ export class DatabaseStorage implements IStorage {
       ? await this.getNFCTags(businessId)
       : await db.select().from(nfcTags);
 
-    // Core metrics
-    const totalTaps = tapRows.length;
-    const activeCustomers = new Set(
-      tapRows.map((t) => t.customerEmail).filter(Boolean)
-    ).size;
-    const rewardsIssued = rewardRows.length;
-    const rewardsRedeemed = rewardRows.filter((r) => r.isRedeemed).length;
+    const tapConds = [];
+    if (businessId) tapConds.push(eq(taps.businessId, businessId));
+    if (customerEmail) tapConds.push(eq(taps.customerEmail, customerEmail));
+    const tapWhere = tapConds.length ? and(...tapConds) : undefined;
+    const rewardWhere = businessId ? eq(rewards.businessId, businessId) : undefined;
+
+    // Core tap metrics (CHR-81: SQL aggregates instead of loading all taps).
+    const [tapAgg] = await db
+      .select({
+        total: sql<number>`count(*)`,
+        active: sql<number>`count(distinct ${taps.customerEmail}) filter (where ${taps.customerEmail} <> '')`,
+        rewardValue: sql<number>`coalesce(sum(${taps.rewardValue}), 0)`,
+      })
+      .from(taps)
+      .where(tapWhere);
+    const totalTaps = Number(tapAgg?.total ?? 0);
+    const activeCustomers = Number(tapAgg?.active ?? 0);
+    const tapRewardValue = Number(tapAgg?.rewardValue ?? 0);
+
+    const [rewAgg] = await db
+      .select({
+        issued: sql<number>`count(*)`,
+        redeemed: sql<number>`count(*) filter (where ${rewards.isRedeemed})`,
+      })
+      .from(rewards)
+      .where(rewardWhere);
+    const rewardsIssued = Number(rewAgg?.issued ?? 0);
+    const rewardsRedeemed = Number(rewAgg?.redeemed ?? 0);
     const conversionRate =
       rewardsIssued > 0
         ? Math.round((rewardsRedeemed / rewardsIssued) * 1000) / 10
@@ -2122,7 +2143,6 @@ export class DatabaseStorage implements IStorage {
       (s, r) => s + num(r.cirqlDrivenSales),
       0
     );
-    const tapRewardValue = tapRows.reduce((s, t) => s + num(t.rewardValue), 0);
     const totalRevenue = salesRevenue > 0 ? salesRevenue : tapRewardValue;
     const newCustomers = salesRows.reduce((s, r) => s + (r.newCustomers ?? 0), 0);
     const returningCustomers = salesRows.reduce(
@@ -2140,16 +2160,29 @@ export class DatabaseStorage implements IStorage {
         ? Math.round((totalRevenue / activeCustomers) * 100) / 100
         : 0;
 
-    // Hourly buckets from tap timestamps
+    // Hourly buckets by the stored (UTC) hour. CHR-83: the previous
+    // new Date(...).getHours() applied a process-local shift, mislabeling the
+    // peak hour; EXTRACT(HOUR FROM created_at) uses the stored wall-clock hour.
     const hourlyData = Array.from({ length: 24 }, (_, hour) => ({
       hour,
       taps: 0,
       revenue: 0,
     }));
-    for (const t of tapRows) {
-      const h = t.createdAt ? new Date(t.createdAt).getHours() : 0;
-      hourlyData[h].taps += 1;
-      hourlyData[h].revenue += num(t.rewardValue);
+    const hourRows = await db
+      .select({
+        hour: sql<number>`extract(hour from ${taps.createdAt})::int`,
+        taps: sql<number>`count(*)`,
+        revenue: sql<number>`coalesce(sum(${taps.rewardValue}), 0)`,
+      })
+      .from(taps)
+      .where(tapWhere)
+      .groupBy(sql`extract(hour from ${taps.createdAt})`);
+    for (const r of hourRows) {
+      const h = Number(r.hour);
+      if (h >= 0 && h < 24) {
+        hourlyData[h].taps = Number(r.taps);
+        hourlyData[h].revenue = Number(r.revenue);
+      }
     }
     const fmtHour = (h: number): string => {
       const am = h < 12;
@@ -2165,17 +2198,26 @@ export class DatabaseStorage implements IStorage {
         ? `${fmtHour(peak.hour)}-${fmtHour((peak.hour + 2) % 24)}`
         : "—";
 
-    // Top campaigns by tap volume
-    const tapsByCampaign = new Map<string, number>();
-    const revByCampaign = new Map<string, number>();
-    for (const t of tapRows) {
-      if (!t.campaignId) continue;
-      tapsByCampaign.set(t.campaignId, (tapsByCampaign.get(t.campaignId) ?? 0) + 1);
-      revByCampaign.set(
-        t.campaignId,
-        (revByCampaign.get(t.campaignId) ?? 0) + num(t.rewardValue)
-      );
-    }
+    // Top campaigns by tap volume (SQL group-by, joined to campaign list in JS).
+    const campTapRows = await db
+      .select({
+        campaignId: taps.campaignId,
+        taps: sql<number>`count(*)`,
+        revenue: sql<number>`coalesce(sum(${taps.rewardValue}), 0)`,
+      })
+      .from(taps)
+      .where(
+        tapWhere
+          ? and(tapWhere, sql`${taps.campaignId} is not null`)
+          : sql`${taps.campaignId} is not null`
+      )
+      .groupBy(taps.campaignId);
+    const tapsByCampaign = new Map(
+      campTapRows.map((r) => [r.campaignId as string, Number(r.taps)])
+    );
+    const revByCampaign = new Map(
+      campTapRows.map((r) => [r.campaignId as string, Number(r.revenue)])
+    );
     const topCampaigns = campaignRows
       .map((c) => ({
         id: c.id,
@@ -2186,15 +2228,20 @@ export class DatabaseStorage implements IStorage {
       .sort((a, b) => b.taps - a.taps)
       .slice(0, 5);
 
-    // Top locations by tag placement
+    // Top locations by tag placement (SQL tap counts per tag, mapped to labels).
     const tagLocation = new Map<string, string>();
     for (const tag of tagRows) {
       tagLocation.set(tag.id, tag.location || tag.customLabel || "Unlabeled");
     }
+    const tagTapRows = await db
+      .select({ tagId: taps.tagId, taps: sql<number>`count(*)` })
+      .from(taps)
+      .where(tapWhere)
+      .groupBy(taps.tagId);
     const tapsByLocation = new Map<string, number>();
-    for (const t of tapRows) {
-      const loc = tagLocation.get(t.tagId) || "Unknown";
-      tapsByLocation.set(loc, (tapsByLocation.get(loc) ?? 0) + 1);
+    for (const r of tagTapRows) {
+      const loc = tagLocation.get(r.tagId) || "Unknown";
+      tapsByLocation.set(loc, (tapsByLocation.get(loc) ?? 0) + Number(r.taps));
     }
     const topLocations = Array.from(tapsByLocation.entries())
       .map(([name, taps]) => ({
@@ -2205,23 +2252,38 @@ export class DatabaseStorage implements IStorage {
       .sort((a, b) => b.taps - a.taps)
       .slice(0, 5);
 
-    // Recent activity: latest taps + latest redemptions, merged by time
-    const tapActivity = tapRows.slice(0, 8).map((t) => ({
+    // Recent activity: latest taps + latest redemptions, merged by time. Only
+    // the newest few of each can survive the top-6 merge, so bound each query.
+    const recentTaps = await db
+      .select()
+      .from(taps)
+      .where(tapWhere)
+      .orderBy(desc(taps.createdAt))
+      .limit(8);
+    const tapActivity = recentTaps.map((t) => ({
       kind: "tap" as const,
       action: `Tap${t.customerName ? ` by ${t.customerName}` : ""}`,
       at: t.createdAt ? new Date(t.createdAt).getTime() : 0,
       timestamp: t.createdAt ? new Date(t.createdAt).toISOString() : null,
       value: `+${t.pointsEarned ?? 0} pts`,
     }));
-    const redemptionActivity = rewardRows
-      .filter((r) => r.isRedeemed && r.redeemedAt)
-      .map((r) => ({
-        kind: "redemption" as const,
-        action: `Reward redeemed — ${r.title}`,
-        at: new Date(r.redeemedAt as Date).getTime(),
-        timestamp: new Date(r.redeemedAt as Date).toISOString(),
-        value: r.value ? `$${num(r.value).toFixed(2)}` : "",
-      }));
+    const redeemedRewards = await db
+      .select()
+      .from(rewards)
+      .where(
+        rewardWhere
+          ? and(rewardWhere, eq(rewards.isRedeemed, true), sql`${rewards.redeemedAt} is not null`)
+          : and(eq(rewards.isRedeemed, true), sql`${rewards.redeemedAt} is not null`)
+      )
+      .orderBy(desc(rewards.redeemedAt))
+      .limit(8);
+    const redemptionActivity = redeemedRewards.map((r) => ({
+      kind: "redemption" as const,
+      action: `Reward redeemed — ${r.title}`,
+      at: new Date(r.redeemedAt as Date).getTime(),
+      timestamp: new Date(r.redeemedAt as Date).toISOString(),
+      value: r.value ? `$${num(r.value).toFixed(2)}` : "",
+    }));
     const recentActivity = [...tapActivity, ...redemptionActivity]
       .sort((a, b) => b.at - a.at)
       .slice(0, 6)
