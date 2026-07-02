@@ -151,55 +151,11 @@ export function registerTapsRewardsRoutes(app: Express, deps: RouteDeps) {
       if (!email) {
         return res.status(400).json({ error: "Email required" });
       }
-      
-      // Return demo rewards for any email
-      const demoRewards = [
-        {
-          id: "reward_1",
-          customerEmail: email,
-          businessId: "demo_biz_1",
-          campaignId: "demo_campaign_1",
-          type: "discount",
-          value: "10.00",
-          description: "10% off your next coffee purchase",
-          isRedeemed: false,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-        },
-        {
-          id: "reward_2",
-          customerEmail: email,
-          businessId: "demo_biz_2", 
-          campaignId: "demo_campaign_2",
-          type: "discount",
-          value: "20.00",
-          description: "20% off dessert with any entree",
-          isRedeemed: false,
-          expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000)
-        }
-      ];
-      
       const rewards = await storage.getRewardsByEmail(email);
-      res.json(rewards.length > 0 ? rewards : demoRewards);
+      res.json(rewards);
     } catch (error) {
       console.error("Rewards error:", error);
-      // Return demo rewards on error  
-      const demoRewards = [
-        {
-          id: "reward_1",
-          customerEmail: req.query.email as string || "demo@example.com",
-          businessId: "demo_biz_1",
-          campaignId: "demo_campaign_1", 
-          type: "discount",
-          value: "10.00",
-          description: "10% off your next coffee purchase",
-          isRedeemed: false,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-        }
-      ];
-      res.json(demoRewards);
+      res.status(500).json({ error: "Failed to fetch rewards" });
     }
   });
 
@@ -222,56 +178,13 @@ export function registerTapsRewardsRoutes(app: Express, deps: RouteDeps) {
   });
 
   // Tap Trail routes
-  app.get("/api/tap-trails", async (req, res) => {
+  app.get("/api/tap-trails", async (_req, res) => {
     try {
-      // Return demo tap trails if no database trails
-      const demoTrails = [
-        {
-          id: "trail_1",
-          name: "Downtown Coffee Circuit",
-          description: "Visit 5 coffee shops downtown for exclusive rewards",
-          businessIds: ["demo_biz_1", "demo_biz_2"],
-          requiredTaps: 5,
-          pointsReward: 500,
-          completionReward: "Free premium coffee",
-          isActive: true,
-          difficulty: "Medium",
-          estimatedTime: "2-3 hours"
-        },
-        {
-          id: "trail_2", 
-          name: "Local Foodie Adventure",
-          description: "Explore diverse dining experiences across the city",
-          businessIds: ["demo_biz_2"],
-          requiredTaps: 8,
-          pointsReward: 800,
-          completionReward: "$25 dining credit",
-          isActive: true,
-          difficulty: "Hard",
-          estimatedTime: "1 week"
-        }
-      ];
-      
       const trails = await storage.getTapTrails();
-      res.json(trails.length > 0 ? trails : demoTrails);
+      res.json(trails);
     } catch (error) {
       console.error("Tap trails error:", error);
-      // Return demo data on error
-      const demoTrails = [
-        {
-          id: "trail_1",
-          name: "Downtown Coffee Circuit", 
-          description: "Visit 5 coffee shops downtown for exclusive rewards",
-          businessIds: ["demo_biz_1", "demo_biz_2"],
-          requiredTaps: 5,
-          pointsReward: 500,
-          completionReward: "Free premium coffee",
-          isActive: true,
-          difficulty: "Medium",
-          estimatedTime: "2-3 hours"
-        }
-      ];
-      res.json(demoTrails);
+      res.status(500).json({ error: "Failed to fetch tap trails" });
     }
   });
 

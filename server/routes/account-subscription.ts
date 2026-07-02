@@ -22,16 +22,7 @@ export function registerAccountSubscriptionRoutes(app: Express, deps: RouteDeps)
       try {
         let user = await storage.getUser(userId);
         if (!user) {
-          // Return demo user response for testing
-          const demoResponse = {
-            isExpired: false,
-            subscriptionStatus: 'active',
-            subscriptionTier: 'starter',
-            upgradeRequired: false,
-            daysRemaining: 120,
-            expirationDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString()
-          };
-          return res.json(demoResponse);
+          return res.status(404).json({ error: "User not found" });
         }
         
         // Check if starter tier has expired
@@ -65,16 +56,7 @@ export function registerAccountSubscriptionRoutes(app: Express, deps: RouteDeps)
         });
       } catch (dbError) {
         console.error("Database error in check-expiration:", dbError);
-        // Return demo response for testing
-        const demoResponse = {
-          isExpired: false,
-          subscriptionStatus: 'active',
-          subscriptionTier: 'starter',
-          upgradeRequired: false,
-          daysRemaining: 120,
-          expirationDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString()
-        };
-        res.json(demoResponse);
+        res.status(500).json({ error: "Failed to check expiration" });
       }
     } catch (error) {
       console.error("Error checking expiration:", error);

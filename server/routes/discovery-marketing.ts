@@ -16,37 +16,35 @@ export function registerDiscoveryMarketingRoutes(app: Express, deps: RouteDeps) 
 
   app.get("/api/business/descriptors", async (req, res) => {
     try {
-      const businessId = req.query.businessId || "demo_business_1";
-      
-      // In a real implementation, this would fetch from database
-      const descriptors = {
-        businessDescriptors: ["Women-owned business", "Local entrepreneur"],
-        culturalBackground: "Hispanic/Latino heritage",
-        communityFocus: ["Youth programs", "Local artist support"],
-        accessibilityFeatures: ["Wheelchair accessible", "Service animal friendly"],
-        sustainabilityPractices: ["Locally sourced ingredients", "Eco-friendly packaging"],
-        businessMaturity: "Established business (2-10 years)",
-        establishmentType: ["Independent local business"],
-        specialtyFeatures: ["Outdoor seating", "Pet-friendly", "WiFi available"],
-        priceRange: "Moderate ($$)",
-        // Enhanced marketing fields
-        targetDemographics: ["Young professionals (25-35)", "Families with children"],
-        peakHours: ["Lunch hours (11 AM-2 PM)", "Dinner time (7-9 PM)"],
-        seasonalPatterns: ["Consistent year-round"],
-        customerCapacity: 85,
-        averageVisitDuration: "30-60 minutes",
-        primaryProducts: ["Food & beverages"],
-        uniqueSellingPoints: ["Locally sourced ingredients", "Expert consultation"],
-        marketingGoals: ["Increase foot traffic", "Improve customer retention"],
-        customerRetentionRate: "50-75%",
-        averageSpendPerCustomer: "$15-$30",
-        socialMediaPresence: ["Instagram active", "Facebook business page"],
-        eventHostingCapability: true,
-        loyaltyProgramInterest: "Very interested",
-        marketingBudget: "$500-$1000"
-      };
-      
-      res.json(descriptors);
+      const businessId = req.query.businessId as string;
+      const b: any = businessId ? await storage.getBusiness(businessId) : null;
+      // Real descriptor fields off the business row (empty when unset). The
+      // extra marketing fields have no column yet, so they return empty.
+      res.json({
+        businessDescriptors: b?.businessDescriptors ?? [],
+        culturalBackground: b?.culturalBackground ?? "",
+        communityFocus: b?.communityFocus ?? [],
+        accessibilityFeatures: b?.accessibilityFeatures ?? [],
+        sustainabilityPractices: b?.sustainabilityPractices ?? [],
+        businessMaturity: b?.businessMaturity ?? "",
+        establishmentType: b?.establishmentType ?? [],
+        specialtyFeatures: [],
+        priceRange: "",
+        targetDemographics: [],
+        peakHours: [],
+        seasonalPatterns: [],
+        customerCapacity: 0,
+        averageVisitDuration: "",
+        primaryProducts: [],
+        uniqueSellingPoints: [],
+        marketingGoals: [],
+        customerRetentionRate: "",
+        averageSpendPerCustomer: "",
+        socialMediaPresence: [],
+        eventHostingCapability: false,
+        loyaltyProgramInterest: "",
+        marketingBudget: "",
+      });
     } catch (error) {
       console.error("Error fetching business descriptors:", error);
       res.status(500).json({ error: "Failed to fetch business descriptors" });
@@ -81,39 +79,19 @@ export function registerDiscoveryMarketingRoutes(app: Express, deps: RouteDeps) 
         loyaltyProgramInterest,
         marketingBudget
       } = req.body;
-      const businessId = req.body.businessId || "demo_business_1";
-      
-      // In a real implementation, this would update the database
-      res.json({
-        success: true,
-        message: "Business descriptors updated successfully",
-        descriptors: {
-          businessDescriptors,
-          culturalBackground,
-          communityFocus,
-          accessibilityFeatures,
-          sustainabilityPractices,
-          businessMaturity,
-          establishmentType,
-          specialtyFeatures,
-          priceRange,
-          targetDemographics,
-          peakHours,
-          seasonalPatterns,
-          customerCapacity,
-          averageVisitDuration,
-          primaryProducts,
-          uniqueSellingPoints,
-          competitorAdvantages,
-          marketingGoals,
-          customerRetentionRate,
-          averageSpendPerCustomer,
-          socialMediaPresence,
-          eventHostingCapability,
-          loyaltyProgramInterest,
-          marketingBudget
-        }
-      });
+      const businessId = req.body.businessId;
+      if (!businessId) return res.status(400).json({ error: "businessId is required" });
+      // Persist the descriptor fields that have real columns on the business.
+      await storage.updateBusiness(businessId, {
+        businessDescriptors,
+        culturalBackground,
+        communityFocus,
+        accessibilityFeatures,
+        sustainabilityPractices,
+        businessMaturity,
+        establishmentType,
+      } as any);
+      res.json({ success: true, message: "Business descriptors updated" });
     } catch (error) {
       console.error("Error updating business descriptors:", error);
       res.status(500).json({ error: "Failed to update business descriptors" });
