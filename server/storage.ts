@@ -1769,7 +1769,11 @@ export class DatabaseStorage implements IStorage {
           tap.customerEmail,
           (tap as any).deviceFingerprint
         );
-        const total = prog.count; // includes the tap just inserted
+        // CHR-80: the tap just inserted means this customer has at least 1 tap
+        // for the campaign. Floor at 1 so an unresolved identity (e.g. a
+        // whitespace-only email that trims to "") can't make prog.count 0 and
+        // trip `0 % goal === 0`, which would issue a punch-card reward on tap #1.
+        const total = Math.max(prog.count, 1);
         rewardEarned = total % goal === 0;
         progress = { count: total % goal === 0 ? goal : total % goal, goal, rewardEarned };
       }
