@@ -14,6 +14,7 @@ import {
   Zap,
   Copy,
   Clock,
+  ExternalLink,
 } from "lucide-react";
 
 interface NFCWriterProps {
@@ -234,12 +235,23 @@ export default function UniversalNFCWriter({ tagData, onWriteComplete }: NFCWrit
                 just need to write it once with a free app.
               </AlertDescription>
             </Alert>
-            <div className="p-4 bg-muted/40 rounded-lg text-sm space-y-1">
+            <div className="p-4 bg-muted/40 rounded-lg text-sm space-y-2">
               <p className="font-medium">Write it with NFC Tools (free):</p>
-              <p>1. Install “NFC Tools” from the App Store.</p>
-              <p>2. Open it → <strong>Write</strong> → <strong>Add a record</strong> → <strong>URL/URI</strong>.</p>
-              <p>3. Paste the copied Tag URL above, then tap <strong>OK</strong> → <strong>Write</strong>.</p>
-              <p>4. Hold a blank tag to the top of your iPhone until it confirms.</p>
+              <a
+                href="https://apps.apple.com/app/nfc-tools/id1252962749"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-md bg-black px-3 py-2 text-white text-xs font-medium hover:bg-black/85"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Get NFC Tools on the App Store
+              </a>
+              <div className="space-y-1 pt-1">
+                <p>1. Install and open <strong>NFC Tools</strong>.</p>
+                <p>2. Tap <strong>Write</strong> → <strong>Add a record</strong> → <strong>URL/URI</strong>.</p>
+                <p>3. Paste the copied Tag URL above, then tap <strong>OK</strong> → <strong>Write</strong>.</p>
+                <p>4. Hold a blank tag to the top of your iPhone until it confirms.</p>
+              </div>
             </div>
           </div>
         )}
