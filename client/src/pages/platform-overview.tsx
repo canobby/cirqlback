@@ -70,7 +70,7 @@ const platformSections = [
       { path: "/account", name: "Account Management", icon: User, description: "Subscription plans, API keys, and billing" },
       { path: "/profile", name: "Customer Profile", icon: UserCircle, description: "Personal preferences and activity history" },
       { path: "/settings", name: "Platform Settings", icon: Settings, description: "Notifications, privacy, and integrations" },
-      { path: "/checkout", name: "Subscription Checkout", icon: CreditCard, description: "Upgrade to Core or Full Cirql Member" },
+      { path: "/checkout", name: "Subscription Checkout", icon: CreditCard, description: "Upgrade to Core or Pro" },
     ]
   },
   {

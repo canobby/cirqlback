@@ -73,7 +73,7 @@ export default function UserGuide() {
       title: "Setting Up Your Business",
       description: "Complete guide for business owners to get started",
       steps: [
-        "Choose your subscription plan (Core or Full Cirql Member)",
+        "Choose your subscription plan (Core or Pro)",
         "Complete your business profile with photos and details",
         "Set up AI-powered customer intelligence and health scoring",
         "Configure cross-business partnership networks and revenue sharing",
@@ -139,7 +139,7 @@ export default function UserGuide() {
       type: "business",
       title: "For Business Owners",
       steps: [
-        "Sign up for Core ($14.99/mo) or Full ($29.99/mo) membership",
+        "Sign up for Core ($19.99/mo) or Pro ($49.99/mo) membership",
         "Get your Cirql tags starting at $0.99 each",
         "Create campaigns with discounts and offers",
         "Build your website with the integrated builder",
@@ -374,22 +374,23 @@ export default function UserGuide() {
                   <h3 className="font-semibold mb-3">Subscription Plans</h3>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="p-4 border rounded-lg">
-                      <h4 className="font-medium text-primary mb-2">Core Cirql Member - $14.99/month</h4>
+                      <h4 className="font-medium text-primary mb-2">Core - $19.99/month</h4>
                       <ul className="text-sm text-muted-foreground space-y-1">
-                        <li>• Cirql tag campaigns and analytics</li>
-                        <li>• Basic website builder with templates</li>
-                        <li>• Customer discovery map placement</li>
+                        <li>• Unlimited Cirql tag campaigns</li>
+                        <li>• Tap & redemption analytics</li>
+                        <li>• Solo & multi-store group campaigns</li>
+                        <li>• Discovery map placement</li>
                         <li>• Email support</li>
                       </ul>
                     </div>
                     <div className="p-4 border rounded-lg">
-                      <h4 className="font-medium text-secondary mb-2">Full Cirql Member - $29.99/month</h4>
+                      <h4 className="font-medium text-secondary mb-2">Pro - $49.99/month</h4>
                       <ul className="text-sm text-muted-foreground space-y-1">
                         <li>• Everything in Core, plus:</li>
-                        <li>• Advanced marketing suite with automation</li>
-                        <li>• Premium website themes and customization</li>
-                        <li>• Priority map placement and featured listing</li>
-                        <li>• Advanced analytics and customer insights</li>
+                        <li>• Up to 3 business locations</li>
+                        <li>• Unlimited customer taps</li>
+                        <li>• Priority support &amp; early access</li>
+                        <li>• Add-ons: analytics, branding, map priority, contests</li>
                       </ul>
                     </div>
                   </div>

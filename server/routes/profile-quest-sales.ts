@@ -48,7 +48,7 @@ export function registerProfileQuestSalesRoutes(app: Express, deps: RouteDeps) {
       businessName: "Demo Business",
       businessTitle: "Owner",
       setupComplete: false,
-      subscriptionTier: "business" // Enable premium features for testing
+      subscriptionTier: "pro" // Enable premium features for testing
     });
   });
 

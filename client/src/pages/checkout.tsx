@@ -96,13 +96,13 @@ export default function Checkout() {
   const [, setLocation] = useLocation();
   
   // The plan to purchase comes from the URL (?plan=&interval=), defaulting to
-  // Professional monthly. The PRICE is decided server-side from the plan id —
+  // Core monthly. The PRICE is decided server-side from the plan id —
   // the client never sends an amount.
   const params = new URLSearchParams(window.location.search);
   const checkoutData = {
-    planId: params.get("plan") || "professional",
+    planId: params.get("plan") || "core",
     billingInterval: params.get("interval") === "yearly" ? "yearly" : "monthly",
-    amount: 39.0, // cosmetic default; server response overrides via displayAmount
+    amount: 19.99, // cosmetic default; server response overrides via displayAmount
     description: "Subscription",
   };
   const [displayAmount, setDisplayAmount] = useState(checkoutData.amount);

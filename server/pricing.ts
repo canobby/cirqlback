@@ -2,9 +2,9 @@
 // costs. The charge amount must never come from the client (a client that sends
 // its own `amount` could pay $0.50 for a paid plan). Amounts are in cents.
 //
-// Prices (owner decision 2026-06-30): professional $49.99 / business $79.99 /
-// enterprise $149; starter is free. Keep THIS map and GET /api/subscription/plans
-// in sync. Yearly = ~10x monthly (2 months free).
+// Prices (owner decision 2026-07-01, aligned to the product vision): Core $19.99
+// / Pro $49.99; starter is free (6-month trial). Keep THIS map and
+// GET /api/subscription/plans in sync. Yearly = 10x monthly (2 months free).
 
 export type BillingInterval = "monthly" | "yearly";
 
@@ -16,9 +16,8 @@ export interface PlanPrice {
 }
 
 export const PLAN_PRICING: Record<string, PlanPrice> = {
-  professional: { id: "professional", name: "Professional", monthlyCents: 4999, yearlyCents: 49990 },
-  business: { id: "business", name: "Business", monthlyCents: 7999, yearlyCents: 79990 },
-  enterprise: { id: "enterprise", name: "Enterprise", monthlyCents: 14900, yearlyCents: 149000 },
+  core: { id: "core", name: "Core", monthlyCents: 1999, yearlyCents: 19990 },
+  pro: { id: "pro", name: "Pro", monthlyCents: 4999, yearlyCents: 49990 },
 };
 
 /**

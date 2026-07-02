@@ -96,8 +96,8 @@ export default function Account() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{profile?.subscriptionTier === "full" ? "Unlimited" : "1"}</div>
-                    <div className="text-sm text-gray-600">Business{profile?.subscriptionTier === "full" ? "es" : ""}</div>
+                    <div className="text-2xl font-bold text-green-600">{profile?.subscriptionTier === "pro" ? "3" : "1"}</div>
+                    <div className="text-sm text-gray-600">Business{profile?.subscriptionTier === "pro" ? "es" : ""}</div>
                   </div>
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
                     <div className="text-2xl font-bold text-blue-600">{usage?.currentPeriod?.apiRequests?.toLocaleString() || "0"}</div>
@@ -113,10 +113,8 @@ export default function Account() {
                   <div>
                     <p className="text-sm text-gray-600">Next billing: January 15, 2025</p>
                     <p className="font-semibold">
-                      ${profile?.subscriptionTier === "starter" ? "0" : 
-                        profile?.subscriptionTier === "professional" ? "39" :
-                        profile?.subscriptionTier === "business" ? "79" : 
-                        profile?.subscriptionTier === "enterprise" ? "149" : "0"}/month
+                      ${profile?.subscriptionTier === "core" ? "19.99" :
+                        profile?.subscriptionTier === "pro" ? "49.99" : "0"}/month
                     </p>
                   </div>
                   <div className="space-x-2">

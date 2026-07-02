@@ -48,60 +48,38 @@ export default function TrialDiscount() {
 
   const plans = [
     {
-      id: "professional",
-      name: "Professional",
-      originalPrice: 39,
-      discountedPrice: 19.50,
-      description: "Perfect for growing businesses",
+      id: "core",
+      name: "Core",
+      originalPrice: 19.99,
+      discountedPrice: 9.99,
+      description: "Everything a local business needs to run loyalty",
       features: [
-        "Up to 5 business locations",
-        "Advanced campaign analytics",
-        "Custom reward campaigns",
-        "Email marketing integration",
-        "Priority customer support",
-        "Basic website hosting",
-        "Team collaboration (up to 3 users)"
+        "1 business location",
+        "Unlimited campaigns",
+        "500 customer taps/month",
+        "Tap & redemption analytics",
+        "20 Cirql tags included",
+        "Solo & multi-store group campaigns",
+        "Email support"
       ],
       highlight: false
     },
     {
-      id: "business",
-      name: "Business",
-      originalPrice: 79,
-      discountedPrice: 39.50,
-      description: "For established businesses scaling up",
+      id: "pro",
+      name: "Pro",
+      originalPrice: 49.99,
+      discountedPrice: 24.99,
+      description: "For busy, multi-location businesses that want more",
       features: [
-        "Up to 20 business locations",
-        "Advanced analytics & AI insights",
-        "Cross-business partnership network",
-        "Advanced marketing automation",
-        "Custom branding & themes",
-        "Premium website hosting",
-        "Team collaboration (up to 10 users)",
-        "API access & integrations",
-        "Advanced customer segmentation"
+        "Everything in Core",
+        "Up to 3 business locations",
+        "Unlimited customer taps",
+        "50 Cirql tags included",
+        "Priority support",
+        "Early access to new features",
+        "Add-ons: analytics, branding, map priority, contests"
       ],
       highlight: true
-    },
-    {
-      id: "enterprise",
-      name: "Enterprise",
-      originalPrice: 149,
-      discountedPrice: 74.50,
-      description: "For large organizations & franchises",
-      features: [
-        "Unlimited business locations",
-        "Full AI-powered analytics suite",
-        "Enterprise partnership network",
-        "White-label solutions",
-        "Custom integrations & API",
-        "Dedicated account manager",
-        "Advanced team management (unlimited users)",
-        "Priority technical support",
-        "Custom feature development",
-        "Multi-region support"
-      ],
-      highlight: false
     }
   ];
 
