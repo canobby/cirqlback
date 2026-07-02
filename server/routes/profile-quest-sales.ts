@@ -37,19 +37,27 @@ export function registerProfileQuestSalesRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
-  app.get("/api/profile", (req, res) => {
-    // Return mock profile for now
-    res.json({
-      id: "user-123",
-      firstName: "John",
-      lastName: "Doe", 
-      contactName: "John",
-      email: "john@example.com",
-      businessName: "Demo Business",
-      businessTitle: "Owner",
-      setupComplete: false,
-      subscriptionTier: "pro" // Enable premium features for testing
-    });
+  app.get("/api/profile", isAuthenticated, async (req, res) => {
+    try {
+      const user: any = await storage.getUser((req.user as any).id);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      // Best-effort business name from the user's first owned business.
+      const businesses = await storage.getBusinessesByOwner(user.id).catch(() => []);
+      res.json({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        contactName: user.firstName,
+        email: user.email,
+        businessName: businesses[0]?.name ?? null,
+        businessTitle: businesses.length ? "Owner" : null,
+        setupComplete: Boolean(user.firstName && businesses.length),
+        subscriptionTier: user.subscriptionTier,
+      });
+    } catch (error) {
+      console.error("Profile fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
   });
 
   // Export & Integration Hub API endpoints

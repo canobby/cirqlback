@@ -142,14 +142,25 @@ export function registerEngagementRoutes(app: Express, deps: RouteDeps) {
 
   // AI Admin Insights endpoint
   app.post("/api/ai/admin-insights", async (req, res) => {
+    // Degrade gracefully when AI isn't configured, rather than 500-ing: the
+    // dashboard renders the message instead of an error.
+    if (!process.env.OPENAI_API_KEY) {
+      return res.json({
+        configured: false,
+        message:
+          "AI insights are unavailable — no OPENAI_API_KEY is configured. Add one to enable AI-generated platform analysis.",
+      });
+    }
     try {
       const platformData = req.body;
-      
       const insights = await openaiService.generateAdminInsights(platformData);
-      res.json({ insights });
+      // Spread the insights fields (healthScore/predictions/recommendations/risks)
+      // to the top level, which is where the dashboard reads them.
+      const body = insights && typeof insights === "object" ? insights : { summary: insights };
+      res.json({ ...body, configured: true });
     } catch (error) {
       console.error("AI admin insights error:", error);
-      res.status(500).json({ error: "Failed to generate admin insights" });
+      res.status(502).json({ error: "Failed to generate admin insights" });
     }
   });
 

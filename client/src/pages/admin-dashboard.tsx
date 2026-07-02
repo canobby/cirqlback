@@ -96,7 +96,7 @@ export default function AdminDashboard() {
         },
         timeframe: "last_30_days"
       };
-      return await apiRequest("POST", "/api/ai/admin-insights", platformData);
+      return (await apiRequest("POST", "/api/ai/admin-insights", platformData)).json();
     }
   });
 
@@ -121,50 +121,16 @@ export default function AdminDashboard() {
     }
   });
 
-  const [adminStats] = useState<AdminStats>({
-    totalUsers: 2847,
-    activeBusinesses: 456,
-    totalRevenue: 127850,
-    campaignsActive: 234,
-    monthlyGrowth: 18.5,
-    churnRate: 2.1
-  });
+  // Real platform stats + user list from the admin API.
+  const { data: statsData } = useQuery<any>({ queryKey: ["/api/admin/platform-stats"], retry: false });
+  const adminStats = {
+    totalUsers: statsData?.totalUsers ?? 0,
+    activeBusinesses: statsData?.activeBusinesses ?? 0,
+    totalRevenue: statsData?.totalRevenue ?? 0,
+    campaignsActive: statsData?.activeCampaigns ?? 0,
+  };
 
-  const [platformUsers, setPlatformUsers] = useState<PlatformUser[]>([
-    {
-      id: "1",
-      name: "Sarah Johnson",
-      email: "sarah@example.com",
-      role: "Business Owner",
-      subscriptionTier: "Premium",
-      status: "Active",
-      totalSpent: 450,
-      joinDate: "2024-08-01",
-      lastActive: "2 hours ago"
-    },
-    {
-      id: "2",
-      name: "Mike Chen",
-      email: "mike@example.com",
-      role: "Customer",
-      subscriptionTier: "Free",
-      status: "Active",
-      totalSpent: 0,
-      joinDate: "2024-07-15",
-      lastActive: "1 day ago"
-    },
-    {
-      id: "3",
-      name: "Emma Rodriguez",
-      email: "emma@example.com",
-      role: "Business Owner",
-      subscriptionTier: "Basic",
-      status: "Suspended",
-      totalSpent: 150,
-      joinDate: "2024-06-20",
-      lastActive: "5 days ago"
-    }
-  ]);
+  const { data: platformUsers = [] } = useQuery<any[]>({ queryKey: ["/api/admin/platform-users"], retry: false });
 
   const [campaignTemplates, setCampaignTemplates] = useState<CampaignTemplateAdmin[]>([
     {
@@ -206,15 +172,10 @@ export default function AdminDashboard() {
     estimatedROI: ''
   });
 
-  const updateUserStatus = (userId: string, newStatus: string) => {
-    setPlatformUsers(users => 
-      users.map(user => 
-        user.id === userId ? { ...user, status: newStatus } : user
-      )
-    );
+  const updateUserStatus = (_userId: string, newStatus: string) => {
     toast({
-      title: "User Updated",
-      description: `User status changed to ${newStatus}`
+      title: "Not available",
+      description: `Changing status to ${newStatus} isn't wired up yet.`
     });
   };
 
@@ -329,7 +290,6 @@ export default function AdminDashboard() {
                 </div>
                 <Users className="h-8 w-8 text-blue-600" />
               </div>
-              <p className="text-xs text-green-600 mt-1">+{adminStats.monthlyGrowth}% this month</p>
             </CardContent>
           </Card>
 
@@ -342,7 +302,6 @@ export default function AdminDashboard() {
                 </div>
                 <MapPin className="h-8 w-8 text-green-600" />
               </div>
-              <p className="text-xs text-green-600 mt-1">+12% this week</p>
             </CardContent>
           </Card>
 
@@ -355,7 +314,6 @@ export default function AdminDashboard() {
                 </div>
                 <DollarSign className="h-8 w-8 text-purple-600" />
               </div>
-              <p className="text-xs text-green-600 mt-1">+23% vs last month</p>
             </CardContent>
           </Card>
 
@@ -368,7 +326,6 @@ export default function AdminDashboard() {
                 </div>
                 <Target className="h-8 w-8 text-orange-600" />
               </div>
-              <p className="text-xs text-red-600 mt-1">Churn: {adminStats.churnRate}%</p>
             </CardContent>
           </Card>
         </div>
@@ -412,60 +369,51 @@ export default function AdminDashboard() {
                         <th className="text-left p-4 font-medium">Role</th>
                         <th className="text-left p-4 font-medium">Subscription</th>
                         <th className="text-left p-4 font-medium">Status</th>
-                        <th className="text-left p-4 font-medium">Revenue</th>
-                        <th className="text-left p-4 font-medium">Last Active</th>
+                        <th className="text-left p-4 font-medium">Joined</th>
                         <th className="text-left p-4 font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {platformUsers.map((user) => (
-                        <tr key={user.id} className="border-b hover:bg-gray-50">
-                          <td className="p-4">
-                            <div>
-                              <p className="font-medium">{user.name}</p>
-                              <p className="text-sm text-gray-500">{user.email}</p>
-                            </div>
-                          </td>
-                          <td className="p-4">
-                            <Badge variant="outline">{user.role}</Badge>
-                          </td>
-                          <td className="p-4">
-                            <Badge className={getTierColor(user.subscriptionTier)}>
-                              {user.subscriptionTier}
-                            </Badge>
-                          </td>
-                          <td className="p-4">
-                            <Badge className={getStatusColor(user.status)}>
-                              {user.status}
-                            </Badge>
-                          </td>
-                          <td className="p-4 font-medium">${user.totalSpent}</td>
-                          <td className="p-4 text-sm text-gray-500">{user.lastActive}</td>
-                          <td className="p-4">
-                            <div className="flex space-x-1">
-                              <Button size="sm" variant="ghost">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button size="sm" variant="ghost">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Select
-                                value={user.status}
-                                onValueChange={(status) => updateUserStatus(user.id, status)}
-                              >
-                                <SelectTrigger className="h-8 w-24">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Active">Active</SelectItem>
-                                  <SelectItem value="Suspended">Suspend</SelectItem>
-                                  <SelectItem value="Pending">Pending</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {platformUsers.length === 0 && (
+                        <tr><td colSpan={6} className="p-6 text-center text-gray-500">No users yet.</td></tr>
+                      )}
+                      {platformUsers.map((user) => {
+                        const name = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.email || "—";
+                        const tier = user.subscriptionTier ?? "starter";
+                        const status = user.subscriptionStatus ?? "—";
+                        return (
+                          <tr key={user.id} className="border-b hover:bg-gray-50">
+                            <td className="p-4">
+                              <div>
+                                <p className="font-medium">{name}</p>
+                                <p className="text-sm text-gray-500">{user.email}</p>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <Badge variant="outline">{user.role ?? "—"}</Badge>
+                            </td>
+                            <td className="p-4">
+                              <Badge className={getTierColor(tier)}>{tier}</Badge>
+                            </td>
+                            <td className="p-4">
+                              <Badge className={getStatusColor(status)}>{status}</Badge>
+                            </td>
+                            <td className="p-4 text-sm text-gray-500">
+                              {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}
+                            </td>
+                            <td className="p-4">
+                              <div className="flex space-x-1">
+                                <Button size="sm" variant="ghost">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -685,7 +633,17 @@ export default function AdminDashboard() {
                   </div>
                 )}
                 
-                {aiPlatformInsights && (
+                {aiPlatformInsights?.configured === false && !aiLoading && (
+                  <div className="text-center py-8">
+                    <Brain className="h-12 w-12 mx-auto text-blue-300 mb-3" />
+                    <p className="text-blue-600 mb-2">AI insights are not configured</p>
+                    <p className="text-sm text-gray-600">
+                      {aiPlatformInsights.message || "Add an OPENAI_API_KEY to enable AI analysis."}
+                    </p>
+                  </div>
+                )}
+
+                {aiPlatformInsights && aiPlatformInsights.configured !== false && (
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Platform Health Score */}

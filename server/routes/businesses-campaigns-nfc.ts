@@ -80,15 +80,31 @@ export function registerBusinessesCampaignsNfcRoutes(app: Express, deps: RouteDe
     }
   });
 
-  app.post("/api/businesses", async (req, res) => {
+  // Per-tier cap on how many businesses an owner may create (owner decision,
+  // matches GET /api/subscription/plans): starter/core = 1, pro = 3.
+  const TIER_BUSINESS_LIMIT: Record<string, number> = { starter: 1, core: 1, pro: 3 };
+
+  app.post("/api/businesses", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertBusinessSchema.parse(req.body);
-      const business = await storage.createBusiness(validatedData);
-      res.json(business);
+      const userId = (req.user as any).id;
+      const tier = (req.user as any).subscriptionTier || "starter";
+      const limit = TIER_BUSINESS_LIMIT[tier] ?? 1;
+      const existing = await storage.getBusinessesByOwner(userId);
+      if (existing.length >= limit) {
+        return res.status(409).json({
+          error: `Your ${tier} plan allows ${limit} business${limit === 1 ? "" : "es"}. Upgrade to add more.`,
+          reason: "business_limit",
+          limit,
+        });
+      }
+      const business = await storage.createBusiness({ ...validatedData, ownerId: userId } as any);
+      res.status(201).json(business);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
+      console.error("Create business error:", error);
       res.status(500).json({ error: "Failed to create business" });
     }
   });

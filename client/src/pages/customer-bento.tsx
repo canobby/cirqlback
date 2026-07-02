@@ -1,5 +1,7 @@
-import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,20 +9,29 @@ import { QuickTranslate } from "@/components/ui/translated-text";
 
 export default function CustomerBento() {
   const [, setLocation] = useLocation();
-  const [userStats] = useState({
-    totalPoints: 2847,
-    level: 12,
-    badgesEarned: 8,
-    businessesVisited: 23,
-    streak: 7,
-    referrals: 15
+  const { user } = useAuth();
+
+  // Real gamification data (CHR-28), keyed to the signed-in customer.
+  const { data: stats } = useQuery<any>({ queryKey: ["/api/user-stats"], retry: false });
+  const { data: leaderboard = [] } = useQuery<any[]>({ queryKey: ["/api/leaderboard"], retry: false });
+  const { data: challenges = [] } = useQuery<any[]>({ queryKey: ["/api/community/challenges"], retry: false });
+  const { data: taps = [] } = useQuery<any[]>({
+    queryKey: ["/api/taps", user?.email],
+    enabled: !!user?.email,
+    retry: false,
+    queryFn: async () =>
+      (await apiRequest("GET", `/api/taps?customerEmail=${encodeURIComponent(user!.email!)}`)).json(),
   });
 
-  const recentActivity = [
-    { business: "Joe's Coffee", reward: "Free Latte", points: 150, time: "2 hours ago", color: "purple" },
-    { business: "Tech Store", reward: "10% Discount", points: 200, time: "1 day ago", color: "blue" },
-    { business: "Pizza Corner", reward: "Buy 1 Get 1", points: 300, time: "2 days ago", color: "orange" }
-  ];
+  const userStats = {
+    totalPoints: stats?.totalPoints ?? 0,
+    level: stats?.level ?? 1,
+    challengesCompleted: stats?.challengesCompleted ?? 0,
+    rank: stats?.rank ?? null,
+    streak: stats?.currentStreak ?? 0,
+    pointsToNextLevel: stats?.pointsToNextLevel ?? null,
+  };
+  const recentActivity: any[] = (Array.isArray(taps) ? taps : []).slice(0, 5);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-green-50/30 dark:from-gray-950 dark:via-blue-950/30 dark:to-green-950/30">
@@ -61,7 +72,7 @@ export default function CustomerBento() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
                 <div className="min-w-0 flex-1">
                   <h2 className="responsive-heading font-bold mb-2"><QuickTranslate text="Discover Local Gems" /></h2>
-                  <p className="text-blue-100 responsive-text">23 <QuickTranslate text="businesses nearby with active rewards" /></p>
+                  <p className="text-blue-100 responsive-text"><QuickTranslate text="Local businesses with active rewards" /></p>
                 </div>
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                   <div className="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center">
@@ -123,9 +134,11 @@ export default function CustomerBento() {
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300"><QuickTranslate text="Level Progress" /></span>
                     <span className="text-sm text-purple-600 dark:text-purple-400">Level {userStats.level}</span>
                   </div>
-                  <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full" style={{width: '75%'}}></div>
-                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {userStats.pointsToNextLevel != null
+                      ? `${userStats.pointsToNextLevel} pts to level ${userStats.level + 1}`
+                      : "Keep tapping to level up"}
+                  </p>
                 </div>
 
                 {/* Stats Grid */}
@@ -136,13 +149,13 @@ export default function CustomerBento() {
                   </div>
                   
                   <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 text-center">
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{userStats.badgesEarned}</div>
-                    <div className="text-sm text-green-700 dark:text-green-300"><QuickTranslate text="Badges Earned" /></div>
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{userStats.challengesCompleted}</div>
+                    <div className="text-sm text-green-700 dark:text-green-300"><QuickTranslate text="Challenges" /></div>
                   </div>
-                  
+
                   <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-xl p-4 text-center">
-                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{userStats.businessesVisited}</div>
-                    <div className="text-sm text-orange-700 dark:text-orange-300"><QuickTranslate text="Businesses" /></div>
+                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{userStats.rank != null ? `#${userStats.rank}` : "—"}</div>
+                    <div className="text-sm text-orange-700 dark:text-orange-300"><QuickTranslate text="Rank" /></div>
                   </div>
                   
                   <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-4 text-center">
@@ -200,26 +213,31 @@ export default function CustomerBento() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentActivity.map((activity, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                {recentActivity.length === 0 && (
+                  <p className="text-sm text-gray-500 py-2">
+                    No activity yet — tap a Cirql tag at a local business to start earning.
+                  </p>
+                )}
+                {recentActivity.map((tap, index) => (
+                  <div key={tap.id ?? index} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <div className="flex items-center">
-                      <div className={`w-10 h-10 bg-gradient-to-br ${
-                        activity.color === 'purple' ? 'from-purple-400 to-purple-600' :
-                        activity.color === 'blue' ? 'from-blue-400 to-blue-600' :
-                        'from-orange-400 to-orange-600'
-                      } rounded-lg flex items-center justify-center mr-4`}>
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg flex items-center justify-center mr-4">
                         <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
                           <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
                         </div>
                       </div>
                       <div>
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">{activity.business}</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">{activity.reward}</div>
+                        <div className="font-semibold text-gray-900 dark:text-gray-100">Tap reward</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          {tap.customerName ? `${tap.customerName}` : "Points earned"}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold text-green-600">+{activity.points} pts</div>
-                      <div className="text-sm text-gray-500">{activity.time}</div>
+                      <div className="font-semibold text-green-600">+{tap.pointsEarned ?? 0} pts</div>
+                      <div className="text-sm text-gray-500">
+                        {tap.createdAt ? new Date(tap.createdAt).toLocaleDateString() : ""}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -239,35 +257,26 @@ export default function CustomerBento() {
               <p className="text-green-100 mb-4">Complete challenges to earn bonus rewards and level up faster!</p>
               
               <div className="space-y-3">
-                <div className="bg-white/10 rounded-lg p-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium">Visit 3 new businesses</span>
-                    <span className="text-xs bg-white/20 px-2 py-1 rounded">2/3</span>
-                  </div>
-                  <div className="bg-white/20 rounded-full h-2">
-                    <div className="bg-white h-2 rounded-full" style={{width: '66%'}}></div>
-                  </div>
-                </div>
-                
-                <div className="bg-white/10 rounded-lg p-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium">Share 1 business review</span>
-                    <span className="text-xs bg-green-400 text-green-800 px-2 py-1 rounded">Complete</span>
-                  </div>
-                  <div className="bg-white/20 rounded-full h-2">
-                    <div className="bg-white h-2 rounded-full w-full"></div>
-                  </div>
-                </div>
-                
-                <div className="bg-white/10 rounded-lg p-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium">Earn 500 points</span>
-                    <span className="text-xs bg-white/20 px-2 py-1 rounded">350/500</span>
-                  </div>
-                  <div className="bg-white/20 rounded-full h-2">
-                    <div className="bg-white h-2 rounded-full" style={{width: '70%'}}></div>
-                  </div>
-                </div>
+                {(!Array.isArray(challenges) || challenges.length === 0) && (
+                  <p className="text-sm text-green-100">No active challenges right now.</p>
+                )}
+                {(Array.isArray(challenges) ? challenges : []).map((c: any) => {
+                  const done = (c.current ?? 0) >= (c.goal ?? 1);
+                  const pct = Math.min(100, Math.round(c.progress ?? ((c.current ?? 0) / (c.goal || 1)) * 100));
+                  return (
+                    <div key={c.id} className="bg-white/10 rounded-lg p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">{c.title}</span>
+                        <span className={`text-xs px-2 py-1 rounded ${done ? "bg-green-400 text-green-800" : "bg-white/20"}`}>
+                          {done ? "Complete" : `${c.current ?? 0}/${c.goal ?? 0}`}
+                        </span>
+                      </div>
+                      <div className="bg-white/20 rounded-full h-2">
+                        <div className="bg-white h-2 rounded-full" style={{ width: `${pct}%` }}></div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -281,32 +290,25 @@ export default function CustomerBento() {
                   <div className="w-4 h-4 bg-yellow-400 rounded-full"></div>
                 </div>
               </div>
-              <p className="text-orange-100 mb-4">You're ranked #47 this week!</p>
-              
+              <p className="text-orange-100 mb-4">
+                {userStats.rank != null ? `You're ranked #${userStats.rank}!` : "Tap to join the leaderboard!"}
+              </p>
+
               <div className="space-y-3">
-                <div className="flex items-center justify-between bg-white/10 rounded-lg p-3">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 font-bold mr-3">1</div>
-                    <span className="font-medium">Alex_Explorer</span>
+                {(!Array.isArray(leaderboard) || leaderboard.length === 0) && (
+                  <p className="text-sm text-orange-100">No ranked players yet.</p>
+                )}
+                {(Array.isArray(leaderboard) ? leaderboard : []).slice(0, 3).map((entry: any, i: number) => (
+                  <div key={entry.id ?? i} className="flex items-center justify-between bg-white/10 rounded-lg p-3">
+                    <div className="flex items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold mr-3 ${
+                        i === 0 ? "bg-yellow-400 text-yellow-900" : i === 1 ? "bg-gray-300 text-gray-700" : "bg-orange-400 text-orange-900"
+                      }`}>{entry.rank ?? i + 1}</div>
+                      <span className="font-medium">{entry.name}</span>
+                    </div>
+                    <span className="text-sm">{(entry.points ?? 0).toLocaleString()} pts</span>
                   </div>
-                  <span className="text-sm">8,450 pts</span>
-                </div>
-                
-                <div className="flex items-center justify-between bg-white/10 rounded-lg p-3">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-gray-700 font-bold mr-3">2</div>
-                    <span className="font-medium">Sarah_Quest</span>
-                  </div>
-                  <span className="text-sm">7,890 pts</span>
-                </div>
-                
-                <div className="flex items-center justify-between bg-white/10 rounded-lg p-3">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-orange-400 rounded-full flex items-center justify-center text-orange-900 font-bold mr-3">3</div>
-                    <span className="font-medium">Mike_Hunter</span>
-                  </div>
-                  <span className="text-sm">6,230 pts</span>
-                </div>
+                ))}
               </div>
               
               <Button 

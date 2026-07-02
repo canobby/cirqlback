@@ -87,6 +87,32 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // Real platform stats for the dashboard cards (counts + gross revenue).
+  app.get("/api/admin/platform-stats", async (_req, res) => {
+    try {
+      const s = await storage.getPlatformStats();
+      res.json({
+        totalUsers: s.totalUsers,
+        activeBusinesses: s.activeBusinesses,
+        activeCampaigns: s.activeCampaigns,
+        totalRevenue: Math.round(s.totalRevenueCents / 100),
+      });
+    } catch (error) {
+      console.error("Platform stats error:", error);
+      res.status(500).json({ error: "Failed to load platform stats" });
+    }
+  });
+
+  // Real platform users for the user-management table.
+  app.get("/api/admin/platform-users", async (_req, res) => {
+    try {
+      res.json(await storage.listPlatformUsers());
+    } catch (error) {
+      console.error("Platform users error:", error);
+      res.status(500).json({ error: "Failed to load platform users" });
+    }
+  });
+
   app.get("/api/admin/invitations/pending", async (req, res) => {
     try {
       // Query actual pending invitations from database

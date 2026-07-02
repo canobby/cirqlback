@@ -81,52 +81,51 @@ export function registerProfileSettingsRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
-  // User account and subscription routes
-  app.get("/api/account/profile", async (req, res) => {
+  // User account and subscription routes — the real signed-in user (no mock).
+  app.get("/api/account/profile", isAuthenticated, async (req, res) => {
     try {
-      // Mock user profile
-      const profile = {
-        id: "user_123",
-        email: "chris@example.com",
-        firstName: "Chris",
-        lastName: "Johnson",
-        role: "full",
-        subscriptionTier: "pro",
-        subscriptionStatus: "active",
-        apiKey: "cirql_live_sk_1234567890abcdef",
-        apiKeyCreatedAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      res.json(profile);
+      const user = await storage.getUser((req.user as any).id);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      res.json({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        subscriptionTier: user.subscriptionTier,
+        subscriptionStatus: user.subscriptionStatus,
+        apiKey: user.apiKey ?? null,
+        apiKeyCreatedAt: user.apiKeyCreatedAt ?? null,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      });
     } catch (error) {
+      console.error("Account profile error:", error);
       res.status(500).json({ error: "Failed to fetch profile" });
     }
   });
 
-  // Customer profile routes
-  app.get("/api/customer/profile", async (req, res) => {
+  // Customer profile (demographics) — real values from the user row.
+  app.get("/api/customer/profile", isAuthenticated, async (req, res) => {
     try {
-      const customerId = (req.user as any).id;
-      
-      // In a real implementation, this would fetch from database
-      const profile = {
-        age: 28,
-        location: "San Francisco, CA",
-        interests: ["Local dining", "Coffee culture", "Fitness & wellness"],
-        shoppingPreferences: ["Support local businesses", "Quality focused", "Experience-driven"],
-        dietaryRestrictions: ["Vegetarian"],
-        spendingHabits: "Value-focused",
-        socialMediaActivity: ["Instagram stories/posts", "Google reviews"],
-        referralSource: "Friend/family",
-        preferredContactMethod: "Email",
-        favoriteBusinessTypes: ["Coffee shops", "Restaurants", "Fitness studios"],
-        visitFrequency: "Several times a week",
-        averageSpendRange: "$15-$30"
-      };
-      
-      res.json(profile);
+      const user: any = await storage.getUser((req.user as any).id);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      res.json({
+        age: user.age ?? null,
+        location: user.location ?? null,
+        interests: user.interests ?? [],
+        shoppingPreferences: user.shoppingPreferences ?? [],
+        dietaryRestrictions: user.dietaryRestrictions ?? [],
+        spendingHabits: user.spendingHabits ?? null,
+        socialMediaActivity: user.socialMediaActivity ?? [],
+        referralSource: user.referralSource ?? null,
+        preferredContactMethod: user.preferredContactMethod ?? null,
+        favoriteBusinessTypes: user.favoriteBusinessTypes ?? [],
+        visitFrequency: user.visitFrequency ?? null,
+        averageSpendRange: user.averageSpendRange ?? null,
+      });
     } catch (error) {
+      console.error("Customer profile error:", error);
       res.status(500).json({ error: "Failed to fetch customer profile" });
     }
   });

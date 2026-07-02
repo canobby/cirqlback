@@ -446,6 +446,47 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(businesses).where(eq(businesses.ownerId, userId));
   }
 
+  // Real platform-wide counts + revenue for the admin dashboard (no mock).
+  async getPlatformStats(): Promise<{
+    totalUsers: number;
+    activeBusinesses: number;
+    activeCampaigns: number;
+    totalRevenueCents: number;
+  }> {
+    const [[u], [b], [c], [rev]] = await Promise.all([
+      db.select({ n: count() }).from(users),
+      db.select({ n: count() }).from(businesses).where(eq(businesses.isActive, true)),
+      db.select({ n: count() }).from(campaigns).where(eq(campaigns.isActive, true)),
+      db.select({ sum: sql<number>`coalesce(sum(${coordinatorEarnings.grossAmountCents}), 0)` }).from(coordinatorEarnings),
+    ]);
+    return {
+      totalUsers: Number(u?.n ?? 0),
+      activeBusinesses: Number(b?.n ?? 0),
+      activeCampaigns: Number(c?.n ?? 0),
+      totalRevenueCents: Number(rev?.sum ?? 0),
+    };
+  }
+
+  // Real list of platform users for the admin user-management table.
+  async listPlatformUsers(limit = 200): Promise<
+    Array<Pick<User, "id" | "email" | "firstName" | "lastName" | "role" | "subscriptionTier" | "subscriptionStatus" | "createdAt">>
+  > {
+    return await db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        subscriptionTier: users.subscriptionTier,
+        subscriptionStatus: users.subscriptionStatus,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .orderBy(desc(users.createdAt))
+      .limit(limit);
+  }
+
   async createBusiness(business: InsertBusiness): Promise<Business> {
     const [newBusiness] = await db.insert(businesses).values(business).returning();
     return newBusiness;
