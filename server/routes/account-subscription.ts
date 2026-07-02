@@ -128,30 +128,9 @@ export function registerAccountSubscriptionRoutes(app: Express, deps: RouteDeps)
     }
   });
 
-  // Update user subscription route
-  app.post('/api/subscription/update', async (req, res) => {
-    try {
-      // CHR-13 invariant: session-derived identity only. A client-supplied userId
-      // let any authed user set an arbitrary account's tier — including a free
-      // self-upgrade to a paid tier, bypassing Stripe.
-      const userId = (req.user as any).id;
-      const { subscriptionTier, subscriptionStatus } = req.body;
-
-      if (!subscriptionTier) {
-        return res.status(400).json({ error: "Subscription tier required" });
-      }
-
-      const user = await storage.updateUserSubscription(userId, {
-        subscriptionTier,
-        subscriptionStatus: subscriptionStatus || 'active',
-        ...(subscriptionTier !== 'starter' ? { starterExpiresAt: undefined } : {})
-      });
-
-      res.json(user);
-    } catch (error) {
-      console.error("Error updating subscription:", error);
-      res.status(500).json({ error: "Failed to update subscription" });
-    }
-  });
+  // CHR-77: the former POST /api/subscription/update was removed. It had no
+  // caller and let any authenticated user set their own tier to a paid plan
+  // without payment. Real subscription changes happen via the Stripe
+  // payment_intent.succeeded webhook (CHR-15) → storage.updateUserSubscription.
   // Business routes
 }

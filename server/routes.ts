@@ -55,7 +55,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     '/api/customer/profile',
     '/api/settings',
     '/api/subscription/trial-discount',
-    '/api/subscription/update',
     '/api/gamification',
     '/api/teams',
     '/api/family',
