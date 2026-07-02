@@ -6,7 +6,8 @@ import type { RouteDeps } from "./_shared";
 // CHR-33 / CHR-56: first-class multi-store group campaigns. This ticket covers
 // the model + create/read; join (CHR-58), tap progress (CHR-57) and map
 // surfacing (CHR-59) build on top.
-export function registerGroupCampaignRoutes(app: Express, _deps: RouteDeps) {
+export function registerGroupCampaignRoutes(app: Express, deps: RouteDeps) {
+  const { userOwnsBusiness } = deps;
   // Create a group campaign. The creator (business owner or coordinator) may
   // seed member stores they are entitled to add; others are silently skipped.
   app.post("/api/group-campaigns", isAuthenticated, async (req, res) => {
@@ -60,8 +61,7 @@ export function registerGroupCampaignRoutes(app: Express, _deps: RouteDeps) {
         if (creatorType === "coordinator") {
           allowed = await storage.coordinatorOwnsBusiness(coordinator!.id, bid);
         } else {
-          const biz = await storage.getBusiness(bid);
-          allowed = !!biz && biz.ownerId === userId;
+          allowed = await userOwnsBusiness(userId, bid);
         }
         if (allowed) {
           await storage.addGroupCampaignMember(campaign.id, bid, "joined");
@@ -89,8 +89,7 @@ export function registerGroupCampaignRoutes(app: Express, _deps: RouteDeps) {
       if (!name) return res.status(400).json({ error: "name is required" });
       if (!businessId) return res.status(400).json({ error: "businessId (host) is required" });
 
-      const host = await storage.getBusiness(businessId);
-      if (!host || host.ownerId !== userId) {
+      if (!(await userOwnsBusiness(userId, businessId))) {
         return res.status(403).json({ error: "Not your business" });
       }
       if (!(await storage.businessHasAddon(businessId, "scavenger_builder"))) {
@@ -116,8 +115,7 @@ export function registerGroupCampaignRoutes(app: Express, _deps: RouteDeps) {
 
       let added = 0;
       for (const bid of ids) {
-        const biz = await storage.getBusiness(bid);
-        if (biz && biz.ownerId === userId) {
+        if (await userOwnsBusiness(userId, bid)) {
           await storage.addGroupCampaignMember(campaign.id, bid, "joined");
           added++;
         }
@@ -154,8 +152,7 @@ export function registerGroupCampaignRoutes(app: Express, _deps: RouteDeps) {
   // CHR-58: the group campaigns a business belongs to (owner-authorized).
   app.get("/api/group-campaigns/joined/:businessId", isAuthenticated, async (req, res) => {
     try {
-      const biz = await storage.getBusiness(req.params.businessId);
-      if (!biz || biz.ownerId !== (req.user as any).id) {
+      if (!(await userOwnsBusiness((req.user as any).id, req.params.businessId))) {
         return res.status(403).json({ error: "Not your business" });
       }
       res.json(await storage.getGroupCampaignsForBusiness(req.params.businessId));
@@ -170,8 +167,7 @@ export function registerGroupCampaignRoutes(app: Express, _deps: RouteDeps) {
     try {
       const { businessId } = req.body || {};
       if (!businessId) return res.status(400).json({ error: "businessId is required" });
-      const biz = await storage.getBusiness(businessId);
-      if (!biz || biz.ownerId !== (req.user as any).id) {
+      if (!(await userOwnsBusiness((req.user as any).id, businessId))) {
         return res.status(403).json({ error: "Not your business" });
       }
       const campaign = await storage.getGroupCampaign(req.params.id);
@@ -190,8 +186,7 @@ export function registerGroupCampaignRoutes(app: Express, _deps: RouteDeps) {
     try {
       const { businessId } = req.body || {};
       if (!businessId) return res.status(400).json({ error: "businessId is required" });
-      const biz = await storage.getBusiness(businessId);
-      if (!biz || biz.ownerId !== (req.user as any).id) {
+      if (!(await userOwnsBusiness((req.user as any).id, businessId))) {
         return res.status(403).json({ error: "Not your business" });
       }
       const removed = await storage.removeGroupCampaignMember(req.params.id, businessId);
