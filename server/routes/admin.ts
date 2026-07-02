@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { openaiService } from "../openai-service";
 import { isAuthenticated, isAdminAuthenticated } from "../auth";
 import { PLAN_PRICING, resolvePlanAmountCents, type BillingInterval } from "../pricing";
+import { CAMPAIGN_TEMPLATES } from "./coordinator";
 import type { RouteDeps } from "./_shared";
 
 export function registerAdminRoutes(app: Express, deps: RouteDeps) {
@@ -101,6 +102,19 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
       console.error("Platform stats error:", error);
       res.status(500).json({ error: "Failed to load platform stats" });
     }
+  });
+
+  // The built-in campaign template catalog (shared with coordinators).
+  app.get("/api/admin/campaign-templates", (_req, res) => {
+    res.json(
+      Object.entries(CAMPAIGN_TEMPLATES).map(([key, t]) => ({
+        key,
+        name: t.label,
+        category: t.campaign.type,
+        description: t.campaign.description,
+        pointsAwarded: t.campaign.pointsAwarded,
+      })),
+    );
   });
 
   // Real platform users for the user-management table.

@@ -20,7 +20,7 @@ const STORE_TEMPLATES: Record<string, { label: string; defaults: Record<string, 
 };
 
 // CHR-55: preloaded campaign templates a coordinator can 1-click assign to stores.
-const CAMPAIGN_TEMPLATES: Record<
+export const CAMPAIGN_TEMPLATES: Record<
   string,
   { label: string; campaign: { name: string; type: string; description: string; pointsAwarded: number; value: string } }
 > = {

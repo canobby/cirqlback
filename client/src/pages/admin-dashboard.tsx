@@ -132,35 +132,16 @@ export default function AdminDashboard() {
 
   const { data: platformUsers = [] } = useQuery<any[]>({ queryKey: ["/api/admin/platform-users"], retry: false });
 
-  const [campaignTemplates, setCampaignTemplates] = useState<CampaignTemplateAdmin[]>([
-    {
-      id: "coffee_loyalty",
-      name: "Coffee Loyalty Punch Card",
-      category: "Loyalty",
-      isActive: true,
-      seasonality: "Year-round",
-      usageCount: 45,
-      conversionRate: 78
-    },
-    {
-      id: "halloween_spook",
-      name: "Halloween Spook-tacular",
-      category: "Seasonal",
-      isActive: false,
-      seasonality: "October",
-      usageCount: 23,
-      conversionRate: 85
-    },
-    {
-      id: "winter_warmup",
-      name: "Winter Warmup Special",
-      category: "Seasonal",
-      isActive: true,
-      seasonality: "Dec-Feb",
-      usageCount: 67,
-      conversionRate: 72
-    }
-  ]);
+  // Real built-in template catalog + real subscription plans.
+  const { data: campaignTemplates = [] } = useQuery<any[]>({ queryKey: ["/api/admin/campaign-templates"], retry: false });
+  const { data: subscriptionPlans = [] } = useQuery<any[]>({ queryKey: ["/api/subscription/plans"], retry: false });
+
+  // Real per-tier user counts derived from the platform users list.
+  const tierCounts = platformUsers.reduce((acc: Record<string, number>, u: any) => {
+    const t = u.subscriptionTier || "starter";
+    acc[t] = (acc[t] || 0) + 1;
+    return acc;
+  }, {});
 
   const [newTemplate, setNewTemplate] = useState({
     name: '',
@@ -179,53 +160,10 @@ export default function AdminDashboard() {
     });
   };
 
-  const updateTemplateStatus = (templateId: string, isActive: boolean) => {
-    setCampaignTemplates(templates =>
-      templates.map(template =>
-        template.id === templateId ? { ...template, isActive } : template
-      )
-    );
-    toast({
-      title: "Template Updated",
-      description: `Template ${isActive ? 'activated' : 'deactivated'}`
-    });
-  };
-
   const addNewTemplate = () => {
-    const template: CampaignTemplateAdmin = {
-      id: Date.now().toString(),
-      name: newTemplate.name,
-      category: newTemplate.category,
-      isActive: true,
-      seasonality: newTemplate.seasonality,
-      usageCount: 0,
-      conversionRate: 0
-    };
-    
-    setCampaignTemplates([...campaignTemplates, template]);
-    setNewTemplate({
-      name: '',
-      category: '',
-      description: '',
-      seasonality: '',
-      businessTypes: '',
-      rewards: '',
-      estimatedROI: ''
-    });
-    
     toast({
-      title: "Template Added",
-      description: "New campaign template created successfully"
-    });
-  };
-
-  const deleteTemplate = (templateId: string) => {
-    setCampaignTemplates(templates => 
-      templates.filter(template => template.id !== templateId)
-    );
-    toast({
-      title: "Template Deleted",
-      description: "Campaign template removed from platform"
+      title: "Not available yet",
+      description: "Custom platform templates aren't persisted yet — the built-in catalog is shown."
     });
   };
 
@@ -444,8 +382,11 @@ export default function AdminDashboard() {
                   <CardTitle>Active Templates</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {campaignTemplates.length === 0 && (
+                    <p className="text-sm text-gray-500">No templates.</p>
+                  )}
                   {campaignTemplates.map((template) => (
-                    <div key={template.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div key={template.key} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-1">
                           <p className="font-medium">{template.name}</p>
@@ -453,24 +394,13 @@ export default function AdminDashboard() {
                             {template.category}
                           </Badge>
                         </div>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <span>{template.seasonality}</span>
-                          <span>{template.usageCount} uses</span>
-                          <span>{template.conversionRate}% conversion</span>
-                        </div>
+                        <p className="text-sm text-gray-600">{template.description}</p>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Switch
-                          checked={template.isActive}
-                          onCheckedChange={(checked) => updateTemplateStatus(template.id, checked)}
-                        />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteTemplate(template.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                        <Badge variant="outline" className="text-xs">Built-in</Badge>
+                        {template.pointsAwarded ? (
+                          <span className="text-xs text-gray-500">{template.pointsAwarded} pts</span>
+                        ) : null}
                       </div>
                     </div>
                   ))}
@@ -569,28 +499,21 @@ export default function AdminDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600 mb-4">Manage subscription tiers, pricing, and custom billing</p>
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-semibold text-green-600">Starter</h3>
-                    <p className="text-2xl font-bold">$0/month</p>
-                    <p className="text-sm text-gray-600">1,234 users</p>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-semibold text-blue-600">Professional</h3>
-                    <p className="text-2xl font-bold">$39/month</p>
-                    <p className="text-sm text-gray-600">567 users</p>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-semibold text-purple-600">Business</h3>
-                    <p className="text-2xl font-bold">$79/month</p>
-                    <p className="text-sm text-gray-600">234 users</p>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-semibold text-orange-600">Enterprise</h3>
-                    <p className="text-2xl font-bold">$149/month</p>
-                    <p className="text-sm text-gray-600">89 users</p>
-                  </div>
+                <p className="text-gray-600 mb-4">Live plan catalog and how many users are on each tier</p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {subscriptionPlans.map((plan: any, i: number) => {
+                    const count = tierCounts[plan.id] ?? 0;
+                    const colors = ["text-green-600", "text-blue-600", "text-purple-600"];
+                    return (
+                      <div key={plan.id} className="p-4 border rounded-lg">
+                        <h3 className={`font-semibold ${colors[i % colors.length]}`}>{plan.name}</h3>
+                        <p className="text-2xl font-bold">
+                          {plan.price > 0 ? `$${plan.price}/month` : "Free"}
+                        </p>
+                        <p className="text-sm text-gray-600">{count} {count === 1 ? "user" : "users"}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
