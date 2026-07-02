@@ -12,6 +12,7 @@ import {
 import GroupCampaignsPanel from "@/components/merchant/group-campaigns-panel";
 import AddonsPanel from "@/components/merchant/addons-panel";
 import TapBrandingEditor from "@/components/merchant/tap-branding-editor";
+import WebsiteEditor from "@/components/merchant/website-editor";
 import ScavengerBuilder from "@/components/merchant/scavenger-builder";
 import RemindersPanel from "@/components/merchant/reminders-panel";
 
@@ -75,6 +76,9 @@ export default function MerchantBento() {
 
         {/* CHR-68: custom tap-screen branding editor (add-on) */}
         <TapBrandingEditor />
+
+        {/* Hosted business page editor (hosted_website add-on) */}
+        <WebsiteEditor />
 
         {/* CHR-69: contest & scavenger-hunt builder (add-on) */}
         <ScavengerBuilder />

@@ -236,6 +236,35 @@ export function registerBusinessWebsiteSalesRoutes(app: Express, deps: RouteDeps
     }
   });
 
+  // Owner: render draft content to HTML without persisting — powers the editor's
+  // live preview. Uses the SAME renderer as the public page so preview == live.
+  app.post("/api/business/website/:businessId/preview", isAuthenticated, async (req, res) => {
+    try {
+      const { businessId } = req.params;
+      if (!(await userOwnsBusiness((req.user as any).id, businessId))) {
+        return res.status(403).json({ error: "You don't own that business" });
+      }
+      if (!(await storage.businessHasAddonEffective(businessId, HOSTED_WEBSITE_ADDON))) {
+        return res.status(402).json({ error: "Hosted Business Page add-on required", addonKey: HOSTED_WEBSITE_ADDON });
+      }
+      const business = await storage.getBusiness(businessId);
+      if (!business) return res.status(404).json({ error: "Business not found" });
+
+      const content = normalizeWebsiteContent(req.body?.content ?? req.body, readWebsiteContent(business));
+      const campaigns = content.sections.includes("rewards")
+        ? (await storage.getCampaigns(businessId))
+            .filter((c) => c.isActive)
+            .slice(0, 6)
+            .map((c) => ({ name: c.name, description: c.description }))
+        : [];
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.send(renderWebsiteHtml(content, campaigns));
+    } catch (error) {
+      console.error("Preview website error:", error);
+      res.status(500).json({ error: "Failed to render preview" });
+    }
+  });
+
   // Owner: publish / unpublish (add-on required). Publishing mints a unique slug
   // on first use.
   app.post("/api/business/website/:businessId/publish", isAuthenticated, async (req, res) => {
