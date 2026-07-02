@@ -17,16 +17,22 @@ const isProdEnv = process.env.NODE_ENV === "production";
 const allowedOrigins = (process.env.CORS_ORIGINS ||
   "http://localhost:5000,http://127.0.0.1:5000")
   .split(",").map((s) => s.trim()).filter(Boolean);
-app.use(cors({
-  origin(origin, cb) {
-    // Allow same-origin / non-browser requests (no Origin header) + allowlist.
-    // In development, reflect any origin so the app can be shared over LAN or a
-    // tunnel (e.g. to show a partner) without editing CORS_ORIGINS per URL.
-    // Production stays strict — only the configured allowlist is accepted.
-    if (!origin || !isProdEnv || allowedOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
+app.use(cors((req: any, cb: (err: Error | null, options: any) => void) => {
+  const origin: string | undefined = req.headers?.origin;
+  const host: string | undefined = req.headers?.host;
+  // Same-origin request: the Origin's host equals the server's own Host. This is
+  // always safe and covers the deployed app (client + API on one domain), so we
+  // don't need CORS_ORIGINS to list the live URL.
+  let sameOrigin = false;
+  if (origin && host) {
+    try { sameOrigin = new URL(origin).host === host; } catch { sameOrigin = false; }
+  }
+  // Allow: no Origin (non-browser/same-origin GET), any origin in development
+  // (LAN/tunnel sharing), same-origin, or an explicitly allowlisted cross-origin.
+  // For anything else we simply omit CORS headers (the browser blocks it) rather
+  // than throwing a 500.
+  const ok = !origin || !isProdEnv || sameOrigin || allowedOrigins.includes(origin);
+  cb(null, { origin: ok, credentials: true });
 }));
 
 // Global rate limit, with tighter limits on auth and AI/translation endpoints
