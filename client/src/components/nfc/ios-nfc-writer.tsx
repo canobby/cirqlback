@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -159,6 +160,21 @@ export default function UniversalNFCWriter({ tagData, onWriteComplete }: NFCWrit
         )}
 
         {urlBox}
+
+        {/* Universal fallback: a QR of the same URL. Works on every phone with a
+            camera (including iPhone) and needs no NFC — print it next to the tag. */}
+        {tagData.url && (
+          <div className="flex items-center gap-4 rounded-lg border p-4">
+            <div className="bg-white p-2 rounded-md shrink-0">
+              <QRCodeSVG value={tagData.url} size={96} level="M" marginSize={4} />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <p className="font-medium text-foreground mb-1">No NFC? Scan instead.</p>
+              Print this QR next to the tag. Any phone camera opens the same reward
+              page — a universal fallback for phones that don’t tap.
+            </div>
+          </div>
+        )}
 
         {/* ── Android (or any browser exposing Web NFC): real in-browser write ── */}
         {canWriteInBrowser && (
