@@ -153,6 +153,23 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+// CHR-48/81: a no-account customer is matched by email and/or device
+// fingerprint. Build the per-identity equality conditions for a table's
+// (emailColumn, fingerprintColumn); callers combine them with or(...) and/or a
+// length check. Centralizes the email-or-fingerprint pattern used across
+// favorites, tap progress, and group-campaign progress.
+function identityConds(
+  emailColumn: any,
+  fingerprintColumn: any,
+  email?: string | null,
+  deviceFingerprint?: string | null
+): any[] {
+  const conds: any[] = [];
+  if (email) conds.push(eq(emailColumn, email));
+  if (deviceFingerprint) conds.push(eq(fingerprintColumn, deviceFingerprint));
+  return conds;
+}
+
 export class DatabaseStorage implements IStorage {
   // User operations (required for auth)
   async getUser(id: string): Promise<User | undefined> {
@@ -1085,9 +1102,7 @@ export class DatabaseStorage implements IStorage {
 
   // ── CHR-75: customer favorites + business reminders ──
   async favoriteBusiness(input: { businessId: string; email?: string | null; deviceFingerprint?: string | null }): Promise<void> {
-    const idConds = [];
-    if (input.email) idConds.push(eq(customerFavorites.customerEmail, input.email));
-    if (input.deviceFingerprint) idConds.push(eq(customerFavorites.deviceFingerprint, input.deviceFingerprint));
+    const idConds = identityConds(customerFavorites.customerEmail, customerFavorites.deviceFingerprint, input.email, input.deviceFingerprint);
     if (idConds.length) {
       const [existing] = await db
         .select()
@@ -1103,9 +1118,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async unfavoriteBusiness(input: { businessId: string; email?: string | null; deviceFingerprint?: string | null }): Promise<boolean> {
-    const idConds = [];
-    if (input.email) idConds.push(eq(customerFavorites.customerEmail, input.email));
-    if (input.deviceFingerprint) idConds.push(eq(customerFavorites.deviceFingerprint, input.deviceFingerprint));
+    const idConds = identityConds(customerFavorites.customerEmail, customerFavorites.deviceFingerprint, input.email, input.deviceFingerprint);
     if (!idConds.length) return false;
     const res = await db
       .delete(customerFavorites)
@@ -1114,9 +1127,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   private async getFavoriteBusinessIds(email?: string | null, deviceFingerprint?: string | null): Promise<string[]> {
-    const idConds = [];
-    if (email) idConds.push(eq(customerFavorites.customerEmail, email));
-    if (deviceFingerprint) idConds.push(eq(customerFavorites.deviceFingerprint, deviceFingerprint));
+    const idConds = identityConds(customerFavorites.customerEmail, customerFavorites.deviceFingerprint, email, deviceFingerprint);
     if (!idConds.length) return [];
     const rows = await db.select().from(customerFavorites).where(or(...idConds));
     return Array.from(new Set(rows.map((r) => r.businessId)));
@@ -1173,9 +1184,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<{ count: number; goal: number }> {
     const [c] = await db.select().from(campaigns).where(eq(campaigns.id, campaignId));
     const goal = (c?.tapGoal ?? 1) > 1 ? (c!.tapGoal as number) : 1;
-    const idConds = [];
-    if (email) idConds.push(eq(taps.customerEmail, email));
-    if (deviceFingerprint) idConds.push(eq(taps.deviceFingerprint, deviceFingerprint));
+    const idConds = identityConds(taps.customerEmail, taps.deviceFingerprint, email, deviceFingerprint);
     if (idConds.length === 0) return { count: 0, goal };
     const [{ n }] = await db
       .select({ n: count() })
@@ -1411,9 +1420,7 @@ export class DatabaseStorage implements IStorage {
     let visited: string[] = [];
     let completed = false;
     if (email || deviceFingerprint) {
-      const conds = [];
-      if (email) conds.push(eq(groupCampaignProgress.customerEmail, email));
-      if (deviceFingerprint) conds.push(eq(groupCampaignProgress.deviceFingerprint, deviceFingerprint));
+      const conds = identityConds(groupCampaignProgress.customerEmail, groupCampaignProgress.deviceFingerprint, email, deviceFingerprint);
       const [p] = await db
         .select()
         .from(groupCampaignProgress)
@@ -1468,9 +1475,7 @@ export class DatabaseStorage implements IStorage {
         gc.ruleType === "all" ? memberIds.size || 1 : gc.requiredStores ?? 1;
 
       // Resolve (or create) this customer's progress row for the campaign.
-      const idConds = [];
-      if (customerEmail) idConds.push(eq(groupCampaignProgress.customerEmail, customerEmail));
-      if (deviceFingerprint) idConds.push(eq(groupCampaignProgress.deviceFingerprint, deviceFingerprint));
+      const idConds = identityConds(groupCampaignProgress.customerEmail, groupCampaignProgress.deviceFingerprint, customerEmail, deviceFingerprint);
       let progress = idConds.length
         ? (
             await db
