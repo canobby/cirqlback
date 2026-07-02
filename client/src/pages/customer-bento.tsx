@@ -101,7 +101,7 @@ export default function CustomerBento() {
                 <Button 
                   className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm h-14 justify-start text-left"
                   variant="outline"
-                  onClick={() => setLocation('/nfc-setup-wizard-bento')}
+                  onClick={() => setLocation('/how-it-works')}
                 >
                   <div className="flex items-center w-full">
                     <div className="bg-white/30 p-2 rounded-lg mr-3 flex-shrink-0">
@@ -340,7 +340,7 @@ export default function CustomerBento() {
                 </Button>
                 
                 <Button 
-                  onClick={() => setLocation('/nfc-setup-wizard-bento')}
+                  onClick={() => setLocation('/how-it-works')}
                   className="h-20 flex-col gap-2 bg-gradient-to-br from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
@@ -350,7 +350,7 @@ export default function CustomerBento() {
                 </Button>
                 
                 <Button 
-                  onClick={() => setLocation('/analytics-bento')}
+                  onClick={() => setLocation('/profile')}
                   className="h-20 flex-col gap-2 bg-gradient-to-br from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
@@ -360,7 +360,7 @@ export default function CustomerBento() {
                 </Button>
                 
                 <Button 
-                  onClick={() => setLocation('/checkout')}
+                  onClick={() => setLocation('/map')}
                   className="h-20 flex-col gap-2 bg-gradient-to-br from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-lg flex items-center justify-center">
