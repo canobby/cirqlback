@@ -261,11 +261,16 @@ export class DatabaseStorage implements IStorage {
     let todayPoints = 0;
     let todayRedemptions = 0;
     if (email) {
-      const userTaps = (await this.getTaps(undefined, email)).filter(
-        (t) => t.createdAt && new Date(t.createdAt) >= dayStart
-      );
-      todayTaps = userTaps.length;
-      todayPoints = userTaps.reduce((s, t) => s + (t.pointsEarned ?? 0), 0);
+      // CHR-81: aggregate today's taps in SQL instead of loading the user's taps.
+      const [agg] = await db
+        .select({
+          c: sql<number>`count(*)`,
+          pts: sql<number>`coalesce(sum(${taps.pointsEarned}), 0)`,
+        })
+        .from(taps)
+        .where(and(eq(taps.customerEmail, email), sql`${taps.createdAt} >= ${dayStart}`));
+      todayTaps = Number(agg?.c ?? 0);
+      todayPoints = Number(agg?.pts ?? 0);
       const user = await this.getUserByEmail(email);
       if (user) {
         const userRewards = await this.getRewardsByUser(user.id);
@@ -275,13 +280,13 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Participants: distinct customers active platform-wide today.
-    const allTapsToday = (await this.getTaps()).filter(
-      (t) => t.createdAt && new Date(t.createdAt) >= dayStart
-    );
-    const participants = new Set(
-      allTapsToday.map((t) => t.customerEmail).filter(Boolean)
-    ).size;
+    // Participants: distinct customers active platform-wide today (CHR-81: a
+    // single COUNT(DISTINCT) instead of loading the entire taps table).
+    const [pRow] = await db
+      .select({ n: sql<number>`count(distinct ${taps.customerEmail})` })
+      .from(taps)
+      .where(sql`${taps.createdAt} >= ${dayStart}`);
+    const participants = Number(pRow?.n ?? 0);
 
     const pct = (have: number, need: number) =>
       need <= 0 ? 0 : Math.min(100, Math.round((have / need) * 100));
@@ -1357,20 +1362,29 @@ export class DatabaseStorage implements IStorage {
       .from(groupCampaigns)
       .where(eq(groupCampaigns.isActive, true))
       .orderBy(desc(groupCampaigns.createdAt));
-    const out: any[] = [];
-    for (const gc of rows) {
-      const members = await db
-        .select({
-          businessId: groupCampaignMembers.businessId,
-          name: businesses.name,
-          latitude: businesses.latitude,
-          longitude: businesses.longitude,
-        })
-        .from(groupCampaignMembers)
-        .innerJoin(businesses, eq(groupCampaignMembers.businessId, businesses.id))
-        .where(eq(groupCampaignMembers.groupCampaignId, gc.id));
+    if (rows.length === 0) return [];
+    // CHR-81: fetch every campaign's members in one query (was 1+N), group in JS.
+    const memberRows = await db
+      .select({
+        groupCampaignId: groupCampaignMembers.groupCampaignId,
+        businessId: groupCampaignMembers.businessId,
+        name: businesses.name,
+        latitude: businesses.latitude,
+        longitude: businesses.longitude,
+      })
+      .from(groupCampaignMembers)
+      .innerJoin(businesses, eq(groupCampaignMembers.businessId, businesses.id))
+      .where(inArray(groupCampaignMembers.groupCampaignId, rows.map((r) => r.id)));
+    const byCampaign = new Map<string, any[]>();
+    for (const m of memberRows) {
+      const list = byCampaign.get(m.groupCampaignId) ?? [];
+      list.push({ businessId: m.businessId, name: m.name, latitude: m.latitude, longitude: m.longitude });
+      byCampaign.set(m.groupCampaignId, list);
+    }
+    return rows.map((gc) => {
+      const members = byCampaign.get(gc.id) ?? [];
       const required = gc.ruleType === "all" ? members.length : gc.requiredStores ?? 1;
-      out.push({
+      return {
         id: gc.id,
         name: gc.name,
         description: gc.description,
@@ -1379,9 +1393,8 @@ export class DatabaseStorage implements IStorage {
         rewardTitle: gc.rewardTitle,
         isFeatured: gc.isFeatured ?? false, // CHR-54: coordinator map promotion
         members,
-      });
-    }
-    return out;
+      };
+    });
   }
 
   // CHR-59: a customer's progress toward a group campaign (no account needed —
