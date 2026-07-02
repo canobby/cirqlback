@@ -87,11 +87,11 @@ export default function Account() {
               <CardContent>
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-xl font-semibold">{profile?.subscriptionTier?.charAt(0).toUpperCase() + profile?.subscriptionTier?.slice(1)} Cirql Member</h3>
+                    <h3 className="text-xl font-semibold">{profile?.subscriptionTier ? profile.subscriptionTier.charAt(0).toUpperCase() + profile.subscriptionTier.slice(1) + " " : ""}Cirql Member</h3>
                     <p className="text-gray-600">Business platform access with campaign management</p>
                   </div>
                   <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
-                    {profile?.subscriptionStatus?.charAt(0).toUpperCase() + profile?.subscriptionStatus?.slice(1)}
+                    {profile?.subscriptionStatus ? profile.subscriptionStatus.charAt(0).toUpperCase() + profile.subscriptionStatus.slice(1) : "—"}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
