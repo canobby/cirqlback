@@ -31,6 +31,7 @@ import RewardSettlementsPanel from "@/components/admin/reward-settlements-panel"
 import BadgesPanel from "@/components/badges/badges-panel";
 import PointsAdminPanel from "@/components/admin/points-admin-panel";
 import CollectionsAdminPanel from "@/components/admin/collections-admin-panel";
+import EventsAdminPanel from "@/components/admin/events-admin-panel";
 import { 
   Shield,
   Users,
@@ -755,6 +756,7 @@ export default function AdminDashboard() {
             <PlatformConfigPanel />
             <PointsAdminPanel />
             <CollectionsAdminPanel />
+            <EventsAdminPanel />
           </TabsContent>
 
           {/* Audit: privileged admin action log */}

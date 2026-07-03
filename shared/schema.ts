@@ -81,6 +81,7 @@ export const users = pgTable("users", {
   currentStreak: integer("current_streak").default(0),
   longestStreak: integer("longest_streak").default(0),
   streakLastDate: varchar("streak_last_date"), // YYYY-MM-DD of the last tap that counted toward the streak
+  lastSpinDate: varchar("last_spin_date"),     // YYYY-MM-DD of the last daily spin
   teamId: varchar("team_id"),
   teamRole: varchar("team_role"), // leader, member, scout
   createdAt: timestamp("created_at").defaultNow(),
@@ -1705,3 +1706,21 @@ export const collectionProgress = pgTable("collection_progress", {
 
 export type Collection = typeof collections.$inferSelect;
 export type CollectionProgress = typeof collectionProgress.$inferSelect;
+
+// ── Seasonal events ──
+// A time-boxed event (e.g. "First Fridays") that multiplies tap points while
+// active. Admin-created; surfaced to customers as a limited-time banner.
+export const events = pgTable("events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  emoji: varchar("emoji"),
+  pointMultiplier: integer("point_multiplier").notNull().default(2),
+  startsAt: timestamp("starts_at").notNull(),
+  endsAt: timestamp("ends_at").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type Event = typeof events.$inferSelect;

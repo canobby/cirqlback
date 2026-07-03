@@ -30,6 +30,13 @@ export default function BadgesPanel({ mode }: { mode: Mode }) {
   const displayKey = mode === "business" ? (businessId ? `/api/badges/business/${businessId}` : null) : "/api/badges/mine";
   const { data: awards = [] } = useQuery<AwardRow[]>({ queryKey: [displayKey], enabled: !!displayKey, retry: false });
 
+  // Progress toward the next achievement badge (customer + business only).
+  const progressKey = mode === "customer" ? "/api/badges/progress"
+    : mode === "business" && businessId ? `/api/badges/progress?businessId=${businessId}` : null;
+  const { data: progress = [] } = useQuery<{ metric: string; name: string; emoji: string | null; color: string | null; current: number; threshold: number; pct: number }[]>({
+    queryKey: [progressKey], enabled: !!progressKey, retry: false,
+  });
+
   const revoke = useMutation({
     mutationFn: async (id: string) => apiRequest("POST", `/api/badges/awards/${id}/revoke`),
     onSuccess: () => { toast({ title: "Badge removed" }); if (displayKey) qc.invalidateQueries({ queryKey: [displayKey] }); },
@@ -77,6 +84,25 @@ export default function BadgesPanel({ mode }: { mode: Mode }) {
         )}
         {mode === "admin" && (
           <p className="text-sm text-gray-500">Award a badge to any person or business.</p>
+        )}
+
+        {progress.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Next up</div>
+            <div className="space-y-3">
+              {progress.map((p) => (
+                <div key={p.metric}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-gray-700 dark:text-gray-300">{p.emoji} {p.name}</span>
+                    <span className="text-gray-500">{p.current.toLocaleString()} / {p.threshold.toLocaleString()}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${p.pct}%`, background: p.color || "#7c3aed" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </CardContent>
 

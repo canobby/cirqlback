@@ -39,6 +39,7 @@ import {
   collections,
   collectionItems,
   collectionProgress,
+  events,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -92,6 +93,7 @@ import {
   type PointReward,
   type PointRedemption,
   type Collection,
+  type Event,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
@@ -2617,7 +2619,10 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      const points = campaignActive ? (campaign!.pointsAwarded ?? 0) : 0;
+      let points = campaignActive ? (campaign!.pointsAwarded ?? 0) : 0;
+      // Seasonal event: multiply tap points while a time-boxed event is active.
+      const eventMultiplier = await this.getActiveEventMultiplier();
+      if (points > 0 && eventMultiplier > 1) points = points * eventMultiplier;
       const customer = tap.customerEmail ? await this.getUserByEmail(tap.customerEmail) : undefined;
 
       // Record the tap (with the points earned). Stamp campaignId so punch-card
@@ -4006,6 +4011,98 @@ export class DatabaseStorage implements IStorage {
       earned.push(b.name);
     }
     return earned;
+  }
+
+  // Progress toward the next unearned achievement badge, per metric.
+  private async achievementProgress(
+    audience: "customer" | "business",
+    values: Record<string, number>,
+    earnedDefIds: Set<string>,
+  ): Promise<any[]> {
+    const badges = await this.getSystemBadges(audience);
+    const byMetric = new Map<string, { name: string; emoji: string | null; color: string | null; threshold: number }>();
+    for (const b of badges) {
+      if (earnedDefIds.has(b.id)) continue;
+      const c = b.criteria as { metric: string; threshold: number } | null;
+      if (!c) continue;
+      const cur = values[c.metric] ?? 0;
+      if (c.threshold <= cur) continue; // already reached (will award on next tap)
+      const best = byMetric.get(c.metric);
+      if (!best || c.threshold < best.threshold) byMetric.set(c.metric, { name: b.name, emoji: b.emoji, color: b.color, threshold: c.threshold });
+    }
+    return Array.from(byMetric.entries()).map(([metric, x]) => ({
+      metric, name: x.name, emoji: x.emoji, color: x.color,
+      current: values[metric] ?? 0, threshold: x.threshold,
+      pct: Math.min(100, Math.round(((values[metric] ?? 0) / x.threshold) * 100)),
+    }));
+  }
+
+  async getCustomerAchievementProgress(userId: string, email: string | null | undefined): Promise<any[]> {
+    const tapRows = email ? await db.select({ b: taps.businessId }).from(taps).where(eq(taps.customerEmail, email)) : [];
+    const [u] = await db.select().from(users).where(eq(users.id, userId));
+    const values = { taps: tapRows.length, distinct_businesses: new Set(tapRows.map((t) => t.b).filter(Boolean)).size, streak: u?.currentStreak ?? 0 };
+    const earned = new Set((await this.getBadgeAwardsForUser(userId)).map((a: any) => a.badgeDefinitionId));
+    return this.achievementProgress("customer", values, earned);
+  }
+
+  async getBusinessAchievementProgress(businessId: string): Promise<any[]> {
+    const [biz] = await db.select().from(businesses).where(eq(businesses.id, businessId));
+    const custRows = await db.select({ e: taps.customerEmail }).from(taps).where(eq(taps.businessId, businessId));
+    const values = { biz_taps: biz?.totalTaps ?? 0, biz_customers: new Set(custRows.map((t) => t.e).filter(Boolean)).size };
+    const earned = new Set((await this.getBadgeAwardsForBusiness(businessId)).map((a: any) => a.badgeDefinitionId));
+    return this.achievementProgress("business", values, earned);
+  }
+
+  // ── Daily spin ────────────────────────────────────────────────────────────
+  private todayStr(): string { const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d.toISOString().slice(0, 10); }
+
+  async getSpinStatus(userId: string): Promise<{ canSpin: boolean }> {
+    const [u] = await db.select().from(users).where(eq(users.id, userId));
+    return { canSpin: (u as any)?.lastSpinDate !== this.todayStr() };
+  }
+
+  // One free spin per day → random points. Returns the points, or null if the
+  // user already spun today.
+  async doDailySpin(userId: string): Promise<number | null> {
+    const today = this.todayStr();
+    const [u] = await db.select().from(users).where(eq(users.id, userId));
+    if (!u || (u as any).lastSpinDate === today) return null;
+    const wheel = [5, 5, 5, 10, 10, 25, 25, 50, 100, 250];
+    const points = wheel[Math.floor(Math.random() * wheel.length)];
+    await db.update(users).set({
+      lastSpinDate: today,
+      totalPoints: sql`COALESCE(${users.totalPoints},0) + ${points}`,
+      availablePoints: sql`COALESCE(${users.availablePoints},0) + ${points}`,
+      totalPointsEarned: sql`COALESCE(${users.totalPointsEarned},0) + ${points}`,
+      updatedAt: new Date(),
+    }).where(eq(users.id, userId));
+    return points;
+  }
+
+  // ── Seasonal events ───────────────────────────────────────────────────────
+  async createEvent(data: {
+    name: string; description?: string | null; emoji?: string | null;
+    pointMultiplier: number; startsAt: Date; endsAt: Date; createdByUserId: string;
+  }): Promise<Event> {
+    const [row] = await db.insert(events).values(data).returning();
+    return row;
+  }
+
+  async getActiveEvents(): Promise<Event[]> {
+    // Compare against the DB clock (now()) to avoid JS-Date/timestamp tz drift.
+    return await db.select().from(events)
+      .where(and(eq(events.isActive, true), sql`${events.startsAt} <= now()`, sql`${events.endsAt} >= now()`))
+      .orderBy(desc(events.startsAt));
+  }
+
+  async getAllEvents(): Promise<Event[]> {
+    return await db.select().from(events).orderBy(desc(events.startsAt));
+  }
+
+  // The strongest active event multiplier (1 if none active).
+  async getActiveEventMultiplier(): Promise<number> {
+    const active = await this.getActiveEvents();
+    return active.reduce((m, e) => Math.max(m, e.pointMultiplier ?? 1), 1);
   }
 
   // ── Collections / passports ───────────────────────────────────────────────

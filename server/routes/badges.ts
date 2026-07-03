@@ -188,6 +188,24 @@ export function registerBadgeRoutes(app: Express, _deps: RouteDeps) {
     }
   });
 
+  // Progress toward the next achievement badge (customer, or ?businessId= for a
+  // business the caller owns).
+  app.get("/api/badges/progress", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id as string;
+      const businessId = typeof req.query.businessId === "string" ? req.query.businessId : "";
+      if (businessId) {
+        const { userOwnsBusiness } = _deps;
+        if (!(await userOwnsBusiness(userId, businessId))) return res.status(403).json({ error: "Not your business" });
+        return res.json(await storage.getBusinessAchievementProgress(businessId));
+      }
+      res.json(await storage.getCustomerAchievementProgress(userId, (req.user as any).email ?? null));
+    } catch (error) {
+      console.error("Badge progress error:", error);
+      res.status(500).json({ error: "Failed to load progress" });
+    }
+  });
+
   // The signed-in user's own badges.
   app.get("/api/badges/mine", isAuthenticated, async (req, res) => {
     try {

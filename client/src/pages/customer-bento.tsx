@@ -14,6 +14,8 @@ import StreakCard from "@/components/gamification/streak-card";
 import ReferralPanel from "@/components/gamification/referral-panel";
 import PassportsPanel from "@/components/gamification/passports-panel";
 import LeaderboardCard from "@/components/gamification/leaderboard-card";
+import SpinWheel from "@/components/gamification/spin-wheel";
+import EventBanner from "@/components/gamification/event-banner";
 
 export default function CustomerBento() {
   const [, setLocation] = useLocation();
@@ -69,8 +71,14 @@ export default function CustomerBento() {
           </div>
         </div>
 
+        {/* Active seasonal event banner */}
+        <EventBanner />
+
         {/* Daily streak nudge */}
         <StreakCard />
+
+        {/* Daily spin-the-wheel */}
+        <SpinWheel />
 
         {/* Updates: business reminders + admin announcements (Slice 3) */}
         <CustomerFeedPanel />

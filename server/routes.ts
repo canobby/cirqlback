@@ -29,6 +29,7 @@ import { registerPointsEconomyRoutes } from "./routes/points-economy";
 import { registerReferralRoutes } from "./routes/referrals";
 import { registerCollectionRoutes } from "./routes/collections";
 import { registerLeaderboardRoutes } from "./routes/leaderboards";
+import { registerSpinEventRoutes } from "./routes/spin-events";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -129,6 +130,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerCollectionRoutes(app, deps);
   // Seasonal (monthly) + local (territory) leaderboards.
   registerLeaderboardRoutes(app, deps);
+  // Daily spin + seasonal events (tap point multipliers).
+  registerSpinEventRoutes(app, deps);
 
   const httpServer = createServer(app);
 
