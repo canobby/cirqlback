@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
 import Navbar from "@/components/layout/navbar";
+import ImpersonationBanner from "@/components/layout/impersonation-banner";
 import Footer from "@/components/layout/footer";
 
 // import NotificationCenter from "@/components/global/notification-center";
@@ -56,6 +57,7 @@ function Router() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <ImpersonationBanner />
       <Navbar />
       <main className="flex-1">
         <Switch>

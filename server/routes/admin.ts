@@ -114,6 +114,44 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // Support 360: full picture of one user (profile + businesses + stats).
+  app.get("/api/admin/user/:id/detail", async (req, res) => {
+    try {
+      const detail = await storage.getUserDetail(req.params.id);
+      if (!detail) return res.status(404).json({ error: "User not found" });
+      res.json(detail);
+    } catch (error) {
+      console.error("User detail error:", error);
+      res.status(500).json({ error: "Failed to load user detail" });
+    }
+  });
+
+  // Impersonate ("view as") a user for support. Admin-gated; refuses to
+  // impersonate another admin. The real admin id is stashed in the session so
+  // they can stop (POST /api/auth/stop-impersonate, which is NOT admin-gated).
+  app.post("/api/admin/impersonate/:userId", async (req, res, next) => {
+    try {
+      const admin = req.user as any;
+      const target = await storage.getUser(req.params.userId);
+      if (!target) return res.status(404).json({ error: "User not found" });
+      const [targetAdmin] = await db.select({ id: adminUsers.id }).from(adminUsers).where(eq(adminUsers.userId, target.id));
+      if (targetAdmin) return res.status(403).json({ error: "Can't impersonate an admin" });
+
+      const impersonatorId = admin.id;
+      const impersonatorEmail = admin.email;
+      req.login(target, (err) => {
+        if (err) return next(err);
+        (req.session as any).impersonatorId = impersonatorId;
+        (req.session as any).impersonatorEmail = impersonatorEmail;
+        console.warn(`[impersonate] admin ${impersonatorEmail} is now viewing as ${target.email}`);
+        res.json({ success: true, user: { id: target.id, email: target.email } });
+      });
+    } catch (error) {
+      console.error("Impersonate error:", error);
+      res.status(500).json({ error: "Failed to impersonate" });
+    }
+  });
+
   // Customer-side health: redemption rate, repeat rate, active + top customers.
   app.get("/api/admin/customer-health", async (_req, res) => {
     try {

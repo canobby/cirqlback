@@ -18,6 +18,7 @@ import AdminInsights from "@/components/admin/admin-insights";
 import AtRiskPanel from "@/components/admin/at-risk-panel";
 import AdminGeoPanel from "@/components/admin/geo-panel";
 import CustomerHealthPanel from "@/components/admin/customer-health-panel";
+import UserDetailDialog from "@/components/admin/user-detail-dialog";
 import RevenuePanel from "@/components/admin/revenue-panel";
 import TrustSafetyPanel from "@/components/admin/trust-safety-panel";
 import CoordinatorLeaderboard from "@/components/admin/coordinator-leaderboard";
@@ -86,6 +87,7 @@ export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [adminTab, setAdminTab] = useState("overview");
+  const [detailUserId, setDetailUserId] = useState<string | null>(null);
 
   // AI Platform Insights Query
   const { data: aiPlatformInsights, isLoading: aiLoading, refetch: refetchAI } = useQuery<any>({
@@ -361,14 +363,9 @@ export default function AdminDashboard() {
                               {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}
                             </td>
                             <td className="p-4">
-                              <div className="flex space-x-1">
-                                <Button size="sm" variant="ghost">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="ghost">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </div>
+                              <Button size="sm" variant="outline" onClick={() => setDetailUserId(user.id)}>
+                                <Eye className="h-4 w-4 mr-1" /> 360
+                              </Button>
                             </td>
                           </tr>
                         );
@@ -739,6 +736,8 @@ export default function AdminDashboard() {
             <PlatformConfigPanel />
           </TabsContent>
         </Tabs>
+
+        <UserDetailDialog userId={detailUserId} onClose={() => setDetailUserId(null)} />
       </div>
     </div>
   );

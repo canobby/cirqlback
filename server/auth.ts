@@ -228,6 +228,32 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    return res.json(sanitize(req.user as User));
+    const safe = sanitize(req.user as User);
+    const impersonatorEmail = (req.session as any)?.impersonatorEmail;
+    // Flag impersonation so the client can show a "viewing as" banner.
+    if ((req.session as any)?.impersonatorId) {
+      return res.json({ ...safe, _impersonating: true, _impersonatorEmail: impersonatorEmail });
+    }
+    return res.json(safe);
+  });
+
+  // Stop impersonating and return to the original admin session. Not admin-gated
+  // (while impersonating, req.user is the target); the session's impersonatorId
+  // is the proof that an admin started it.
+  app.post("/api/auth/stop-impersonate", async (req, res, next) => {
+    const impersonatorId = (req.session as any)?.impersonatorId;
+    if (!impersonatorId) return res.status(400).json({ message: "Not impersonating" });
+    try {
+      const admin = await storage.getUser(impersonatorId);
+      if (!admin) return res.status(400).json({ message: "Original admin not found" });
+      req.login(admin, (err) => {
+        if (err) return next(err);
+        delete (req.session as any).impersonatorId;
+        delete (req.session as any).impersonatorEmail;
+        return res.json({ success: true });
+      });
+    } catch (err) {
+      return next(err as Error);
+    }
   });
 }

@@ -9,6 +9,8 @@ export interface AuthUser {
   lastName: string | null;
   role: string | null;
   subscriptionTier: string | null;
+  _impersonating?: boolean;
+  _impersonatorEmail?: string;
   [key: string]: unknown;
 }
 

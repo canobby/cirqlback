@@ -812,6 +812,42 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  // Support 360: a full picture of one user for admin support — profile, role
+  // flags, and each of their businesses with key stats.
+  async getUserDetail(userId: string): Promise<null | {
+    user: { id: string; email: string | null; firstName: string | null; lastName: string | null; role: string | null; subscriptionTier: string | null; subscriptionStatus: string | null; createdAt: Date | null };
+    isAdmin: boolean; isCoordinator: boolean;
+    businesses: Array<{ id: string; name: string; verificationStatus: string | null; websitePublished: boolean; websiteSlug: string | null; campaigns: number; tags: number; taps: number; lastTap: Date | null }>;
+  }> {
+    const user = await this.getUser(userId);
+    if (!user) return null;
+    const [[adminRow], coord, bizs] = await Promise.all([
+      db.select({ id: adminUsers.id }).from(adminUsers).where(eq(adminUsers.userId, userId)),
+      this.getCoordinatorByUserId(userId),
+      this.getBusinessesByOwner(userId),
+    ]);
+    const businesses = await Promise.all(bizs.map(async (b) => {
+      const [[c], [t], [tp]] = await Promise.all([
+        db.select({ n: count() }).from(campaigns).where(eq(campaigns.businessId, b.id)),
+        db.select({ n: count() }).from(nfcTags).where(eq(nfcTags.businessId, b.id)),
+        db.select({ n: count(), last: sql<string>`max(${taps.createdAt})` }).from(taps).where(eq(taps.businessId, b.id)),
+      ]);
+      return {
+        id: b.id, name: b.name, verificationStatus: b.verificationStatus,
+        websitePublished: !!b.websitePublished, websiteSlug: b.websiteSlug ?? null,
+        campaigns: Number(c?.n ?? 0), tags: Number(t?.n ?? 0), taps: Number(tp?.n ?? 0),
+        lastTap: tp?.last ? new Date(tp.last) : null,
+      };
+    }));
+    return {
+      user: {
+        id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName,
+        role: user.role, subscriptionTier: user.subscriptionTier, subscriptionStatus: user.subscriptionStatus, createdAt: user.createdAt,
+      },
+      isAdmin: !!adminRow, isCoordinator: !!coord, businesses,
+    };
+  }
+
   // Real list of platform users for the admin user-management table.
   async listPlatformUsers(limit = 200): Promise<
     Array<Pick<User, "id" | "email" | "firstName" | "lastName" | "role" | "subscriptionTier" | "subscriptionStatus" | "createdAt">>
