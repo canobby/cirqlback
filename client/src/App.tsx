@@ -42,6 +42,7 @@ import CoordinatorDashboard from "@/pages/coordinator-dashboard";
 import NonprofitDashboard from "@/pages/nonprofit-dashboard";
 import RewardPage from "@/pages/reward";
 import BusinessWebsitePreview from "@/pages/business-website-preview";
+import LegalDocPage from "@/pages/legal-doc-page";
 import AboutPage from "@/pages/about";
 import AuthPage from "@/pages/auth";
 import UserGuide from "@/pages/user-guide";
@@ -117,6 +118,7 @@ function Router() {
           <Route path="/help-center" component={HelpCenterPage} />
           <Route path="/privacy-policy" component={PrivacyPolicyPage} />
           <Route path="/terms-of-service" component={TermsOfServicePage} />
+          <Route path="/legal/:slug" component={LegalDocPage} />
           
           <Route component={NotFound} />
         </Switch>

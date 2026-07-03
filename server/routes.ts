@@ -32,6 +32,7 @@ import { registerLeaderboardRoutes } from "./routes/leaderboards";
 import { registerSpinEventRoutes } from "./routes/spin-events";
 import { registerSocialRoutes } from "./routes/social";
 import { registerAssistantRoutes } from "./routes/assistant";
+import { registerLegalRoutes } from "./routes/legal";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -138,6 +139,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerSocialRoutes(app, deps);
   // In-dashboard Help Assistant (AI how-to guide, grounded in the manuals).
   registerAssistantRoutes(app, deps);
+  // Public legal/compliance docs (Terms, Privacy, FAQ, agreements).
+  registerLegalRoutes(app, deps);
 
   const httpServer = createServer(app);
 
