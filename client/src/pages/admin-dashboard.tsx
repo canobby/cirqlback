@@ -25,6 +25,8 @@ import TrustSafetyPanel from "@/components/admin/trust-safety-panel";
 import CoordinatorLeaderboard from "@/components/admin/coordinator-leaderboard";
 import TerritoryManager from "@/components/admin/territory-manager";
 import PlatformConfigPanel from "@/components/admin/platform-config-panel";
+import MessageCenter from "@/components/messaging/message-center";
+import BroadcastComposer from "@/components/messaging/broadcast-composer";
 import { 
   Shield,
   Users,
@@ -284,8 +286,9 @@ export default function AdminDashboard() {
 
         <Tabs value={adminTab} onValueChange={setAdminTab} className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="grid grid-cols-12 min-w-max lg:w-full">
+            <TabsList className="grid grid-cols-[repeat(13,minmax(0,1fr))] min-w-max lg:w-full">
               <TabsTrigger value="overview" className="px-2 text-xs lg:px-3 lg:text-sm">Overview</TabsTrigger>
+              <TabsTrigger value="messages" className="px-2 text-xs lg:px-3 lg:text-sm">Messages</TabsTrigger>
               <TabsTrigger value="revenue" className="px-2 text-xs lg:px-3 lg:text-sm">Revenue</TabsTrigger>
               <TabsTrigger value="trust" className="px-2 text-xs lg:px-3 lg:text-sm">Trust &amp; Safety</TabsTrigger>
               <TabsTrigger value="coordinators" className="px-2 text-xs lg:px-3 lg:text-sm">Territories</TabsTrigger>
@@ -305,6 +308,12 @@ export default function AdminDashboard() {
             <CommandCenter onGo={setAdminTab} />
             <AdminInsights />
             <AtRiskPanel />
+          </TabsContent>
+
+          {/* Messages: support threads + broadcasts (Slice 2) */}
+          <TabsContent value="messages" className="space-y-6">
+            <BroadcastComposer />
+            <MessageCenter role="admin" />
           </TabsContent>
 
           {/* Users Management */}

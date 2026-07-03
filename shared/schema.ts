@@ -1476,3 +1476,32 @@ export type MessageThread = typeof messageThreads.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessageThread = z.infer<typeof insertMessageThreadSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+// ── Admin broadcasts (Slice 2) ──
+// One-way platform announcements from an admin down to a role audience. No
+// per-recipient row: the recipient's feed is a query over `audience`. Read
+// state is a single per-user watermark (userBroadcastState) rather than a
+// row-per-broadcast, which is cheap at platform scale.
+export const broadcasts = pgTable("broadcasts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  senderUserId: varchar("sender_user_id").references(() => users.id),
+  audience: varchar("audience").notNull(), // all | coordinators | businesses | customers
+  subject: varchar("subject").notNull(),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// A per-user watermark: broadcasts newer than lastSeenAt are "unread" for them.
+export const userBroadcastState = pgTable("user_broadcast_state", {
+  userId: varchar("user_id").primaryKey().references(() => users.id),
+  lastSeenAt: timestamp("last_seen_at").defaultNow(),
+});
+
+export const insertBroadcastSchema = createInsertSchema(broadcasts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type Broadcast = typeof broadcasts.$inferSelect;
+export type InsertBroadcast = z.infer<typeof insertBroadcastSchema>;
+export type UserBroadcastState = typeof userBroadcastState.$inferSelect;

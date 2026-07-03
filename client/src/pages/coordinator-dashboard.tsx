@@ -12,6 +12,7 @@ import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkl
 import PitchDialog from "@/components/coordinator/pitch-dialog";
 import EarningsProjection from "@/components/coordinator/earnings-projection";
 import MessageCenter from "@/components/messaging/message-center";
+import AnnouncementsPanel from "@/components/messaging/announcements-panel";
 
 interface Territory {
   id: string;
@@ -485,7 +486,10 @@ export default function CoordinatorDashboard() {
         </CardContent>
       </Card>
 
-      {/* Cross-role messaging (Slice 1) — talk to businesses in your territory */}
+      {/* Admin announcements (Slice 2) */}
+      <AnnouncementsPanel />
+
+      {/* Cross-role messaging — talk to businesses in your territory + admin support */}
       <MessageCenter role="coordinator" />
 
       {overview && (

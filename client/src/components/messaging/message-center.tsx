@@ -10,19 +10,21 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { MessageSquare, Plus, Send, ArrowLeft, Store, Globe } from "lucide-react";
+import { MessageSquare, Plus, Send, ArrowLeft, Store, Globe, LifeBuoy } from "lucide-react";
 
-// Slice 1 of the cross-role message center: coordinator ↔ business threads.
-// This one component serves both hubs — the `role` prop only changes who the
-// "New conversation" flow can address. Everything else (inbox, thread view,
-// replies, read state) is identical. In-app only; no email/push yet.
+// Shared cross-role message center — one component for every hub. The `role`
+// prop only changes who the "New conversation" flow can address; the inbox,
+// thread view, replies and read-state are identical everywhere.
+//   coordinator ↔ business (Slice 1) · admin support (Slice 2)
+// In-app only; no email/push yet.
 
-type Role = "coordinator" | "business";
+type Role = "coordinator" | "business" | "admin";
 
 interface ThreadSummary {
   id: string;
   subject: string;
   status: string;
+  kind: string; // 'coordinator_business' | 'admin_support'
   myRole: Role;
   counterpartName: string;
   lastMessagePreview: string | null;
@@ -40,17 +42,20 @@ interface ThreadMessage {
 }
 
 interface ThreadDetail {
-  thread: { id: string; subject: string; status: string; myRole: Role; counterpartName: string };
+  thread: { id: string; subject: string; status: string; kind: string; myRole: Role; counterpartName: string };
   messages: ThreadMessage[];
 }
-
-// Coordinator-only: businesses in territory (for addressing a new thread).
-interface TerritoryStore { id: string; name: string }
 
 function timeLabel(ts: string | null): string {
   if (!ts) return "";
   const d = new Date(ts);
   return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function ThreadIcon({ kind, myRole, className }: { kind: string; myRole: Role; className?: string }) {
+  if (kind === "admin_support") return <LifeBuoy className={className} />;
+  // coordinator_business: coordinator sees a store, business sees a globe.
+  return myRole === "coordinator" ? <Store className={className} /> : <Globe className={className} />;
 }
 
 export default function MessageCenter({ role }: { role: Role }) {
@@ -80,7 +85,6 @@ export default function MessageCenter({ role }: { role: Role }) {
   const openThread = (id: string) => {
     setSelectedId(id);
     setReplyBody("");
-    // Opening marks-as-read server-side; refresh the list badges shortly after.
     setTimeout(refetchAll, 300);
   };
 
@@ -96,6 +100,13 @@ export default function MessageCenter({ role }: { role: Role }) {
 
   const totalUnread = threads.reduce((s, t) => s + t.unreadCount, 0);
 
+  const subtitle =
+    role === "coordinator"
+      ? "Message the businesses in your territory. They can reply here."
+      : role === "business"
+        ? "Message your community coordinator or reply to Cirqlback Support."
+        : "Support conversations with coordinators and businesses.";
+
   return (
     <Card className="mb-8">
       <CardHeader>
@@ -103,9 +114,7 @@ export default function MessageCenter({ role }: { role: Role }) {
           <span className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-purple-600" />
             Messages
-            {totalUnread > 0 && (
-              <Badge className="bg-rose-500 text-white border-0">{totalUnread}</Badge>
-            )}
+            {totalUnread > 0 && <Badge className="bg-rose-500 text-white border-0">{totalUnread}</Badge>}
           </span>
           <Button
             size="sm"
@@ -117,13 +126,8 @@ export default function MessageCenter({ role }: { role: Role }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          {role === "coordinator"
-            ? "Message the businesses in your territory. They can reply here."
-            : "Message your community coordinator. They can reply here."}
-        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{subtitle}</p>
 
-        {/* Thread view */}
         {selectedId && detail ? (
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -133,7 +137,7 @@ export default function MessageCenter({ role }: { role: Role }) {
               <div className="min-w-0">
                 <div className="font-semibold text-gray-900 dark:text-white truncate">{detail.thread.subject}</div>
                 <div className="text-xs text-gray-500 flex items-center gap-1">
-                  {detail.thread.myRole === "coordinator" ? <Store className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+                  <ThreadIcon kind={detail.thread.kind} myRole={detail.thread.myRole} className="h-3 w-3" />
                   {detail.thread.counterpartName}
                 </div>
               </div>
@@ -151,6 +155,9 @@ export default function MessageCenter({ role }: { role: Role }) {
                           : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-bl-sm"
                       }`}
                     >
+                      {!mine && m.senderRole === "admin" && (
+                        <div className="text-[10px] font-semibold text-purple-600 mb-0.5">Cirqlback Support</div>
+                      )}
                       <div className="whitespace-pre-wrap break-words">{m.body}</div>
                       <div className={`mt-1 text-[10px] ${mine ? "text-purple-100" : "text-gray-400"}`}>
                         {timeLabel(m.createdAt)}
@@ -182,7 +189,6 @@ export default function MessageCenter({ role }: { role: Role }) {
             </div>
           </div>
         ) : (
-          /* Inbox list */
           <div>
             {threads.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -197,11 +203,7 @@ export default function MessageCenter({ role }: { role: Role }) {
                     className="w-full text-left py-3 px-1 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors flex items-start gap-3"
                   >
                     <div className="mt-0.5">
-                      {t.myRole === "coordinator" ? (
-                        <Store className="h-5 w-5 text-purple-600" />
-                      ) : (
-                        <Globe className="h-5 w-5 text-purple-600" />
-                      )}
+                      <ThreadIcon kind={t.kind} myRole={t.myRole} className="h-5 w-5 text-purple-600" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
@@ -239,6 +241,9 @@ export default function MessageCenter({ role }: { role: Role }) {
 }
 
 // ── New-conversation dialog ────────────────────────────────────────────────
+interface TerritoryStore { id: string; name: string }
+interface AdminTargets { coordinators: { id: string; name: string }[]; businesses: { id: string; name: string }[] }
+
 function ComposeDialog({
   role, open, onOpenChange, onCreated,
 }: {
@@ -248,12 +253,12 @@ function ComposeDialog({
   onCreated: (threadId: string) => void;
 }) {
   const { toast } = useToast();
-  const [businessId, setBusinessId] = useState("");
+  const [businessId, setBusinessId] = useState("");   // coordinator flow
+  const [adminTarget, setAdminTarget] = useState(""); // admin flow: "business:<id>" | "coordinator:<id>"
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
-  // Coordinator: pick a business in the territory. Business: recipient is
-  // implicit (their coordinator) — we just need the business's own id.
+  // Coordinator: businesses in territory. Admin: coordinators + claimed businesses.
   const { data: overview } = useQuery<{ stores: TerritoryStore[] }>({
     queryKey: ["/api/coordinator/territory/overview"],
     enabled: open && role === "coordinator",
@@ -264,52 +269,85 @@ function ComposeDialog({
     enabled: open && role === "business",
     retry: false,
   });
+  const { data: adminTargets } = useQuery<AdminTargets>({
+    queryKey: ["/api/admin/messages/targets"],
+    enabled: open && role === "admin",
+    retry: false,
+  });
 
-  const effectiveBusinessId = role === "business" ? (myBiz?.[0]?.id ?? "") : businessId;
+  const reset = () => { setSubject(""); setBody(""); setBusinessId(""); setAdminTarget(""); };
 
   const create = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/messages/threads", {
-        businessId: effectiveBusinessId,
-        subject: subject.trim(),
-        body: body.trim(),
-      });
+      let res;
+      if (role === "admin") {
+        const [targetType, targetId] = adminTarget.split(":");
+        res = await apiRequest("POST", "/api/admin/messages/threads", {
+          targetType, targetId, subject: subject.trim(), body: body.trim(),
+        });
+      } else {
+        const effectiveBusinessId = role === "business" ? (myBiz?.[0]?.id ?? "") : businessId;
+        res = await apiRequest("POST", "/api/messages/threads", {
+          businessId: effectiveBusinessId, subject: subject.trim(), body: body.trim(),
+        });
+      }
       return (await res.json()) as { id: string };
     },
-    onSuccess: (data) => {
-      setSubject(""); setBody(""); setBusinessId("");
-      onCreated(data.id);
-    },
+    onSuccess: (data) => { reset(); onCreated(data.id); },
     onError: () => toast({ title: "Couldn't start conversation", variant: "destructive" }),
   });
 
-  const canSend =
-    !!effectiveBusinessId && !!subject.trim() && !!body.trim() && !create.isPending;
+  const hasRecipient =
+    role === "admin" ? !!adminTarget : role === "business" ? !!myBiz?.[0]?.id : !!businessId;
+  const canSend = hasRecipient && !!subject.trim() && !!body.trim() && !create.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {role === "coordinator" ? "Message a business" : "Message your coordinator"}
+            {role === "coordinator" ? "Message a business"
+              : role === "admin" ? "New support message"
+              : "Message your coordinator"}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          {role === "coordinator" ? (
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Business</label>
-              <select
-                value={businessId}
-                onChange={(e) => setBusinessId(e.target.value)}
-                className="mt-1 w-full h-10 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 text-sm"
-              >
-                <option value="">Select a business…</option>
-                {(overview?.stores ?? []).map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-          ) : (
+          {role === "coordinator" && (
+            <select
+              value={businessId}
+              onChange={(e) => setBusinessId(e.target.value)}
+              className="w-full h-10 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 text-sm"
+            >
+              <option value="">Select a business…</option>
+              {(overview?.stores ?? []).map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          )}
+          {role === "admin" && (
+            <select
+              value={adminTarget}
+              onChange={(e) => setAdminTarget(e.target.value)}
+              className="w-full h-10 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 text-sm"
+            >
+              <option value="">Select a recipient…</option>
+              {(adminTargets?.coordinators ?? []).length > 0 && (
+                <optgroup label="Coordinators">
+                  {adminTargets!.coordinators.map((c) => (
+                    <option key={c.id} value={`coordinator:${c.id}`}>{c.name}</option>
+                  ))}
+                </optgroup>
+              )}
+              {(adminTargets?.businesses ?? []).length > 0 && (
+                <optgroup label="Businesses">
+                  {adminTargets!.businesses.map((b) => (
+                    <option key={b.id} value={`business:${b.id}`}>{b.name}</option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+          )}
+          {role === "business" && (
             <p className="text-sm text-gray-500">
               This goes to the community coordinator for {myBiz?.[0]?.name ?? "your business"}.
             </p>

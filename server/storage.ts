@@ -27,6 +27,8 @@ import {
   businessReminders,
   messageThreads,
   messages,
+  broadcasts,
+  userBroadcastState,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -71,6 +73,7 @@ import {
   type InsertBusinessGoals,
   type MessageThread,
   type Message,
+  type Broadcast,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
@@ -3128,6 +3131,64 @@ export class DatabaseStorage implements IStorage {
           sql`${messages.senderRole} <> ${readerRole}`,
         ),
       );
+  }
+
+  // Slice 2: admin support threads (context_type='admin_support') reuse the same
+  // tables — admin↔business sets businessId, admin↔coordinator sets coordinatorId.
+  async getAdminSupportThreads(): Promise<MessageThread[]> {
+    return await db
+      .select()
+      .from(messageThreads)
+      .where(eq(messageThreads.contextType, "admin_support"))
+      .orderBy(desc(messageThreads.lastMessageAt));
+  }
+
+  // Is this user an active platform admin? (For "admin" role in support threads.)
+  async isPlatformAdmin(userId: string): Promise<boolean> {
+    const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.userId, userId));
+    return !!admin && admin.isActive !== false;
+  }
+
+  // ── Admin broadcasts (Slice 2) ──────────────────────────────────────────
+  async createBroadcast(data: {
+    senderUserId?: string;
+    audience: string;
+    subject: string;
+    body: string;
+  }): Promise<Broadcast> {
+    const [row] = await db.insert(broadcasts).values(data).returning();
+    return row;
+  }
+
+  async getSentBroadcasts(): Promise<Broadcast[]> {
+    return await db.select().from(broadcasts).orderBy(desc(broadcasts.createdAt));
+  }
+
+  // The broadcasts a user should see: platform-wide ('all') plus any addressed to
+  // one of their role buckets (e.g. 'coordinators', 'businesses', 'customers').
+  async getBroadcastFeed(roleBuckets: string[]): Promise<Broadcast[]> {
+    const audiences = Array.from(new Set(["all", ...roleBuckets]));
+    return await db
+      .select()
+      .from(broadcasts)
+      .where(inArray(broadcasts.audience, audiences))
+      .orderBy(desc(broadcasts.createdAt));
+  }
+
+  async getBroadcastLastSeen(userId: string): Promise<Date | null> {
+    const [row] = await db
+      .select()
+      .from(userBroadcastState)
+      .where(eq(userBroadcastState.userId, userId));
+    return row?.lastSeenAt ?? null;
+  }
+
+  // Upsert the per-user watermark to now (they opened their announcements).
+  async markBroadcastsSeen(userId: string): Promise<void> {
+    await db
+      .insert(userBroadcastState)
+      .values({ userId, lastSeenAt: new Date() })
+      .onConflictDoUpdate({ target: userBroadcastState.userId, set: { lastSeenAt: new Date() } });
   }
 }
 

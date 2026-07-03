@@ -16,6 +16,7 @@ import WebsiteEditor from "@/components/merchant/website-editor";
 import ScavengerBuilder from "@/components/merchant/scavenger-builder";
 import RemindersPanel from "@/components/merchant/reminders-panel";
 import MessageCenter from "@/components/messaging/message-center";
+import AnnouncementsPanel from "@/components/messaging/announcements-panel";
 
 export default function MerchantBento() {
   const [, setLocation] = useLocation();
@@ -87,7 +88,10 @@ export default function MerchantBento() {
         {/* CHR-75: reminders to favoriters */}
         <RemindersPanel />
 
-        {/* Cross-role messaging (Slice 1) — talk to your community coordinator */}
+        {/* Admin announcements (Slice 2) */}
+        <AnnouncementsPanel />
+
+        {/* Cross-role messaging — coordinator threads + admin support */}
         <MessageCenter role="business" />
 
         {/* Bento Grid Layout */}
