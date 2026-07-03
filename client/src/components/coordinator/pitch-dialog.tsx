@@ -1,17 +1,83 @@
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Printer, MessageSquareQuote, Lightbulb, DollarSign, Shield, Package, CheckCircle2 } from "lucide-react";
-import { archetypeForCategory, fill, type PitchArchetype } from "@/lib/pitch-playbook";
+import { useToast } from "@/hooks/use-toast";
+import { Printer, MessageSquareQuote, Lightbulb, DollarSign, Shield, Package, CheckCircle2, Sparkles } from "lucide-react";
+import { archetypeForCategory, fill } from "@/lib/pitch-playbook";
 
-interface PitchTarget { name: string; category?: string | null }
+interface PitchTarget { name: string; category?: string | null; address?: string | null }
 
-// Coordinator Pitch Assistant — a tailored, on-screen pitch for a prospect,
-// resolved from its category, plus a printable one-page leave-behind.
+// A rendered pitch — the shared shape for both the template pitch and the
+// AI-generated one, so the dialog renders either identically.
+interface PitchView {
+  hook: string;
+  pain: string;
+  leadFeatures: string[];
+  pictureIt: string;
+  roi: string;
+  objection: { q: string; a: string };
+  bundle: string;
+  close: string;
+}
+
+// Coordinator Pitch Assistant — a tailored pitch for a prospect. Starts from a
+// category-matched template and can be re-generated, AI-personalized, per
+// business. Includes a printable one-page leave-behind.
 export default function PitchDialog({ target, onClose }: { target: PitchTarget | null; onClose: () => void }) {
+  const { toast } = useToast();
   const open = !!target;
   const name = target?.name || "";
   const a = archetypeForCategory(target?.category);
+
+  const [aiPitch, setAiPitch] = useState<PitchView | null>(null);
+  const [useAi, setUseAi] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Reset AI state whenever a different business is opened.
+  useEffect(() => {
+    setAiPitch(null);
+    setUseAi(false);
+    setLoading(false);
+  }, [target?.name, target?.category]);
+
+  const templateView: PitchView = {
+    hook: fill(a.hook, name),
+    pain: a.pain,
+    leadFeatures: a.leadFeatures,
+    pictureIt: fill(a.pictureIt, name),
+    roi: a.roi,
+    objection: a.objection,
+    bundle: a.bundle,
+    close: fill(a.close, name),
+  };
+  const view: PitchView = useAi && aiPitch ? aiPitch : templateView;
+
+  const generate = async () => {
+    if (!target) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/coordinator/pitch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: target.name, category: target.category, city: target.address }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.pitch) {
+        setAiPitch(data.pitch);
+        setUseAi(true);
+      } else if (data.aiUnavailable) {
+        toast({ title: "AI pitches aren't set up yet", description: "Showing the standard pitch instead." });
+      } else {
+        toast({ title: "Couldn't generate an AI pitch", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Couldn't generate an AI pitch", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -24,9 +90,15 @@ export default function PitchDialog({ target, onClose }: { target: PitchTarget |
         </DialogHeader>
 
         <div className="flex items-center gap-2 mb-1">
-          <Badge className="bg-purple-100 text-purple-700 border-purple-200">
-            {a.emoji} {a.label}
-          </Badge>
+          {useAi && aiPitch ? (
+            <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0 flex items-center gap-1">
+              <Sparkles className="h-3 w-3" /> AI-personalized
+            </Badge>
+          ) : (
+            <Badge className="bg-purple-100 text-purple-700 border-purple-200">
+              {a.emoji} {a.label}
+            </Badge>
+          )}
           {target?.category ? (
             <span className="text-xs text-gray-400">from category “{target.category}”</span>
           ) : (
@@ -36,44 +108,64 @@ export default function PitchDialog({ target, onClose }: { target: PitchTarget |
 
         <div className="space-y-4 text-sm">
           <Section icon={<MessageSquareQuote className="h-4 w-4" />} label="Open with">
-            <p className="italic text-gray-700 dark:text-gray-300">“{fill(a.hook, name)}”</p>
+            <p className="italic text-gray-700 dark:text-gray-300">“{view.hook}”</p>
           </Section>
 
           <Section label="Their pain">
-            <p className="text-gray-600 dark:text-gray-400">{a.pain}</p>
+            <p className="text-gray-600 dark:text-gray-400">{view.pain}</p>
           </Section>
 
           <Section icon={<CheckCircle2 className="h-4 w-4" />} label="Lead with">
             <ul className="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-300">
-              {a.leadFeatures.map((f, i) => <li key={i}>{f}</li>)}
+              {view.leadFeatures.map((f, i) => <li key={i}>{f}</li>)}
             </ul>
           </Section>
 
           <Section icon={<Lightbulb className="h-4 w-4" />} label="Picture it">
-            <p className="italic text-gray-700 dark:text-gray-300">“{fill(a.pictureIt, name)}”</p>
+            <p className="italic text-gray-700 dark:text-gray-300">“{view.pictureIt}”</p>
           </Section>
 
           <Section icon={<DollarSign className="h-4 w-4" />} label="The money">
-            <p className="text-gray-700 dark:text-gray-300">{a.roi}</p>
+            <p className="text-gray-700 dark:text-gray-300">{view.roi}</p>
           </Section>
 
           <Section icon={<Shield className="h-4 w-4" />} label="If they say…">
-            <p className="text-gray-600 dark:text-gray-400"><span className="font-medium">{a.objection.q}</span></p>
-            <p className="italic text-gray-700 dark:text-gray-300 mt-1">“{a.objection.a}”</p>
+            <p className="text-gray-600 dark:text-gray-400"><span className="font-medium">{view.objection.q}</span></p>
+            <p className="italic text-gray-700 dark:text-gray-300 mt-1">“{view.objection.a}”</p>
           </Section>
 
           <Section icon={<Package className="h-4 w-4" />} label="Recommend">
-            <p className="text-gray-700 dark:text-gray-300">{a.bundle}</p>
+            <p className="text-gray-700 dark:text-gray-300">{view.bundle}</p>
           </Section>
 
           <div className="rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border border-purple-100 dark:border-purple-900 p-3">
             <div className="text-xs font-semibold text-purple-700 dark:text-purple-300 mb-1">Close</div>
-            <p className="italic text-gray-800 dark:text-gray-200">“{fill(a.close, name)}”</p>
+            <p className="italic text-gray-800 dark:text-gray-200">“{view.close}”</p>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => printOnePager(a, name)}>
+        <div className="flex flex-wrap justify-end gap-2 pt-2">
+          {aiPitch ? (
+            <div className="mr-auto inline-flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <button
+                className={`px-3 py-1.5 text-xs ${!useAi ? "bg-purple-600 text-white" : "text-gray-600 dark:text-gray-300"}`}
+                onClick={() => setUseAi(false)}
+              >
+                Standard
+              </button>
+              <button
+                className={`px-3 py-1.5 text-xs flex items-center gap-1 ${useAi ? "bg-purple-600 text-white" : "text-gray-600 dark:text-gray-300"}`}
+                onClick={() => setUseAi(true)}
+              >
+                <Sparkles className="h-3 w-3" /> AI
+              </button>
+            </div>
+          ) : (
+            <Button variant="outline" className="mr-auto" onClick={generate} disabled={loading}>
+              <Sparkles className="h-4 w-4 mr-2" /> {loading ? "Generating…" : "Personalize with AI"}
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => printOnePager(view, name, a.emoji, useAi && aiPitch ? "AI-personalized" : a.label)}>
             <Printer className="h-4 w-4 mr-2" /> Print one-pager
           </Button>
           <Button onClick={onClose} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">Done</Button>
@@ -95,9 +187,8 @@ function Section({ icon, label, children }: { icon?: React.ReactNode; label: str
 }
 
 // Open a self-contained, print-styled leave-behind for the prospect.
-function printOnePager(a: PitchArchetype, name: string) {
-  const esc = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function printOnePager(v: PitchView, name: string, emoji: string, label: string) {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const who = name || "your business";
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Cirqlback — ${esc(who)}</title>
 <style>
@@ -114,15 +205,15 @@ function printOnePager(a: PitchArchetype, name: string) {
   .foot { margin-top: 20px; color: #9aa1ad; font-size: 10px; border-top: 1px solid #eee; padding-top: 8px; }
 </style></head><body>
   <div class="brand">Cirqlback</div>
-  <h1>${a.emoji} Pitch: ${esc(who)}</h1>
-  <div class="sub">${esc(a.label)} · Coordinator leave-behind</div>
-  <h2>Open with</h2><div class="quote">${esc(fill(a.hook, name))}</div>
-  <h2>Lead with</h2><ul>${a.leadFeatures.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
-  <h2>Picture it</h2><div class="quote">${esc(fill(a.pictureIt, name))}</div>
-  <h2>The money</h2><p>${esc(a.roi)}</p>
-  <h2>If they say “${esc(a.objection.q.replace(/[“”]/g, ""))}”</h2><div class="quote">${esc(a.objection.a)}</div>
-  <h2>Recommend</h2><p>${esc(a.bundle)}</p>
-  <div class="close"><strong>Close:</strong> ${esc(fill(a.close, name))}</div>
+  <h1>${esc(emoji)} Pitch: ${esc(who)}</h1>
+  <div class="sub">${esc(label)} · Coordinator leave-behind</div>
+  <h2>Open with</h2><div class="quote">${esc(v.hook)}</div>
+  <h2>Lead with</h2><ul>${v.leadFeatures.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
+  <h2>Picture it</h2><div class="quote">${esc(v.pictureIt)}</div>
+  <h2>The money</h2><p>${esc(v.roi)}</p>
+  <h2>If they say “${esc(v.objection.q.replace(/[“”]/g, ""))}”</h2><div class="quote">${esc(v.objection.a)}</div>
+  <h2>Recommend</h2><p>${esc(v.bundle)}</p>
+  <div class="close"><strong>Close:</strong> ${esc(v.close)}</div>
   <div class="foot">Cirqlback — tap-to-earn loyalty &amp; local discovery. First six months free.</div>
   <script>window.onload = function(){ window.print(); }</script>
 </body></html>`;

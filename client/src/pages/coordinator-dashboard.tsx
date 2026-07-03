@@ -351,7 +351,7 @@ export default function CoordinatorDashboard() {
   // Filter the territory business table by name / category / address.
   const [storeSearch, setStoreSearch] = useState("");
   // Pitch Assistant: the business a coordinator is drafting a pitch for.
-  const [pitchTarget, setPitchTarget] = useState<{ name: string; category?: string | null } | null>(null);
+  const [pitchTarget, setPitchTarget] = useState<{ name: string; category?: string | null; address?: string | null } | null>(null);
   const filteredStores = (() => {
     const q = storeSearch.trim().toLowerCase();
     const stores = overview?.stores || [];
@@ -569,7 +569,7 @@ export default function CoordinatorDashboard() {
                               variant="ghost"
                               title="How to pitch this business"
                               className="h-7 px-2 text-xs text-purple-500 hover:text-purple-700"
-                              onClick={() => setPitchTarget({ name: s.name, category: s.category })}
+                              onClick={() => setPitchTarget({ name: s.name, category: s.category, address: s.address })}
                             >
                               <Megaphone className="h-4 w-4" />
                             </Button>

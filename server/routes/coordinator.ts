@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import crypto from "crypto";
 import { storage } from "../storage";
+import { openaiService } from "../openai-service";
 import type { RouteDeps } from "./_shared";
 
 // CHR-53: basic store templates a coordinator can prefill a new business from.
@@ -71,6 +72,27 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
     res.json(
       Object.entries(STORE_TEMPLATES).map(([key, t]) => ({ key, label: t.label }))
     );
+  });
+
+  // AI-personalized sales pitch for a prospect. Falls back gracefully when the
+  // OpenAI key isn't configured (the client then keeps the template pitch).
+  app.post("/api/coordinator/pitch", async (req, res) => {
+    try {
+      const name = String(req.body?.name || "").trim();
+      if (!name) return res.status(400).json({ error: "name is required" });
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(503).json({ error: "AI pitches aren't configured", aiUnavailable: true });
+      }
+      const pitch = await openaiService.generateSalesPitch({
+        name,
+        category: req.body?.category ? String(req.body.category) : undefined,
+        city: req.body?.city ? String(req.body.city) : undefined,
+      });
+      res.json({ pitch });
+    } catch (error) {
+      console.error("AI pitch error:", error);
+      res.status(502).json({ error: "Couldn't generate an AI pitch right now", aiUnavailable: true });
+    }
   });
 
   // CHR-53: businesses across the coordinator's territories (for management).

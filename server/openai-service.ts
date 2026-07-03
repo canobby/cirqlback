@@ -63,7 +63,50 @@ export interface PredictiveAnalytics {
   };
 }
 
+// A tailored sales pitch for a single prospect (shape mirrors the coordinator
+// Pitch Assistant so the dialog can render AI and template pitches identically).
+export interface GeneratedPitch {
+  hook: string;
+  pain: string;
+  leadFeatures: string[];
+  pictureIt: string;
+  roi: string;
+  objection: { q: string; a: string };
+  bundle: string;
+  close: string;
+}
+
 export class OpenAIService {
+  // Generate a bespoke coordinator sales pitch for one local business.
+  async generateSalesPitch(biz: { name: string; category?: string; city?: string }): Promise<GeneratedPitch> {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: `You are a sales coach for Cirqlback, a tap-to-earn local loyalty platform. Cirqlback gives a local business: (1) NFC "tap to earn" loyalty rewards and digital punch cards, (2) a hosted one-page website at cirqlback.com/biz/<name> with their brand, hours, specials and live rewards, (3) a pin on a local discovery map, (4) cross-business "trails" that share foot traffic with neighboring shops, plus paid add-ons (custom tap-screen branding, advanced analytics, map priority, contest/scavenger-hunt builder). Pricing is $19.99/mo Core or $49.99/mo Pro (hosted page included), with a free 6-month trial. Write a short, punchy, SPOKEN pitch a community coordinator can deliver in the doorway, tailored to THIS specific business and its town. Reference the business by name and lead with the 2-3 features that matter most for its type. Return ONLY JSON with these keys: "hook" (a 1-2 sentence opening that names a real pain), "pain" (one sentence), "leadFeatures" (array of exactly 3 short strings), "pictureIt" (a concrete 1-2 sentence scenario using their world), "roi" (one sentence tying the value to the ~$20/month cost), "objection" (an object {"q": a likely objection, "a": a rebuttal}), "bundle" (recommended plan + add-ons), "close" (a 1-2 sentence closing line that mentions the free 6-month trial). Keep every line conversational and concise; no markdown.`,
+        },
+        {
+          role: "user",
+          content: `Business name: ${biz.name}\nType / category: ${biz.category || "local business"}\nTown / city: ${biz.city || "their town"}`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.8,
+    });
+    const r = JSON.parse(response.choices[0].message.content || "{}");
+    return {
+      hook: String(r.hook || ""),
+      pain: String(r.pain || ""),
+      leadFeatures: Array.isArray(r.leadFeatures) ? r.leadFeatures.slice(0, 4).map(String) : [],
+      pictureIt: String(r.pictureIt || ""),
+      roi: String(r.roi || ""),
+      objection: { q: String(r.objection?.q || ""), a: String(r.objection?.a || "") },
+      bundle: String(r.bundle || ""),
+      close: String(r.close || ""),
+    };
+  }
+
   // Generate business insights based on analytics data
   async generateBusinessInsights(businessData: {
     type: string;
