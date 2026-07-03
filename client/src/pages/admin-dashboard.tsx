@@ -23,6 +23,7 @@ import AuditPanel from "@/components/admin/audit-panel";
 import RevenuePanel from "@/components/admin/revenue-panel";
 import TrustSafetyPanel from "@/components/admin/trust-safety-panel";
 import CoordinatorLeaderboard from "@/components/admin/coordinator-leaderboard";
+import TerritoryManager from "@/components/admin/territory-manager";
 import PlatformConfigPanel from "@/components/admin/platform-config-panel";
 import { 
   Shield,
@@ -728,6 +729,7 @@ export default function AdminDashboard() {
           {/* Territories: leaderboard + coordinator revenue share */}
           <TabsContent value="coordinators" className="space-y-6">
             <h2 className="text-xl font-semibold">Territories</h2>
+            <TerritoryManager />
             <CoordinatorLeaderboard />
             <CoordinatorSharePanel />
           </TabsContent>

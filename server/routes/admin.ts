@@ -320,6 +320,91 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // ── Territory manager (circular territories) ──
+
+  app.get("/api/admin/territories", async (_req, res) => {
+    try {
+      res.json(await storage.getTerritoryManager());
+    } catch (error) {
+      console.error("Territory manager error:", error);
+      res.status(500).json({ error: "Failed to load territories" });
+    }
+  });
+
+  app.post("/api/admin/territories", async (req, res) => {
+    try {
+      const name = String(req.body?.name || "").trim();
+      const coordinatorId = String(req.body?.coordinatorId || "");
+      if (!name || !coordinatorId) return res.status(400).json({ error: "name and coordinatorId are required" });
+      const t = await storage.createTerritory({
+        name, coordinatorId,
+        centerLat: req.body?.centerLat ?? null,
+        centerLng: req.body?.centerLng ?? null,
+        radiusMeters: req.body?.radiusMeters ?? null,
+        city: req.body?.city ?? null,
+        state: req.body?.state ?? null,
+        welcomeMessage: req.body?.welcomeMessage ?? null,
+      } as any);
+      audit(req, "territory.create", "territory", t.id, name);
+      res.json({ success: true, territory: t });
+    } catch (error) {
+      console.error("Create territory error:", error);
+      res.status(400).json({ error: "Failed to create territory (check the coordinator)" });
+    }
+  });
+
+  app.patch("/api/admin/territories/:id", async (req, res) => {
+    try {
+      const patch: any = {};
+      for (const k of ["name", "coordinatorId", "centerLat", "centerLng", "radiusMeters", "welcomeMessage", "isActive"]) {
+        if (req.body?.[k] !== undefined) patch[k] = req.body[k];
+      }
+      const t = await storage.updateTerritory(req.params.id, patch);
+      if (!t) return res.status(404).json({ error: "Territory not found" });
+      audit(req, "territory.update", "territory", req.params.id, t.name);
+      res.json({ success: true, territory: t });
+    } catch (error) {
+      console.error("Update territory error:", error);
+      res.status(400).json({ error: "Failed to update territory" });
+    }
+  });
+
+  app.delete("/api/admin/territories/:id", async (req, res) => {
+    try {
+      await storage.deleteTerritory(req.params.id);
+      audit(req, "territory.delete", "territory", req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete territory error:", error);
+      res.status(500).json({ error: "Failed to delete territory" });
+    }
+  });
+
+  // Auto-assign unassigned businesses to the territory circle that contains them.
+  app.post("/api/admin/territories/auto-assign", async (req, res) => {
+    try {
+      const result = await storage.autoAssignTerritories();
+      audit(req, "territory.auto-assign", "territory", undefined, `assigned ${result.assigned}, contested ${result.contested}`);
+      res.json({ success: true, ...result });
+    } catch (error) {
+      console.error("Auto-assign error:", error);
+      res.status(500).json({ error: "Failed to auto-assign" });
+    }
+  });
+
+  // Manually (re)assign a single business to a territory (or null = unassign).
+  app.post("/api/admin/businesses/:id/territory", async (req, res) => {
+    try {
+      const territoryId = req.body?.territoryId ? String(req.body.territoryId) : null;
+      await storage.setBusinessTerritory(req.params.id, territoryId);
+      audit(req, "business.reassign-territory", "business", req.params.id, territoryId || "unassigned");
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Reassign territory error:", error);
+      res.status(500).json({ error: "Failed to reassign" });
+    }
+  });
+
   // Platform tab: which integrations are configured (booleans only — never the
   // secret values themselves).
   app.get("/api/admin/platform-config", (_req, res) => {

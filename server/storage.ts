@@ -972,6 +972,87 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
+  // ── Admin territory manager (circular territories) ──
+
+  // Everything the manager + coverage map needs: territories (with coordinator
+  // + business count), business points, circle overlaps, and the unassigned/
+  // contested/no-coverage summary.
+  async getTerritoryManager(): Promise<{
+    territories: Array<{ id: string; name: string; coordinatorId: string; coordinatorName: string | null; centerLat: number | null; centerLng: number | null; radiusMeters: number | null; welcomeMessage: string | null; isActive: boolean; businesses: number }>;
+    coordinators: Array<{ id: string; name: string }>;
+    points: Array<{ id: string; name: string; lat: number; lng: number; territoryId: string | null; claimed: boolean }>;
+    overlaps: Array<{ a: string; b: string }>;
+    summary: { unassigned: number; contested: number; noCoverage: number };
+  }> {
+    const [terrs, coords, biz] = await Promise.all([
+      db.select().from(territories),
+      this.listCoordinators(),
+      db.select({ id: businesses.id, name: businesses.name, lat: businesses.latitude, lng: businesses.longitude, territoryId: businesses.territoryId, ownerId: businesses.ownerId })
+        .from(businesses).where(eq(businesses.isActive, true)),
+    ]);
+    const coordName = new Map(coords.map((c) => [c.id, c.displayName || [c.firstName, c.lastName].filter(Boolean).join(" ") || c.email || "Coordinator"]));
+    const countByTerr = new Map<string, number>();
+    for (const b of biz) if (b.territoryId) countByTerr.set(b.territoryId, (countByTerr.get(b.territoryId) || 0) + 1);
+
+    const circles = terrs.filter((t) => t.isActive && t.centerLat != null && t.centerLng != null && t.radiusMeters != null);
+    let unassigned = 0, contested = 0, noCoverage = 0;
+    for (const b of biz) {
+      if (b.territoryId) continue;
+      unassigned++;
+      if (b.lat == null || b.lng == null) { noCoverage++; continue; }
+      const n = circles.filter((t) => haversineMeters(b.lat!, b.lng!, t.centerLat!, t.centerLng!) <= t.radiusMeters!).length;
+      if (n > 1) contested++; else if (n === 0) noCoverage++;
+    }
+    const overlaps: Array<{ a: string; b: string }> = [];
+    for (let i = 0; i < circles.length; i++) for (let j = i + 1; j < circles.length; j++) {
+      const A = circles[i], B = circles[j];
+      if (haversineMeters(A.centerLat!, A.centerLng!, B.centerLat!, B.centerLng!) < (A.radiusMeters! + B.radiusMeters!)) overlaps.push({ a: A.id, b: B.id });
+    }
+
+    return {
+      territories: terrs.map((t) => ({
+        id: t.id, name: t.name, coordinatorId: t.coordinatorId, coordinatorName: coordName.get(t.coordinatorId) ?? null,
+        centerLat: t.centerLat, centerLng: t.centerLng, radiusMeters: t.radiusMeters, welcomeMessage: t.welcomeMessage, isActive: !!t.isActive,
+        businesses: countByTerr.get(t.id) ?? 0,
+      })),
+      coordinators: coords.map((c) => ({ id: c.id, name: coordName.get(c.id) ?? "Coordinator" })),
+      points: biz.filter((b) => b.lat != null && b.lng != null).map((b) => ({ id: b.id, name: b.name, lat: b.lat as number, lng: b.lng as number, territoryId: b.territoryId ?? null, claimed: !!b.ownerId })),
+      overlaps,
+      summary: { unassigned, contested, noCoverage },
+    };
+  }
+
+  // Delete a territory — unassigns its businesses first (never orphan a FK).
+  async deleteTerritory(id: string): Promise<void> {
+    await db.update(businesses).set({ territoryId: null }).where(eq(businesses.territoryId, id));
+    await db.delete(territories).where(eq(territories.id, id));
+  }
+
+  async setBusinessTerritory(businessId: string, territoryId: string | null): Promise<void> {
+    await db.update(businesses).set({ territoryId }).where(eq(businesses.id, businessId));
+  }
+
+  // Auto-assign unassigned businesses to the single active territory whose circle
+  // contains them. In 0 circles → left unassigned; in >1 → counted as contested.
+  async autoAssignTerritories(): Promise<{ assigned: number; contested: number }> {
+    const [terrs, biz] = await Promise.all([
+      db.select().from(territories).where(eq(territories.isActive, true)),
+      db.select({ id: businesses.id, lat: businesses.latitude, lng: businesses.longitude })
+        .from(businesses).where(and(eq(businesses.isActive, true), isNull(businesses.territoryId))),
+    ]);
+    const circles = terrs.filter((t) => t.centerLat != null && t.centerLng != null && t.radiusMeters != null);
+    let contested = 0;
+    const toAssign: Array<{ id: string; territoryId: string }> = [];
+    for (const b of biz) {
+      if (b.lat == null || b.lng == null) continue;
+      const matches = circles.filter((t) => haversineMeters(b.lat!, b.lng!, t.centerLat!, t.centerLng!) <= t.radiusMeters!);
+      if (matches.length === 1) toAssign.push({ id: b.id, territoryId: matches[0].id });
+      else if (matches.length > 1) contested++;
+    }
+    for (const a of toAssign) await db.update(businesses).set({ territoryId: a.territoryId }).where(eq(businesses.id, a.id));
+    return { assigned: toAssign.length, contested };
+  }
+
   async getTerritoriesByCoordinator(coordinatorId: string): Promise<Territory[]> {
     return await db.select().from(territories).where(eq(territories.coordinatorId, coordinatorId));
   }
