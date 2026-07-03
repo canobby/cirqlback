@@ -40,7 +40,14 @@ function sanitize(user: User) {
 // --- Auth middleware --------------------------------------------------------
 
 export const isAuthenticated: RequestHandler = (req, res, next) => {
-  if (req.isAuthenticated?.() && req.user) return next();
+  if (req.isAuthenticated?.() && req.user) {
+    // A suspended account is blocked immediately (kills active sessions) — unless
+    // an admin is impersonating it for support (session.impersonatorId set).
+    if ((req.user as any).suspended && !(req.session as any)?.impersonatorId) {
+      return res.status(403).json({ message: "This account has been suspended." });
+    }
+    return next();
+  }
   return res.status(401).json({ message: "Unauthorized" });
 };
 
@@ -150,6 +157,7 @@ export function setupAuth(app: Express) {
           }
           const ok = await verifyPassword(password, user.passwordHash);
           if (!ok) return done(null, false, { message: "Invalid email or password" });
+          if ((user as any).suspended) return done(null, false, { message: "This account has been suspended." });
           return done(null, user);
         } catch (err) {
           return done(err as Error);

@@ -15,6 +15,14 @@ import type { RouteDeps } from "./_shared";
 export function registerAdminRoutes(app: Express, deps: RouteDeps) {
   const { userOwnsBusiness } = deps;
 
+  // Record a privileged admin action to the audit log (fire-and-forget).
+  const audit = (req: any, action: string, targetType?: string, targetId?: string, detail?: string) =>
+    storage.logAdminAction({
+      adminUserId: req.user?.id ?? null,
+      adminEmail: req.user?.email ?? null,
+      action, targetType, targetId, detail,
+    });
+
   // Admin Invitation and Management Routes - ADMIN ONLY ACCESS
   // These routes are only accessible by admin users and hidden from regular users/customers
   
@@ -144,11 +152,41 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
         (req.session as any).impersonatorId = impersonatorId;
         (req.session as any).impersonatorEmail = impersonatorEmail;
         console.warn(`[impersonate] admin ${impersonatorEmail} is now viewing as ${target.email}`);
+        // Log with the admin's identity (req.user is now the target after login).
+        storage.logAdminAction({ adminUserId: impersonatorId, adminEmail: impersonatorEmail, action: "user.impersonate", targetType: "user", targetId: target.id, detail: target.email });
         res.json({ success: true, user: { id: target.id, email: target.email } });
       });
     } catch (error) {
       console.error("Impersonate error:", error);
       res.status(500).json({ error: "Failed to impersonate" });
+    }
+  });
+
+  // Suspend / unsuspend a user account. Refuses to suspend an admin.
+  app.post("/api/admin/users/:id/suspend", async (req, res) => {
+    try {
+      const suspended = req.body?.suspended !== false;
+      const reason = req.body?.reason ? String(req.body.reason).slice(0, 300) : null;
+      const target = await storage.getUser(req.params.id);
+      if (!target) return res.status(404).json({ error: "User not found" });
+      const [targetAdmin] = await db.select({ id: adminUsers.id }).from(adminUsers).where(eq(adminUsers.userId, target.id));
+      if (targetAdmin) return res.status(403).json({ error: "Can't suspend an admin" });
+      await storage.setUserSuspended(target.id, suspended, reason);
+      audit(req, suspended ? "user.suspend" : "user.unsuspend", "user", target.id, reason || target.email || undefined);
+      res.json({ success: true, suspended });
+    } catch (error) {
+      console.error("Suspend error:", error);
+      res.status(500).json({ error: "Failed to update suspension" });
+    }
+  });
+
+  // Audit log — recent privileged admin actions.
+  app.get("/api/admin/audit", async (_req, res) => {
+    try {
+      res.json(await storage.getAdminAudit(150));
+    } catch (error) {
+      console.error("Audit error:", error);
+      res.status(500).json({ error: "Failed to load audit log" });
     }
   });
 
@@ -221,6 +259,7 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
         return res.status(400).json({ error: "Invalid status" });
       }
       const business = await storage.updateBusiness(req.params.id, { verificationStatus: status });
+      audit(req, status === "verified" ? "business.verify" : "business.reject", "business", req.params.id, business?.name);
       res.json({ success: true, business });
     } catch (error) {
       console.error("Admin verify error:", error);
@@ -241,6 +280,7 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
   app.post("/api/admin/businesses/:id/unpublish", async (req, res) => {
     try {
       await storage.updateBusiness(req.params.id, { websitePublished: false });
+      audit(req, "page.unpublish", "business", req.params.id);
       res.json({ success: true });
     } catch (error) {
       console.error("Unpublish error:", error);
@@ -262,6 +302,7 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
   app.post("/api/admin/businesses/:id/revoke-nonprofit", async (req, res) => {
     try {
       await storage.updateBusiness(req.params.id, { isNonprofit: false });
+      audit(req, "nonprofit.revoke", "business", req.params.id);
       res.json({ success: true });
     } catch (error) {
       console.error("Revoke nonprofit error:", error);

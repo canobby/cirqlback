@@ -19,6 +19,7 @@ import {
   businessAddons,
   businessTapBranding,
   adminUsers,
+  adminAudit,
   donationCampaigns,
   donationCampaignMembers,
   donations,
@@ -815,7 +816,7 @@ export class DatabaseStorage implements IStorage {
   // Support 360: a full picture of one user for admin support — profile, role
   // flags, and each of their businesses with key stats.
   async getUserDetail(userId: string): Promise<null | {
-    user: { id: string; email: string | null; firstName: string | null; lastName: string | null; role: string | null; subscriptionTier: string | null; subscriptionStatus: string | null; createdAt: Date | null };
+    user: { id: string; email: string | null; firstName: string | null; lastName: string | null; role: string | null; subscriptionTier: string | null; subscriptionStatus: string | null; createdAt: Date | null; suspended: boolean };
     isAdmin: boolean; isCoordinator: boolean;
     businesses: Array<{ id: string; name: string; verificationStatus: string | null; websitePublished: boolean; websiteSlug: string | null; campaigns: number; tags: number; taps: number; lastTap: Date | null }>;
   }> {
@@ -843,9 +844,42 @@ export class DatabaseStorage implements IStorage {
       user: {
         id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName,
         role: user.role, subscriptionTier: user.subscriptionTier, subscriptionStatus: user.subscriptionStatus, createdAt: user.createdAt,
+        suspended: !!(user as any).suspended,
       },
       isAdmin: !!adminRow, isCoordinator: !!coord, businesses,
     };
+  }
+
+  // Suspend / unsuspend a user account (blocks login + active sessions).
+  async setUserSuspended(userId: string, suspended: boolean, reason?: string | null): Promise<void> {
+    await db.update(users).set({
+      suspended,
+      suspendedAt: suspended ? new Date() : null,
+      suspendedReason: suspended ? (reason ?? null) : null,
+    } as any).where(eq(users.id, userId));
+  }
+
+  // Admin audit log — record a privileged action, and read recent entries.
+  async logAdminAction(entry: { adminUserId?: string | null; adminEmail?: string | null; action: string; targetType?: string | null; targetId?: string | null; detail?: string | null }): Promise<void> {
+    try {
+      await db.insert(adminAudit).values({
+        adminUserId: entry.adminUserId ?? null,
+        adminEmail: entry.adminEmail ?? null,
+        action: entry.action,
+        targetType: entry.targetType ?? null,
+        targetId: entry.targetId ?? null,
+        detail: entry.detail ?? null,
+      });
+    } catch (e) {
+      console.error("audit log failed:", e); // never let auditing break the action
+    }
+  }
+
+  async getAdminAudit(limit = 100): Promise<Array<{ id: string; adminEmail: string | null; action: string; targetType: string | null; targetId: string | null; detail: string | null; createdAt: Date | null }>> {
+    return await db.select({
+      id: adminAudit.id, adminEmail: adminAudit.adminEmail, action: adminAudit.action,
+      targetType: adminAudit.targetType, targetId: adminAudit.targetId, detail: adminAudit.detail, createdAt: adminAudit.createdAt,
+    }).from(adminAudit).orderBy(desc(adminAudit.createdAt)).limit(limit);
   }
 
   // Real list of platform users for the admin user-management table.

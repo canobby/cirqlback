@@ -1,15 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { UserCircle, Store, Shield, UserCog, Eye, CheckCircle2, Globe } from "lucide-react";
+import { UserCircle, Store, Shield, UserCog, Eye, CheckCircle2, Globe, Ban } from "lucide-react";
 import { useState } from "react";
 
 interface Biz { id: string; name: string; verificationStatus: string | null; websitePublished: boolean; websiteSlug: string | null; campaigns: number; tags: number; taps: number; lastTap: string | null }
 interface Detail {
-  user: { id: string; email: string | null; firstName: string | null; lastName: string | null; role: string | null; subscriptionTier: string | null; subscriptionStatus: string | null; createdAt: string | null };
+  user: { id: string; email: string | null; firstName: string | null; lastName: string | null; role: string | null; subscriptionTier: string | null; subscriptionStatus: string | null; createdAt: string | null; suspended: boolean };
   isAdmin: boolean; isCoordinator: boolean; businesses: Biz[];
 }
 
@@ -17,12 +17,29 @@ interface Detail {
 // action for support.
 export default function UserDetailDialog({ userId, onClose }: { userId: string | null; onClose: () => void }) {
   const { toast } = useToast();
+  const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const { data } = useQuery<Detail>({
     queryKey: [`/api/admin/user/${userId}/detail`],
     enabled: !!userId,
     retry: false,
   });
+
+  const toggleSuspend = async () => {
+    if (!userId || !data) return;
+    const next = !data.user.suspended;
+    if (next && !confirm(`Suspend ${data.user.email}? They'll be blocked from logging in.`)) return;
+    setBusy(true);
+    try {
+      await apiRequest("POST", `/api/admin/users/${userId}/suspend`, { suspended: next });
+      toast({ title: next ? "User suspended" : "User unsuspended" });
+      qc.invalidateQueries({ queryKey: [`/api/admin/user/${userId}/detail`] });
+    } catch {
+      toast({ title: "Couldn't update suspension", variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const impersonate = async () => {
     if (!userId) return;
@@ -46,6 +63,7 @@ export default function UserDetailDialog({ userId, onClose }: { userId: string |
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserCircle className="h-5 w-5 text-purple-600" /> {name || "User"}
+            {data?.user.suspended && <Badge className="bg-red-100 text-red-700 border-red-200">Suspended</Badge>}
           </DialogTitle>
         </DialogHeader>
 
@@ -107,11 +125,16 @@ export default function UserDetailDialog({ userId, onClose }: { userId: string |
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-2 border-t">
               {data.isAdmin ? (
-                <span className="text-xs text-gray-400 self-center flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Admins can't be impersonated</span>
+                <span className="text-xs text-gray-400 self-center flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Admin — can't impersonate or suspend</span>
               ) : (
-                <Button variant="outline" onClick={impersonate} disabled={busy}>
-                  <Eye className="h-4 w-4 mr-2" /> {busy ? "Starting…" : "View as this user"}
-                </Button>
+                <>
+                  <Button variant="outline" className={`mr-auto ${data.user.suspended ? "text-green-600 hover:text-green-700" : "text-red-600 hover:text-red-700"}`} onClick={toggleSuspend} disabled={busy}>
+                    <Ban className="h-4 w-4 mr-2" /> {data.user.suspended ? "Unsuspend" : "Suspend"}
+                  </Button>
+                  <Button variant="outline" onClick={impersonate} disabled={busy}>
+                    <Eye className="h-4 w-4 mr-2" /> {busy ? "Starting…" : "View as this user"}
+                  </Button>
+                </>
               )}
               <Button onClick={onClose} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">Done</Button>
             </div>

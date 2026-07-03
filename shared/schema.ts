@@ -40,6 +40,11 @@ export const users = pgTable("users", {
   role: varchar("role").default("customer"), // customer, merchant, admin, coordinator
   subscriptionTier: varchar("subscription_tier").default("starter"), // starter, professional, business, enterprise
   subscriptionStatus: varchar("subscription_status").default("active"), // active, cancelled, expired
+  // Admin account suspension (blocks login + active sessions; separate from
+  // subscription status). Set via the admin Support 360 view.
+  suspended: boolean("suspended").default(false),
+  suspendedAt: timestamp("suspended_at"),
+  suspendedReason: varchar("suspended_reason"),
   starterExpiresAt: timestamp("starter_expires_at"), // 6 months from signup for starter tier
   trialDiscountTier: varchar("trial_discount_tier"), // Selected tier during trial for 50% discount
   trialDiscountEndsAt: timestamp("trial_discount_ends_at"), // When 50% discount expires
@@ -788,6 +793,19 @@ export const campaignTemplates = pgTable("campaign_templates", {
 });
 
 // Admin Management Tables
+// Admin action audit log — who did what, when. Written on privileged admin
+// mutations (verify/reject, unpublish, revoke nonprofit, suspend, impersonate).
+export const adminAudit = pgTable("admin_audit", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminUserId: varchar("admin_user_id").references(() => users.id),
+  adminEmail: varchar("admin_email"),
+  action: varchar("action").notNull(),
+  targetType: varchar("target_type"),
+  targetId: varchar("target_id"),
+  detail: text("detail"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const adminUsers = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),

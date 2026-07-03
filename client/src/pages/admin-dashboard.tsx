@@ -19,6 +19,7 @@ import AtRiskPanel from "@/components/admin/at-risk-panel";
 import AdminGeoPanel from "@/components/admin/geo-panel";
 import CustomerHealthPanel from "@/components/admin/customer-health-panel";
 import UserDetailDialog from "@/components/admin/user-detail-dialog";
+import AuditPanel from "@/components/admin/audit-panel";
 import RevenuePanel from "@/components/admin/revenue-panel";
 import TrustSafetyPanel from "@/components/admin/trust-safety-panel";
 import CoordinatorLeaderboard from "@/components/admin/coordinator-leaderboard";
@@ -282,7 +283,7 @@ export default function AdminDashboard() {
 
         <Tabs value={adminTab} onValueChange={setAdminTab} className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="grid grid-cols-11 min-w-max lg:w-full">
+            <TabsList className="grid grid-cols-12 min-w-max lg:w-full">
               <TabsTrigger value="overview" className="px-2 text-xs lg:px-3 lg:text-sm">Overview</TabsTrigger>
               <TabsTrigger value="revenue" className="px-2 text-xs lg:px-3 lg:text-sm">Revenue</TabsTrigger>
               <TabsTrigger value="trust" className="px-2 text-xs lg:px-3 lg:text-sm">Trust &amp; Safety</TabsTrigger>
@@ -294,6 +295,7 @@ export default function AdminDashboard() {
               <TabsTrigger value="subscriptions" className="px-2 text-xs lg:px-3 lg:text-sm">Subscriptions</TabsTrigger>
               <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Analytics</TabsTrigger>
               <TabsTrigger value="platform" className="px-2 text-xs lg:px-3 lg:text-sm">Platform</TabsTrigger>
+              <TabsTrigger value="audit" className="px-2 text-xs lg:px-3 lg:text-sm">Audit</TabsTrigger>
             </TabsList>
           </div>
 
@@ -734,6 +736,12 @@ export default function AdminDashboard() {
           <TabsContent value="platform" className="space-y-6">
             <h2 className="text-xl font-semibold">Platform</h2>
             <PlatformConfigPanel />
+          </TabsContent>
+
+          {/* Audit: privileged admin action log */}
+          <TabsContent value="audit" className="space-y-6">
+            <h2 className="text-xl font-semibold">Audit</h2>
+            <AuditPanel />
           </TabsContent>
         </Tabs>
 
