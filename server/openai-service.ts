@@ -90,11 +90,18 @@ const ROLE_LABEL: Record<AssistantRole, string> = {
 };
 
 export class OpenAIService {
-  // In-dashboard "how-to" guide. Answers why/what/where/how questions grounded
-  // ONLY in the role's shipped manual(s), so it never invents features or prices.
-  async answerHelpQuestion(role: AssistantRole, messages: AssistantTurn[]): Promise<string> {
-    const knowledge = getKnowledgeForRole(role);
-    const system = `You are the Cirqlback Help Assistant — a friendly, concise in-product guide embedded in the dashboard. The person talking to you is ${ROLE_LABEL[role]}.
+  // Build the grounded system+conversation messages shared by the streaming and
+  // non-streaming Help Assistant paths. `tier` scopes business grounding
+  // (Core vs Pro) and is ignored otherwise.
+  private buildHelpMessages(role: AssistantRole, messages: AssistantTurn[], tier?: string) {
+    const knowledge = getKnowledgeForRole(role, tier);
+    const planNote =
+      role === "business"
+        ? tier === "pro"
+          ? "\n\nThis business is on the PRO plan, so all Pro features are available to them."
+          : `\n\nThis business is on the ${tier === "core" ? "CORE" : "STARTER (free trial)"} plan. If they ask about a Pro-only feature, briefly explain it's available on the Pro plan and encourage the upgrade — but do NOT walk them through Pro-only steps in detail.`
+        : "";
+    const system = `You are the Cirqlback Help Assistant — a friendly, concise in-product guide embedded in the dashboard. The person talking to you is ${ROLE_LABEL[role]}.${planNote}
 
 Cirqlback is a "tap-to-earn" local loyalty and discovery platform: customers tap an NFC tag (or scan a QR) at a shop to earn points, rewards, streaks and badges; businesses run loyalty campaigns, a hosted page and cross-store trails; Community Coordinators grow a territory for a revenue share; admins run the platform.
 
@@ -112,13 +119,35 @@ ${knowledge}
 === END REFERENCE GUIDE ===`;
 
     const trimmed = messages.slice(-10).map((m) => ({ role: m.role, content: String(m.content || "").slice(0, 4000) }));
+    return [{ role: "system" as const, content: system }, ...trimmed];
+  }
+
+  // In-dashboard "how-to" guide (non-streaming). Answers grounded ONLY in the
+  // role's shipped manual(s), so it never invents features or prices.
+  async answerHelpQuestion(role: AssistantRole, messages: AssistantTurn[], tier?: string): Promise<string> {
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      messages: [{ role: "system", content: system }, ...trimmed],
+      messages: this.buildHelpMessages(role, messages, tier),
       temperature: 0.4,
       max_tokens: 700,
     });
     return response.choices[0]?.message?.content?.trim() || "Sorry, I couldn't come up with an answer. Try rephrasing, or check the relevant dashboard tab.";
+  }
+
+  // Streaming variant — yields answer text deltas as they arrive so the widget
+  // can render the reply progressively.
+  async *streamHelpAnswer(role: AssistantRole, messages: AssistantTurn[], tier?: string): AsyncGenerator<string> {
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: this.buildHelpMessages(role, messages, tier),
+      temperature: 0.4,
+      max_tokens: 700,
+      stream: true,
+    });
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content;
+      if (delta) yield delta;
+    }
   }
 
   // Generate a bespoke coordinator sales pitch for one local business.

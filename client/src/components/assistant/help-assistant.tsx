@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { Sparkles, X, Send, Loader2 } from "lucide-react";
 
@@ -115,13 +114,62 @@ export default function HelpAssistant({ role }: { role: Role }) {
     setInput("");
     setLoading(true);
     try {
-      const res = await apiRequest("POST", "/api/assistant/chat", { role, messages: next });
-      const data = await res.json();
-      setMessages((m) => [...m, { role: "assistant", content: data.reply as string }]);
-    } catch (e: any) {
-      let msg = "Something went wrong. Please try again.";
-      try { msg = JSON.parse(e.message.replace(/^\d+:\s*/, "")).error || msg; } catch {}
-      setError(msg);
+      const res = await fetch("/api/assistant/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ role, messages: next, stream: true }),
+      });
+
+      // Non-stream (error) responses come back as JSON — surface the message.
+      const ct = res.headers.get("content-type") || "";
+      if (!res.ok || !res.body || !ct.includes("text/event-stream")) {
+        let msg = "Something went wrong. Please try again.";
+        try { msg = (await res.json()).error || msg; } catch {}
+        setError(msg);
+        return;
+      }
+
+      // Stream deltas into a single assistant bubble, added on the first token.
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let acc = "";
+      let started = false;
+      let streamErr: string | null = null;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const events = buf.split("\n\n");
+        buf = events.pop() || "";
+        for (const evt of events) {
+          const dataLine = evt.split("\n").find((l) => l.startsWith("data:"));
+          if (!dataLine) continue;
+          const payload = dataLine.slice(5).trim();
+          if (!payload) continue;
+          let obj: any;
+          try { obj = JSON.parse(payload); } catch { continue; }
+          if (obj.delta) {
+            acc += obj.delta;
+            if (!started) {
+              started = true;
+              setMessages((m) => [...m, { role: "assistant", content: acc }]);
+            } else {
+              setMessages((m) => {
+                const c = m.slice();
+                c[c.length - 1] = { role: "assistant", content: acc };
+                return c;
+              });
+            }
+          } else if (obj.error) {
+            streamErr = obj.error;
+          }
+        }
+      }
+      if (streamErr && !acc) setError(streamErr);
+    } catch {
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -198,7 +246,7 @@ export default function HelpAssistant({ role }: { role: Role }) {
               </div>
             ))}
 
-            {loading && (
+            {loading && messages[messages.length - 1]?.role !== "assistant" && (
               <div className="flex justify-start">
                 <div className="flex items-center gap-2 rounded-xl rounded-tl-sm bg-white px-3 py-2 text-sm text-slate-500 shadow-sm">
                   <Loader2 className="h-4 w-4 animate-spin" /> Thinking…

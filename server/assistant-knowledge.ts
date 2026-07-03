@@ -10,13 +10,22 @@ import { dirname, resolve } from "path";
 
 export type AssistantRole = "business" | "coordinator" | "admin";
 
-// Which manuals ground each role. Business covers both Core and Pro (the Pro
-// guide is a superset of Core); coordinators also get the sales playbook.
-const ROLE_MANUALS: Record<AssistantRole, string[]> = {
-  business: ["business-basic-guide.md", "business-pro-guide.md"],
+// Which manuals ground each role. Business is scoped by plan tier (see below) so
+// a Core/Starter user isn't walked through Pro-only workflows; coordinators also
+// get the sales playbook; admin gets the admin guide.
+const ROLE_MANUALS: Record<Exclude<AssistantRole, "business">, string[]> = {
   coordinator: ["coordinator-guide.md", "coordinator-sales-playbook.md"],
   admin: ["admin-guide.md"],
 };
+
+// Business grounding by plan: only Pro users get the Pro guide (a superset).
+// Core and Starter users get the Core guide only — the assistant can still
+// mention Pro features as an upgrade, but won't hand out Pro-only detail.
+function businessManuals(tier?: string): string[] {
+  return tier === "pro"
+    ? ["business-basic-guide.md", "business-pro-guide.md"]
+    : ["business-basic-guide.md"];
+}
 
 // Resolve docs/manuals both in dev (tsx from server/) and in the esbuild bundle
 // (dist/index.js) — the repo root is one level up from either, and we fall back
@@ -39,15 +48,19 @@ function trimManual(md: string): string {
     .trim();
 }
 
-const cache = new Map<AssistantRole, string>();
+const cache = new Map<string, string>();
 
-export function getKnowledgeForRole(role: AssistantRole): string {
-  const cached = cache.get(role);
+// `tier` only affects the "business" role (Core vs Pro grounding); it's ignored
+// for coordinator/admin.
+export function getKnowledgeForRole(role: AssistantRole, tier?: string): string {
+  const files = role === "business" ? businessManuals(tier) : ROLE_MANUALS[role];
+  const key = `${role}:${files.join(",")}`;
+  const cached = cache.get(key);
   if (cached !== undefined) return cached;
 
   const dir = manualsDir();
   const parts: string[] = [];
-  for (const file of ROLE_MANUALS[role]) {
+  for (const file of files) {
     const p = resolve(dir, file);
     try {
       if (existsSync(p)) parts.push(trimManual(readFileSync(p, "utf8")));
@@ -56,7 +69,7 @@ export function getKnowledgeForRole(role: AssistantRole): string {
     }
   }
   const knowledge = parts.join("\n\n---\n\n");
-  cache.set(role, knowledge);
+  cache.set(key, knowledge);
   return knowledge;
 }
 
