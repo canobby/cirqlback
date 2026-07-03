@@ -1508,3 +1508,23 @@ export const insertBroadcastSchema = createInsertSchema(broadcasts).omit({
 export type Broadcast = typeof broadcasts.$inferSelect;
 export type InsertBroadcast = z.infer<typeof insertBroadcastSchema>;
 export type UserBroadcastState = typeof userBroadcastState.$inferSelect;
+
+// ── Manual reward/balance adjustments (admin + coordinator ops tool) ──
+// Every manual change to a customer's loyalty points or rewards is recorded here
+// so "if something goes wrong" fixes are fully auditable. actorRole records
+// whether an admin or a (territory-scoped) coordinator made the change.
+export const rewardAdjustments = pgTable("reward_adjustments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  actorUserId: varchar("actor_user_id").references(() => users.id),
+  actorRole: varchar("actor_role").notNull(), // admin | coordinator
+  targetUserId: varchar("target_user_id").references(() => users.id),
+  targetEmail: varchar("target_email"),
+  businessId: varchar("business_id").references(() => businesses.id), // for reward grant/redeem
+  kind: varchar("kind").notNull(), // points | grant | redeem | unredeem
+  pointsDelta: integer("points_delta"), // for kind='points'
+  rewardId: varchar("reward_id").references(() => rewards.id), // for grant/redeem/unredeem
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type RewardAdjustment = typeof rewardAdjustments.$inferSelect;

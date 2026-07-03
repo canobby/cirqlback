@@ -29,6 +29,7 @@ import {
   messages,
   broadcasts,
   userBroadcastState,
+  rewardAdjustments,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -74,6 +75,7 @@ import {
   type MessageThread,
   type Message,
   type Broadcast,
+  type RewardAdjustment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
@@ -2539,6 +2541,111 @@ export class DatabaseStorage implements IStorage {
       .where(eq(rewards.id, rewardId))
       .returning();
     return reward;
+  }
+
+  // ── Manual reward/balance adjustments (admin + coordinator ops tool) ──────
+  // (getReward already exists above for code/lookup reuse.)
+
+  // Apply a signed delta to a customer's loyalty points. availablePoints and
+  // totalPoints are floored at 0 so a correction can't drive a balance negative.
+  async adjustCustomerPoints(
+    userId: string,
+    delta: number,
+  ): Promise<{ availablePoints: number; totalPoints: number }> {
+    const [row] = await db
+      .update(users)
+      .set({
+        availablePoints: sql`GREATEST(0, COALESCE(${users.availablePoints}, 0) + ${delta})`,
+        totalPoints: sql`GREATEST(0, COALESCE(${users.totalPoints}, 0) + ${delta})`,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning({ availablePoints: users.availablePoints, totalPoints: users.totalPoints });
+    return { availablePoints: row?.availablePoints ?? 0, totalPoints: row?.totalPoints ?? 0 };
+  }
+
+  // Grant a reward to a customer manually (e.g. to make good on a missed tap).
+  async createManualReward(input: {
+    userId: string;
+    businessId: string;
+    type: string;
+    title: string;
+    value?: string | null;
+  }): Promise<Reward> {
+    const [row] = await db
+      .insert(rewards)
+      .values({
+        userId: input.userId,
+        businessId: input.businessId,
+        type: input.type,
+        title: input.title,
+        value: input.value ?? null,
+        code: `MANUAL${Date.now()}`,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      })
+      .returning();
+    return row;
+  }
+
+  async setRewardRedeemed(rewardId: string, redeemed: boolean): Promise<Reward> {
+    const [row] = await db
+      .update(rewards)
+      .set({ isRedeemed: redeemed, redeemedAt: redeemed ? new Date() : null })
+      .where(eq(rewards.id, rewardId))
+      .returning();
+    return row;
+  }
+
+  async createRewardAdjustment(data: {
+    actorUserId: string;
+    actorRole: string;
+    targetUserId?: string | null;
+    targetEmail?: string | null;
+    businessId?: string | null;
+    kind: string;
+    pointsDelta?: number | null;
+    rewardId?: string | null;
+    reason?: string | null;
+  }): Promise<RewardAdjustment> {
+    const [row] = await db.insert(rewardAdjustments).values(data).returning();
+    return row;
+  }
+
+  async getRewardAdjustmentsForUser(targetUserId: string): Promise<RewardAdjustment[]> {
+    return await db
+      .select()
+      .from(rewardAdjustments)
+      .where(eq(rewardAdjustments.targetUserId, targetUserId))
+      .orderBy(desc(rewardAdjustments.createdAt))
+      .limit(50);
+  }
+
+  // Is this customer "active" in the given businesses — i.e. do they have a tap
+  // (by email) OR a reward (by userId) at any of them? Used to scope a
+  // coordinator to customers in their territory.
+  async customerActiveInBusinesses(
+    userId: string | null | undefined,
+    email: string | null | undefined,
+    businessIds: string[],
+  ): Promise<boolean> {
+    if (businessIds.length === 0) return false;
+    if (email) {
+      const [tap] = await db
+        .select({ id: taps.id })
+        .from(taps)
+        .where(and(eq(taps.customerEmail, email), inArray(taps.businessId, businessIds)))
+        .limit(1);
+      if (tap) return true;
+    }
+    if (userId) {
+      const [rew] = await db
+        .select({ id: rewards.id })
+        .from(rewards)
+        .where(and(eq(rewards.userId, userId), inArray(rewards.businessId, businessIds)))
+        .limit(1);
+      if (rew) return true;
+    }
+    return false;
   }
 
   // Referral operations

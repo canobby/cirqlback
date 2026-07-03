@@ -13,6 +13,7 @@ import PitchDialog from "@/components/coordinator/pitch-dialog";
 import EarningsProjection from "@/components/coordinator/earnings-projection";
 import MessageCenter from "@/components/messaging/message-center";
 import AnnouncementsPanel from "@/components/messaging/announcements-panel";
+import RewardAdjuster from "@/components/admin/reward-adjuster";
 
 interface Territory {
   id: string;
@@ -491,6 +492,11 @@ export default function CoordinatorDashboard() {
 
       {/* Cross-role messaging — talk to businesses in your territory + admin support */}
       <MessageCenter role="coordinator" />
+
+      {/* Fix customer points/rewards for businesses in your territory */}
+      <div className="mb-8">
+        <RewardAdjuster scope="coordinator" />
+      </div>
 
       {overview && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">

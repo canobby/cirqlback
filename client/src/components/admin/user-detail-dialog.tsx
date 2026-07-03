@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UserCircle, Store, Shield, UserCog, Eye, CheckCircle2, Globe, Ban } from "lucide-react";
 import { useState } from "react";
+import RewardAdjuster from "@/components/admin/reward-adjuster";
 
 interface Biz { id: string; name: string; verificationStatus: string | null; websitePublished: boolean; websiteSlug: string | null; campaigns: number; tags: number; taps: number; lastTap: string | null }
 interface Detail {
@@ -121,6 +122,9 @@ export default function UserDetailDialog({ userId, onClose }: { userId: string |
                 </div>
               )}
             </div>
+
+            {/* Reward & balance fixer */}
+            {userId && <RewardAdjuster scope="admin" userId={userId} />}
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-2 border-t">
