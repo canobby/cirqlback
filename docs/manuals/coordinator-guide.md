@@ -84,6 +84,20 @@ Your **campaign builder** creates group campaigns that span several stores in yo
 
 ---
 
+## 5b. Your coordinator toolkit (support, fairness & recognition)
+
+Everything here is scoped to **your territory** — you can only touch the businesses and activity in your region.
+
+- **Messaging.** Start a thread with any **business in your territory** (and reply to **Cirqlback Support** admin threads). Send **announcements** to your businesses. All from the Coordinator Hub.
+- **Reward & balance fixer.** When something goes wrong, look a customer up by email and **correct their points or rewards** — but only for customers active at your territory's businesses. Every change is logged.
+- **Funded group campaigns.** When you run a region‑wide campaign with a **funded prize**, you name the **host** business that funds and redeems it; the other stores reimburse a **tap‑weighted share**. Pick points (platform‑funded) or a funded prize in the campaign builder.
+- **Shared‑campaign settlements & payouts.** Roll a host's owed contributions into a **monthly statement**, then **pay it out via Stripe** to the host's connected account (or mark it paid manually). Territory‑scoped.
+- **Badges.** Award your territory's businesses **badges** (Rising Star, Community Pillar) — recognition that shows on their hosted page. Custom badges too.
+- **Passports / collections.** Build a **Passport** across your territory's shops ("visit all the coffee spots") — completing it grants customers bonus points and drives discovery to businesses that need traffic.
+- **Territory leaderboard.** See your region's **top customers** (this month or all‑time).
+
+---
+
 ## 6. Revenue & payouts
 
 This is how you get paid.

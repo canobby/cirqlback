@@ -21,13 +21,16 @@ The dashboard is organized into tabs:
 
 | Tab | What you do there |
 |---|---|
-| **Users** | Browse platform users and their status. |
-| **Templates** | Manage campaign templates offered across the platform. |
-| **Subscriptions** | Review subscription tiers and plans. |
-| **Analytics** | Platform‑wide performance and AI‑assisted insights. |
-| **Payments** | Payment/billing overview. |
-| **Coordinators** | **Set each coordinator's revenue‑share %** (see §4). |
-| **Platform** | Global platform settings. |
+| **Overview** | Command center, insights, retention / at‑risk businesses. |
+| **Messages** | Broadcast announcements to any audience + support threads with coordinators/businesses. |
+| **Revenue** | MRR, coordinator liability, trials — plus **shared‑campaign settlements** (see §10). |
+| **Trust & Safety** | Verification queue, hosted‑page kill‑switch, nonprofit revoke. |
+| **Territories** | Circular territory manager, coordinator leaderboard, share %. |
+| **Map** | Discovery‑density heatmap + territory coverage. |
+| **Customers** | Redemption / repeat‑rate health. |
+| **People** | **Support 360** — impersonate, suspend, and the **reward & balance fixer** + award **badges** (see §9). |
+| **Platform** | Settings, add‑on catalog, pricing, **points rewards & prize draws**, **passports/collections**, **seasonal events** (see §11). |
+| **Audit** | Log of privileged admin actions. |
 
 Your **admin level** (e.g. "Admin Access Level: Master") is shown at the top.
 
@@ -94,7 +97,34 @@ Payouts are **reporting‑based** — Cirqlback records what each coordinator ha
 
 ---
 
-## 9. FAQ
+## 9. Support, recognition & the reward fixer (People tab)
+
+- **Support 360** — open any user to see their profile and businesses, **impersonate** ("view as") for support, and **suspend/unsuspend**.
+- **Reward & balance fixer** — correct a customer's **loyalty points** (add/remove, floored at 0) or their **rewards** (grant one, or flip a redemption). Every change requires a reason and is written to an audit ledger. Admins can fix any customer; coordinators are limited to their territory.
+- **Badges** — award a recognition **badge** to any person or business (custom art or a preset). Businesses' badges show publicly on their hosted page.
+- **Messages tab** — **broadcast** an announcement to Everyone / Businesses / Coordinators / Customers, and run **support threads** with any coordinator or business.
+
+---
+
+## 10. Shared‑campaign settlements & payouts (Revenue tab)
+
+When a **funded** multi‑store reward is redeemed, its cost is split across the stores the customer visited (tap‑weighted); the **host** fronts it and the others owe their share.
+
+- The Revenue tab shows **pending amounts owed to each host**. **Create a statement** to roll a host's owed contributions for a period into one bill.
+- **Pay it out via Stripe** to the host's connected account (if they've onboarded payouts), or **mark it paid** manually with a reference. Coordinators can do the same for their territory's hosts.
+- Automated payouts use **Stripe Connect** — a business connects a payout account from its hub. (Going live needs Connect enabled on the live Stripe account — an engineering/deploy task.)
+
+---
+
+## 11. Platform gamification (Platform tab)
+
+- **Points rewards & prize draws** — create **platform perks** customers redeem with points, or **prize draws** (customers spend points to enter). **Draw a winner** with one click. Businesses add their own in‑store perks from their hubs.
+- **Passports / collections** — build a curated "visit all these shops" set with a completion point reward. Coordinators can build territory passports.
+- **Seasonal events** — schedule a **time‑boxed event** (e.g. *First Fridays*) that **multiplies tap points** (2×–5×) while it's live. Customers see a limited‑time banner.
+
+---
+
+## 12. FAQ
 
 **How do I create another admin?** As a master admin, invite them from the dashboard and set their level; the first admin is seeded in the database.
 

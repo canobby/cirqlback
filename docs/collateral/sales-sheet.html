@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cirqlback — Sales Sheet</title>
+<style>
+  @page { size: A4; margin: 14mm; }
+  :root { --p:#7c3aed; --p2:#ec4899; --dark:#1b1e28; --ink:#2b2f3a; --mut:#6b7280; --line:#ece9fb; --bg:#faf8ff; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif; color:var(--ink); margin:0; font-size:12px; line-height:1.5; background:#fff; }
+  .wrap { max-width:820px; margin:0 auto; padding:0 4px; }
+  .hero { background:linear-gradient(135deg,var(--p),#4c1d95 70%); color:#fff; border-radius:16px; padding:26px 28px; position:relative; overflow:hidden; }
+  .hero::after { content:""; position:absolute; right:-40px; top:-40px; width:180px; height:180px; background:rgba(255,255,255,.08); border-radius:50%; }
+  .brand { font-size:26px; font-weight:800; letter-spacing:-.5px; }
+  .tag { font-size:15px; font-weight:600; margin-top:6px; opacity:.95; }
+  .sub { font-size:12px; opacity:.85; margin-top:8px; max-width:560px; }
+  h2 { color:#4c1d95; font-size:15px; margin:22px 0 8px; border-bottom:1px solid var(--line); padding-bottom:5px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .card { background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .card h3 { margin:0 0 8px; font-size:13px; color:var(--p); display:flex; align-items:center; gap:6px; }
+  ul { margin:6px 0 0; padding-left:18px; } li { margin:4px 0; }
+  .pill { display:inline-block; background:#f3e8ff; color:#6d28d9; border-radius:999px; padding:2px 9px; font-size:10.5px; font-weight:600; margin:2px 3px 2px 0; }
+  .loop { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:8px; }
+  .loop div { background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .loop b { color:var(--p); }
+  .foot { margin-top:22px; padding-top:12px; border-top:1px solid var(--line); color:var(--mut); font-size:10.5px; display:flex; justify-content:space-between; }
+  .cta { background:linear-gradient(135deg,var(--p2),var(--p)); color:#fff; border-radius:12px; padding:14px 18px; margin-top:18px; display:flex; justify-content:space-between; align-items:center; }
+  .cta b { font-size:15px; } .cta .price { font-size:12px; opacity:.95; }
+  strong { color:var(--dark); }
+</style></head><body><div class="wrap">
+
+  <div class="hero">
+    <div class="brand">Cirqlback</div>
+    <div class="tag">Tap to earn. The addictive local‑loyalty & discovery platform.</div>
+    <div class="sub">One tap of a phone turns a shop visit into rewards, badges, streaks and prizes — no app, no account, no hardware for customers. Local businesses get loyalty, a hosted page, a spot on the discovery map, and cross‑shop campaigns that share foot traffic.</div>
+  </div>
+
+  <h2>Why it works</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>🏪 For local businesses</h3>
+      <ul>
+        <li><strong>NFC tap‑to‑earn loyalty</strong> & digital punch cards — no POS integration.</li>
+        <li><strong>Hosted one‑page website</strong> at cirqlback.com/biz/you with live rewards.</li>
+        <li><strong>Discovery map</strong> pin + <strong>point perks</strong> customers redeem in‑store.</li>
+        <li><strong>Group campaigns & scavenger hunts</strong> that share traffic with neighbors.</li>
+        <li><strong>Badges & analytics</strong> — social proof + real engagement data.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🎉 For customers (why they keep tapping)</h3>
+      <ul>
+        <li><strong>Points</strong> that buy real perks, <strong>prize draws</strong> & a <strong>daily spin</strong>.</li>
+        <li><strong>Streaks, badges & passports</strong> — collect, level up, don't break the chain.</li>
+        <li><strong>Leaderboards, friends & teams</strong> — compete locally.</li>
+        <li><strong>Refer a friend</strong> — you both earn.</li>
+        <li>Anonymous by default; an email is optional.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>The engagement loop</h2>
+  <div class="loop">
+    <div><b>EARN</b><br>taps, streaks, badges, lucky spins, passports, referrals</div>
+    <div><b>SPEND</b><br>points → business perks, platform perks, prize draws</div>
+    <div><b>COMPETE&nbsp;&&nbsp;CONNECT</b><br>monthly / local / friend / team leaderboards</div>
+  </div>
+
+  <h2>Built for a local marketplace</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>🤝 Businesses collaborate — fairly</h3>
+      <ul>
+        <li>Invite / request to join multi‑store campaigns.</li>
+        <li>Funded rewards split cost <strong>tap‑weighted</strong>; hosts get paid <strong>automatically via Stripe</strong>.</li>
+        <li>Nonprofit donation‑per‑tap & event‑ready campaigns.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🗺️ Community Coordinators grow regions</h3>
+      <ul>
+        <li>Franchise‑style territory partners onboard & support local shops.</li>
+        <li>Earn a <strong>70% revenue share</strong> on their territory.</li>
+        <li>Region campaigns, passports, badges, messaging & payouts.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="cta">
+    <div><b>Start free for 6 months.</b><span class="price"> &nbsp;Then Core $19.99/mo or Pro $49.99/mo. Add‑ons $7.99–$14.99.</span></div>
+    <div style="text-align:right"><b>cirqlback.com</b></div>
+  </div>
+
+  <div class="foot"><span>Cirqlback — tap‑to‑earn loyalty & local discovery.</span><span>Sales overview · see the price sheet for full plan details.</span></div>
+</div></body></html>

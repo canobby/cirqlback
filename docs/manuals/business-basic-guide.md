@@ -118,6 +118,22 @@ Buying an add‑on runs through secure checkout and activates automatically once
 
 You can **join open multi‑store campaigns** so your shop is part of a "tap at 3 shops" trail — a great way to share foot traffic with neighbors. Find joinable campaigns in the **group‑campaigns** panel on your Business Hub.
 
+**Invite & be invited.** Beyond open campaigns, you can now **invite a specific business** to a campaign you created, and **request to join** another business's campaign — each side accepts or declines. If a campaign's reward is a **funded prize** (a real item, not just points), one **host** store funds it; the others drive traffic. When you accept a funded campaign you'll confirm you agree to owe the host a **tap‑weighted share** of the reward cost when a customer completes the trail via your store.
+
+**Shared‑campaign settlements.** When you **host** a funded reward, the other stores owe you their share; when you're a **driver**, you owe the host. Your Business Hub shows **what you owe** and **what you're owed**, settled monthly.
+
+**Get paid automatically.** Connect a **Stripe payout account** from the **Payouts** card and your owed share is transferred to you automatically when a settlement is paid out — no invoicing.
+
+---
+
+## 9b. Point perks, badges & recognition
+
+**Point perks.** Let customers spend their loyalty points at your shop. In **Point perks** on your Business Hub, add a perk and its price (e.g. "Free drip coffee — 250 pts"). Customers redeem it in the Rewards store and show you the reward in‑store. You set how many are available.
+
+**Badges (recognition).** As your shop grows you earn **achievement badges** automatically (Buzzing at 100 taps, Community Favorite for unique customers). Customers can award you preset badges (Great Service, Hidden Gem), and your coordinator or an admin can too. These badges appear on your **hosted page** as social proof. You can also **award your best customers** a badge (VIP, Top Fan) — a nice personal touch.
+
+**Messages.** Message your **community coordinator** and reply to **Cirqlback Support** right from your hub.
+
 ---
 
 ## 10. Billing & your account

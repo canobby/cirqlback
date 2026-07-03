@@ -71,7 +71,33 @@ Your favorites and reward feed live under **My Favorites** (accessible from the 
 
 ---
 
-## 7. Frequently asked questions
+## 7. Your Discovery Hub (make an account — it's worth it)
+
+Create a free account and your taps start building a real profile at the **Discovery Hub**. Everything below is optional and just makes tapping more rewarding.
+
+**Points, level & tier.** Every tap earns points. Points push you up **levels** and through tiers (Bronze → Silver → Gold → Platinum). And now points actually *buy* things (below).
+
+**Rewards store.** Spend your points on real perks: a **business perk** you redeem in-store (e.g. "Free pastry — 300 pts"), platform perks, or **prize-draw entries**. Your points balance is shown at the top of the store.
+
+**Daily spin.** Come back each day for one **free spin of the wheel** — a little bonus points windfall (up to 250). One spin per day.
+
+**Streaks.** Tap on consecutive days to build a **streak** 🔥. Hit 3, 7, 14, or 30-day milestones for bonus points. Miss a day and it resets — so keep the chain alive.
+
+**Badges & achievements.** Earn **badges** automatically as you explore — *Explorer* (taps), *Local Adventurer* (different shops visited), *Regular/Loyalist/Devotee* (streaks), and more. A "Next up" bar shows how close you are to the next one. Businesses can also hand you badges (VIP, Top Fan), and *you* can give preset badges (Great Service, Hidden Gem) to places you've visited.
+
+**Passports.** Some areas have a **Passport** — "visit all the coffee shops in town." Tap your way through the set and completing it grants bonus points. Progress shows a checkmark for each stop.
+
+**Refer friends.** Share your **friend code**. When a friend joins with it and takes their first tap, **you get 100 points and they get 50**.
+
+**Leaderboards.** See where you rank — **this month**, **all-time**, among your **friends**, and (with a team) on the **team leaderboard**.
+
+**Friends & teams.** Add friends by code or email, compete on a friends leaderboard, and **join or start a team** — teams pool their members' points and climb the team board together.
+
+**Messages & updates.** Follow a business to get its **updates** in your feed and platform **announcements**. You can also **message a business you follow** directly from your hub.
+
+---
+
+## 8. Frequently asked questions
 
 **Do I need to download an app?** No. Everything runs in your phone's browser.
 

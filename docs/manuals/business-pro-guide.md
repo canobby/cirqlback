@@ -80,6 +80,20 @@ Pro shines when your locations work together. From your Business Hub's **group�
 - Customers progress by tapping at **different** stores, which drives cross‑location visits.
 - Track **per‑location participation and completions** in one place.
 
+**Invite, request & fund fairly.** Invite specific businesses to your campaign (they accept/decline), or request to join theirs. For a **funded prize** (a real item), one **host** store funds it and the others reimburse a **tap‑weighted share** when a customer completes via their store — everyone consents to their share when they join. Your Hub shows **what you're owed as host** and **what you owe as a driver**, settled monthly.
+
+**Get paid automatically.** Connect a **Stripe payout account** (**Payouts** card) and your owed host share is transferred to you automatically via Stripe when a settlement is paid — no invoicing.
+
+---
+
+## 6b. Point perks, badges & recognition
+
+**Point perks.** Let customers spend loyalty points at your stores. In **Point perks**, add a perk + price (e.g. "Free entrée — 500 pts"); customers redeem in the Rewards store and show it in‑store.
+
+**Badges.** Earn **achievement badges** as you scale (Buzzing/Popular/Landmark by taps; Community Favorite by unique customers). Customers, coordinators and admins can award you badges too, and they appear on your **hosted page** as social proof. Award your own top customers a **VIP / Top Fan** badge.
+
+**Messages.** Message your **community coordinator** and reply to **Cirqlback Support** from your Hub.
+
 ---
 
 ## 7. Contests & scavenger hunts (Builder add‑on)
