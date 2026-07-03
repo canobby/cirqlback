@@ -2648,6 +2648,17 @@ export class DatabaseStorage implements IStorage {
           .where(eq(users.id, customer.id));
       }
 
+      // A real customer tap advances their daily streak (milestone bonuses paid
+      // into points) and completes any pending referral (rewards both parties).
+      if (customer) {
+        try {
+          await this.updateStreak(customer.id);
+          if (tap.customerEmail) await this.processReferralCompletion(tap.customerEmail);
+        } catch (e) {
+          console.error("streak/referral update failed:", e);
+        }
+      }
+
       // CHR-57: advance any multi-store group campaigns this store belongs to.
       const groupProgress = await this.advanceGroupCampaigns(
         tap.businessId,
@@ -2837,12 +2848,113 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(referrals).where(eq(referrals.referrerId, userId));
   }
 
+  // ── Streaks ────────────────────────────────────────────────────────────────
+  // Advance a customer's daily tap streak. Same-day taps don't change it; a tap
+  // the day after keeps the chain; a gap resets to 1. Milestone streaks pay a
+  // bonus into the points economy. Returns the new streak + any bonus awarded.
+  async updateStreak(userId: string): Promise<{ currentStreak: number; milestoneBonus: number }> {
+    const [u] = await db.select().from(users).where(eq(users.id, userId));
+    if (!u) return { currentStreak: 0, milestoneBonus: 0 };
+    const midnight = new Date(); midnight.setUTCHours(0, 0, 0, 0);
+    const today = midnight.toISOString().slice(0, 10);
+    const yesterday = new Date(midnight.getTime() - 86400000).toISOString().slice(0, 10);
+    const last = (u as any).streakLastDate as string | null;
+    if (last === today) return { currentStreak: u.currentStreak ?? 0, milestoneBonus: 0 };
+
+    const newStreak = last === yesterday ? (u.currentStreak ?? 0) + 1 : 1;
+    const longest = Math.max(u.longestStreak ?? 0, newStreak);
+    const MILESTONES: Record<number, number> = { 3: 15, 7: 50, 14: 100, 30: 250 };
+    const bonus = MILESTONES[newStreak] ?? 0;
+    await db.update(users).set({
+      currentStreak: newStreak,
+      longestStreak: longest,
+      streakLastDate: today,
+      ...(bonus > 0 ? {
+        totalPoints: sql`COALESCE(${users.totalPoints},0) + ${bonus}`,
+        availablePoints: sql`COALESCE(${users.availablePoints},0) + ${bonus}`,
+        totalPointsEarned: sql`COALESCE(${users.totalPointsEarned},0) + ${bonus}`,
+      } : {}),
+      updatedAt: new Date(),
+    }).where(eq(users.id, userId));
+    return { currentStreak: newStreak, milestoneBonus: bonus };
+  }
+
+  // ── Referrals (double-sided reward) ─────────────────────────────────────────
+  private REFERRER_BONUS = 100;
+  private REFEREE_BONUS = 50;
+
+  async getUserByReferralCode(code: string): Promise<User | undefined> {
+    const [u] = await db.select().from(users).where(eq(users.referralCode, code));
+    return u;
+  }
+
+  // Ensure a user has a stable, unique referral code (persist if missing).
+  async ensureReferralCode(userId: string): Promise<string> {
+    const [u] = await db.select().from(users).where(eq(users.id, userId));
+    if ((u as any)?.referralCode) return (u as any).referralCode;
+    const code = `CQ${(userId.replace(/-/g, "").slice(0, 6)).toUpperCase()}`;
+    await db.update(users).set({ referralCode: code }).where(eq(users.id, userId));
+    return code;
+  }
+
+  async getReferralForReferee(refereeId: string, refereeEmail: string | null): Promise<Referral | undefined> {
+    const [byId] = await db.select().from(referrals).where(eq(referrals.refereeId, refereeId)).limit(1);
+    if (byId) return byId;
+    if (refereeEmail) {
+      const [byEmail] = await db.select().from(referrals).where(eq(referrals.refereeEmail, refereeEmail)).limit(1);
+      return byEmail;
+    }
+    return undefined;
+  }
+
+  // Complete a referee's pending referral on their first qualifying tap: reward
+  // BOTH parties and mark it paid. Idempotent (only touches pending rows).
   async processReferralCompletion(refereeEmail: string): Promise<void> {
-    // Update referral status when referee completes first action
-    await db
-      .update(referrals)
-      .set({ status: "completed", completedAt: new Date() })
+    const pending = await db.select().from(referrals)
       .where(and(eq(referrals.refereeEmail, refereeEmail), eq(referrals.status, "pending")));
+    for (const r of pending) {
+      await db.update(referrals).set({
+        status: "completed", completedAt: new Date(),
+        bonusPaid: true, bonusAmount: String(this.REFERRER_BONUS),
+      }).where(eq(referrals.id, r.id));
+      // Reward the referrer.
+      await db.update(users).set({
+        totalPoints: sql`COALESCE(${users.totalPoints},0) + ${this.REFERRER_BONUS}`,
+        availablePoints: sql`COALESCE(${users.availablePoints},0) + ${this.REFERRER_BONUS}`,
+        totalPointsEarned: sql`COALESCE(${users.totalPointsEarned},0) + ${this.REFERRER_BONUS}`,
+      }).where(eq(users.id, r.referrerId));
+      // Reward the referee.
+      if (r.refereeId) {
+        await db.update(users).set({
+          totalPoints: sql`COALESCE(${users.totalPoints},0) + ${this.REFEREE_BONUS}`,
+          availablePoints: sql`COALESCE(${users.availablePoints},0) + ${this.REFEREE_BONUS}`,
+          totalPointsEarned: sql`COALESCE(${users.totalPointsEarned},0) + ${this.REFEREE_BONUS}`,
+        }).where(eq(users.id, r.refereeId));
+      }
+    }
+  }
+
+  async getReferralStats(userId: string): Promise<{ completed: number; pending: number; pointsEarned: number; referrals: any[] }> {
+    const rows = await db.select().from(referrals).where(eq(referrals.referrerId, userId)).orderBy(desc(referrals.createdAt));
+    const completed = rows.filter((r) => r.status === "completed").length;
+    const pending = rows.filter((r) => r.status === "pending").length;
+    return { completed, pending, pointsEarned: completed * this.REFERRER_BONUS, referrals: rows };
+  }
+
+  async getReferralLeaderboard(limit = 10): Promise<any[]> {
+    const rows = await db
+      .select({ referrerId: referrals.referrerId })
+      .from(referrals)
+      .where(eq(referrals.status, "completed"));
+    const counts = new Map<string, number>();
+    for (const r of rows) counts.set(r.referrerId, (counts.get(r.referrerId) ?? 0) + 1);
+    const top = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, limit);
+    const out: any[] = [];
+    for (const [uid, c] of top) {
+      const u = await this.getUser(uid);
+      out.push({ name: (u as any)?.firstName || (u as any)?.email || "Someone", referrals: c });
+    }
+    return out;
   }
 
   // Tap Trail operations

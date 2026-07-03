@@ -80,6 +80,7 @@ export const users = pgTable("users", {
   badges: text("badges").array().default(sql`'{}'`),
   currentStreak: integer("current_streak").default(0),
   longestStreak: integer("longest_streak").default(0),
+  streakLastDate: varchar("streak_last_date"), // YYYY-MM-DD of the last tap that counted toward the streak
   teamId: varchar("team_id"),
   teamRole: varchar("team_role"), // leader, member, scout
   createdAt: timestamp("created_at").defaultNow(),

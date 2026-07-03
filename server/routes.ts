@@ -26,6 +26,7 @@ import { registerRewardSettlementRoutes } from "./routes/reward-settlements";
 import { registerConnectRoutes } from "./routes/connect";
 import { registerBadgeRoutes } from "./routes/badges";
 import { registerPointsEconomyRoutes } from "./routes/points-economy";
+import { registerReferralRoutes } from "./routes/referrals";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -120,6 +121,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerBadgeRoutes(app, deps);
   // Points economy — spend points on business perks, platform perks, prize draws.
   registerPointsEconomyRoutes(app, deps);
+  // Rewarded referral loop (both parties earn on the referee's first tap).
+  registerReferralRoutes(app, deps);
 
   const httpServer = createServer(app);
 

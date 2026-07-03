@@ -10,6 +10,8 @@ import CustomerFeedPanel from "@/components/messaging/customer-feed-panel";
 import MessageCenter from "@/components/messaging/message-center";
 import BadgesPanel from "@/components/badges/badges-panel";
 import PointsStorePanel from "@/components/points/points-store-panel";
+import StreakCard from "@/components/gamification/streak-card";
+import ReferralPanel from "@/components/gamification/referral-panel";
 
 export default function CustomerBento() {
   const [, setLocation] = useLocation();
@@ -65,8 +67,14 @@ export default function CustomerBento() {
           </div>
         </div>
 
+        {/* Daily streak nudge */}
+        <StreakCard />
+
         {/* Updates: business reminders + admin announcements (Slice 3) */}
         <CustomerFeedPanel />
+
+        {/* Refer friends — both earn on the friend's first tap */}
+        <ReferralPanel />
 
         {/* Messages: contact a business you follow (Slice 4) */}
         <MessageCenter role="customer" />
