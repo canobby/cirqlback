@@ -684,6 +684,52 @@ export class DatabaseStorage implements IStorage {
     return { trends, funnel };
   }
 
+  // Retention watch: claimed businesses that need an admin's attention —
+  // dormant (were active, now silent), never activated (signed up, never got a
+  // tap), or on a trial ending soon. A proactive worklist, not a churn count.
+  async getAtRiskBusinesses(): Promise<Array<{
+    id: string; name: string; ownerEmail: string | null;
+    signedUpAt: Date | null; lastTapAt: Date | null; totalTaps: number;
+    flags: Array<{ reason: string; detail: string; severity: "high" | "medium" }>;
+  }>> {
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+    const [bizRows, tapAgg] = await Promise.all([
+      db.select({
+        id: businesses.id, name: businesses.name, createdAt: businesses.createdAt,
+        ownerEmail: users.email, tier: users.subscriptionTier, trialEnds: users.starterExpiresAt,
+      }).from(businesses).leftJoin(users, eq(users.id, businesses.ownerId))
+        .where(and(eq(businesses.isActive, true), isNotNull(businesses.ownerId))),
+      db.select({ b: taps.businessId, last: sql<string>`max(${taps.createdAt})`, n: count() })
+        .from(taps).groupBy(taps.businessId),
+    ]);
+    const tapMap = new Map(tapAgg.map((r) => [r.b, { last: r.last ? new Date(r.last) : null, n: Number(r.n) }]));
+    const daysAgo = (d: Date) => Math.floor((now - d.getTime()) / DAY);
+
+    const out = bizRows.map((b) => {
+      const tap = tapMap.get(b.id);
+      const totalTaps = tap?.n ?? 0;
+      const lastTapAt = tap?.last ?? null;
+      const signedUpAt = b.createdAt ?? null;
+      const flags: Array<{ reason: string; detail: string; severity: "high" | "medium" }> = [];
+
+      if (totalTaps > 0 && lastTapAt && now - lastTapAt.getTime() > 30 * DAY) {
+        flags.push({ reason: "Dormant", detail: `No taps in ${daysAgo(lastTapAt)} days`, severity: "high" });
+      } else if (totalTaps === 0 && signedUpAt && now - signedUpAt.getTime() > 7 * DAY) {
+        flags.push({ reason: "Never activated", detail: `Signed up ${daysAgo(signedUpAt)}d ago, no taps yet`, severity: "medium" });
+      }
+      if (b.tier === "starter" && b.trialEnds) {
+        const dLeft = Math.ceil((b.trialEnds.getTime() - now) / DAY);
+        if (dLeft > 0 && dLeft <= 30) flags.push({ reason: "Trial ending", detail: `Trial ends in ${dLeft}d`, severity: "medium" });
+      }
+      return { id: b.id, name: b.name, ownerEmail: b.ownerEmail, signedUpAt, lastTapAt, totalTaps, flags };
+    }).filter((b) => b.flags.length > 0);
+
+    const rank = (b: { flags: Array<{ severity: string }> }) =>
+      (b.flags.some((f) => f.severity === "high") ? 100 : 0) + b.flags.length;
+    return out.sort((a, b) => rank(b) - rank(a));
+  }
+
   // Real list of platform users for the admin user-management table.
   async listPlatformUsers(limit = 200): Promise<
     Array<Pick<User, "id" | "email" | "firstName" | "lastName" | "role" | "subscriptionTier" | "subscriptionStatus" | "createdAt">>

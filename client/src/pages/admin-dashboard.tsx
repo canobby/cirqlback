@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CoordinatorSharePanel } from "@/components/admin/coordinator-share-panel";
 import CommandCenter from "@/components/admin/command-center";
 import AdminInsights from "@/components/admin/admin-insights";
+import AtRiskPanel from "@/components/admin/at-risk-panel";
 import RevenuePanel from "@/components/admin/revenue-panel";
 import TrustSafetyPanel from "@/components/admin/trust-safety-panel";
 import CoordinatorLeaderboard from "@/components/admin/coordinator-leaderboard";
@@ -294,6 +295,7 @@ export default function AdminDashboard() {
           <TabsContent value="overview" className="space-y-6">
             <CommandCenter onGo={setAdminTab} />
             <AdminInsights />
+            <AtRiskPanel />
           </TabsContent>
 
           {/* Users Management */}

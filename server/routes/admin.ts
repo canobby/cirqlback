@@ -114,6 +114,16 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // Retention watch: at-risk businesses (dormant / never activated / trial ending).
+  app.get("/api/admin/at-risk", async (_req, res) => {
+    try {
+      res.json(await storage.getAtRiskBusinesses());
+    } catch (error) {
+      console.error("At-risk error:", error);
+      res.status(500).json({ error: "Failed to load at-risk businesses" });
+    }
+  });
+
   // Insights: 6-month trends + business activation funnel.
   app.get("/api/admin/insights", async (_req, res) => {
     try {
