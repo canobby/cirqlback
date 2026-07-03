@@ -40,6 +40,9 @@ import {
   collectionItems,
   collectionProgress,
   events,
+  teams,
+  teamMemberships,
+  friendConnections,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -4103,6 +4106,149 @@ export class DatabaseStorage implements IStorage {
   async getActiveEventMultiplier(): Promise<number> {
     const active = await this.getActiveEvents();
     return active.reduce((m, e) => Math.max(m, e.pointMultiplier ?? 1), 1);
+  }
+
+  // ── Social: friends ───────────────────────────────────────────────────────
+  private personLabel(u: any): string {
+    return [u?.firstName, u?.lastName].filter(Boolean).join(" ").trim() || u?.email?.split("@")[0] || "Cirqler";
+  }
+
+  // Existing connection between two users, in either direction.
+  async getFriendConnection(aId: string, bId: string): Promise<any | undefined> {
+    const [row] = await db.select().from(friendConnections).where(or(
+      and(eq(friendConnections.userAId, aId), eq(friendConnections.userBId, bId)),
+      and(eq(friendConnections.userAId, bId), eq(friendConnections.userBId, aId)),
+    ));
+    return row;
+  }
+
+  async createFriendRequest(fromId: string, toId: string): Promise<void> {
+    await db.insert(friendConnections).values({ userAId: fromId, userBId: toId, status: "pending", connectionSource: "app_invite" });
+  }
+
+  // The recipient (toId) accepts/declines a request from fromId.
+  async respondFriendRequest(fromId: string, toId: string, accept: boolean): Promise<boolean> {
+    const [row] = await db.select().from(friendConnections).where(and(
+      eq(friendConnections.userAId, fromId), eq(friendConnections.userBId, toId), eq(friendConnections.status, "pending"),
+    ));
+    if (!row) return false;
+    if (accept) await db.update(friendConnections).set({ status: "accepted", connectedAt: new Date() }).where(eq(friendConnections.id, row.id));
+    else await db.delete(friendConnections).where(eq(friendConnections.id, row.id));
+    return true;
+  }
+
+  async removeFriend(userId: string, otherId: string): Promise<void> {
+    const conn = await this.getFriendConnection(userId, otherId);
+    if (conn) await db.delete(friendConnections).where(eq(friendConnections.id, conn.id));
+  }
+
+  async getFriends(userId: string): Promise<{ friends: any[]; incoming: any[]; outgoing: any[] }> {
+    const rows = await db.select().from(friendConnections).where(or(eq(friendConnections.userAId, userId), eq(friendConnections.userBId, userId)));
+    const friends: any[] = [], incoming: any[] = [], outgoing: any[] = [];
+    for (const r of rows) {
+      const otherId = r.userAId === userId ? r.userBId : r.userAId;
+      const u = await this.getUser(otherId);
+      const entry = { userId: otherId, name: this.personLabel(u), points: (u as any)?.totalPointsEarned ?? 0 };
+      if (r.status === "accepted") friends.push(entry);
+      else if (r.status === "pending") {
+        if (r.userBId === userId) incoming.push(entry); // they requested me
+        else outgoing.push(entry);                       // I requested them
+      }
+    }
+    friends.sort((a, b) => b.points - a.points);
+    return { friends, incoming, outgoing };
+  }
+
+  // Me + my accepted friends, ranked by lifetime points.
+  async getFriendsLeaderboard(userId: string): Promise<any[]> {
+    const { friends } = await this.getFriends(userId);
+    const me = await this.getUser(userId);
+    const all = [{ userId, name: this.personLabel(me) + " (you)", points: (me as any)?.totalPointsEarned ?? 0, isMe: true }, ...friends.map((f) => ({ ...f, isMe: false }))];
+    all.sort((a, b) => b.points - a.points);
+    return all.map((x, i) => ({ ...x, rank: i + 1 }));
+  }
+
+  // ── Social: teams ─────────────────────────────────────────────────────────
+  async getUserTeamMembership(userId: string): Promise<any | undefined> {
+    const [row] = await db.select().from(teamMemberships).where(and(eq(teamMemberships.userId, userId), eq(teamMemberships.isActive, true)));
+    return row;
+  }
+
+  private async teamPoints(teamId: string): Promise<{ points: number; count: number }> {
+    const members = await db.select({ uid: teamMemberships.userId }).from(teamMemberships).where(and(eq(teamMemberships.teamId, teamId), eq(teamMemberships.isActive, true)));
+    let points = 0;
+    for (const m of members) { const u = await this.getUser(m.uid); points += (u as any)?.totalPointsEarned ?? 0; }
+    return { points, count: members.length };
+  }
+
+  async getTeamRoster(teamId: string): Promise<any[]> {
+    const members = await db.select().from(teamMemberships).where(and(eq(teamMemberships.teamId, teamId), eq(teamMemberships.isActive, true))).orderBy(teamMemberships.joinedAt);
+    const out: any[] = [];
+    for (const m of members) { const u = await this.getUser(m.userId); out.push({ userId: m.userId, name: this.personLabel(u), role: m.role, points: (u as any)?.totalPointsEarned ?? 0 }); }
+    return out.sort((a, b) => b.points - a.points);
+  }
+
+  async getMyTeam(userId: string): Promise<any | null> {
+    const mem = await this.getUserTeamMembership(userId);
+    if (!mem) return null;
+    const [team] = await db.select().from(teams).where(eq(teams.id, mem.teamId));
+    if (!team) return null;
+    const { points } = await this.teamPoints(team.id);
+    return { id: team.id, name: team.name, description: team.description, isLeader: team.leaderId === userId, maxMembers: team.maxMembers, points, roster: await this.getTeamRoster(team.id) };
+  }
+
+  async createTeam(name: string, description: string | null, userId: string): Promise<string> {
+    const [team] = await db.insert(teams).values({ name, description, leaderId: userId, currentMembers: 1 }).returning();
+    await db.insert(teamMemberships).values({ teamId: team.id, userId, role: "leader" });
+    return team.id;
+  }
+
+  async joinTeam(teamId: string, userId: string): Promise<{ ok: boolean; error?: string }> {
+    const [team] = await db.select().from(teams).where(eq(teams.id, teamId));
+    if (!team || !team.isActive) return { ok: false, error: "Team not found" };
+    const roster = await this.getTeamRoster(teamId);
+    if (roster.length >= (team.maxMembers ?? 10)) return { ok: false, error: "Team is full" };
+    await db.insert(teamMemberships).values({ teamId, userId, role: "member" })
+      .onConflictDoUpdate({ target: [teamMemberships.teamId, teamMemberships.userId], set: { isActive: true } });
+    await db.update(teams).set({ currentMembers: roster.length + 1 }).where(eq(teams.id, teamId));
+    return { ok: true };
+  }
+
+  async leaveTeam(userId: string, teamId: string): Promise<void> {
+    await db.update(teamMemberships).set({ isActive: false }).where(and(eq(teamMemberships.teamId, teamId), eq(teamMemberships.userId, userId)));
+    const remaining = await this.getTeamRoster(teamId);
+    const [team] = await db.select().from(teams).where(eq(teams.id, teamId));
+    if (remaining.length === 0) {
+      await db.update(teams).set({ isActive: false, currentMembers: 0 }).where(eq(teams.id, teamId));
+    } else {
+      await db.update(teams).set({ currentMembers: remaining.length }).where(eq(teams.id, teamId));
+      // If the leader left, promote the longest-standing remaining member.
+      if (team?.leaderId === userId) {
+        const next = remaining[remaining.length - 1];
+        await db.update(teams).set({ leaderId: next.userId }).where(eq(teams.id, teamId));
+        await db.update(teamMemberships).set({ role: "leader" }).where(and(eq(teamMemberships.teamId, teamId), eq(teamMemberships.userId, next.userId)));
+      }
+    }
+  }
+
+  async getDiscoverableTeams(userId: string): Promise<any[]> {
+    const rows = await db.select().from(teams).where(and(eq(teams.isActive, true), eq(teams.isPublic, true))).orderBy(desc(teams.createdAt)).limit(30);
+    const mem = await this.getUserTeamMembership(userId);
+    const out: any[] = [];
+    for (const t of rows) {
+      if (mem && mem.teamId === t.id) continue;
+      const { points, count } = await this.teamPoints(t.id);
+      out.push({ id: t.id, name: t.name, description: t.description, members: count, maxMembers: t.maxMembers, points });
+    }
+    return out;
+  }
+
+  async getTeamLeaderboard(limit = 10): Promise<any[]> {
+    const rows = await db.select().from(teams).where(eq(teams.isActive, true));
+    const scored: any[] = [];
+    for (const t of rows) { const { points, count } = await this.teamPoints(t.id); scored.push({ id: t.id, name: t.name, members: count, points }); }
+    scored.sort((a, b) => b.points - a.points);
+    return scored.slice(0, limit).map((x, i) => ({ ...x, rank: i + 1 }));
   }
 
   // ── Collections / passports ───────────────────────────────────────────────

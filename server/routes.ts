@@ -30,6 +30,7 @@ import { registerReferralRoutes } from "./routes/referrals";
 import { registerCollectionRoutes } from "./routes/collections";
 import { registerLeaderboardRoutes } from "./routes/leaderboards";
 import { registerSpinEventRoutes } from "./routes/spin-events";
+import { registerSocialRoutes } from "./routes/social";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -132,6 +133,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerLeaderboardRoutes(app, deps);
   // Daily spin + seasonal events (tap point multipliers).
   registerSpinEventRoutes(app, deps);
+  // Social layer: friends + teams (fresh /api/social/* paths).
+  registerSocialRoutes(app, deps);
 
   const httpServer = createServer(app);
 

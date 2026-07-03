@@ -16,6 +16,7 @@ import PassportsPanel from "@/components/gamification/passports-panel";
 import LeaderboardCard from "@/components/gamification/leaderboard-card";
 import SpinWheel from "@/components/gamification/spin-wheel";
 import EventBanner from "@/components/gamification/event-banner";
+import SocialPanel from "@/components/gamification/social-panel";
 
 export default function CustomerBento() {
   const [, setLocation] = useLocation();
@@ -82,6 +83,9 @@ export default function CustomerBento() {
 
         {/* Updates: business reminders + admin announcements (Slice 3) */}
         <CustomerFeedPanel />
+
+        {/* Friends & teams social layer */}
+        <SocialPanel />
 
         {/* Refer friends — both earn on the friend's first tap */}
         <ReferralPanel />
