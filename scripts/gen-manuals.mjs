@@ -32,6 +32,7 @@ const MANUALS = [
   { src: "docs/manuals/business-basic-guide.md", subtitle: "Business — Basic (Core plan)", out: "Cirqlback-Business-Basic-Guide.pdf" },
   { src: "docs/manuals/business-pro-guide.md", subtitle: "Business — Pro plan", out: "Cirqlback-Business-Pro-Guide.pdf" },
   { src: "docs/manuals/coordinator-guide.md", subtitle: "Community Coordinator", out: "Cirqlback-Coordinator-Guide.pdf" },
+  { src: "docs/manuals/coordinator-sales-playbook.md", subtitle: "Coordinator Sales Playbook", out: "Cirqlback-Coordinator-Sales-Playbook.pdf" },
   { src: "docs/manuals/admin-guide.md", subtitle: "Administrator", out: "Cirqlback-Admin-Guide.pdf" },
 ];
 const OUT_DIR = "docs/manuals/pdf";

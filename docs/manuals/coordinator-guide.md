@@ -55,6 +55,10 @@ Your territory comes pre‑seeded with **prospects** — real local businesses (
 
 **Cull prospects.** For an **unclaimed** prospect that doesn't fit, click the **trash icon** to remove it from your list. (Claimed businesses — ones with a real owner — can't be removed this way.)
 
+**Get a tailored pitch.** Click the **megaphone** on any row for a ready-made pitch built for *that* business's type — the opening line, what to lead with, the money math, the objection to expect, and a recommended plan/add-on bundle, all personalized with the business name. Hit **Print one-pager** for a leave-behind. (See the **[Sales Playbook](./coordinator-sales-playbook.md)** for the full method.)
+
+![The Pitch Assistant: a tailored, personalized pitch for each prospect, with a printable one-pager.](img/coord-pitch-assistant.png)
+
 > Everything is scoped to your territory — attempts to touch a shop outside your region are blocked. Businesses you onboard can also run their own **hosted page** and campaigns; see the Business guides.
 
 ---
@@ -96,6 +100,10 @@ This is how you get paid.
 - A **CSV export** (one month or all) — one row per charge with date, business, source, plan/description, gross, share %, and your share.
 
 **How payouts work.** Payouts are **reporting‑based**: an administrator periodically **generates a payout** from your unpaid earnings and marks it **paid** once the money is sent. Each earning row **snapshots your share rate at the time of the charge**, so a later rate change never affects past earnings.
+
+**Plan your growth.** The **Grow your earnings** tool in this panel lets you model your territory at your share rate — dial in how many Core shops, Pro shops, and hosted‑page add‑ons you'll sign, and it shows your projected monthly and yearly income. Set a **monthly goal** and it tells you exactly how many more shops you need to hit it.
+
+![The "Grow your earnings" tool — model your territory and track progress toward a monthly goal.](img/coord-earnings-projection.png)
 
 ---
 
