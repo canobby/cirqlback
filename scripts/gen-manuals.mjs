@@ -9,6 +9,15 @@ import { execFileSync } from "child_process";
 import { tmpdir } from "os";
 import { join, resolve, dirname } from "path";
 
+// Expand `{{include: partials/name.md}}` directives (one level) so role guides
+// can share a single source for identical sections. Paths resolve relative to
+// the including manual's directory.
+function expandIncludes(md, baseDir) {
+  return md.replace(/^\{\{include:\s*([^}]+)\}\}[ \t]*$/gm, (_, rel) =>
+    readFileSync(resolve(baseDir, rel.trim()), "utf8").replace(/\s+$/, "")
+  );
+}
+
 // Embed a screenshot as a data: URI. print-to-pdf from a file:// page can't
 // always load sibling file:// images, so we inline them — always reliable.
 function imgDataUri(baseDir, rel) {
@@ -160,7 +169,7 @@ if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
 const tmp = tmpdir();
 
 for (const m of MANUALS) {
-  const lines = readFileSync(m.src, "utf8").split("\n");
+  const lines = expandIncludes(readFileSync(m.src, "utf8"), dirname(m.src)).split("\n");
   const ti = lines.findIndex((l) => /^#\s+/.test(l.trim()));
   const title = ti >= 0 ? lines[ti].replace(/^#\s+/, "").trim() : m.subtitle;
   if (ti >= 0) lines.splice(ti, 1);

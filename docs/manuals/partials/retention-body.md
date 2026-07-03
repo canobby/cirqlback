@@ -1,0 +1,2 @@
+- **Favorites & reminders:** customers can favorite your shop. From the **Reminders** panel, send them a nudge or offer ("Your card's almost full!"). It shows in their in‑app feed.
+- **Your tap screen:** by default it shows your business name and offer. Want your **colors, logo, slogan, and links** on it? That's the **Custom Tap‑Screen Branding** add‑on (see the Add‑ons section).

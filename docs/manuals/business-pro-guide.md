@@ -1,110 +1,167 @@
 # Cirqlback — Business Guide (Pro Plan)
 
-**For:** growing and multi‑location businesses on the **Pro ($49.99/mo)** plan.
-**Log in at:** `/auth` → Merchant Dashboard at `/merchant`
+**For:** growing and multi‑location local businesses on the **Pro ($49.99/mo)** plan.
+**Log in at:** `/auth` · **Your dashboard:** `/merchant`
 
-Pro includes **everything in Core (Basic)** — so start with the **[Basic Guide](./business-basic-guide.md)** for the fundamentals (creating campaigns, setting up tags, redeeming rewards, analytics). This guide covers what Pro adds.
+> **This is your complete how‑to for running your business on Pro** — everything in Core, plus the tools for multiple locations and scale, in the order you'll use them. New to Cirqlback? This guide stands on its own. On the smaller **Core ($19.99/mo)** plan? See the **[Core Guide](./business-basic-guide.md)**.
 
 ---
 
-## 1. What Pro gives you
+## Quick start — your first live reward in ~15 minutes
 
-| | Core (Basic) | **Pro** |
+1. **Create your account** at `/auth` → sign up as a **Business**.
+2. **Fill in your business profile** (name, address, hours) — this also puts your pin on the Discovery Map.
+3. **Create a campaign** — e.g. a "Buy 5, get 1 free" loyalty card (§2).
+4. **Set up a Cirql tag** and link it to that campaign (§3).
+5. **Place the tag** on your counter and **tap it with your phone** to test.
+6. Repeat for each location, then watch taps land in **Analytics** (§8).
+
+---
+
+## 1. Set up your business & locations
+
+1. Go to **`/auth`** → **Create an account** → sign up as a **Business**, then open your **Business Hub** at **`/merchant`**.
+2. Open **Settings** (`/settings`) and complete your **business profile** — name, category, description, **address** (your map pin), hours, phone, email, logo.
+3. **Add your other locations** — Pro covers **up to 3**. Give each its own profile so each gets its own map pin, tags, and hosted page.
+
+> Your profile feeds both your **map pin** and your **hosted business page** (§4). Fill it in thoroughly, per location.
+
+**Your plan at a glance (Pro):**
+
+| | Pro |
+|---|---|
+| Business locations | Up to 3 |
+| Campaigns | Unlimited |
+| Customer taps / month | Unlimited |
+| Cirql tags included | 50 |
+| Analytics | Tap & redemption, across locations |
+| Hosted business page | **Included** |
+| Support | Priority |
+
+---
+
+## 2. Create your rewards (campaigns)
+
+{{include: partials/campaigns-body.md}}
+
+With **unlimited taps** on Pro, you can run campaigns as aggressively as you like — no monthly tap ceiling to watch.
+
+---
+
+## 3. Set up your Cirql tags
+
+{{include: partials/tags-body.md}}
+
+Pro includes **50 Cirql tags** — enough to cover several locations and multiple spots in each.
+
+---
+
+## 4. Your hosted business page (included)
+
+Give customers a polished one‑page website — your brand, hours, specials, and your **live Cirql rewards** — hosted at **`cirqlback.com/biz/your-business`**. No web skills needed, and on **Pro it's included free** (no add‑on to buy).
+
+**Step 1 — It's already on.** The **Hosted business page** editor is right on your Business Hub, unlocked — nothing to purchase. (Run more than one location? Each has its own page.)
+
+{{include: partials/hosted-customize-publish.md}}
+
+---
+
+## 5. Run the daily loyalty loop
+
+{{include: partials/loyalty-loop-body.md}}
+
+---
+
+## 6. Grow across locations: multi‑store group campaigns
+
+Pro shines when your locations work together. From your Business Hub's **group‑campaigns** panel you can run **multi‑store campaigns** — a single "tap at all 3 locations" trail, or a shared rewards program across your stores.
+
+- **Create** a group campaign spanning your locations (or **join** open ones with neighbor businesses).
+- Customers progress by tapping at **different** stores, which drives cross‑location visits.
+- Track **per‑location participation and completions** in one place.
+
+---
+
+## 7. Contests & scavenger hunts (Builder add‑on)
+
+Want richer, gamified campaigns? The **Contest & Scavenger‑Hunt Builder** add‑on ($14.99/mo) lets you build **multi‑stop scavenger hunts** and **prize contests** across your stores.
+
+1. From the **Add‑ons** panel, enable **Contest & Scavenger‑Hunt Builder**.
+2. Open the builder, name your hunt, set the **required stops** and the **prize**.
+3. Pick which of your locations are stops, and publish.
+
+Great for grand openings, seasonal events, and neighborhood crawls.
+
+---
+
+## 8. Analytics at scale
+
+Open **Analytics** (`/analytics`) for real figures from taps and redemptions — and with Pro, **compare across your locations**:
+
+- **Taps, active customers, rewards issued vs redeemed** (conversion) — per location and combined
+- **Busiest hours** and **peak windows** by store
+- **Top campaigns** and **top tag locations**
+- A **recent‑activity** feed across your portfolio
+
+**Enter sales data** per location to unlock accurate revenue, average‑order, and Cirql‑driven‑sales metrics.
+
+> Want best‑tag‑zone, return‑visit‑timing, and heatmap insight? Add the **Advanced Analytics Pack** ($12.99/mo).
+
+---
+
+## 9. Keep customers coming back
+
+{{include: partials/retention-body.md}}
+
+---
+
+## 10. Add‑ons
+
+Pro **includes the Hosted Business Page** free. These optional per‑business upgrades pair well with a multi‑location operation:
+
+| Add‑on | Price/mo | What it does |
 |---|---|---|
-| Business locations | 1 | **Up to 3** |
-| Customer taps / month | 500 | **Unlimited** |
-| Cirql tags included | 20 | **50** |
-| Support | Email | **Priority** |
-| Campaigns | Unlimited | Unlimited |
-| Add‑ons | Available | Available |
+| **Hosted Business Page** | *Included* | Your customizable one‑page website at `/biz/you` (§4). |
+| **Custom Tap‑Screen Branding** | $7.99 | Your colors, logo, slogan & links on the customer tap page. |
+| **Advanced Analytics Pack** | $12.99 | Best‑performing tag zones, return‑visit timing, busiest‑hour heatmaps. |
+| **Map Priority Placement** | $14.99 | A boosted, highlighted pin on the discovery map. |
+| **Contest & Scavenger‑Hunt Builder** | $14.99 | Build multi‑stop scavenger hunts and prize contests (§7). |
 
-Pro is the plan for a busy shop, a small chain, or anyone whose taps outgrow the Core allowance.
-
----
-
-## 2. Running multiple locations
-
-With up to **3 locations** on Pro:
-
-1. Add each location as its own business profile in the dashboard (name, address, category).
-2. Each location gets its **own tags, campaigns, and analytics** — so you can compare performance store‑to‑store.
-3. Every location appears on the **Discovery Map** with its own pin.
-
-> Running **more than 3** locations, or a whole city? That's typically handled by a **Community Coordinator** (a territory partner) — talk to your Cirqlback contact.
+Buying an add‑on runs through secure checkout and activates automatically. An add‑on applies to **one business** — buy it per location where you want it.
 
 ---
 
-## 3. Unlimited taps = campaigns without limits
+## 11. Billing, support & your account
 
-On Core you have a 500‑tap monthly allowance; on **Pro there's no tap cap**, so you can run high‑traffic promotions, event days (First Fridays, Small Business Saturday), and always‑on loyalty without watching the meter.
-
----
-
-## 4. Add‑ons that pair well with Pro
-
-Add‑ons are per‑business monthly upgrades from the **Add‑ons** panel. They're available on any paid plan, but Pro shops tend to use them most:
-
-| Add‑on | Price/mo | Why Pro shops love it |
-|---|---|---|
-| **Advanced Analytics Pack** | $12.99 | Best tag zones, return‑visit timing, busiest‑hour heatmaps, redemption funnel — essential once you have real volume. |
-| **Custom Tap‑Screen Branding** | $7.99 | Put your colors, logo, slogan, and links on the tap page for a branded experience. |
-| **Map Priority Placement** | $14.99 | Float to the top of the discovery map with a highlighted pin. |
-| **Contest & Scavenger‑Hunt Builder** | $14.99 | Build your own multi‑stop hunts and prize contests (see §5). |
-
-Each add‑on activates automatically after secure Stripe checkout.
+- See your plan and tier under **Account** (`/account`); buy add‑ons at **Checkout** (`/checkout`).
+- Payments are processed securely by **Stripe** — Cirqlback never sees your card number, and prices are set server‑side.
+- **Priority support** is included with Pro — you're first in the queue.
 
 ---
 
-## 5. Contests & scavenger hunts (with the Builder add‑on)
+## 12. Troubleshooting & FAQ
 
-With the **Contest & Scavenger‑Hunt Builder** add‑on you can create your own multi‑stop experiences:
+**A customer says their reward won't work.** Check the code's status — it may already be **redeemed** or **expired**.
 
-1. Open the **Scavenger‑Hunt Builder** in your dashboard.
-2. Name the hunt and set the **prize** and the **number of stops** required.
-3. Add the participating stores (your own locations, and any you're allowed to include).
-4. Publish — customers see it on the map as a **Group Trail**, tap their way through the stops, and unlock the prize once. It runs on the same tap loop and map surfacing as built‑in group campaigns.
+**Can customers cheat the punch card?** No — per‑tag cool‑down, optional GPS proximity, and device fingerprinting prevent rapid repeat taps.
 
----
+**Do customers need an account?** No. They're anonymous unless they share an email to save progress.
 
-## 6. Multi‑store group campaigns
+**Can each location have its own hosted page and tags?** Yes — each location is its own business profile with its own page, tags, and analytics.
 
-Beyond your own hunts, Pro shops can **join open group campaigns** (city‑wide "tap at 3 shops" trails) and be **surfaced on the map** as part of them — a strong way to trade foot traffic with neighboring businesses. Manage joins from the group‑campaigns panel in your dashboard.
+**I need more than 3 locations.** Contact support — Pro covers up to 3; larger operations are handled case by case.
 
----
-
-## 7. Analytics at scale
-
-The standard **Analytics** dashboard (`/analytics`) gives totals, conversion, busiest hours, top campaigns/locations, and a live activity feed. With **Advanced Analytics** you additionally get:
-
-- **Best‑performing tag zones** (which physical spots convert best)
-- **Return‑visit timing** (how long before customers come back)
-- **Busiest hours & days** heatmaps
-- A detailed **redemption funnel** (taps → issued → redeemed)
-
-Enter your **daily sales data** to turn on accurate revenue, average order value, and Cirql‑driven‑sales figures.
+**My hosted page isn't showing.** Make sure you clicked **Save & publish** (not just Save). An unpublished page returns a "not available" message.
 
 ---
 
-## 8. Billing & support
+## 13. Your weekly rhythm
 
-- Manage your plan under **Account** (`/account`); upgrade/downgrade and buy add‑ons via **Checkout** (`/checkout`).
-- Payments run through **Stripe**; prices are set server‑side, so you're always billed the correct amount.
-- **Priority support** is included with Pro — you're front of the queue for help.
-
----
-
-## 9. Tips & FAQ
-
-**Should I brand my tap screen?** If you have a recognizable brand, yes — the Custom Branding add‑on makes the experience feel like *yours*, not generic.
-
-**How do I know which tags work best?** Label every tag by placement; the standard analytics show **top tag locations**, and Advanced Analytics shows **best tag zones** and return timing.
-
-**Can I move a tag to a new spot?** Yes — re‑point or re‑label any of your tags from the dashboard; its tap count follows the tag.
-
-**What happens if I downgrade to Core?** You keep your data; the Core caps (1 location, 500 taps) apply going forward.
-
-**I need more than 3 locations.** Reach out about a **Coordinator/enterprise** arrangement for larger footprints.
+- **Daily:** redeem reward codes as customers present them (all locations).
+- **Weekly:** compare locations in Analytics — which store and tag spot lead? Rebalance placement and offers.
+- **Weekly:** send a Reminder to favoriters, and refresh each location's hosted‑page specials.
+- **Monthly:** review multi‑store campaign performance and whether a contest would drive your next event.
 
 ---
 
-*Fundamentals live in the **[Basic Guide](./business-basic-guide.md)**. This guide is Pro on top of that.*
+*On the smaller plan, or comparing? See the **[Core Guide](./business-basic-guide.md)**.*

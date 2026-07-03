@@ -47,34 +47,13 @@ That's the whole loop. The rest of this guide goes deeper on each step and on gr
 
 ## 2. Create your rewards (campaigns)
 
-A **campaign** is the rule behind a reward. From the Business Hub, click **Create Campaign** to open the guided **Campaign Builder** (Type → Details → Review → Complete).
-
-![The Campaign Builder walks you through picking a reward type, then the details.](img/core-campaign-builder.png)
-
-**Pick a type:**
-
-- **Discount Offer** — money off a purchase (e.g. "10% off," "$5 off orders $25+").
-- **Loyalty Points** — reward return visits. Set a **tap goal** (e.g. 5) to make it a **punch card**: the reward unlocks every Nth tap.
-- **Referral Bonus** — reward customers for bringing friends.
-
-Then give it a **name** and **reward** (e.g. "Free coffee"), set a value if relevant, optionally require **GPS proximity**, and finish. Your campaign is **live** immediately and ready to attach to a tag.
-
-> Campaigns are private to you — only your business can edit or delete its own campaigns.
+{{include: partials/campaigns-body.md}}
 
 ---
 
 ## 3. Set up your Cirql tags
 
-A **Cirql tag** is an NFC sticker or stand at your counter that customers tap to earn. From the Business Hub, click **Program Tag** to open the **Cirql Tag Setup** wizard.
-
-![The Cirql Tag Setup wizard programs your tags in five guided steps.](img/core-tag-setup-steps.png)
-
-1. **Label the tag** (e.g. "Front counter," "Patio") so your analytics show which spots perform best.
-2. **Link it to a campaign** from §2.
-3. **Write it to a physical NFC tag.** Programming is done on an **NFC‑capable Android phone** — hold the blank tag to the back of the phone when prompted. On a device without NFC, use the **Smart NFC Writer** option or the printable **QR code** as a backup.
-4. **Place the tag** where customers naturally pause, and **tap it with your own phone** to confirm it works.
-
-You can **rename, re‑point, or deactivate** your own tags anytime, and each tag tracks its own tap count.
+{{include: partials/tags-body.md}}
 
 ---
 
@@ -88,35 +67,13 @@ Give customers a polished one‑page website — your brand, hours, specials, an
 
 ![The Add‑ons panel. On Core, the Hosted Business Page is $14.99/mo; it's free on Pro.](img/core-addons-panel.png)
 
-**Step 2 — Make it yours.** The **Hosted business page** editor appears on your Hub. Customize with simple controls — no layout can break:
-
-- **Brand color** (pick any color or a swatch) and a **font** style
-- A **hero** style and optional cover **image**
-- **About** and **Specials** text
-- Turn sections **on/off and reorder** them (About, Specials, Live Cirql Rewards, Hours, Gallery, Contact, Social)
-- **Hours**, **contact**, **social links**, and a **photo gallery**
-
-A **live preview** updates as you type.
-
-![The editor: fill in the form on the left, watch the live preview on the right.](img/website-editor.png)
-
-**Step 3 — Publish.** Click **Save**, then **Save & publish**. You'll get your public link (**`/biz/your-business`**) and a view counter. Your active campaigns appear automatically in the **Live Cirql Rewards** section — publish once and they stay current.
-
-![Your published page — brand color, about, hours, and contact, all from your profile and editor.](img/core-hosted-page-live.png)
-
-> Share your `/biz/...` link on Google, Instagram, and printed materials. To take it down, open the editor and click **Unpublish**.
+{{include: partials/hosted-customize-publish.md}}
 
 ---
 
 ## 5. Run the daily loyalty loop
 
-Once tags are live, the loop runs itself:
-
-- Customers **tap → earn** automatically — nothing to do per tap.
-- When a customer completes a punch card or earns a discount, they show a **reward code**.
-- **Redeem it:** look the code up in your dashboard and mark it redeemed. A redeemed code can't be reused.
-
-**Anti‑abuse is built in:** a per‑tag cool‑down, optional GPS proximity, and device fingerprinting stop rapid repeat taps, so the punch card can't be gamed.
+{{include: partials/loyalty-loop-body.md}}
 
 ---
 
@@ -137,8 +94,7 @@ Open **Analytics** (`/analytics`) for real figures from your taps and redemption
 
 ## 7. Keep customers coming back
 
-- **Favorites & reminders:** customers can favorite your shop. From the **Reminders** panel, send them a nudge or offer ("Your card's almost full!"). It shows in their in‑app feed.
-- **Your tap screen:** by default it shows your business name and offer. Want your **colors, logo, slogan, and links** on it? That's the **Custom Tap‑Screen Branding** add‑on (§8).
+{{include: partials/retention-body.md}}
 
 ---
 
