@@ -114,6 +114,16 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // Insights: 6-month trends + business activation funnel.
+  app.get("/api/admin/insights", async (_req, res) => {
+    try {
+      res.json(await storage.getAdminInsights());
+    } catch (error) {
+      console.error("Admin insights error:", error);
+      res.status(500).json({ error: "Failed to load insights" });
+    }
+  });
+
   // Revenue tab: MRR, subscription/add-on mix, liability, trials, this month.
   app.get("/api/admin/revenue", async (_req, res) => {
     try {

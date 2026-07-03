@@ -634,6 +634,56 @@ export class DatabaseStorage implements IStorage {
     return rows.sort((a, b) => b.lifetimeShareCents - a.lifetimeShareCents);
   }
 
+  // Admin Insights: 6-month growth trends (signups, new businesses, taps,
+  // attributed revenue) + the business activation funnel (signed -> configured
+  // -> live -> getting taps). Derived from existing timestamped data.
+  async getAdminInsights(): Promise<{
+    trends: Array<{ month: string; signups: number; businesses: number; taps: number; revenueCents: number }>;
+    funnel: { signed: number; configured: number; live: number; active: number };
+  }> {
+    const now = new Date();
+    const months: string[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+    const monthOf = (col: any) => sql<string>`to_char(date_trunc('month', ${col}), 'YYYY-MM')`;
+    const uM = monthOf(users.createdAt), bM = monthOf(businesses.createdAt), tM = monthOf(taps.createdAt);
+
+    const [signupRows, bizRows, tapRows, revRows, claimed, campBiz, tagBiz, tapBiz] = await Promise.all([
+      db.select({ m: uM, n: count() }).from(users).groupBy(uM),
+      db.select({ m: bM, n: count() }).from(businesses).groupBy(bM),
+      db.select({ m: tM, n: count() }).from(taps).groupBy(tM),
+      db.select({ m: coordinatorEarnings.periodMonth, g: sql<number>`coalesce(sum(${coordinatorEarnings.grossAmountCents}),0)` })
+        .from(coordinatorEarnings).groupBy(coordinatorEarnings.periodMonth),
+      db.select({ id: businesses.id }).from(businesses).where(and(eq(businesses.isActive, true), isNotNull(businesses.ownerId))),
+      db.select({ b: campaigns.businessId }).from(campaigns).groupBy(campaigns.businessId),
+      db.select({ b: nfcTags.businessId }).from(nfcTags).groupBy(nfcTags.businessId),
+      db.select({ b: taps.businessId }).from(taps).groupBy(taps.businessId),
+    ]);
+
+    const map = (rows: Array<{ m: string | null; n?: number; g?: number }>, key: "n" | "g") =>
+      new Map(rows.filter((r) => r.m).map((r) => [r.m as string, Number(r[key] ?? 0)]));
+    const s = map(signupRows, "n"), b = map(bizRows, "n"), t = map(tapRows, "n"), r = map(revRows, "g");
+    const trends = months.map((m) => ({
+      month: m, signups: s.get(m) ?? 0, businesses: b.get(m) ?? 0, taps: t.get(m) ?? 0, revenueCents: r.get(m) ?? 0,
+    }));
+
+    const claimedIds = new Set(claimed.map((x) => x.id));
+    const withCampaign = new Set(campBiz.map((x) => x.b));
+    const withTag = new Set(tagBiz.map((x) => x.b));
+    const withTap = new Set(tapBiz.map((x) => x.b));
+    const inClaimed = (set: Set<string>) => Array.from(claimedIds).filter((id) => set.has(id)).length;
+    const funnel = {
+      signed: claimedIds.size,
+      configured: inClaimed(withCampaign),
+      live: inClaimed(withTag),
+      active: inClaimed(withTap),
+    };
+
+    return { trends, funnel };
+  }
+
   // Real list of platform users for the admin user-management table.
   async listPlatformUsers(limit = 200): Promise<
     Array<Pick<User, "id" | "email" | "firstName" | "lastName" | "role" | "subscriptionTier" | "subscriptionStatus" | "createdAt">>
