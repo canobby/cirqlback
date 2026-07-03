@@ -17,6 +17,7 @@ import LeaderboardCard from "@/components/gamification/leaderboard-card";
 import SpinWheel from "@/components/gamification/spin-wheel";
 import EventBanner from "@/components/gamification/event-banner";
 import SocialPanel from "@/components/gamification/social-panel";
+import HelpAssistant from "@/components/assistant/help-assistant";
 
 export default function CustomerBento() {
   const [, setLocation] = useLocation();
@@ -418,6 +419,7 @@ export default function CustomerBento() {
 
         </div>
       </div>
+      <HelpAssistant role="customer" />
     </div>
   );
 }

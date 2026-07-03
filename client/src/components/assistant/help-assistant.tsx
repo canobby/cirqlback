@@ -4,12 +4,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Sparkles, X, Send, Loader2 } from "lucide-react";
 
-type Role = "business" | "coordinator" | "admin";
+type Role = "customer" | "business" | "coordinator" | "admin";
 type Msg = { role: "user" | "assistant"; content: string };
 
 // Role-specific opening line + starter questions. These seed the empty state so
 // users know what the assistant can do.
 const INTRO: Record<Role, { hi: string; suggestions: string[] }> = {
+  customer: {
+    hi: "Hi! I'm your Cirqlback guide. Ask me how tapping, points, rewards, streaks, badges, or the daily spin work — or how to find local shops.",
+    suggestions: [
+      "How do I earn and spend points?",
+      "What are streaks and how do I keep mine?",
+      "How do badges and passports work?",
+      "How do I refer a friend?",
+    ],
+  },
   business: {
     hi: "Hi! I'm your Cirqlback guide. Ask me how anything works — campaigns, your hosted page, rewards, add-ons, payouts, badges…",
     suggestions: [

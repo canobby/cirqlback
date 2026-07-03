@@ -8,12 +8,14 @@ import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 
-export type AssistantRole = "business" | "coordinator" | "admin";
+export type AssistantRole = "customer" | "business" | "coordinator" | "admin";
 
 // Which manuals ground each role. Business is scoped by plan tier (see below) so
 // a Core/Starter user isn't walked through Pro-only workflows; coordinators also
-// get the sales playbook; admin gets the admin guide.
+// get the sales playbook; admin gets the admin guide; customers get the customer
+// guide.
 const ROLE_MANUALS: Record<Exclude<AssistantRole, "business">, string[]> = {
+  customer: ["customer-guide.md"],
   coordinator: ["coordinator-guide.md", "coordinator-sales-playbook.md"],
   admin: ["admin-guide.md"],
 };
@@ -74,5 +76,5 @@ export function getKnowledgeForRole(role: AssistantRole, tier?: string): string 
 }
 
 export function isAssistantRole(v: unknown): v is AssistantRole {
-  return v === "business" || v === "coordinator" || v === "admin";
+  return v === "customer" || v === "business" || v === "coordinator" || v === "admin";
 }

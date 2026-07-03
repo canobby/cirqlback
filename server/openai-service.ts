@@ -84,6 +84,7 @@ export interface AssistantTurn {
 }
 
 const ROLE_LABEL: Record<AssistantRole, string> = {
+  customer: "a customer using the Cirqlback app to tap, earn points and rewards, and discover local shops",
   business: "a local business owner using the Cirqlback business (merchant) dashboard",
   coordinator: "a Community Coordinator using the Cirqlback coordinator dashboard",
   admin: "a Cirqlback platform administrator using the admin dashboard",

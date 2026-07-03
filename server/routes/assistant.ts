@@ -18,6 +18,11 @@ async function authorizeRole(
   role: AssistantRole,
 ): Promise<{ allowed: boolean; tier?: string }> {
   const userId = user.id;
+  // The customer guide is the least-privileged, public-facing help — any
+  // authenticated user may use it (a business owner is also a customer).
+  if (role === "customer") {
+    return { allowed: true };
+  }
   if (role === "admin") {
     const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.userId, userId));
     return { allowed: !!admin && admin.isActive !== false };
@@ -36,7 +41,7 @@ async function authorizeRole(
 // each scoped to their own guide.
 export function registerAssistantRoutes(app: Express, _deps: RouteDeps) {
   const bodySchema = z.object({
-    role: z.enum(["business", "coordinator", "admin"]),
+    role: z.enum(["customer", "business", "coordinator", "admin"]),
     stream: z.boolean().optional(),
     messages: z
       .array(
