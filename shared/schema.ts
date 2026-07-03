@@ -1441,10 +1441,13 @@ export type InsertBusinessGoals = z.infer<typeof insertBusinessGoalsSchema>;
 export const messageThreads = pgTable("message_threads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   subject: varchar("subject").notNull(),
-  // coordinator_business | admin_support | customer_reply (future)
+  // coordinator_business | admin_support | customer_business
   contextType: varchar("context_type").notNull().default("coordinator_business"),
   coordinatorId: varchar("coordinator_id").references(() => coordinators.id),
   businessId: varchar("business_id").references(() => businesses.id),
+  // The customer party for context_type='customer_business' (Slice 4). Null
+  // otherwise. The customer always initiates; the business replies.
+  customerUserId: varchar("customer_user_id").references(() => users.id),
   status: varchar("status").notNull().default("open"), // open | closed
   lastMessageAt: timestamp("last_message_at").defaultNow(),
   createdBy: varchar("created_by").references(() => users.id),

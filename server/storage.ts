@@ -3077,8 +3077,9 @@ export class DatabaseStorage implements IStorage {
 
   async createMessageThread(data: {
     subject: string;
-    coordinatorId: string;
-    businessId: string;
+    coordinatorId?: string | null;
+    businessId?: string | null;
+    customerUserId?: string | null;
     contextType?: string;
     createdBy?: string;
   }): Promise<MessageThread> {
@@ -3086,14 +3087,32 @@ export class DatabaseStorage implements IStorage {
       .insert(messageThreads)
       .values({
         subject: data.subject,
-        coordinatorId: data.coordinatorId,
-        businessId: data.businessId,
+        coordinatorId: data.coordinatorId ?? null,
+        businessId: data.businessId ?? null,
+        customerUserId: data.customerUserId ?? null,
         contextType: data.contextType ?? "coordinator_business",
         createdBy: data.createdBy,
         lastMessageAt: new Date(),
       })
       .returning();
     return row;
+  }
+
+  // Slice 4: threads where this user is the customer party.
+  async getMessageThreadsForCustomer(customerUserId: string): Promise<MessageThread[]> {
+    return await db
+      .select()
+      .from(messageThreads)
+      .where(eq(messageThreads.customerUserId, customerUserId))
+      .orderBy(desc(messageThreads.lastMessageAt));
+  }
+
+  // Has this customer (by email) favorited the business? Gates the opt-in
+  // customer→business message path.
+  async customerFollowsBusiness(email: string | null | undefined, businessId: string): Promise<boolean> {
+    if (!email) return false;
+    const ids = await this.getFavoriteBusinessIds(email, null);
+    return ids.includes(businessId);
   }
 
   async createMessage(data: {

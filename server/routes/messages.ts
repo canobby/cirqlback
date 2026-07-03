@@ -26,7 +26,7 @@ import type { MessageThread, Message } from "@shared/schema";
 const SUBJECT_MAX = 150;
 const BODY_MAX = 4000;
 
-type ThreadRole = "coordinator" | "business" | "admin";
+type ThreadRole = "coordinator" | "business" | "admin" | "customer";
 
 type ActorContext = {
   userId: string;
@@ -61,6 +61,11 @@ function roleInThread(thread: MessageThread, actor: ActorContext): ThreadRole | 
     if (actor.coordinatorId && thread.coordinatorId === actor.coordinatorId) return "coordinator";
     return null;
   }
+  if (thread.contextType === "customer_business") {
+    if (thread.customerUserId && thread.customerUserId === actor.userId) return "customer";
+    if (thread.businessId && actor.businessIds.includes(thread.businessId)) return "business";
+    return null;
+  }
   // coordinator_business
   if (actor.coordinatorId && thread.coordinatorId === actor.coordinatorId) return "coordinator";
   if (thread.businessId && actor.businessIds.includes(thread.businessId)) return "business";
@@ -82,8 +87,10 @@ export function registerMessageRoutes(app: Express, _deps: RouteDeps) {
   async function nameLookups(threads: MessageThread[]) {
     const bizIds = Array.from(new Set(threads.map((t) => t.businessId).filter(Boolean))) as string[];
     const coordIds = Array.from(new Set(threads.map((t) => t.coordinatorId).filter(Boolean))) as string[];
+    const custIds = Array.from(new Set(threads.map((t) => t.customerUserId).filter(Boolean))) as string[];
     const bizNames = new Map<string, string>();
     const coordNames = new Map<string, string>();
+    const custNames = new Map<string, string>();
     await Promise.all([
       ...bizIds.map(async (id) => {
         const b = await storage.getBusiness(id);
@@ -93,8 +100,12 @@ export function registerMessageRoutes(app: Express, _deps: RouteDeps) {
         const c = await storage.getCoordinator(id);
         if (c) coordNames.set(id, c.displayName || "Coordinator");
       }),
+      ...custIds.map(async (id) => {
+        const u = await storage.getUser(id);
+        if (u) custNames.set(id, (u as any).firstName || (u as any).email || "Customer");
+      }),
     ]);
-    return { bizNames, coordNames };
+    return { bizNames, coordNames, custNames };
   }
 
   // The label the viewer sees for "the other side" of a thread.
@@ -103,28 +114,35 @@ export function registerMessageRoutes(app: Express, _deps: RouteDeps) {
     role: ThreadRole,
     bizNames: Map<string, string>,
     coordNames: Map<string, string>,
+    custNames: Map<string, string>,
   ): string {
     const bizName = (thread.businessId && bizNames.get(thread.businessId)) || "Business";
     const coordName = (thread.coordinatorId && coordNames.get(thread.coordinatorId)) || "Coordinator";
+    const custName = (thread.customerUserId && custNames.get(thread.customerUserId)) || "Customer";
     if (thread.contextType === "admin_support") {
       // The admin sees who they're helping; the counterpart sees "Support".
       if (role === "admin") return thread.businessId ? bizName : coordName;
       return "Cirqlback Support";
+    }
+    if (thread.contextType === "customer_business") {
+      // Customer sees the business; business sees the customer.
+      return role === "customer" ? bizName : custName;
     }
     return role === "coordinator" ? bizName : coordName;
   }
 
   // Every thread the actor participates in (admins also see the support queue).
   async function inboxThreads(actor: ActorContext): Promise<MessageThread[]> {
-    const [asCoord, asBiz, asAdmin] = await Promise.all([
+    const [asCoord, asBiz, asAdmin, asCustomer] = await Promise.all([
       actor.coordinatorId
         ? storage.getMessageThreadsForCoordinator(actor.coordinatorId)
         : Promise.resolve([] as MessageThread[]),
       storage.getMessageThreadsForBusinessIds(actor.businessIds),
       actor.isAdmin ? storage.getAdminSupportThreads() : Promise.resolve([] as MessageThread[]),
+      storage.getMessageThreadsForCustomer(actor.userId),
     ]);
     const byId = new Map<string, MessageThread>();
-    for (const t of [...asCoord, ...asBiz, ...asAdmin]) byId.set(t.id, t);
+    for (const t of [...asCoord, ...asBiz, ...asAdmin, ...asCustomer]) byId.set(t.id, t);
     return Array.from(byId.values()).sort(
       (a, b) => new Date(b.lastMessageAt ?? 0).getTime() - new Date(a.lastMessageAt ?? 0).getTime(),
     );
@@ -142,7 +160,7 @@ export function registerMessageRoutes(app: Express, _deps: RouteDeps) {
         arr.push(m);
         byThread.set(m.threadId, arr);
       }
-      const { bizNames, coordNames } = await nameLookups(threads);
+      const { bizNames, coordNames, custNames } = await nameLookups(threads);
 
       const summaries = threads.map((t) => {
         const role = roleInThread(t, actor)!; // guaranteed participant here
@@ -155,7 +173,7 @@ export function registerMessageRoutes(app: Express, _deps: RouteDeps) {
           status: t.status,
           kind: t.contextType,
           myRole: role,
-          counterpartName: counterpartName(t, role, bizNames, coordNames),
+          counterpartName: counterpartName(t, role, bizNames, coordNames, custNames),
           lastMessagePreview: last ? last.body.slice(0, 140) : null,
           lastMessageAt: t.lastMessageAt,
           messageCount: tm.length,
@@ -196,7 +214,7 @@ export function registerMessageRoutes(app: Express, _deps: RouteDeps) {
 
       await storage.markThreadReadForRole(thread.id, role);
       const messages = await storage.getMessagesForThread(thread.id);
-      const { bizNames, coordNames } = await nameLookups([thread]);
+      const { bizNames, coordNames, custNames } = await nameLookups([thread]);
 
       res.json({
         thread: {
@@ -205,7 +223,7 @@ export function registerMessageRoutes(app: Express, _deps: RouteDeps) {
           status: thread.status,
           kind: thread.contextType,
           myRole: role,
-          counterpartName: counterpartName(thread, role, bizNames, coordNames),
+          counterpartName: counterpartName(thread, role, bizNames, coordNames, custNames),
           createdAt: thread.createdAt,
         },
         messages,
@@ -230,6 +248,29 @@ export function registerMessageRoutes(app: Express, _deps: RouteDeps) {
 
       let coordinatorId: string | null = null;
       let senderRole: "coordinator" | "business";
+
+      // A customer (opted in by following the business) opening a thread with it.
+      if (
+        actor.role === "customer" &&
+        !actor.coordinatorId &&
+        !actor.businessIds.includes(businessId) &&
+        (await storage.customerFollowsBusiness(actor.email, businessId))
+      ) {
+        const thread = await storage.createMessageThread({
+          subject,
+          businessId,
+          customerUserId: actor.userId,
+          contextType: "customer_business",
+          createdBy: actor.userId,
+        });
+        await storage.createMessage({
+          threadId: thread.id,
+          senderId: actor.userId,
+          senderRole: "customer",
+          body,
+        });
+        return res.status(201).json({ id: thread.id });
+      }
 
       if (actor.coordinatorId && (await storage.coordinatorOwnsBusiness(actor.coordinatorId, businessId))) {
         coordinatorId = actor.coordinatorId;
@@ -351,6 +392,18 @@ export function registerMessageRoutes(app: Express, _deps: RouteDeps) {
     } catch (error) {
       console.error("Customer feed error:", error);
       res.status(500).json({ error: "Failed to load feed" });
+    }
+  });
+
+  // Businesses the customer follows — the opt-in set they may start a thread with.
+  app.get("/api/customer/followed-businesses", isAuthenticated, async (req, res) => {
+    try {
+      const actor = await resolveActor(req);
+      const favorites = await storage.getFavorites(actor.email);
+      res.json(favorites.map((f: any) => ({ id: f.id, name: f.name })));
+    } catch (error) {
+      console.error("Followed businesses error:", error);
+      res.status(500).json({ error: "Failed to load businesses" });
     }
   });
 

@@ -1,0 +1,2 @@
+ALTER TABLE "message_threads" ADD COLUMN "customer_user_id" varchar;--> statement-breakpoint
+ALTER TABLE "message_threads" ADD CONSTRAINT "message_threads_customer_user_id_users_id_fk" FOREIGN KEY ("customer_user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;

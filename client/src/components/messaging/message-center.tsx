@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { MessageSquare, Plus, Send, ArrowLeft, Store, Globe, LifeBuoy } from "lucide-react";
+import { MessageSquare, Plus, Send, ArrowLeft, Store, Globe, LifeBuoy, User } from "lucide-react";
 
 // Shared cross-role message center — one component for every hub. The `role`
 // prop only changes who the "New conversation" flow can address; the inbox,
@@ -18,7 +18,7 @@ import { MessageSquare, Plus, Send, ArrowLeft, Store, Globe, LifeBuoy } from "lu
 //   coordinator ↔ business (Slice 1) · admin support (Slice 2)
 // In-app only; no email/push yet.
 
-type Role = "coordinator" | "business" | "admin";
+type Role = "coordinator" | "business" | "admin" | "customer";
 
 interface ThreadSummary {
   id: string;
@@ -54,6 +54,8 @@ function timeLabel(ts: string | null): string {
 
 function ThreadIcon({ kind, myRole, className }: { kind: string; myRole: Role; className?: string }) {
   if (kind === "admin_support") return <LifeBuoy className={className} />;
+  // customer_business: customer sees the business (store), business sees the customer.
+  if (kind === "customer_business") return myRole === "customer" ? <Store className={className} /> : <User className={className} />;
   // coordinator_business: coordinator sees a store, business sees a globe.
   return myRole === "coordinator" ? <Store className={className} /> : <Globe className={className} />;
 }
@@ -105,7 +107,9 @@ export default function MessageCenter({ role }: { role: Role }) {
       ? "Message the businesses in your territory. They can reply here."
       : role === "business"
         ? "Message your community coordinator or reply to Cirqlback Support."
-        : "Support conversations with coordinators and businesses.";
+        : role === "customer"
+          ? "Message a business you follow. They can reply here."
+          : "Support conversations with coordinators and businesses.";
 
   return (
     <Card className="mb-8">
@@ -274,6 +278,11 @@ function ComposeDialog({
     enabled: open && role === "admin",
     retry: false,
   });
+  const { data: followed } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["/api/customer/followed-businesses"],
+    enabled: open && role === "customer",
+    retry: false,
+  });
 
   const reset = () => { setSubject(""); setBody(""); setBusinessId(""); setAdminTarget(""); };
 
@@ -306,7 +315,7 @@ function ComposeDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {role === "coordinator" ? "Message a business"
+            {role === "coordinator" || role === "customer" ? "Message a business"
               : role === "admin" ? "New support message"
               : "Message your coordinator"}
           </DialogTitle>
@@ -323,6 +332,24 @@ function ComposeDialog({
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
+          )}
+          {role === "customer" && (
+            (followed ?? []).length === 0 ? (
+              <p className="text-sm text-gray-500">
+                Follow a business (tap the heart on its page) to message it.
+              </p>
+            ) : (
+              <select
+                value={businessId}
+                onChange={(e) => setBusinessId(e.target.value)}
+                className="w-full h-10 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 text-sm"
+              >
+                <option value="">Select a business you follow…</option>
+                {(followed ?? []).map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            )
           )}
           {role === "admin" && (
             <select

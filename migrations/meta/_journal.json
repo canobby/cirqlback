@@ -43,6 +43,13 @@
       "when": 1783064994083,
       "tag": "0005_tiny_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783066282517,
+      "tag": "0006_cynical_leopardon",
+      "breakpoints": true
     }
   ]
 }

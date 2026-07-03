@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { QuickTranslate } from "@/components/ui/translated-text";
 import CustomerFeedPanel from "@/components/messaging/customer-feed-panel";
+import MessageCenter from "@/components/messaging/message-center";
 
 export default function CustomerBento() {
   const [, setLocation] = useLocation();
@@ -64,6 +65,9 @@ export default function CustomerBento() {
 
         {/* Updates: business reminders + admin announcements (Slice 3) */}
         <CustomerFeedPanel />
+
+        {/* Messages: contact a business you follow (Slice 4) */}
+        <MessageCenter role="customer" />
 
         {/* Bento Grid Layout */}
         <div className="bento-grid auto-rows-min">
