@@ -7,7 +7,16 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from "fs";
 import { execFileSync } from "child_process";
 import { tmpdir } from "os";
-import { join, resolve } from "path";
+import { join, resolve, dirname } from "path";
+
+// Embed a screenshot as a data: URI. print-to-pdf from a file:// page can't
+// always load sibling file:// images, so we inline them — always reliable.
+function imgDataUri(baseDir, rel) {
+  const p = resolve(baseDir, rel);
+  const ext = p.split(".").pop().toLowerCase();
+  const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "gif" ? "image/gif" : "image/png";
+  return `data:${mime};base64,${readFileSync(p).toString("base64")}`;
+}
 
 const MANUALS = [
   { src: "docs/manuals/customer-guide.md", subtitle: "Customer", out: "Cirqlback-Customer-Guide.pdf" },
@@ -42,7 +51,7 @@ function renderItems(items) {
   return html + `</${type}>`;
 }
 
-function md2html(md) {
+function md2html(md, baseDir) {
   const lines = md.split("\n");
   const out = [];
   let i = 0, para = [];
@@ -51,6 +60,14 @@ function md2html(md) {
   while (i < lines.length) {
     const line = lines[i], t = line.trim();
     if (t === "") { flush(); i++; continue; }
+    // Block image on its own line: ![Caption](img/shot.png) → embedded figure.
+    let im = t.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (im) {
+      flush();
+      const uri = imgDataUri(baseDir, im[2]);
+      out.push(`<figure><img src="${uri}" alt="${escapeHtml(im[1])}"/>${im[1] ? `<figcaption>${escapeHtml(im[1])}</figcaption>` : ""}</figure>`);
+      i++; continue;
+    }
     let m = t.match(/^(#{1,3})\s+(.*)$/);
     if (m) { flush(); out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`); i++; continue; }
     if (/^-{3,}$/.test(t)) { flush(); out.push("<hr>"); i++; continue; }
@@ -110,6 +127,9 @@ const template = (title, subtitle, body) => `<!doctype html><html><head><meta ch
   hr { border: 0; border-top: 1px solid #eceef3; margin: 16px 0; }
   blockquote { margin: 10px 0; padding: 9px 14px; background: #faf7ff; border-left: 3px solid #a78bfa; border-radius: 0 8px 8px 0; color: #4b3f6b; font-size: 11px; }
   blockquote strong { color: #4c1d95; }
+  figure { margin: 14px 0; text-align: center; break-inside: avoid; }
+  figure img { max-width: 92%; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.10); }
+  figcaption { color: #6b7280; font-size: 10px; margin-top: 5px; font-style: italic; }
   table { width: 100%; border-collapse: collapse; margin: 10px 0; break-inside: avoid; }
   th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: #7c6fa8; background: #f6f4fc; border: 1px solid #ece9fb; padding: 6px 8px; }
   td { border: 1px solid #eef0f4; padding: 6px 8px; vertical-align: top; }
@@ -146,7 +166,7 @@ for (const m of MANUALS) {
   if (ti >= 0) lines.splice(ti, 1);
   // Unique filename per run so Chrome never serves a stale cached render.
   const html = join(tmp, `cirqlback-manual-${Date.now()}-${Math.random().toString(36).slice(2)}.html`);
-  writeFileSync(html, template(title, m.subtitle, md2html(lines.join("\n"))));
+  writeFileSync(html, template(title, m.subtitle, md2html(lines.join("\n"), dirname(m.src))));
   // Absolute, forward-slashed path — Chrome's --print-to-pdf silently fails on a
   // relative / backslashed Windows path.
   const pdf = resolve(OUT_DIR, m.out).replace(/\\/g, "/");
@@ -159,7 +179,8 @@ for (const m of MANUALS) {
     `--user-data-dir=${profile}`, "--no-pdf-header-footer",
     `--print-to-pdf=${pdf}`, "file:///" + html.replace(/\\/g, "/"),
   ], { stdio: "ignore" });
-  rmSync(html, { force: true });
+  if (process.env.KEEP_HTML) console.log("kept html", html);
+  else rmSync(html, { force: true });
   if (!existsSync(pdf)) throw new Error("Chrome did not write " + pdf);
   console.log("rendered", pdf);
 }
