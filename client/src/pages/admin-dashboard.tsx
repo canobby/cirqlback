@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { CoordinatorSharePanel } from "@/components/admin/coordinator-share-panel";
+import CommandCenter from "@/components/admin/command-center";
 import { 
   Shield,
   Users,
@@ -76,7 +77,8 @@ interface CampaignTemplateAdmin {
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
+  const [adminTab, setAdminTab] = useState("overview");
+
   // AI Platform Insights Query
   const { data: aiPlatformInsights, isLoading: aiLoading, refetch: refetchAI } = useQuery<any>({
     queryKey: ['/api/ai/admin-insights'],
@@ -268,9 +270,10 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-6">
+        <Tabs value={adminTab} onValueChange={setAdminTab} className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="grid grid-cols-7 min-w-max lg:w-full">
+            <TabsList className="grid grid-cols-8 min-w-max lg:w-full">
+              <TabsTrigger value="overview" className="px-2 text-xs lg:px-3 lg:text-sm">Overview</TabsTrigger>
               <TabsTrigger value="users" className="px-2 text-xs lg:px-3 lg:text-sm">Users</TabsTrigger>
               <TabsTrigger value="templates" className="px-2 text-xs lg:px-3 lg:text-sm">Templates</TabsTrigger>
               <TabsTrigger value="subscriptions" className="px-2 text-xs lg:px-3 lg:text-sm">Subscriptions</TabsTrigger>
@@ -280,6 +283,11 @@ export default function AdminDashboard() {
               <TabsTrigger value="platform" className="px-2 text-xs lg:px-3 lg:text-sm">Platform</TabsTrigger>
             </TabsList>
           </div>
+
+          {/* Command center */}
+          <TabsContent value="overview" className="space-y-6">
+            <CommandCenter onGo={setAdminTab} />
+          </TabsContent>
 
           {/* Users Management */}
           <TabsContent value="users" className="space-y-6">

@@ -104,6 +104,16 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // Command center: headline KPIs + the "needs attention" queue.
+  app.get("/api/admin/overview", async (_req, res) => {
+    try {
+      res.json(await storage.getAdminOverview());
+    } catch (error) {
+      console.error("Admin overview error:", error);
+      res.status(500).json({ error: "Failed to load overview" });
+    }
+  });
+
   // The built-in campaign template catalog (shared with coordinators).
   app.get("/api/admin/campaign-templates", (_req, res) => {
     res.json(

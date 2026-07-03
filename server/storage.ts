@@ -18,6 +18,7 @@ import {
   coordinatorPayouts,
   businessAddons,
   businessTapBranding,
+  adminUsers,
   donationCampaigns,
   donationCampaignMembers,
   donations,
@@ -67,7 +68,7 @@ import {
   type InsertBusinessGoals,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, sql, count, inArray, isNull } from "drizzle-orm";
+import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
 import { tierForPoints, levelForPoints, pointsToNextLevel } from "./gamification";
 import { ADDON_CATALOG, isAddonIncludedInTier } from "./addons";
 
@@ -472,6 +473,56 @@ export class DatabaseStorage implements IStorage {
       activeBusinesses: Number(b?.n ?? 0),
       activeCampaigns: Number(c?.n ?? 0),
       totalRevenueCents: Number(rev?.sum ?? 0),
+    };
+  }
+
+  // Aggregate snapshot for the admin command center: headline KPIs plus a
+  // "needs attention" queue (things that require an admin's action now).
+  async getAdminOverview(): Promise<{
+    kpis: {
+      users: number; businesses: number; activeCampaigns: number; coordinators: number;
+      territories: number; nonprofits: number; livePages: number; grossProcessedCents: number;
+    };
+    attention: {
+      pendingAdminInvites: number; businessesAwaitingVerification: number;
+      coordinatorsWithUnpaid: number; unpaidLiabilityCents: number;
+    };
+  }> {
+    const [stats, terrRows, coords, nonprofits, awaitingRows, publishedRows, pendingInvRows, unpaidRows] =
+      await Promise.all([
+        this.getPlatformStats(),
+        db.select({ n: count() }).from(territories),
+        this.listCoordinators(),
+        this.getNonprofits(),
+        // Claimed businesses (real owner) still awaiting verification — the review queue.
+        db.select({ n: count() }).from(businesses).where(
+          and(eq(businesses.isActive, true), eq(businesses.verificationStatus, "unverified"), isNotNull(businesses.ownerId)),
+        ),
+        db.select({ n: count() }).from(businesses).where(eq(businesses.websitePublished, true)),
+        db.select({ n: count() }).from(adminUsers).where(eq(adminUsers.isActive, false)),
+        // Unpaid coordinator earnings = current payout liability.
+        db.select({ coordinatorId: coordinatorEarnings.coordinatorId, shareAmountCents: coordinatorEarnings.shareAmountCents })
+          .from(coordinatorEarnings).where(isNull(coordinatorEarnings.payoutId)),
+      ]);
+    const unpaidLiabilityCents = unpaidRows.reduce((s, r) => s + (r.shareAmountCents || 0), 0);
+    const coordinatorsWithUnpaid = new Set(unpaidRows.map((r) => r.coordinatorId)).size;
+    return {
+      kpis: {
+        users: stats.totalUsers,
+        businesses: stats.activeBusinesses,
+        activeCampaigns: stats.activeCampaigns,
+        coordinators: coords.length,
+        territories: Number(terrRows[0]?.n ?? 0),
+        nonprofits: nonprofits.length,
+        livePages: Number(publishedRows[0]?.n ?? 0),
+        grossProcessedCents: stats.totalRevenueCents,
+      },
+      attention: {
+        pendingAdminInvites: Number(pendingInvRows[0]?.n ?? 0),
+        businessesAwaitingVerification: Number(awaitingRows[0]?.n ?? 0),
+        coordinatorsWithUnpaid,
+        unpaidLiabilityCents,
+      },
     };
   }
 
