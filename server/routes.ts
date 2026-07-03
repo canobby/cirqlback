@@ -31,6 +31,7 @@ import { registerCollectionRoutes } from "./routes/collections";
 import { registerLeaderboardRoutes } from "./routes/leaderboards";
 import { registerSpinEventRoutes } from "./routes/spin-events";
 import { registerSocialRoutes } from "./routes/social";
+import { registerAssistantRoutes } from "./routes/assistant";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -135,6 +136,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerSpinEventRoutes(app, deps);
   // Social layer: friends + teams (fresh /api/social/* paths).
   registerSocialRoutes(app, deps);
+  // In-dashboard Help Assistant (AI how-to guide, grounded in the manuals).
+  registerAssistantRoutes(app, deps);
 
   const httpServer = createServer(app);
 

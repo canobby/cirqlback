@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { getKnowledgeForRole, type AssistantRole } from "./assistant-knowledge";
 
 // Lazily construct the OpenAI client so the server can boot without an
 // OPENAI_API_KEY. AI endpoints only fail (with a clear message) if actually
@@ -76,7 +77,50 @@ export interface GeneratedPitch {
   close: string;
 }
 
+// One turn of a Help Assistant conversation.
+export interface AssistantTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+const ROLE_LABEL: Record<AssistantRole, string> = {
+  business: "a local business owner using the Cirqlback business (merchant) dashboard",
+  coordinator: "a Community Coordinator using the Cirqlback coordinator dashboard",
+  admin: "a Cirqlback platform administrator using the admin dashboard",
+};
+
 export class OpenAIService {
+  // In-dashboard "how-to" guide. Answers why/what/where/how questions grounded
+  // ONLY in the role's shipped manual(s), so it never invents features or prices.
+  async answerHelpQuestion(role: AssistantRole, messages: AssistantTurn[]): Promise<string> {
+    const knowledge = getKnowledgeForRole(role);
+    const system = `You are the Cirqlback Help Assistant — a friendly, concise in-product guide embedded in the dashboard. The person talking to you is ${ROLE_LABEL[role]}.
+
+Cirqlback is a "tap-to-earn" local loyalty and discovery platform: customers tap an NFC tag (or scan a QR) at a shop to earn points, rewards, streaks and badges; businesses run loyalty campaigns, a hosted page and cross-store trails; Community Coordinators grow a territory for a revenue share; admins run the platform.
+
+Your job is to help this user navigate and succeed — explain the WHY, WHAT, WHERE and HOW of features, and walk them through steps. When you explain how to do something, name where it lives (the dashboard tab, panel, or button) so they can find it.
+
+RULES:
+- Ground every answer in the REFERENCE GUIDE below. Do not invent features, prices, menu items, or steps that aren't supported by it.
+- If the answer isn't in the guide, say so plainly and suggest where to look (e.g. the relevant dashboard tab) or to contact Cirqlback support — don't guess.
+- Be concise and practical. Prefer short paragraphs and numbered steps. Use **bold** for UI labels. No huge walls of text.
+- Speak directly to the user ("you"). Friendly, encouraging, never condescending.
+- Only answer questions about using Cirqlback. Politely decline unrelated requests.
+
+=== REFERENCE GUIDE (${role}) ===
+${knowledge}
+=== END REFERENCE GUIDE ===`;
+
+    const trimmed = messages.slice(-10).map((m) => ({ role: m.role, content: String(m.content || "").slice(0, 4000) }));
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [{ role: "system", content: system }, ...trimmed],
+      temperature: 0.4,
+      max_tokens: 700,
+    });
+    return response.choices[0]?.message?.content?.trim() || "Sorry, I couldn't come up with an answer. Try rephrasing, or check the relevant dashboard tab.";
+  }
+
   // Generate a bespoke coordinator sales pitch for one local business.
   async generateSalesPitch(biz: { name: string; category?: string; city?: string }): Promise<GeneratedPitch> {
     const response = await openai.chat.completions.create({

@@ -22,6 +22,7 @@ import ScavengerBuilder from "@/components/merchant/scavenger-builder";
 import RemindersPanel from "@/components/merchant/reminders-panel";
 import MessageCenter from "@/components/messaging/message-center";
 import AnnouncementsPanel from "@/components/messaging/announcements-panel";
+import HelpAssistant from "@/components/assistant/help-assistant";
 
 export default function MerchantBento() {
   const [, setLocation] = useLocation();
@@ -369,6 +370,7 @@ export default function MerchantBento() {
 
         </div>
       </div>
+      <HelpAssistant role="business" />
     </div>
   );
 }

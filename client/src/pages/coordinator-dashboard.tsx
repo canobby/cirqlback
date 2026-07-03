@@ -12,6 +12,7 @@ import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkl
 import PitchDialog from "@/components/coordinator/pitch-dialog";
 import EarningsProjection from "@/components/coordinator/earnings-projection";
 import MessageCenter from "@/components/messaging/message-center";
+import HelpAssistant from "@/components/assistant/help-assistant";
 import AnnouncementsPanel from "@/components/messaging/announcements-panel";
 import RewardAdjuster from "@/components/admin/reward-adjuster";
 import RewardSettlementsPanel from "@/components/admin/reward-settlements-panel";
@@ -1149,6 +1150,7 @@ export default function CoordinatorDashboard() {
           )}
         </CardContent>
       </Card>
+      <HelpAssistant role="coordinator" />
     </Shell>
   );
 }
