@@ -1986,7 +1986,10 @@ export class DatabaseStorage implements IStorage {
       const [{ c }] = await db
         .select({ c: count() })
         .from(groupCampaignMembers)
-        .where(eq(groupCampaignMembers.groupCampaignId, gc.id));
+        .where(and(
+          eq(groupCampaignMembers.groupCampaignId, gc.id),
+          eq(groupCampaignMembers.status, "joined"),
+        ));
       result.push({ ...gc, memberCount: Number(c) });
     }
     return result;
@@ -2022,6 +2025,114 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
+  // ── Campaign initiation/acceptance handshake ──────────────────────────────
+  // Upsert a member row to a given status (invited | requested | joined).
+  async setGroupCampaignMemberStatus(
+    groupCampaignId: string,
+    businessId: string,
+    status: string,
+  ): Promise<GroupCampaignMember> {
+    const [row] = await db
+      .insert(groupCampaignMembers)
+      .values({ groupCampaignId, businessId, status })
+      .onConflictDoUpdate({
+        target: [groupCampaignMembers.groupCampaignId, groupCampaignMembers.businessId],
+        set: { status },
+      })
+      .returning();
+    return row;
+  }
+
+  async getGroupCampaignMember(groupCampaignId: string, businessId: string): Promise<GroupCampaignMember | undefined> {
+    const [row] = await db
+      .select()
+      .from(groupCampaignMembers)
+      .where(and(
+        eq(groupCampaignMembers.groupCampaignId, groupCampaignId),
+        eq(groupCampaignMembers.businessId, businessId),
+      ));
+    return row;
+  }
+
+  async getGroupCampaignsByCreator(userId: string): Promise<GroupCampaign[]> {
+    return await db
+      .select()
+      .from(groupCampaigns)
+      .where(eq(groupCampaigns.createdByUserId, userId))
+      .orderBy(desc(groupCampaigns.createdAt));
+  }
+
+  // Pending invites addressed to a set of businesses, with campaign + host info.
+  async getPendingInvitesForBusinesses(businessIds: string[]): Promise<any[]> {
+    if (businessIds.length === 0) return [];
+    return await db
+      .select({
+        businessId: groupCampaignMembers.businessId,
+        campaignId: groupCampaigns.id,
+        name: groupCampaigns.name,
+        ruleType: groupCampaigns.ruleType,
+        requiredStores: groupCampaigns.requiredStores,
+        rewardType: groupCampaigns.rewardType,
+        rewardTitle: groupCampaigns.rewardTitle,
+        rewardValue: groupCampaigns.rewardValue,
+        rewardPoints: groupCampaigns.rewardPoints,
+        fundingBusinessId: groupCampaigns.fundingBusinessId,
+      })
+      .from(groupCampaignMembers)
+      .innerJoin(groupCampaigns, eq(groupCampaignMembers.groupCampaignId, groupCampaigns.id))
+      .where(and(
+        inArray(groupCampaignMembers.businessId, businessIds),
+        eq(groupCampaignMembers.status, "invited"),
+      ));
+  }
+
+  // Pending join-requests for a set of campaigns, with the requesting business.
+  async getPendingRequestsForCampaigns(campaignIds: string[]): Promise<any[]> {
+    if (campaignIds.length === 0) return [];
+    return await db
+      .select({
+        campaignId: groupCampaignMembers.groupCampaignId,
+        campaignName: groupCampaigns.name,
+        businessId: groupCampaignMembers.businessId,
+        businessName: businesses.name,
+      })
+      .from(groupCampaignMembers)
+      .innerJoin(groupCampaigns, eq(groupCampaignMembers.groupCampaignId, groupCampaigns.id))
+      .innerJoin(businesses, eq(groupCampaignMembers.businessId, businesses.id))
+      .where(and(
+        inArray(groupCampaignMembers.groupCampaignId, campaignIds),
+        eq(groupCampaignMembers.status, "requested"),
+      ));
+  }
+
+  // Active campaigns a business could ask to join (not already a member; not its
+  // own owner's campaigns).
+  async getJoinableCampaignsForBusiness(businessId: string, ownerId: string): Promise<any[]> {
+    const existing = await db
+      .select({ id: groupCampaignMembers.groupCampaignId })
+      .from(groupCampaignMembers)
+      .where(eq(groupCampaignMembers.businessId, businessId));
+    const memberOf = new Set(existing.map((r) => r.id));
+    const rows = await db
+      .select()
+      .from(groupCampaigns)
+      .where(eq(groupCampaigns.isActive, true))
+      .orderBy(desc(groupCampaigns.createdAt))
+      .limit(50);
+    return rows.filter((gc) => !memberOf.has(gc.id) && gc.createdByUserId !== ownerId);
+  }
+
+  // Claimed businesses matching a name query (invite targets — they need an owner
+  // to accept).
+  async searchClaimedBusinesses(q: string, limit = 12): Promise<{ id: string; name: string }[]> {
+    const rows = await db
+      .select({ id: businesses.id, name: businesses.name })
+      .from(businesses)
+      .where(and(isNotNull(businesses.ownerId), sql`${businesses.name} ILIKE ${"%" + q + "%"}`))
+      .limit(limit);
+    return rows;
+  }
+
   // CHR-59: active group campaigns with their member stores (for the map).
   async getActiveGroupCampaignsWithMembers(): Promise<any[]> {
     const rows = await db
@@ -2041,7 +2152,10 @@ export class DatabaseStorage implements IStorage {
       })
       .from(groupCampaignMembers)
       .innerJoin(businesses, eq(groupCampaignMembers.businessId, businesses.id))
-      .where(inArray(groupCampaignMembers.groupCampaignId, rows.map((r) => r.id)));
+      .where(and(
+        inArray(groupCampaignMembers.groupCampaignId, rows.map((r) => r.id)),
+        eq(groupCampaignMembers.status, "joined"), // map shows only accepted members
+      ));
     const byCampaign = new Map<string, any[]>();
     for (const m of memberRows) {
       const list = byCampaign.get(m.groupCampaignId) ?? [];
@@ -2115,15 +2229,24 @@ export class DatabaseStorage implements IStorage {
       })
       .from(groupCampaignMembers)
       .innerJoin(groupCampaigns, eq(groupCampaignMembers.groupCampaignId, groupCampaigns.id))
-      .where(and(eq(groupCampaignMembers.businessId, businessId), eq(groupCampaigns.isActive, true)));
+      // Only JOINED members participate — an invited/requested store must not
+      // advance progress or unlock rewards until it accepts.
+      .where(and(
+        eq(groupCampaignMembers.businessId, businessId),
+        eq(groupCampaignMembers.status, "joined"),
+        eq(groupCampaigns.isActive, true),
+      ));
 
-    // Current member business ids for a campaign. Used both to size `required`
-    // (rule "all") and to count only visits to CURRENT members (CHR-79).
+    // Current JOINED member business ids for a campaign. Used both to size
+    // `required` (rule "all") and to count only visits to CURRENT members (CHR-79).
     const memberIdsFor = async (gcId: string): Promise<Set<string>> => {
       const rows = await db
         .select({ b: groupCampaignMembers.businessId })
         .from(groupCampaignMembers)
-        .where(eq(groupCampaignMembers.groupCampaignId, gcId));
+        .where(and(
+          eq(groupCampaignMembers.groupCampaignId, gcId),
+          eq(groupCampaignMembers.status, "joined"),
+        ));
       return new Set(rows.map((r) => r.b));
     };
 

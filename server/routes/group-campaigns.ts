@@ -250,6 +250,174 @@ export function registerGroupCampaignRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // ── Initiation / acceptance handshake ────────────────────────────────────
+  // The campaign "manager" (who may invite / approve) is its creator. Coordinator
+  // campaigns have createdByUserId = the coordinator's user, so this covers them.
+  const isManager = (campaign: any, userId: string) => campaign.createdByUserId === userId;
+
+  // Manager invites a specific business to join. It becomes a pending invite the
+  // business owner accepts/declines.
+  app.post("/api/group-campaigns/:id/invite", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id as string;
+      const businessId = String(req.body?.businessId ?? "");
+      if (!businessId) return res.status(400).json({ error: "businessId is required" });
+      const campaign = await storage.getGroupCampaign(req.params.id);
+      if (!campaign) return res.status(404).json({ error: "Group campaign not found" });
+      if (!isManager(campaign, userId)) return res.status(403).json({ error: "Only the campaign creator can invite" });
+      const target = await storage.getBusiness(businessId);
+      if (!target) return res.status(404).json({ error: "Business not found" });
+      if (!target.ownerId) return res.status(400).json({ error: "That business has no owner to accept an invite" });
+      const existing = await storage.getGroupCampaignMember(campaign.id, businessId);
+      if (existing?.status === "joined") return res.status(409).json({ error: "That business already joined" });
+      const member = await storage.setGroupCampaignMemberStatus(campaign.id, businessId, "invited");
+      res.status(201).json(member);
+    } catch (error) {
+      console.error("Invite to campaign error:", error);
+      res.status(500).json({ error: "Failed to send invite" });
+    }
+  });
+
+  // The invited business owner accepts or declines. Accepting a FUNDED campaign
+  // requires explicit cost-share consent (they may owe the host a share).
+  app.post("/api/group-campaigns/:id/respond", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id as string;
+      const businessId = String(req.body?.businessId ?? "");
+      const accept = req.body?.accept === true;
+      if (!businessId) return res.status(400).json({ error: "businessId is required" });
+      if (!(await userOwnsBusiness(userId, businessId))) return res.status(403).json({ error: "Not your business" });
+      const campaign = await storage.getGroupCampaign(req.params.id);
+      if (!campaign) return res.status(404).json({ error: "Group campaign not found" });
+      const member = await storage.getGroupCampaignMember(campaign.id, businessId);
+      if (!member || member.status !== "invited") return res.status(404).json({ error: "No pending invite" });
+
+      if (!accept) {
+        await storage.removeGroupCampaignMember(campaign.id, businessId);
+        return res.json({ declined: true });
+      }
+      // Funded campaign → joining means agreeing to owe a tap-weighted share.
+      if (isFundedReward(campaign.rewardType) && campaign.fundingBusinessId && businessId !== campaign.fundingBusinessId) {
+        if (req.body?.consent !== true) {
+          return res.status(400).json({ error: "Cost-share consent is required to join a funded campaign", needsConsent: true });
+        }
+      }
+      const updated = await storage.setGroupCampaignMemberStatus(campaign.id, businessId, "joined");
+      res.json(updated);
+    } catch (error) {
+      console.error("Respond to invite error:", error);
+      res.status(500).json({ error: "Failed to respond" });
+    }
+  });
+
+  // A business owner asks to join a campaign (any active campaign). The manager
+  // approves/denies.
+  app.post("/api/group-campaigns/:id/request", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id as string;
+      const businessId = String(req.body?.businessId ?? "");
+      if (!businessId) return res.status(400).json({ error: "businessId is required" });
+      if (!(await userOwnsBusiness(userId, businessId))) return res.status(403).json({ error: "Not your business" });
+      const campaign = await storage.getGroupCampaign(req.params.id);
+      if (!campaign || !campaign.isActive) return res.status(404).json({ error: "Group campaign not found" });
+      const existing = await storage.getGroupCampaignMember(campaign.id, businessId);
+      if (existing?.status === "joined") return res.status(409).json({ error: "Already a member" });
+      const member = await storage.setGroupCampaignMemberStatus(campaign.id, businessId, "requested");
+      res.status(201).json(member);
+    } catch (error) {
+      console.error("Request to join error:", error);
+      res.status(500).json({ error: "Failed to request to join" });
+    }
+  });
+
+  // Manager approves or denies a join-request.
+  app.post("/api/group-campaigns/:id/approve", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id as string;
+      const businessId = String(req.body?.businessId ?? "");
+      const approve = req.body?.approve === true;
+      if (!businessId) return res.status(400).json({ error: "businessId is required" });
+      const campaign = await storage.getGroupCampaign(req.params.id);
+      if (!campaign) return res.status(404).json({ error: "Group campaign not found" });
+      if (!isManager(campaign, userId)) return res.status(403).json({ error: "Only the campaign creator can approve" });
+      const member = await storage.getGroupCampaignMember(campaign.id, businessId);
+      if (!member || member.status !== "requested") return res.status(404).json({ error: "No pending request" });
+      if (!approve) {
+        await storage.removeGroupCampaignMember(campaign.id, businessId);
+        return res.json({ denied: true });
+      }
+      const updated = await storage.setGroupCampaignMemberStatus(campaign.id, businessId, "joined");
+      res.json(updated);
+    } catch (error) {
+      console.error("Approve request error:", error);
+      res.status(500).json({ error: "Failed to update request" });
+    }
+  });
+
+  // The signed-in user's handshake inbox: invites addressed to their businesses +
+  // join-requests awaiting their approval (for campaigns they created).
+  app.get("/api/my/campaign-inbox", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id as string;
+      const [owned, created] = await Promise.all([
+        storage.getBusinessesByOwner(userId),
+        storage.getGroupCampaignsByCreator(userId),
+      ]);
+      const bizNames = new Map(owned.map((b) => [b.id, b.name] as const));
+      const invitesRaw = await storage.getPendingInvitesForBusinesses(owned.map((b) => b.id));
+      const requests = await storage.getPendingRequestsForCampaigns(created.map((c) => c.id));
+
+      // Resolve host names for funded invites.
+      const invites = await Promise.all(invitesRaw.map(async (inv: any) => {
+        const funded = inv.rewardType === "discount" || inv.rewardType === "free_item";
+        const host = funded && inv.fundingBusinessId ? await storage.getBusiness(inv.fundingBusinessId) : null;
+        return {
+          ...inv,
+          myBusinessName: bizNames.get(inv.businessId) || "Your business",
+          funded,
+          hostName: host?.name ?? null,
+          isHost: inv.fundingBusinessId === inv.businessId,
+        };
+      }));
+      const myCampaigns = created.map((c) => ({
+        id: c.id,
+        name: c.name,
+        funded: c.rewardType === "discount" || c.rewardType === "free_item",
+      }));
+      res.json({ invites, requests, myCampaigns });
+    } catch (error) {
+      console.error("Campaign inbox error:", error);
+      res.status(500).json({ error: "Failed to load campaign inbox" });
+    }
+  });
+
+  // Active campaigns this business could request to join.
+  app.get("/api/group-campaigns/joinable", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id as string;
+      const businessId = typeof req.query.businessId === "string" ? req.query.businessId : "";
+      if (!businessId) return res.status(400).json({ error: "businessId is required" });
+      if (!(await userOwnsBusiness(userId, businessId))) return res.status(403).json({ error: "Not your business" });
+      const rows = await storage.getJoinableCampaignsForBusiness(businessId, userId);
+      res.json(rows.map((c) => ({ id: c.id, name: c.name, ruleType: c.ruleType, requiredStores: c.requiredStores, rewardTitle: c.rewardTitle, isOpen: c.isOpen })));
+    } catch (error) {
+      console.error("Joinable campaigns error:", error);
+      res.status(500).json({ error: "Failed to load joinable campaigns" });
+    }
+  });
+
+  // Search claimed businesses by name (invite targets).
+  app.get("/api/group-campaigns/business-search", isAuthenticated, async (req, res) => {
+    try {
+      const q = (typeof req.query.q === "string" ? req.query.q : "").trim();
+      if (q.length < 2) return res.json([]);
+      res.json(await storage.searchClaimedBusinesses(q));
+    } catch (error) {
+      console.error("Business search error:", error);
+      res.status(500).json({ error: "Failed to search" });
+    }
+  });
+
   // Public read: the campaign + its member stores (name + coordinates).
   app.get("/api/group-campaigns/:id", async (req, res) => {
     try {
