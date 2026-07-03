@@ -770,6 +770,48 @@ export class DatabaseStorage implements IStorage {
     return { points, regions };
   }
 
+  // Customer-side health: is the tap-to-earn flywheel spinning? Redemption rate
+  // (are rewards compelling?), repeat-customer rate (do they come back?), active
+  // customers, and the top customers. Derived from taps + rewards.
+  async getCustomerHealth(): Promise<{
+    rewardsIssued: number; rewardsRedeemed: number; redemptionRate: number;
+    customers: number; repeatCustomers: number; repeatRate: number;
+    totalTaps: number; avgTapsPerCustomer: number; activeLast30d: number;
+    topCustomers: Array<{ email: string; taps: number; points: number }>;
+  }> {
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const [totalTapsRow, custRows, rewTotal, rewRedeemed] = await Promise.all([
+      db.select({ n: count() }).from(taps),
+      db.select({
+        email: taps.customerEmail, taps: count(),
+        points: sql<number>`coalesce(sum(${taps.pointsEarned}),0)`,
+        last: sql<string>`max(${taps.createdAt})`,
+      }).from(taps).groupBy(taps.customerEmail),
+      db.select({ n: count() }).from(rewards),
+      db.select({ n: count() }).from(rewards).where(eq(rewards.isRedeemed, true)),
+    ]);
+
+    const customers = custRows.length;
+    const repeatCustomers = custRows.filter((r) => Number(r.taps) > 1).length;
+    const totalTaps = Number(totalTapsRow[0]?.n ?? 0);
+    const activeLast30d = custRows.filter((r) => r.last && new Date(r.last).getTime() >= cutoff).length;
+    const rewardsIssued = Number(rewTotal[0]?.n ?? 0);
+    const rewardsRedeemed = Number(rewRedeemed[0]?.n ?? 0);
+    const topCustomers = custRows
+      .map((r) => ({ email: r.email, taps: Number(r.taps), points: Number(r.points) }))
+      .sort((a, b) => b.taps - a.taps)
+      .slice(0, 10);
+
+    return {
+      rewardsIssued, rewardsRedeemed,
+      redemptionRate: rewardsIssued > 0 ? rewardsRedeemed / rewardsIssued : 0,
+      customers, repeatCustomers,
+      repeatRate: customers > 0 ? repeatCustomers / customers : 0,
+      totalTaps, avgTapsPerCustomer: customers > 0 ? totalTaps / customers : 0,
+      activeLast30d, topCustomers,
+    };
+  }
+
   // Real list of platform users for the admin user-management table.
   async listPlatformUsers(limit = 200): Promise<
     Array<Pick<User, "id" | "email" | "firstName" | "lastName" | "role" | "subscriptionTier" | "subscriptionStatus" | "createdAt">>

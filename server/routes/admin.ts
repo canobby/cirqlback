@@ -114,6 +114,16 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // Customer-side health: redemption rate, repeat rate, active + top customers.
+  app.get("/api/admin/customer-health", async (_req, res) => {
+    try {
+      res.json(await storage.getCustomerHealth());
+    } catch (error) {
+      console.error("Customer health error:", error);
+      res.status(500).json({ error: "Failed to load customer health" });
+    }
+  });
+
   // Geographic view: business points (heatmap) + territory coverage.
   app.get("/api/admin/geo", async (_req, res) => {
     try {
