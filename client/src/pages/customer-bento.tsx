@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { QuickTranslate } from "@/components/ui/translated-text";
+import CustomerFeedPanel from "@/components/messaging/customer-feed-panel";
 
 export default function CustomerBento() {
   const [, setLocation] = useLocation();
@@ -60,6 +61,9 @@ export default function CustomerBento() {
             </div>
           </div>
         </div>
+
+        {/* Updates: business reminders + admin announcements (Slice 3) */}
+        <CustomerFeedPanel />
 
         {/* Bento Grid Layout */}
         <div className="bento-grid auto-rows-min">

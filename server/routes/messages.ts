@@ -30,6 +30,8 @@ type ThreadRole = "coordinator" | "business" | "admin";
 
 type ActorContext = {
   userId: string;
+  email: string | null;
+  role: string;
   coordinatorId: string | null;
   businessIds: string[];
   isAdmin: boolean;
@@ -44,6 +46,8 @@ async function resolveActor(req: any): Promise<ActorContext> {
   ]);
   return {
     userId,
+    email: (req.user as any).email ?? null,
+    role: (req.user as any).role ?? "customer",
     coordinatorId: coordinator && coordinator.isActive !== false ? coordinator.id : null,
     businessIds: owned.map((b) => b.id),
     isAdmin,
@@ -64,11 +68,12 @@ function roleInThread(thread: MessageThread, actor: ActorContext): ThreadRole | 
 }
 
 // Which broadcast audiences a user should receive (admins are senders, not
-// recipients). Customers get their feed in a later slice.
+// recipients). A customer-role user also receives the 'customers' audience.
 function roleBuckets(actor: ActorContext): string[] {
   const b: string[] = [];
   if (actor.coordinatorId) b.push("coordinators");
   if (actor.businessIds.length) b.push("businesses");
+  if (actor.role === "customer") b.push("customers");
   return b;
 }
 
@@ -307,6 +312,55 @@ export function registerMessageRoutes(app: Express, _deps: RouteDeps) {
       res.json({ ok: true });
     } catch (error) {
       console.error("Mark broadcasts seen error:", error);
+      res.status(500).json({ error: "Failed to update" });
+    }
+  });
+
+  // ── Customer feed (Slice 3) ───────────────────────────────────────────────
+  // Receive-only for now: reminders from businesses the customer favorited +
+  // admin announcements addressed to customers. One merged, time-sorted list
+  // with a single per-user unread watermark (reuses userBroadcastState).
+  app.get("/api/customer/feed", isAuthenticated, async (req, res) => {
+    try {
+      const actor = await resolveActor(req);
+      const [reminders, broadcasts, lastSeen] = await Promise.all([
+        storage.getRemindersForCustomer(actor.email),
+        storage.getBroadcastFeed(["customers"]),
+        storage.getBroadcastLastSeen(actor.userId),
+      ]);
+      const items = [
+        ...reminders.map((r: any) => ({
+          id: `reminder:${r.id}`,
+          kind: "reminder" as const,
+          title: r.businessName || "A business you follow",
+          body: r.message,
+          createdAt: r.createdAt,
+        })),
+        ...broadcasts.map((b) => ({
+          id: `broadcast:${b.id}`,
+          kind: "announcement" as const,
+          title: b.subject,
+          body: b.body,
+          createdAt: b.createdAt,
+        })),
+      ].sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
+
+      const seenAt = lastSeen ? new Date(lastSeen).getTime() : 0;
+      const unread = items.filter((i) => new Date(i.createdAt ?? 0).getTime() > seenAt).length;
+      res.json({ items, unread });
+    } catch (error) {
+      console.error("Customer feed error:", error);
+      res.status(500).json({ error: "Failed to load feed" });
+    }
+  });
+
+  app.post("/api/customer/feed/seen", isAuthenticated, async (req, res) => {
+    try {
+      const actor = await resolveActor(req);
+      await storage.markBroadcastsSeen(actor.userId);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Mark customer feed seen error:", error);
       res.status(500).json({ error: "Failed to update" });
     }
   });
