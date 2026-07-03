@@ -8,7 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare, Route, Star, DollarSign, Download, TrendingUp, Trash2, Search } from "lucide-react";
+import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare, Route, Star, DollarSign, Download, TrendingUp, Trash2, Search, Megaphone } from "lucide-react";
+import PitchDialog from "@/components/coordinator/pitch-dialog";
+import EarningsProjection from "@/components/coordinator/earnings-projection";
 
 interface Territory {
   id: string;
@@ -348,6 +350,8 @@ export default function CoordinatorDashboard() {
 
   // Filter the territory business table by name / category / address.
   const [storeSearch, setStoreSearch] = useState("");
+  // Pitch Assistant: the business a coordinator is drafting a pitch for.
+  const [pitchTarget, setPitchTarget] = useState<{ name: string; category?: string | null } | null>(null);
   const filteredStores = (() => {
     const q = storeSearch.trim().toLowerCase();
     const stores = overview?.stores || [];
@@ -563,6 +567,15 @@ export default function CoordinatorDashboard() {
                             <Button
                               size="sm"
                               variant="ghost"
+                              title="How to pitch this business"
+                              className="h-7 px-2 text-xs text-purple-500 hover:text-purple-700"
+                              onClick={() => setPitchTarget({ name: s.name, category: s.category })}
+                            >
+                              <Megaphone className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               title={s.isFeatured ? "Remove from featured map placement" : "Feature on the discovery map"}
                               className={`h-7 px-2 text-xs ${s.isFeatured ? "text-amber-500 hover:text-amber-600" : "text-gray-400 hover:text-amber-500"}`}
                               disabled={featureBusiness.isPending}
@@ -613,6 +626,9 @@ export default function CoordinatorDashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Pitch Assistant dialog (opened from a business row's megaphone) */}
+      <PitchDialog target={pitchTarget} onClose={() => setPitchTarget(null)} />
 
       {/* CHR-63: Revenue & licensing */}
       {earnings && (
@@ -682,6 +698,9 @@ export default function CoordinatorDashboard() {
                 </div>
               );
             })()}
+
+            {/* Projection + goal tracker (motivational; computed from real share %) */}
+            <EarningsProjection sharePct={earnings.sharePct} storageKey={data?.coordinator?.id || "me"} />
 
             {/* CHR-64: payout status (read-only; admins generate + mark paid) */}
             <div className="mb-6 border-t border-gray-100 dark:border-gray-800 pt-4">
