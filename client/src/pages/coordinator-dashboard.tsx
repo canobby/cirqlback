@@ -16,6 +16,7 @@ import AnnouncementsPanel from "@/components/messaging/announcements-panel";
 import RewardAdjuster from "@/components/admin/reward-adjuster";
 import RewardSettlementsPanel from "@/components/admin/reward-settlements-panel";
 import BadgesPanel from "@/components/badges/badges-panel";
+import LeaderboardCard from "@/components/gamification/leaderboard-card";
 
 interface Territory {
   id: string;
@@ -517,6 +518,9 @@ export default function CoordinatorDashboard() {
 
       {/* Badges: your recognitions + award a business in your territory */}
       <BadgesPanel mode="coordinator" />
+
+      {/* Top customers in your territory */}
+      {firstTerritoryId && <LeaderboardCard territoryId={firstTerritoryId} title="Top customers in your territory" />}
 
       {overview && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">

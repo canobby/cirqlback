@@ -28,6 +28,7 @@ import { registerBadgeRoutes } from "./routes/badges";
 import { registerPointsEconomyRoutes } from "./routes/points-economy";
 import { registerReferralRoutes } from "./routes/referrals";
 import { registerCollectionRoutes } from "./routes/collections";
+import { registerLeaderboardRoutes } from "./routes/leaderboards";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -126,6 +127,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerReferralRoutes(app, deps);
   // Collections / passports (visit a curated set of businesses → bonus points).
   registerCollectionRoutes(app, deps);
+  // Seasonal (monthly) + local (territory) leaderboards.
+  registerLeaderboardRoutes(app, deps);
 
   const httpServer = createServer(app);
 

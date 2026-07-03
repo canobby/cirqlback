@@ -13,6 +13,7 @@ import PointsStorePanel from "@/components/points/points-store-panel";
 import StreakCard from "@/components/gamification/streak-card";
 import ReferralPanel from "@/components/gamification/referral-panel";
 import PassportsPanel from "@/components/gamification/passports-panel";
+import LeaderboardCard from "@/components/gamification/leaderboard-card";
 
 export default function CustomerBento() {
   const [, setLocation] = useLocation();
@@ -79,6 +80,9 @@ export default function CustomerBento() {
 
         {/* Passports: collect a set of businesses for bonus points */}
         <PassportsPanel />
+
+        {/* Seasonal leaderboard */}
+        <LeaderboardCard title="Leaderboard" />
 
         {/* Messages: contact a business you follow (Slice 4) */}
         <MessageCenter role="customer" />

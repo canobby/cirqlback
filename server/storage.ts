@@ -300,6 +300,54 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  // Seasonal / local leaderboards, computed from tap points.
+  private monthStart(): Date {
+    const d = new Date(); d.setUTCDate(1); d.setUTCHours(0, 0, 0, 0); return d;
+  }
+  private async namePointsRows(rows: { email: string | null; pts: number }[]): Promise<any[]> {
+    const out: any[] = [];
+    let rank = 1;
+    for (const r of rows) {
+      let name = "Guest";
+      if (r.email) {
+        const u = await this.getUserByEmail(r.email);
+        name = [u?.firstName, u?.lastName].filter(Boolean).join(" ").trim() || r.email.split("@")[0];
+      }
+      out.push({ rank: rank++, name, points: Number(r.pts) || 0 });
+    }
+    return out;
+  }
+
+  // Top customers by points earned THIS MONTH (from taps).
+  async getMonthlyLeaderboard(limit = 10): Promise<any[]> {
+    const rows = await db
+      .select({ email: taps.customerEmail, pts: sql<number>`SUM(COALESCE(${taps.pointsEarned},0))` })
+      .from(taps)
+      .where(sql`${taps.createdAt} >= ${this.monthStart()}`)
+      .groupBy(taps.customerEmail)
+      .orderBy(sql`SUM(COALESCE(${taps.pointsEarned},0)) DESC`)
+      .limit(limit);
+    return this.namePointsRows(rows as any);
+  }
+
+  // Top customers within a territory (by points earned at its businesses),
+  // optionally this month only.
+  async getTerritoryLeaderboard(territoryId: string, monthly: boolean, limit = 10): Promise<any[]> {
+    const bizRows = await db.select({ id: businesses.id }).from(businesses).where(eq(businesses.territoryId, territoryId));
+    const bizIds = bizRows.map((b) => b.id);
+    if (bizIds.length === 0) return [];
+    const conds = [inArray(taps.businessId, bizIds)];
+    if (monthly) conds.push(sql`${taps.createdAt} >= ${this.monthStart()}`);
+    const rows = await db
+      .select({ email: taps.customerEmail, pts: sql<number>`SUM(COALESCE(${taps.pointsEarned},0))` })
+      .from(taps)
+      .where(and(...conds))
+      .groupBy(taps.customerEmail)
+      .orderBy(sql`SUM(COALESCE(${taps.pointsEarned},0)) DESC`)
+      .limit(limit);
+    return this.namePointsRows(rows as any);
+  }
+
   // CHR-28: streamlined daily challenges with real, per-user progress derived
   // from today's taps and reward redemptions. No separate progress table.
   async getDailyChallenges(email?: string): Promise<any[]> {
