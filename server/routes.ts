@@ -22,6 +22,7 @@ import { registerAdminRoutes } from "./routes/admin";
 import { registerProfileQuestSalesRoutes } from "./routes/profile-quest-sales";
 import { registerMessageRoutes } from "./routes/messages";
 import { registerRewardsOpsRoutes } from "./routes/rewards-ops";
+import { registerRewardSettlementRoutes } from "./routes/reward-settlements";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -107,6 +108,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Manual reward/points adjustments (admin: any customer; coordinator:
   // territory-scoped). Gated by the /api/admin and /api/coordinator prefixes.
   registerRewardsOpsRoutes(app, deps);
+  // Shared-campaign reward cost-split settlements (merchant view + admin/
+  // coordinator generate & mark-settled).
+  registerRewardSettlementRoutes(app, deps);
 
   const httpServer = createServer(app);
 

@@ -27,6 +27,7 @@ import TerritoryManager from "@/components/admin/territory-manager";
 import PlatformConfigPanel from "@/components/admin/platform-config-panel";
 import MessageCenter from "@/components/messaging/message-center";
 import BroadcastComposer from "@/components/messaging/broadcast-composer";
+import RewardSettlementsPanel from "@/components/admin/reward-settlements-panel";
 import { 
   Shield,
   Users,
@@ -715,6 +716,7 @@ export default function AdminDashboard() {
           <TabsContent value="revenue" className="space-y-6">
             <h2 className="text-xl font-semibold">Revenue</h2>
             <RevenuePanel />
+            <RewardSettlementsPanel scope="admin" />
           </TabsContent>
 
           {/* Trust & Safety */}

@@ -1532,3 +1532,47 @@ export const rewardAdjustments = pgTable("reward_adjustments", {
 });
 
 export type RewardAdjustment = typeof rewardAdjustments.$inferSelect;
+
+// ── Shared-campaign reward cost-splitting (fairness for multi-store rewards) ──
+// When a FUNDED group-campaign reward is unlocked, its cost is split across the
+// participating stores (tap-weighted): the host fronted the item, the other
+// stores reimburse their share. `reward_contributions` is the accrual ledger
+// (one row per driver store per unlocked reward, mirroring the `donations`
+// pattern); `reward_settlements` rolls a host's owed contributions into a
+// monthly statement with a mark-settled action (mirroring `coordinator_payouts`;
+// automated Stripe Connect transfer is the same deferred follow-up).
+export const rewardSettlements = pgTable("reward_settlements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  hostBusinessId: varchar("host_business_id").references(() => businesses.id).notNull(), // payee
+  periodMonth: varchar("period_month").notNull(), // YYYY-MM
+  totalCents: integer("total_cents").notNull().default(0),
+  contributionCount: integer("contribution_count").notNull().default(0),
+  status: varchar("status").notNull().default("pending"), // pending | paid | void
+  method: varchar("method").default("manual"), // manual | stripe_connect
+  reference: varchar("reference"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  paidAt: timestamp("paid_at"),
+});
+
+export const rewardContributions = pgTable("reward_contributions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupCampaignId: varchar("group_campaign_id").references(() => groupCampaigns.id).notNull(),
+  rewardId: varchar("reward_id").references(() => rewards.id).notNull(),
+  hostBusinessId: varchar("host_business_id").references(() => businesses.id).notNull(), // payee
+  businessId: varchar("business_id").references(() => businesses.id).notNull(), // payer (driver store)
+  customerEmail: varchar("customer_email"),
+  weightTaps: integer("weight_taps").default(0), // taps by this customer at this store (weight)
+  totalRewardCents: integer("total_reward_cents").notNull().default(0), // snapshot of reward value
+  shareCents: integer("share_cents").notNull().default(0), // this store's owed share
+  basis: varchar("basis").notNull().default("weighted"), // weighted | equal
+  periodMonth: varchar("period_month").notNull(), // YYYY-MM
+  settlementId: varchar("settlement_id").references(() => rewardSettlements.id), // set once rolled up
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniquePerReward: unique("reward_contributions_reward_business_unique").on(table.rewardId, table.businessId),
+}));
+
+export type RewardContribution = typeof rewardContributions.$inferSelect;
+export type RewardSettlement = typeof rewardSettlements.$inferSelect;

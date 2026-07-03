@@ -14,6 +14,7 @@ import EarningsProjection from "@/components/coordinator/earnings-projection";
 import MessageCenter from "@/components/messaging/message-center";
 import AnnouncementsPanel from "@/components/messaging/announcements-panel";
 import RewardAdjuster from "@/components/admin/reward-adjuster";
+import RewardSettlementsPanel from "@/components/admin/reward-settlements-panel";
 
 interface Territory {
   id: string;
@@ -506,6 +507,11 @@ export default function CoordinatorDashboard() {
       {/* Fix customer points/rewards for businesses in your territory */}
       <div className="mb-8">
         <RewardAdjuster scope="coordinator" />
+      </div>
+
+      {/* Settle shared-campaign reward cost splits for territory hosts */}
+      <div className="mb-8">
+        <RewardSettlementsPanel scope="coordinator" />
       </div>
 
       {overview && (

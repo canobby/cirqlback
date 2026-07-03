@@ -10,6 +10,7 @@ import {
   MessageSquare, Calendar, DollarSign, Crown, Trophy
 } from "lucide-react";
 import GroupCampaignsPanel from "@/components/merchant/group-campaigns-panel";
+import CampaignSettlementsPanel from "@/components/merchant/campaign-settlements-panel";
 import AddonsPanel from "@/components/merchant/addons-panel";
 import TapBrandingEditor from "@/components/merchant/tap-branding-editor";
 import WebsiteEditor from "@/components/merchant/website-editor";
@@ -72,6 +73,9 @@ export default function MerchantBento() {
 
         {/* CHR-58: real multi-store group-campaign membership */}
         <GroupCampaignsPanel />
+
+        {/* Shared-campaign cost split: what I owe hosts / am owed as host */}
+        <CampaignSettlementsPanel />
 
         {/* CHR-35/66: add-on entitlement status */}
         <AddonsPanel />

@@ -30,6 +30,8 @@ import {
   broadcasts,
   userBroadcastState,
   rewardAdjustments,
+  rewardContributions,
+  rewardSettlements,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -76,6 +78,8 @@ import {
   type Message,
   type Broadcast,
   type RewardAdjustment,
+  type RewardContribution,
+  type RewardSettlement,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
@@ -2206,6 +2210,21 @@ export class DatabaseStorage implements IStorage {
             })
             .where(eq(users.id, customer.id));
         }
+        // Fair-split a funded reward's cost across the stores the customer
+        // actually visited (tap-weighted); the host keeps its own share.
+        if (gc.fundingBusinessId) {
+          const cents = Math.round(parseFloat(String(gc.rewardValue ?? "0")) * 100);
+          if (cents > 0) {
+            await this.accrueRewardContributions({
+              groupCampaignId: gc.id,
+              rewardId: gr.id,
+              hostBusinessId: gc.fundingBusinessId,
+              visitedBusinessIds: visited.filter((id) => memberIds.has(id)),
+              customerEmail,
+              totalRewardCents: cents,
+            });
+          }
+        }
       }
 
       await db
@@ -3327,6 +3346,164 @@ export class DatabaseStorage implements IStorage {
       .insert(userBroadcastState)
       .values({ userId, lastSeenAt: new Date() })
       .onConflictDoUpdate({ target: userBroadcastState.userId, set: { lastSeenAt: new Date() } });
+  }
+
+  // ── Shared-campaign reward cost splitting (tap-weighted) ──────────────────
+  // When a funded group reward is unlocked, split its cost across the stores the
+  // customer actually visited on the trail, weighted by taps. The host fronted
+  // the item and keeps its own share; each other visited store owes its share to
+  // the host. Idempotent per (reward, business).
+  async accrueRewardContributions(input: {
+    groupCampaignId: string;
+    rewardId: string;
+    hostBusinessId: string;
+    visitedBusinessIds: string[];
+    customerEmail: string | null | undefined;
+    totalRewardCents: number;
+  }): Promise<void> {
+    const { groupCampaignId, rewardId, hostBusinessId, visitedBusinessIds, customerEmail, totalRewardCents } = input;
+    if (totalRewardCents <= 0) return;
+    const participants = Array.from(new Set(visitedBusinessIds));
+    if (participants.length === 0) return;
+
+    // Weight = taps by this customer at each visited store (>=1 since visited).
+    const weights = new Map<string, number>();
+    for (const bid of participants) {
+      const taps = customerEmail ? await this.getTaps(bid, customerEmail) : [];
+      weights.set(bid, Math.max(1, taps.length));
+    }
+    const denom = participants.reduce((s, b) => s + (weights.get(b) ?? 1), 0);
+    const hostWeight = participants.includes(hostBusinessId) ? (weights.get(hostBusinessId) ?? 1) : 0;
+    const hostShare = Math.round((totalRewardCents * hostWeight) / denom);
+    const pool = totalRewardCents - hostShare; // owed collectively by non-host drivers
+
+    const drivers = participants.filter((b) => b !== hostBusinessId);
+    if (drivers.length === 0 || pool <= 0) return;
+    const driverWeightSum = drivers.reduce((s, b) => s + (weights.get(b) ?? 1), 0);
+
+    const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+    let allocated = 0;
+    const rows = drivers.map((bid, i) => {
+      const w = weights.get(bid) ?? 1;
+      // Exact integer split: floor each, last driver absorbs the remainder.
+      const share = i === drivers.length - 1
+        ? pool - allocated
+        : Math.floor((pool * w) / driverWeightSum);
+      allocated += share;
+      return {
+        groupCampaignId,
+        rewardId,
+        hostBusinessId,
+        businessId: bid,
+        customerEmail: customerEmail ?? null,
+        weightTaps: w,
+        totalRewardCents,
+        shareCents: share,
+        basis: "weighted",
+        periodMonth: period,
+      };
+    });
+    // Idempotent: the unique (reward_id, business_id) constraint dedupes retries.
+    await db.insert(rewardContributions).values(rows).onConflictDoNothing();
+  }
+
+  async getContributionsOwedToHost(hostBusinessId: string, unsettledOnly = false): Promise<RewardContribution[]> {
+    const conds = [eq(rewardContributions.hostBusinessId, hostBusinessId)];
+    if (unsettledOnly) conds.push(isNull(rewardContributions.settlementId));
+    return await db.select().from(rewardContributions).where(and(...conds)).orderBy(desc(rewardContributions.createdAt));
+  }
+
+  async getContributionsOwedByBusiness(businessId: string, unsettledOnly = false): Promise<RewardContribution[]> {
+    const conds = [eq(rewardContributions.businessId, businessId)];
+    if (unsettledOnly) conds.push(isNull(rewardContributions.settlementId));
+    return await db.select().from(rewardContributions).where(and(...conds)).orderBy(desc(rewardContributions.createdAt));
+  }
+
+  // Roll all unsettled contributions owed to a host in a period into one
+  // settlement statement (mirrors generateCoordinatorPayout). Null if nothing due.
+  async generateRewardSettlement(
+    hostBusinessId: string,
+    periodMonth: string,
+    createdBy?: string | null,
+  ): Promise<RewardSettlement | null> {
+    const pending = await db
+      .select()
+      .from(rewardContributions)
+      .where(and(
+        eq(rewardContributions.hostBusinessId, hostBusinessId),
+        eq(rewardContributions.periodMonth, periodMonth),
+        isNull(rewardContributions.settlementId),
+      ));
+    if (pending.length === 0) return null;
+    const totalCents = pending.reduce((s, c) => s + (c.shareCents ?? 0), 0);
+    const [settlement] = await db
+      .insert(rewardSettlements)
+      .values({
+        hostBusinessId,
+        periodMonth,
+        totalCents,
+        contributionCount: pending.length,
+        createdBy: createdBy ?? null,
+      })
+      .returning();
+    await db
+      .update(rewardContributions)
+      .set({ settlementId: settlement.id })
+      .where(inArray(rewardContributions.id, pending.map((c) => c.id)));
+    return settlement;
+  }
+
+  async getRewardSettlement(id: string): Promise<RewardSettlement | undefined> {
+    const [row] = await db.select().from(rewardSettlements).where(eq(rewardSettlements.id, id));
+    return row;
+  }
+
+  async updateRewardSettlement(
+    id: string,
+    patch: { status?: string; reference?: string; notes?: string },
+  ): Promise<RewardSettlement> {
+    const [row] = await db
+      .update(rewardSettlements)
+      .set({
+        ...(patch.status ? { status: patch.status, paidAt: patch.status === "paid" ? new Date() : null } : {}),
+        ...(patch.reference !== undefined ? { reference: patch.reference } : {}),
+        ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
+      })
+      .where(eq(rewardSettlements.id, id))
+      .returning();
+    // If voided, release its contributions so they can be re-settled.
+    if (patch.status === "void") {
+      await db.update(rewardContributions).set({ settlementId: null }).where(eq(rewardContributions.settlementId, id));
+    }
+    return row;
+  }
+
+  async getRewardSettlementsForHosts(hostBusinessIds: string[]): Promise<RewardSettlement[]> {
+    if (hostBusinessIds.length === 0) return [];
+    return await db
+      .select()
+      .from(rewardSettlements)
+      .where(inArray(rewardSettlements.hostBusinessId, hostBusinessIds))
+      .orderBy(desc(rewardSettlements.createdAt));
+  }
+
+  async getAllRewardSettlements(): Promise<RewardSettlement[]> {
+    return await db.select().from(rewardSettlements).orderBy(desc(rewardSettlements.createdAt));
+  }
+
+  // Unsettled contributions, optionally scoped to a set of host businesses
+  // (null = all, for admin). Used to build the "owed to host" pending view.
+  async getUnsettledContributions(hostBusinessIds: string[] | null): Promise<RewardContribution[]> {
+    const conds = [isNull(rewardContributions.settlementId)];
+    if (hostBusinessIds) {
+      if (hostBusinessIds.length === 0) return [];
+      conds.push(inArray(rewardContributions.hostBusinessId, hostBusinessIds));
+    }
+    return await db
+      .select()
+      .from(rewardContributions)
+      .where(and(...conds))
+      .orderBy(desc(rewardContributions.createdAt));
   }
 }
 
