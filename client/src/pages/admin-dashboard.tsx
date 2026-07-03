@@ -28,6 +28,7 @@ import PlatformConfigPanel from "@/components/admin/platform-config-panel";
 import MessageCenter from "@/components/messaging/message-center";
 import BroadcastComposer from "@/components/messaging/broadcast-composer";
 import RewardSettlementsPanel from "@/components/admin/reward-settlements-panel";
+import BadgesPanel from "@/components/badges/badges-panel";
 import { 
   Shield,
   Users,
@@ -319,6 +320,7 @@ export default function AdminDashboard() {
 
           {/* Users Management */}
           <TabsContent value="users" className="space-y-6">
+            <BadgesPanel mode="admin" />
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">User Management</h2>
               <div className="flex space-x-2">

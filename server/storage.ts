@@ -32,6 +32,8 @@ import {
   rewardAdjustments,
   rewardContributions,
   rewardSettlements,
+  badgeDefinitions,
+  badgeAwards,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -80,6 +82,8 @@ import {
   type RewardAdjustment,
   type RewardContribution,
   type RewardSettlement,
+  type BadgeDefinition,
+  type BadgeAward,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
@@ -3646,6 +3650,120 @@ export class DatabaseStorage implements IStorage {
       .from(rewardContributions)
       .where(and(...conds))
       .orderBy(desc(rewardContributions.createdAt));
+  }
+
+  // ── Badges (recognition) ──────────────────────────────────────────────────
+  // Catalog definitions that a given role may grant (optionally for a specific
+  // audience). Excludes custom badges made by OTHER users.
+  async getBadgeCatalog(awardableBy: string, audience?: string): Promise<BadgeDefinition[]> {
+    const conds = [eq(badgeDefinitions.awardableBy, awardableBy)];
+    if (audience) conds.push(or(eq(badgeDefinitions.audience, audience), eq(badgeDefinitions.audience, "any"))!);
+    return await db.select().from(badgeDefinitions).where(and(...conds)).orderBy(badgeDefinitions.name);
+  }
+
+  async getBadgeDefinition(id: string): Promise<BadgeDefinition | undefined> {
+    const [row] = await db.select().from(badgeDefinitions).where(eq(badgeDefinitions.id, id));
+    return row;
+  }
+
+  async createCustomBadge(input: {
+    name: string;
+    description?: string | null;
+    emoji?: string | null;
+    imageDataUri?: string | null;
+    color?: string | null;
+    audience: string;
+    awardableBy: string;
+    createdByUserId: string;
+  }): Promise<BadgeDefinition> {
+    const [row] = await db
+      .insert(badgeDefinitions)
+      .values({
+        key: `custom_${crypto.randomUUID()}`,
+        name: input.name,
+        description: input.description ?? null,
+        emoji: input.emoji ?? null,
+        imageDataUri: input.imageDataUri ?? null,
+        color: input.color ?? "#7c3aed",
+        audience: input.audience,
+        awardableBy: input.awardableBy,
+        isCustom: true,
+        createdByUserId: input.createdByUserId,
+      })
+      .returning();
+    return row;
+  }
+
+  // Has this awarder already given this exact badge to this recipient? (dedup)
+  async hasBadgeAward(input: {
+    badgeDefinitionId: string;
+    recipientUserId?: string | null;
+    recipientBusinessId?: string | null;
+    awarderUserId?: string | null;
+  }): Promise<boolean> {
+    const conds = [
+      eq(badgeAwards.badgeDefinitionId, input.badgeDefinitionId),
+      isNull(badgeAwards.revokedAt),
+    ];
+    if (input.recipientUserId) conds.push(eq(badgeAwards.recipientUserId, input.recipientUserId));
+    if (input.recipientBusinessId) conds.push(eq(badgeAwards.recipientBusinessId, input.recipientBusinessId));
+    if (input.awarderUserId) conds.push(eq(badgeAwards.awarderUserId, input.awarderUserId));
+    const [row] = await db.select({ id: badgeAwards.id }).from(badgeAwards).where(and(...conds)).limit(1);
+    return !!row;
+  }
+
+  async awardBadge(input: {
+    badgeDefinitionId: string;
+    recipientUserId?: string | null;
+    recipientBusinessId?: string | null;
+    note?: string | null;
+    awarderRole: string;
+    awarderUserId?: string | null;
+    awarderBusinessId?: string | null;
+  }): Promise<BadgeAward> {
+    const [row] = await db.insert(badgeAwards).values(input).returning();
+    return row;
+  }
+
+  async getBadgeAward(id: string): Promise<BadgeAward | undefined> {
+    const [row] = await db.select().from(badgeAwards).where(eq(badgeAwards.id, id));
+    return row;
+  }
+
+  async revokeBadgeAward(id: string): Promise<void> {
+    await db.update(badgeAwards).set({ revokedAt: new Date() }).where(eq(badgeAwards.id, id));
+  }
+
+  // Active awards for a recipient, joined with the definition's visual info.
+  private async awardsWith(where: any): Promise<any[]> {
+    return await db
+      .select({
+        id: badgeAwards.id,
+        note: badgeAwards.note,
+        awarderRole: badgeAwards.awarderRole,
+        awarderUserId: badgeAwards.awarderUserId,
+        awarderBusinessId: badgeAwards.awarderBusinessId,
+        awardedAt: badgeAwards.awardedAt,
+        badgeDefinitionId: badgeAwards.badgeDefinitionId,
+        name: badgeDefinitions.name,
+        description: badgeDefinitions.description,
+        emoji: badgeDefinitions.emoji,
+        imageDataUri: badgeDefinitions.imageDataUri,
+        color: badgeDefinitions.color,
+        isCustom: badgeDefinitions.isCustom,
+      })
+      .from(badgeAwards)
+      .innerJoin(badgeDefinitions, eq(badgeAwards.badgeDefinitionId, badgeDefinitions.id))
+      .where(and(where, isNull(badgeAwards.revokedAt)))
+      .orderBy(desc(badgeAwards.awardedAt));
+  }
+
+  async getBadgeAwardsForUser(userId: string): Promise<any[]> {
+    return this.awardsWith(eq(badgeAwards.recipientUserId, userId));
+  }
+
+  async getBadgeAwardsForBusiness(businessId: string): Promise<any[]> {
+    return this.awardsWith(eq(badgeAwards.recipientBusinessId, businessId));
   }
 }
 

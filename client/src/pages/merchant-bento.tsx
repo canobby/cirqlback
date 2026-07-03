@@ -13,6 +13,7 @@ import GroupCampaignsPanel from "@/components/merchant/group-campaigns-panel";
 import CampaignInvitesPanel from "@/components/merchant/campaign-invites-panel";
 import CampaignSettlementsPanel from "@/components/merchant/campaign-settlements-panel";
 import ConnectPayoutsPanel from "@/components/merchant/connect-payouts-panel";
+import BadgesPanel from "@/components/badges/badges-panel";
 import AddonsPanel from "@/components/merchant/addons-panel";
 import TapBrandingEditor from "@/components/merchant/tap-branding-editor";
 import WebsiteEditor from "@/components/merchant/website-editor";
@@ -84,6 +85,9 @@ export default function MerchantBento() {
 
         {/* Stripe Connect onboarding — receive automated payouts */}
         <ConnectPayoutsPanel />
+
+        {/* Badges: your business's badges + award a customer */}
+        <BadgesPanel mode="business" />
 
         {/* CHR-35/66: add-on entitlement status */}
         <AddonsPanel />

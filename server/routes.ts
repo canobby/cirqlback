@@ -24,6 +24,7 @@ import { registerMessageRoutes } from "./routes/messages";
 import { registerRewardsOpsRoutes } from "./routes/rewards-ops";
 import { registerRewardSettlementRoutes } from "./routes/reward-settlements";
 import { registerConnectRoutes } from "./routes/connect";
+import { registerBadgeRoutes } from "./routes/badges";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -114,6 +115,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerRewardSettlementRoutes(app, deps);
   // Stripe Connect (Express) onboarding so businesses can receive payouts.
   registerConnectRoutes(app, deps);
+  // Badges (recognition) — manual awarding across roles + public display.
+  registerBadgeRoutes(app, deps);
 
   const httpServer = createServer(app);
 

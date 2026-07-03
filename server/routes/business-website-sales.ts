@@ -55,6 +55,7 @@ const DAY_LABELS: Record<string, string> = {
 function renderWebsiteHtml(
   c: BusinessWebsiteContent,
   campaigns: Array<{ name: string; description?: string | null }>,
+  badges: Array<{ name: string; emoji: string | null; imageDataUri: string | null; color: string | null; count: number }> = [],
 ): string {
   const font = FONT_PRESETS[c.fontPreset] || FONT_PRESETS.modern;
   const accent = c.accentColor;
@@ -126,6 +127,20 @@ function renderWebsiteHtml(
 
   const body = c.sections.map(sectionHtml).join("");
 
+  // Badges strip (social proof) — earned + customer-voted recognitions.
+  const badgesStrip = badges.length
+    ? `<div class="badges-strip"><span class="bdg-label">Recognized for</span><div class="bdg-row">${badges
+        .map((b) => {
+          const img = b.imageDataUri && b.imageDataUri.startsWith("data:image");
+          const face = img
+            ? `<img class="bdg-face" src="${b.imageDataUri}" alt="${escapeHtml(b.name)}">`
+            : `<span class="bdg-face bdg-emoji" style="box-shadow:inset 0 0 0 3px ${escapeHtml(b.color || "#7c3aed")}">${escapeHtml(b.emoji || "🏅")}</span>`;
+          const label = b.count > 1 ? `${escapeHtml(b.name)} ×${b.count}` : escapeHtml(b.name);
+          return `<div class="bdg" title="${escapeHtml(b.name)}">${face}<span>${label}</span></div>`;
+        })
+        .join("")}</div></div>`
+    : "";
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -164,10 +179,16 @@ main{max-width:820px;margin:0 auto;padding:32px 20px 64px;}
 .social a{color:var(--accent);text-decoration:none;font-weight:600;}
 footer{text-align:center;padding:24px;color:#9ca3af;font-size:.85rem;}
 footer a{color:#6b7280;}
+.badges-strip{max-width:820px;margin:20px auto 0;padding:0 20px;text-align:center;}
+.bdg-label{display:block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;margin-bottom:10px;}
+.bdg-row{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;}
+.bdg{display:flex;flex-direction:column;align-items:center;width:80px;font-size:.7rem;color:#4b5563;gap:5px;}
+.bdg-face{width:50px;height:50px;border-radius:50%;object-fit:cover;background:#fff;display:flex;align-items:center;justify-content:center;font-size:25px;}
 </style>
 </head>
 <body>
 ${hero}
+${badgesStrip}
 <main>${body}</main>
 <footer>Powered by <a href="https://cirqlback.com" rel="noopener">Cirqlback</a></footer>
 </body>
@@ -332,13 +353,24 @@ export function registerBusinessWebsiteSalesRoutes(app: Express, deps: RouteDeps
             .map((c) => ({ name: c.name, description: c.description }))
         : [];
 
+      // Badges (social proof) — aggregate by badge name so repeated customer
+      // votes read as "Great Service ×5". Cap the strip.
+      const rawBadges = await storage.getBadgeAwardsForBusiness(business.id);
+      const agg = new Map<string, { name: string; emoji: string | null; imageDataUri: string | null; color: string | null; count: number }>();
+      for (const b of rawBadges as any[]) {
+        const cur = agg.get(b.name) ?? { name: b.name, emoji: b.emoji, imageDataUri: b.imageDataUri, color: b.color, count: 0 };
+        cur.count += 1;
+        agg.set(b.name, cur);
+      }
+      const badges = Array.from(agg.values()).sort((a, b) => b.count - a.count).slice(0, 12);
+
       // Fire-and-forget view increment (don't block the response on it).
       storage
         .updateBusiness(business.id, { websiteViews: (business.websiteViews ?? 0) + 1 })
         .catch((e) => console.error("website view increment failed:", e));
 
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.send(renderWebsiteHtml(content, campaigns));
+      res.send(renderWebsiteHtml(content, campaigns, badges));
     } catch (error) {
       console.error("Serve website error:", error);
       res.status(500).type("html").send("<!DOCTYPE html><meta charset='utf-8'><title>Error</title><p style='font-family:sans-serif;text-align:center;margin-top:80px'>Something went wrong.</p>");

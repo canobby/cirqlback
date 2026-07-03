@@ -78,6 +78,13 @@
       "when": 1783093760241,
       "tag": "0010_funny_spiral",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783096697245,
+      "tag": "0011_left_kate_bishop",
+      "breakpoints": true
     }
   ]
 }

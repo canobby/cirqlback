@@ -1583,3 +1583,44 @@ export const rewardContributions = pgTable("reward_contributions", {
 
 export type RewardContribution = typeof rewardContributions.$inferSelect;
 export type RewardSettlement = typeof rewardSettlements.$inferSelect;
+
+// ── Badges (recognition/gamification) ──
+// A badge catalog (prepopulated + user-created custom) and an award ledger.
+// Phase 1 is MANUAL awarding across four directions; automatic achievement
+// badges (tap/visit/campaign thresholds) come later. Uploaded art is stored as
+// a capped base64 data-URI (no blob store yet) — otherwise an emoji medallion.
+export const badgeDefinitions = pgTable("badge_definitions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key").notNull().unique(), // stable slug ('great_service', or custom_<uuid>)
+  name: varchar("name").notNull(),
+  description: text("description"),
+  emoji: varchar("emoji"),               // quick visual / fallback when no image
+  imageDataUri: text("image_data_uri"),  // uploaded PNG/JPG/WebP as data URI (capped)
+  color: varchar("color").default("#7c3aed"), // medallion ring color
+  // Who the badge is FOR (drives recipient type): business = a business,
+  // customer/coordinator/any = a user.
+  audience: varchar("audience").notNull().default("any"),
+  // Who may grant it: system | business | customer | coordinator | admin.
+  awardableBy: varchar("awardable_by").notNull().default("admin"),
+  tier: varchar("tier"),                 // bronze|silver|gold|platinum (future auto tiers)
+  isCustom: boolean("is_custom").default(false),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const badgeAwards = pgTable("badge_awards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  badgeDefinitionId: varchar("badge_definition_id").references(() => badgeDefinitions.id).notNull(),
+  // Exactly one recipient is set.
+  recipientUserId: varchar("recipient_user_id").references(() => users.id),
+  recipientBusinessId: varchar("recipient_business_id").references(() => businesses.id),
+  note: text("note"),
+  awarderRole: varchar("awarder_role").notNull(), // system|business|customer|coordinator|admin
+  awarderUserId: varchar("awarder_user_id").references(() => users.id),
+  awarderBusinessId: varchar("awarder_business_id").references(() => businesses.id),
+  awardedAt: timestamp("awarded_at").defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+});
+
+export type BadgeDefinition = typeof badgeDefinitions.$inferSelect;
+export type BadgeAward = typeof badgeAwards.$inferSelect;

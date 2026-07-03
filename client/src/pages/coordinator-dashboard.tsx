@@ -15,6 +15,7 @@ import MessageCenter from "@/components/messaging/message-center";
 import AnnouncementsPanel from "@/components/messaging/announcements-panel";
 import RewardAdjuster from "@/components/admin/reward-adjuster";
 import RewardSettlementsPanel from "@/components/admin/reward-settlements-panel";
+import BadgesPanel from "@/components/badges/badges-panel";
 
 interface Territory {
   id: string;
@@ -513,6 +514,9 @@ export default function CoordinatorDashboard() {
       <div className="mb-8">
         <RewardSettlementsPanel scope="coordinator" />
       </div>
+
+      {/* Badges: your recognitions + award a business in your territory */}
+      <BadgesPanel mode="coordinator" />
 
       {overview && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
