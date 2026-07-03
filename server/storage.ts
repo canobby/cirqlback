@@ -70,7 +70,8 @@ import {
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
 import { tierForPoints, levelForPoints, pointsToNextLevel } from "./gamification";
-import { ADDON_CATALOG, isAddonIncludedInTier } from "./addons";
+import { ADDON_CATALOG, isAddonIncludedInTier, resolveAddonAmountCents } from "./addons";
+import { PLAN_PRICING } from "./pricing";
 
 export interface IStorage {
   // User operations (required for auth)
@@ -523,6 +524,68 @@ export class DatabaseStorage implements IStorage {
         coordinatorsWithUnpaid,
         unpaidLiabilityCents,
       },
+    };
+  }
+
+  // Platform revenue snapshot for the admin Revenue tab: MRR (from active
+  // subscriptions + paid add-ons), attach counts, coordinator payout liability,
+  // trials expiring, lapsed subs, and this-month attributed gross/share.
+  async getRevenueSummary(): Promise<{
+    mrrCents: number; subscriptionMrrCents: number; addonMrrCents: number;
+    subscriptions: { starter: number; core: number; pro: number };
+    addonsByKey: Record<string, number>;
+    coordinatorLiabilityCents: number; trialsExpiring30d: number; lapsedSubscriptions: number;
+    thisMonth: { grossCents: number; shareCents: number; count: number };
+  }> {
+    const now = Date.now();
+    const d = new Date();
+    const currentMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const [subRows, addonRows, unpaidRows, trialRows, lapsedRows, monthRows] = await Promise.all([
+      db.select({ tier: users.subscriptionTier, n: count() }).from(users)
+        .where(eq(users.subscriptionStatus, "active")).groupBy(users.subscriptionTier),
+      db.select({ addonKey: businessAddons.addonKey, expiresAt: businessAddons.expiresAt })
+        .from(businessAddons).where(eq(businessAddons.status, "active")),
+      db.select({ shareAmountCents: coordinatorEarnings.shareAmountCents })
+        .from(coordinatorEarnings).where(isNull(coordinatorEarnings.payoutId)),
+      db.select({ starterExpiresAt: users.starterExpiresAt }).from(users)
+        .where(and(eq(users.subscriptionTier, "starter"), isNotNull(users.starterExpiresAt))),
+      db.select({ n: count() }).from(users).where(inArray(users.subscriptionStatus, ["cancelled", "expired"])),
+      db.select({ gross: coordinatorEarnings.grossAmountCents, share: coordinatorEarnings.shareAmountCents })
+        .from(coordinatorEarnings).where(eq(coordinatorEarnings.periodMonth, currentMonth)),
+    ]);
+
+    const subscriptions = { starter: 0, core: 0, pro: 0 };
+    for (const r of subRows) {
+      const t = (r.tier || "starter") as keyof typeof subscriptions;
+      if (t in subscriptions) subscriptions[t] += Number(r.n);
+    }
+    const subscriptionMrrCents = subscriptions.core * (PLAN_PRICING.core?.monthlyCents ?? 1999)
+      + subscriptions.pro * (PLAN_PRICING.pro?.monthlyCents ?? 4999);
+
+    const addonsByKey: Record<string, number> = {};
+    let addonMrrCents = 0;
+    for (const r of addonRows) {
+      if (r.expiresAt && r.expiresAt.getTime() <= now) continue; // expired
+      addonsByKey[r.addonKey] = (addonsByKey[r.addonKey] || 0) + 1;
+      addonMrrCents += resolveAddonAmountCents(r.addonKey) ?? 0;
+    }
+
+    const coordinatorLiabilityCents = unpaidRows.reduce((s, r) => s + (r.shareAmountCents || 0), 0);
+    const in30 = now + 30 * 24 * 60 * 60 * 1000;
+    const trialsExpiring30d = trialRows.filter((r) => {
+      const t = r.starterExpiresAt?.getTime();
+      return t != null && t > now && t <= in30;
+    }).length;
+    const thisMonth = monthRows.reduce(
+      (a, r) => ({ grossCents: a.grossCents + (r.gross || 0), shareCents: a.shareCents + (r.share || 0), count: a.count + 1 }),
+      { grossCents: 0, shareCents: 0, count: 0 },
+    );
+
+    return {
+      mrrCents: subscriptionMrrCents + addonMrrCents,
+      subscriptionMrrCents, addonMrrCents, subscriptions, addonsByKey,
+      coordinatorLiabilityCents, trialsExpiring30d, lapsedSubscriptions: Number(lapsedRows[0]?.n ?? 0),
+      thisMonth,
     };
   }
 

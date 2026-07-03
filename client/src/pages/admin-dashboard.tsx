@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { CoordinatorSharePanel } from "@/components/admin/coordinator-share-panel";
 import CommandCenter from "@/components/admin/command-center";
+import RevenuePanel from "@/components/admin/revenue-panel";
 import { 
   Shield,
   Users,
@@ -278,7 +279,7 @@ export default function AdminDashboard() {
               <TabsTrigger value="templates" className="px-2 text-xs lg:px-3 lg:text-sm">Templates</TabsTrigger>
               <TabsTrigger value="subscriptions" className="px-2 text-xs lg:px-3 lg:text-sm">Subscriptions</TabsTrigger>
               <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Analytics</TabsTrigger>
-              <TabsTrigger value="payments" className="px-2 text-xs lg:px-3 lg:text-sm">Payments</TabsTrigger>
+              <TabsTrigger value="revenue" className="px-2 text-xs lg:px-3 lg:text-sm">Revenue</TabsTrigger>
               <TabsTrigger value="coordinators" className="px-2 text-xs lg:px-3 lg:text-sm">Coordinators</TabsTrigger>
               <TabsTrigger value="platform" className="px-2 text-xs lg:px-3 lg:text-sm">Platform</TabsTrigger>
             </TabsList>
@@ -689,25 +690,10 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Payment Management */}
-          <TabsContent value="payments" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <CreditCard className="h-5 w-5 mr-2" />
-                  Payment & Billing Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-gray-600">Process custom payments, refunds, and billing adjustments</p>
-                <div className="flex space-x-2">
-                  <Button>Process Custom Payment</Button>
-                  <Button variant="outline">Issue Refund</Button>
-                  <Button variant="outline">Apply Discount</Button>
-                  <Button variant="outline">Billing Override</Button>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Revenue */}
+          <TabsContent value="revenue" className="space-y-6">
+            <h2 className="text-xl font-semibold">Revenue</h2>
+            <RevenuePanel />
           </TabsContent>
 
           {/* Coordinator revenue share */}

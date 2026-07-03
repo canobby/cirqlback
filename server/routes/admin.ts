@@ -114,6 +114,16 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // Revenue tab: MRR, subscription/add-on mix, liability, trials, this month.
+  app.get("/api/admin/revenue", async (_req, res) => {
+    try {
+      res.json(await storage.getRevenueSummary());
+    } catch (error) {
+      console.error("Admin revenue error:", error);
+      res.status(500).json({ error: "Failed to load revenue" });
+    }
+  });
+
   // The built-in campaign template catalog (shared with coordinators).
   app.get("/api/admin/campaign-templates", (_req, res) => {
     res.json(
