@@ -15,6 +15,7 @@ import TapBrandingEditor from "@/components/merchant/tap-branding-editor";
 import WebsiteEditor from "@/components/merchant/website-editor";
 import ScavengerBuilder from "@/components/merchant/scavenger-builder";
 import RemindersPanel from "@/components/merchant/reminders-panel";
+import MessageCenter from "@/components/messaging/message-center";
 
 export default function MerchantBento() {
   const [, setLocation] = useLocation();
@@ -85,6 +86,9 @@ export default function MerchantBento() {
 
         {/* CHR-75: reminders to favoriters */}
         <RemindersPanel />
+
+        {/* Cross-role messaging (Slice 1) — talk to your community coordinator */}
+        <MessageCenter role="business" />
 
         {/* Bento Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-6 auto-rows-min">

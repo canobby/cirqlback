@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare, Route, Star, DollarSign, Download, TrendingUp, Trash2, Search, Megaphone } from "lucide-react";
 import PitchDialog from "@/components/coordinator/pitch-dialog";
 import EarningsProjection from "@/components/coordinator/earnings-projection";
+import MessageCenter from "@/components/messaging/message-center";
 
 interface Territory {
   id: string;
@@ -483,6 +484,9 @@ export default function CoordinatorDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Cross-role messaging (Slice 1) — talk to businesses in your territory */}
+      <MessageCenter role="coordinator" />
 
       {overview && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">

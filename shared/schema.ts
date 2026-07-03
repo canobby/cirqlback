@@ -1432,3 +1432,47 @@ export type BusinessGoals = typeof businessGoals.$inferSelect;
 export type InsertSalesData = z.infer<typeof insertSalesDataSchema>;
 export type InsertMonthlySalesSummary = z.infer<typeof insertMonthlySalesSummarySchema>;
 export type InsertBusinessGoals = z.infer<typeof insertBusinessGoalsSchema>;
+// ── Cross-role messaging (Slice 1: Coordinator ↔ Business) ──
+// A generic two-party thread engine shared by every role pairing. `contextType`
+// is the seam that lets later slices (admin support, opted-in customer reply)
+// reuse these same two tables without a schema change. Slice 1 only wires the
+// coordinator↔business direction in the UI. In-app only for now — no email/push
+// delivery yet (mirrors businessReminders). Delivery is a documented follow-up.
+export const messageThreads = pgTable("message_threads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subject: varchar("subject").notNull(),
+  // coordinator_business | admin_support | customer_reply (future)
+  contextType: varchar("context_type").notNull().default("coordinator_business"),
+  coordinatorId: varchar("coordinator_id").references(() => coordinators.id),
+  businessId: varchar("business_id").references(() => businesses.id),
+  status: varchar("status").notNull().default("open"), // open | closed
+  lastMessageAt: timestamp("last_message_at").defaultNow(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const messages = pgTable("messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  threadId: varchar("thread_id").references(() => messageThreads.id).notNull(),
+  senderId: varchar("sender_id").references(() => users.id),
+  senderRole: varchar("sender_role").notNull(), // coordinator | business | admin | customer
+  body: text("body").notNull(),
+  readAt: timestamp("read_at"), // null until the counterpart opens the thread
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMessageThreadSchema = createInsertSchema(messageThreads).omit({
+  id: true,
+  lastMessageAt: true,
+  createdAt: true,
+});
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  readAt: true,
+  createdAt: true,
+});
+
+export type MessageThread = typeof messageThreads.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+export type InsertMessageThread = z.infer<typeof insertMessageThreadSchema>;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;

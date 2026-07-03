@@ -25,6 +25,8 @@ import {
   donations,
   customerFavorites,
   businessReminders,
+  messageThreads,
+  messages,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -67,6 +69,8 @@ import {
   type InsertMonthlySalesSummary,
   type BusinessGoals,
   type InsertBusinessGoals,
+  type MessageThread,
+  type Message,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
@@ -3007,6 +3011,123 @@ export class DatabaseStorage implements IStorage {
       .from(businessGoals)
       .where(eq(businessGoals.businessId, businessId))
       .orderBy(desc(businessGoals.createdAt));
+  }
+
+  // ── Cross-role messaging (Slice 1: coordinator ↔ business) ──────────────
+  // A generic two-party thread engine. Threads carry both a coordinatorId and a
+  // businessId; the viewer's role in a thread is "coordinator" if they own that
+  // coordinator record, otherwise "business". Enrichment (counterpart name,
+  // unread count, preview) is done in the route where the viewer's role is known.
+
+  async getMessageThread(id: string): Promise<MessageThread | undefined> {
+    const [row] = await db.select().from(messageThreads).where(eq(messageThreads.id, id));
+    return row;
+  }
+
+  // The active coordinator responsible for a business (via its territory), or
+  // undefined if the business has no territory / no active coordinator. Used to
+  // route a business-initiated thread to the right coordinator.
+  async getCoordinatorForBusiness(businessId: string): Promise<Coordinator | undefined> {
+    const business = await this.getBusiness(businessId);
+    if (!business?.territoryId) return undefined;
+    const [terr] = await db.select().from(territories).where(eq(territories.id, business.territoryId));
+    if (!terr) return undefined;
+    const coordinator = await this.getCoordinator(terr.coordinatorId);
+    if (!coordinator || coordinator.isActive === false) return undefined;
+    return coordinator;
+  }
+
+  async getMessageThreadsForCoordinator(coordinatorId: string): Promise<MessageThread[]> {
+    return await db
+      .select()
+      .from(messageThreads)
+      .where(eq(messageThreads.coordinatorId, coordinatorId))
+      .orderBy(desc(messageThreads.lastMessageAt));
+  }
+
+  async getMessageThreadsForBusinessIds(businessIds: string[]): Promise<MessageThread[]> {
+    if (businessIds.length === 0) return [];
+    return await db
+      .select()
+      .from(messageThreads)
+      .where(inArray(messageThreads.businessId, businessIds))
+      .orderBy(desc(messageThreads.lastMessageAt));
+  }
+
+  async getMessagesForThread(threadId: string): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.threadId, threadId))
+      .orderBy(messages.createdAt);
+  }
+
+  // Batch fetch (ordered) for building a thread list without N+1 queries.
+  async getMessagesForThreads(threadIds: string[]): Promise<Message[]> {
+    if (threadIds.length === 0) return [];
+    return await db
+      .select()
+      .from(messages)
+      .where(inArray(messages.threadId, threadIds))
+      .orderBy(messages.createdAt);
+  }
+
+  async createMessageThread(data: {
+    subject: string;
+    coordinatorId: string;
+    businessId: string;
+    contextType?: string;
+    createdBy?: string;
+  }): Promise<MessageThread> {
+    const [row] = await db
+      .insert(messageThreads)
+      .values({
+        subject: data.subject,
+        coordinatorId: data.coordinatorId,
+        businessId: data.businessId,
+        contextType: data.contextType ?? "coordinator_business",
+        createdBy: data.createdBy,
+        lastMessageAt: new Date(),
+      })
+      .returning();
+    return row;
+  }
+
+  async createMessage(data: {
+    threadId: string;
+    senderId?: string;
+    senderRole: string;
+    body: string;
+  }): Promise<Message> {
+    const [row] = await db
+      .insert(messages)
+      .values({
+        threadId: data.threadId,
+        senderId: data.senderId,
+        senderRole: data.senderRole,
+        body: data.body,
+      })
+      .returning();
+    // Bump the thread so it sorts to the top of both parties' inboxes.
+    await db
+      .update(messageThreads)
+      .set({ lastMessageAt: new Date() })
+      .where(eq(messageThreads.id, data.threadId));
+    return row;
+  }
+
+  // The reader opened the thread: mark every message they did NOT send as read.
+  async markThreadReadForRole(threadId: string, readerRole: string): Promise<void> {
+    await db
+      .update(messages)
+      .set({ readAt: new Date() })
+      .where(
+        and(
+          eq(messages.threadId, threadId),
+          isNull(messages.readAt),
+          sql`${messages.senderRole} <> ${readerRole}`,
+        ),
+      );
   }
 }
 

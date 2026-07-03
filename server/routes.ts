@@ -20,6 +20,7 @@ import { registerSearchPaymentsRoutes } from "./routes/search-payments";
 import { registerBusinessWebsiteSalesRoutes } from "./routes/business-website-sales";
 import { registerAdminRoutes } from "./routes/admin";
 import { registerProfileQuestSalesRoutes } from "./routes/profile-quest-sales";
+import { registerMessageRoutes } from "./routes/messages";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -99,6 +100,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerProfileQuestSalesRoutes(app, deps);
   registerCoordinatorRoutes(app, deps);
   registerGroupCampaignRoutes(app, deps);
+  // Cross-role messaging (Slice 1: coordinator ↔ business). Auth is per-route
+  // (isAuthenticated); the actor's role in each thread is resolved server-side.
+  registerMessageRoutes(app, deps);
 
   const httpServer = createServer(app);
 
