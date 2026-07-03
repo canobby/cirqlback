@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CoordinatorSharePanel } from "@/components/admin/coordinator-share-panel";
 import CommandCenter from "@/components/admin/command-center";
 import RevenuePanel from "@/components/admin/revenue-panel";
+import TrustSafetyPanel from "@/components/admin/trust-safety-panel";
 import { 
   Shield,
   Users,
@@ -273,14 +274,15 @@ export default function AdminDashboard() {
 
         <Tabs value={adminTab} onValueChange={setAdminTab} className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="grid grid-cols-8 min-w-max lg:w-full">
+            <TabsList className="grid grid-cols-9 min-w-max lg:w-full">
               <TabsTrigger value="overview" className="px-2 text-xs lg:px-3 lg:text-sm">Overview</TabsTrigger>
+              <TabsTrigger value="revenue" className="px-2 text-xs lg:px-3 lg:text-sm">Revenue</TabsTrigger>
+              <TabsTrigger value="trust" className="px-2 text-xs lg:px-3 lg:text-sm">Trust &amp; Safety</TabsTrigger>
+              <TabsTrigger value="coordinators" className="px-2 text-xs lg:px-3 lg:text-sm">Coordinators</TabsTrigger>
               <TabsTrigger value="users" className="px-2 text-xs lg:px-3 lg:text-sm">Users</TabsTrigger>
               <TabsTrigger value="templates" className="px-2 text-xs lg:px-3 lg:text-sm">Templates</TabsTrigger>
               <TabsTrigger value="subscriptions" className="px-2 text-xs lg:px-3 lg:text-sm">Subscriptions</TabsTrigger>
               <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Analytics</TabsTrigger>
-              <TabsTrigger value="revenue" className="px-2 text-xs lg:px-3 lg:text-sm">Revenue</TabsTrigger>
-              <TabsTrigger value="coordinators" className="px-2 text-xs lg:px-3 lg:text-sm">Coordinators</TabsTrigger>
               <TabsTrigger value="platform" className="px-2 text-xs lg:px-3 lg:text-sm">Platform</TabsTrigger>
             </TabsList>
           </div>
@@ -694,6 +696,12 @@ export default function AdminDashboard() {
           <TabsContent value="revenue" className="space-y-6">
             <h2 className="text-xl font-semibold">Revenue</h2>
             <RevenuePanel />
+          </TabsContent>
+
+          {/* Trust & Safety */}
+          <TabsContent value="trust" className="space-y-6">
+            <h2 className="text-xl font-semibold">Trust &amp; Safety</h2>
+            <TrustSafetyPanel />
           </TabsContent>
 
           {/* Coordinator revenue share */}

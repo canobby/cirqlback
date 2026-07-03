@@ -124,6 +124,73 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // ── Trust & Safety ──────────────────────────────────────────────────────
+
+  app.get("/api/admin/verification-queue", async (_req, res) => {
+    try {
+      res.json(await storage.getAdminVerificationQueue());
+    } catch (error) {
+      console.error("Verification queue error:", error);
+      res.status(500).json({ error: "Failed to load verification queue" });
+    }
+  });
+
+  // Admin verify/reject a business (platform-wide, any territory).
+  app.patch("/api/admin/businesses/:id/verification", async (req, res) => {
+    try {
+      const status = String(req.body?.status || "");
+      if (!["verified", "rejected", "unverified"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+      const business = await storage.updateBusiness(req.params.id, { verificationStatus: status });
+      res.json({ success: true, business });
+    } catch (error) {
+      console.error("Admin verify error:", error);
+      res.status(500).json({ error: "Failed to update verification" });
+    }
+  });
+
+  app.get("/api/admin/hosted-pages", async (_req, res) => {
+    try {
+      res.json(await storage.getAdminHostedPages());
+    } catch (error) {
+      console.error("Hosted pages error:", error);
+      res.status(500).json({ error: "Failed to load hosted pages" });
+    }
+  });
+
+  // Kill-switch: unpublish a hosted business page (moderation).
+  app.post("/api/admin/businesses/:id/unpublish", async (req, res) => {
+    try {
+      await storage.updateBusiness(req.params.id, { websitePublished: false });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Unpublish error:", error);
+      res.status(500).json({ error: "Failed to unpublish page" });
+    }
+  });
+
+  app.get("/api/admin/nonprofits", async (_req, res) => {
+    try {
+      const rows = await storage.getNonprofits();
+      res.json(rows.map((b) => ({ id: b.id, name: b.name, ein: b.ein, mission: b.nonprofitMission })));
+    } catch (error) {
+      console.error("Nonprofits error:", error);
+      res.status(500).json({ error: "Failed to load nonprofits" });
+    }
+  });
+
+  // Revoke 501(c)(3) status (removes the free-plan flag).
+  app.post("/api/admin/businesses/:id/revoke-nonprofit", async (req, res) => {
+    try {
+      await storage.updateBusiness(req.params.id, { isNonprofit: false });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Revoke nonprofit error:", error);
+      res.status(500).json({ error: "Failed to revoke nonprofit status" });
+    }
+  });
+
   // The built-in campaign template catalog (shared with coordinators).
   app.get("/api/admin/campaign-templates", (_req, res) => {
     res.json(

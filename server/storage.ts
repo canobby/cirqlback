@@ -589,6 +589,27 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  // Trust & Safety: claimed businesses (real owner) still awaiting verification.
+  async getAdminVerificationQueue(): Promise<Array<{ id: string; name: string; address: string | null; ownerEmail: string | null; createdAt: Date | null }>> {
+    return await db
+      .select({ id: businesses.id, name: businesses.name, address: businesses.address, ownerEmail: users.email, createdAt: businesses.createdAt })
+      .from(businesses)
+      .leftJoin(users, eq(users.id, businesses.ownerId))
+      .where(and(eq(businesses.isActive, true), eq(businesses.verificationStatus, "unverified"), isNotNull(businesses.ownerId)))
+      .orderBy(desc(businesses.createdAt))
+      .limit(100);
+  }
+
+  // Trust & Safety: all published hosted business pages (for moderation).
+  async getAdminHostedPages(): Promise<Array<{ id: string; name: string; slug: string | null; views: number | null }>> {
+    return await db
+      .select({ id: businesses.id, name: businesses.name, slug: businesses.websiteSlug, views: businesses.websiteViews })
+      .from(businesses)
+      .where(eq(businesses.websitePublished, true))
+      .orderBy(desc(businesses.websiteViews))
+      .limit(200);
+  }
+
   // Real list of platform users for the admin user-management table.
   async listPlatformUsers(limit = 200): Promise<
     Array<Pick<User, "id" | "email" | "firstName" | "lastName" | "role" | "subscriptionTier" | "subscriptionStatus" | "createdAt">>
