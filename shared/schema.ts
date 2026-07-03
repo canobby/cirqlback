@@ -1624,3 +1624,39 @@ export const badgeAwards = pgTable("badge_awards", {
 
 export type BadgeDefinition = typeof badgeDefinitions.$inferSelect;
 export type BadgeAward = typeof badgeAwards.$inferSelect;
+
+// ── Points economy (redemption) ──
+// Gives loyalty points a real sink: customers spend availablePoints on perks a
+// business funds (redeemable in-store), platform perks, or prize-draw entries.
+export const pointRewards = pgTable("point_rewards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  emoji: varchar("emoji"),
+  pointsCost: integer("points_cost").notNull(),
+  type: varchar("type").notNull().default("business_perk"), // business_perk | platform_perk | prize_draw
+  businessId: varchar("business_id").references(() => businesses.id), // funded/redeemed at this business
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdByRole: varchar("created_by_role").notNull().default("business"), // business | coordinator | admin
+  quantity: integer("quantity"), // null = unlimited
+  redeemedCount: integer("redeemed_count").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  endsAt: timestamp("ends_at"),      // optional expiry
+  drawAt: timestamp("draw_at"),      // for prize_draw
+  winnerRedemptionId: varchar("winner_redemption_id"), // set when a draw is run
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const pointRedemptions = pgTable("point_redemptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  pointRewardId: varchar("point_reward_id").references(() => pointRewards.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  pointsSpent: integer("points_spent").notNull(),
+  rewardId: varchar("reward_id").references(() => rewards.id), // for perks → an in-store reward
+  code: varchar("code"),             // redemption code (platform perks)
+  status: varchar("status").notNull().default("active"), // active | redeemed | entered | won | lost
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type PointReward = typeof pointRewards.$inferSelect;
+export type PointRedemption = typeof pointRedemptions.$inferSelect;

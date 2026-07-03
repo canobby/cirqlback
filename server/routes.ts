@@ -25,6 +25,7 @@ import { registerRewardsOpsRoutes } from "./routes/rewards-ops";
 import { registerRewardSettlementRoutes } from "./routes/reward-settlements";
 import { registerConnectRoutes } from "./routes/connect";
 import { registerBadgeRoutes } from "./routes/badges";
+import { registerPointsEconomyRoutes } from "./routes/points-economy";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -117,6 +118,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerConnectRoutes(app, deps);
   // Badges (recognition) — manual awarding across roles + public display.
   registerBadgeRoutes(app, deps);
+  // Points economy — spend points on business perks, platform perks, prize draws.
+  registerPointsEconomyRoutes(app, deps);
 
   const httpServer = createServer(app);
 

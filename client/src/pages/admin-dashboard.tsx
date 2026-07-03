@@ -29,6 +29,7 @@ import MessageCenter from "@/components/messaging/message-center";
 import BroadcastComposer from "@/components/messaging/broadcast-composer";
 import RewardSettlementsPanel from "@/components/admin/reward-settlements-panel";
 import BadgesPanel from "@/components/badges/badges-panel";
+import PointsAdminPanel from "@/components/admin/points-admin-panel";
 import { 
   Shield,
   Users,
@@ -751,6 +752,7 @@ export default function AdminDashboard() {
           <TabsContent value="platform" className="space-y-6">
             <h2 className="text-xl font-semibold">Platform</h2>
             <PlatformConfigPanel />
+            <PointsAdminPanel />
           </TabsContent>
 
           {/* Audit: privileged admin action log */}

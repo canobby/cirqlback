@@ -34,6 +34,8 @@ import {
   rewardSettlements,
   badgeDefinitions,
   badgeAwards,
+  pointRewards,
+  pointRedemptions,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -84,6 +86,8 @@ import {
   type RewardSettlement,
   type BadgeDefinition,
   type BadgeAward,
+  type PointReward,
+  type PointRedemption,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
@@ -3764,6 +3768,116 @@ export class DatabaseStorage implements IStorage {
 
   async getBadgeAwardsForBusiness(businessId: string): Promise<any[]> {
     return this.awardsWith(eq(badgeAwards.recipientBusinessId, businessId));
+  }
+
+  // ── Points economy (redemption) ───────────────────────────────────────────
+  // Atomically deduct points only if the balance covers the cost. Returns the
+  // new available balance, or null if there weren't enough points.
+  async spendCustomerPoints(userId: string, cost: number): Promise<number | null> {
+    const [row] = await db
+      .update(users)
+      .set({ availablePoints: sql`${users.availablePoints} - ${cost}`, updatedAt: new Date() })
+      .where(and(eq(users.id, userId), sql`COALESCE(${users.availablePoints}, 0) >= ${cost}`))
+      .returning({ availablePoints: users.availablePoints });
+    return row ? (row.availablePoints ?? 0) : null;
+  }
+
+  // Refund points (used if issuing the reward fails after deduction).
+  async refundCustomerPoints(userId: string, amount: number): Promise<void> {
+    await db.update(users)
+      .set({ availablePoints: sql`COALESCE(${users.availablePoints}, 0) + ${amount}`, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+  }
+
+  async createPointReward(data: {
+    title: string; description?: string | null; emoji?: string | null; pointsCost: number;
+    type: string; businessId?: string | null; createdByUserId: string; createdByRole: string;
+    quantity?: number | null; drawAt?: Date | null;
+  }): Promise<PointReward> {
+    const [row] = await db.insert(pointRewards).values(data).returning();
+    return row;
+  }
+
+  async getPointReward(id: string): Promise<PointReward | undefined> {
+    const [row] = await db.select().from(pointRewards).where(eq(pointRewards.id, id));
+    return row;
+  }
+
+  // Active, in-stock, unexpired catalog (with business name for perks).
+  async getActivePointRewards(): Promise<any[]> {
+    const rows = await db.select().from(pointRewards)
+      .where(eq(pointRewards.isActive, true))
+      .orderBy(desc(pointRewards.createdAt));
+    const now = Date.now();
+    const live = rows.filter((r) =>
+      (r.quantity == null || (r.redeemedCount ?? 0) < r.quantity) &&
+      (!r.endsAt || new Date(r.endsAt).getTime() > now) &&
+      !r.winnerRedemptionId);
+    const bizNames = new Map<string, string>();
+    await Promise.all(Array.from(new Set(live.map((r) => r.businessId).filter(Boolean))).map(async (id) => {
+      const b = await this.getBusiness(id as string); if (b) bizNames.set(id as string, b.name);
+    }));
+    return live.map((r) => ({ ...r, businessName: r.businessId ? (bizNames.get(r.businessId) || "A business") : null }));
+  }
+
+  async getPointRewardsByBusiness(businessId: string): Promise<PointReward[]> {
+    return await db.select().from(pointRewards).where(eq(pointRewards.businessId, businessId)).orderBy(desc(pointRewards.createdAt));
+  }
+
+  async getAllPointRewards(): Promise<PointReward[]> {
+    return await db.select().from(pointRewards).orderBy(desc(pointRewards.createdAt));
+  }
+
+  async deactivatePointReward(id: string): Promise<void> {
+    await db.update(pointRewards).set({ isActive: false }).where(eq(pointRewards.id, id));
+  }
+
+  async incrementPointRewardRedeemed(id: string): Promise<void> {
+    await db.update(pointRewards).set({ redeemedCount: sql`${pointRewards.redeemedCount} + 1` }).where(eq(pointRewards.id, id));
+  }
+
+  async createPointRedemption(data: {
+    pointRewardId: string; userId: string; pointsSpent: number;
+    rewardId?: string | null; code?: string | null; status: string;
+  }): Promise<PointRedemption> {
+    const [row] = await db.insert(pointRedemptions).values(data).returning();
+    return row;
+  }
+
+  // A user's redemption history, joined with the reward's display info.
+  async getPointRedemptionsForUser(userId: string): Promise<any[]> {
+    return await db
+      .select({
+        id: pointRedemptions.id,
+        title: pointRewards.title,
+        emoji: pointRewards.emoji,
+        type: pointRewards.type,
+        pointsSpent: pointRedemptions.pointsSpent,
+        code: pointRedemptions.code,
+        status: pointRedemptions.status,
+        createdAt: pointRedemptions.createdAt,
+      })
+      .from(pointRedemptions)
+      .innerJoin(pointRewards, eq(pointRedemptions.pointRewardId, pointRewards.id))
+      .where(eq(pointRedemptions.userId, userId))
+      .orderBy(desc(pointRedemptions.createdAt));
+  }
+
+  async getPointRedemptionsForReward(pointRewardId: string): Promise<PointRedemption[]> {
+    return await db.select().from(pointRedemptions).where(eq(pointRedemptions.pointRewardId, pointRewardId));
+  }
+
+  // Pick a random winner among a prize draw's entries; mark won/lost + close it.
+  async drawPrizeWinner(pointRewardId: string): Promise<{ winnerUserId: string } | null> {
+    const entries = await db.select().from(pointRedemptions)
+      .where(and(eq(pointRedemptions.pointRewardId, pointRewardId), eq(pointRedemptions.status, "entered")));
+    if (entries.length === 0) return null;
+    const winner = entries[Math.floor(Math.random() * entries.length)];
+    await db.update(pointRedemptions).set({ status: "lost" })
+      .where(and(eq(pointRedemptions.pointRewardId, pointRewardId), eq(pointRedemptions.status, "entered")));
+    await db.update(pointRedemptions).set({ status: "won" }).where(eq(pointRedemptions.id, winner.id));
+    await db.update(pointRewards).set({ winnerRedemptionId: winner.id, isActive: false }).where(eq(pointRewards.id, pointRewardId));
+    return { winnerUserId: winner.userId };
   }
 }
 

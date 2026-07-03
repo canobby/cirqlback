@@ -9,6 +9,7 @@ import { QuickTranslate } from "@/components/ui/translated-text";
 import CustomerFeedPanel from "@/components/messaging/customer-feed-panel";
 import MessageCenter from "@/components/messaging/message-center";
 import BadgesPanel from "@/components/badges/badges-panel";
+import PointsStorePanel from "@/components/points/points-store-panel";
 
 export default function CustomerBento() {
   const [, setLocation] = useLocation();
@@ -69,6 +70,9 @@ export default function CustomerBento() {
 
         {/* Messages: contact a business you follow (Slice 4) */}
         <MessageCenter role="customer" />
+
+        {/* Rewards store: spend your points */}
+        <PointsStorePanel />
 
         {/* Badges: your achievements + give a business a badge */}
         <BadgesPanel mode="customer" />
