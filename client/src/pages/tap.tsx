@@ -375,7 +375,21 @@ export default function TapPage() {
             <CardContent className="space-y-4">
               <div className="text-center">
                 <p className="text-green-700 mb-4">{tapResult.message}</p>
-                
+
+                {/* Lucky-tap surprise bonus */}
+                {tapResult.luckyBonus > 0 && (
+                  <div className="p-3 mb-4 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 text-white font-semibold">
+                    🎰 Lucky tap! +{tapResult.luckyBonus} bonus points
+                  </div>
+                )}
+
+                {/* Newly-earned achievement badges */}
+                {Array.isArray(tapResult.earnedBadges) && tapResult.earnedBadges.length > 0 && (
+                  <div className="p-3 mb-4 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 text-sm">
+                    🏅 Badge unlocked: <b>{tapResult.earnedBadges.join(", ")}</b>
+                  </div>
+                )}
+
                 {/* CHR-73: punch-card progress toward a multi-tap reward */}
                 {tapResult.progress && tapResult.progress.goal > 1 && (
                   <div className="p-3 bg-white rounded-lg border-2 border-primary/20 mb-4 text-left">

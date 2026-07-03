@@ -1603,7 +1603,10 @@ export const badgeDefinitions = pgTable("badge_definitions", {
   audience: varchar("audience").notNull().default("any"),
   // Who may grant it: system | business | customer | coordinator | admin.
   awardableBy: varchar("awardable_by").notNull().default("admin"),
-  tier: varchar("tier"),                 // bronze|silver|gold|platinum (future auto tiers)
+  tier: varchar("tier"),                 // bronze|silver|gold|platinum
+  // Auto-award rule for achievement badges (awardableBy='system'):
+  // { metric: 'taps'|'distinct_businesses'|'streak'|'biz_taps'|'biz_customers', threshold: N }
+  criteria: jsonb("criteria"),
   isCustom: boolean("is_custom").default(false),
   createdByUserId: varchar("created_by_user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),

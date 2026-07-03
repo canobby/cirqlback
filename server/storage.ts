@@ -2474,7 +2474,7 @@ export class DatabaseStorage implements IStorage {
   async processTap(
     tap: InsertTap,
     opts?: { latitude?: number; longitude?: number }
-  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[]; donations?: any[]; progress?: { count: number; goal: number; rewardEarned: boolean } }> {
+  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; earnedBadges?: string[]; luckyBonus?: number; message: string; reason?: string; groupProgress?: any[]; donations?: any[]; progress?: { count: number; goal: number; rewardEarned: boolean } }> {
     try {
       const now = Date.now();
 
@@ -2650,14 +2650,18 @@ export class DatabaseStorage implements IStorage {
 
       // A real customer tap advances their daily streak (milestone bonuses paid
       // into points) and completes any pending referral (rewards both parties).
+      let earnedBadges: string[] = [];
       if (customer) {
         try {
           await this.updateStreak(customer.id);
           if (tap.customerEmail) await this.processReferralCompletion(tap.customerEmail);
+          earnedBadges = await this.evaluateCustomerAchievements(customer.id, tap.customerEmail);
         } catch (e) {
-          console.error("streak/referral update failed:", e);
+          console.error("streak/referral/badge update failed:", e);
         }
       }
+      // Business achievement badges (independent of whether the tapper has an account).
+      try { await this.evaluateBusinessAchievements(tap.businessId); } catch (e) { console.error("biz badge eval failed:", e); }
 
       // CHR-57: advance any multi-store group campaigns this store belongs to.
       const groupProgress = await this.advanceGroupCampaigns(
@@ -2676,10 +2680,25 @@ export class DatabaseStorage implements IStorage {
         tap.customerEmail
       );
 
+      // Surprise "lucky tap": a small chance of a bonus points windfall — the
+      // variable-reward dopamine lever. Only for customers with an account.
+      let luckyBonus: number | undefined;
+      if (customer && Math.random() < 0.1) {
+        const options = [25, 50, 100];
+        luckyBonus = options[Math.floor(Math.random() * options.length)];
+        await db.update(users).set({
+          totalPoints: sql`COALESCE(${users.totalPoints},0) + ${luckyBonus}`,
+          availablePoints: sql`COALESCE(${users.availablePoints},0) + ${luckyBonus}`,
+          totalPointsEarned: sql`COALESCE(${users.totalPointsEarned},0) + ${luckyBonus}`,
+        }).where(eq(users.id, customer.id));
+      }
+
       return {
         success: true,
         reward,
         pointsEarned: points,
+        earnedBadges,
+        luckyBonus,
         groupProgress,
         donations: donationsBooked,
         progress,
@@ -3880,6 +3899,55 @@ export class DatabaseStorage implements IStorage {
 
   async getBadgeAwardsForBusiness(businessId: string): Promise<any[]> {
     return this.awardsWith(eq(badgeAwards.recipientBusinessId, businessId));
+  }
+
+  // ── Automatic achievement badges (Phase 2) ────────────────────────────────
+  async getSystemBadges(audience: string): Promise<BadgeDefinition[]> {
+    return await db.select().from(badgeDefinitions)
+      .where(and(eq(badgeDefinitions.awardableBy, "system"), eq(badgeDefinitions.audience, audience)));
+  }
+
+  // Award any customer achievement badge whose threshold is newly met. Returns
+  // the names of any newly-earned badges (for a client celebration).
+  async evaluateCustomerAchievements(userId: string, email: string | null | undefined): Promise<string[]> {
+    const badges = await this.getSystemBadges("customer");
+    if (badges.length === 0) return [];
+    const tapRows = email
+      ? await db.select({ b: taps.businessId }).from(taps).where(eq(taps.customerEmail, email))
+      : [];
+    const tapCount = tapRows.length;
+    const distinct = new Set(tapRows.map((t) => t.b).filter(Boolean)).size;
+    const [u] = await db.select().from(users).where(eq(users.id, userId));
+    const streak = u?.currentStreak ?? 0;
+    const value = (m: string) => (m === "taps" ? tapCount : m === "distinct_businesses" ? distinct : m === "streak" ? streak : 0);
+    const earned: string[] = [];
+    for (const b of badges) {
+      const c = b.criteria as { metric: string; threshold: number } | null;
+      if (!c || value(c.metric) < c.threshold) continue;
+      if (await this.hasBadgeAward({ badgeDefinitionId: b.id, recipientUserId: userId })) continue;
+      await this.awardBadge({ badgeDefinitionId: b.id, recipientUserId: userId, awarderRole: "system" });
+      earned.push(b.name);
+    }
+    return earned;
+  }
+
+  async evaluateBusinessAchievements(businessId: string): Promise<string[]> {
+    const badges = await this.getSystemBadges("business");
+    if (badges.length === 0) return [];
+    const [biz] = await db.select().from(businesses).where(eq(businesses.id, businessId));
+    const bizTaps = biz?.totalTaps ?? 0;
+    const custRows = await db.select({ e: taps.customerEmail }).from(taps).where(eq(taps.businessId, businessId));
+    const customers = new Set(custRows.map((t) => t.e).filter(Boolean)).size;
+    const value = (m: string) => (m === "biz_taps" ? bizTaps : m === "biz_customers" ? customers : 0);
+    const earned: string[] = [];
+    for (const b of badges) {
+      const c = b.criteria as { metric: string; threshold: number } | null;
+      if (!c || value(c.metric) < c.threshold) continue;
+      if (await this.hasBadgeAward({ badgeDefinitionId: b.id, recipientBusinessId: businessId })) continue;
+      await this.awardBadge({ badgeDefinitionId: b.id, recipientBusinessId: businessId, awarderRole: "system" });
+      earned.push(b.name);
+    }
+    return earned;
   }
 
   // ── Points economy (redemption) ───────────────────────────────────────────
