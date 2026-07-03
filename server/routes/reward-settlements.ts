@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../auth";
 import type { RouteDeps } from "./_shared";
 import type { RewardContribution } from "@shared/schema";
+import { createTransfer, getStripe } from "../stripe-connect";
 
 // ── Shared-campaign reward settlements ───────────────────────────────────────
 // Reporting + settlement for the tap-weighted cost split of funded multi-store
@@ -61,9 +62,26 @@ export function registerRewardSettlementRoutes(app: Express, _deps: RouteDeps) {
     }));
   }
 
+  // Host name + Connect payout-readiness, so the UI can offer a Stripe payout.
+  async function hostInfo(ids: string[]): Promise<Map<string, { name: string; payoutsEnabled: boolean }>> {
+    const m = new Map<string, { name: string; payoutsEnabled: boolean }>();
+    await Promise.all(
+      Array.from(new Set(ids.filter(Boolean))).map(async (id) => {
+        const b = await storage.getBusiness(id);
+        if (b) m.set(id, { name: b.name, payoutsEnabled: !!(b as any).connectPayoutsEnabled });
+      }),
+    );
+    return m;
+  }
+
   async function enrichPending(rows: ReturnType<typeof pendingByHost>) {
-    const names = await nameMap(rows.map((r) => r.hostBusinessId));
-    return rows.map((r) => ({ ...r, hostName: names.get(r.hostBusinessId) || "Host", total: money(r.totalCents) }));
+    const info = await hostInfo(rows.map((r) => r.hostBusinessId));
+    return rows.map((r) => ({
+      ...r,
+      hostName: info.get(r.hostBusinessId)?.name || "Host",
+      hostPayoutsEnabled: info.get(r.hostBusinessId)?.payoutsEnabled ?? false,
+      total: money(r.totalCents),
+    }));
   }
 
   // ── Merchant: what my businesses owe / are owed ───────────────────────────
@@ -187,9 +205,36 @@ export function registerRewardSettlementRoutes(app: Express, _deps: RouteDeps) {
   });
 
   async function withHostNames(settlements: any[]) {
-    const names = await nameMap(settlements.map((s) => s.hostBusinessId));
-    return settlements.map((s) => ({ ...s, hostName: names.get(s.hostBusinessId) || "Host", total: money(s.totalCents) }));
+    const info = await hostInfo(settlements.map((s) => s.hostBusinessId));
+    return settlements.map((s) => ({
+      ...s,
+      hostName: info.get(s.hostBusinessId)?.name || "Host",
+      hostPayoutsEnabled: info.get(s.hostBusinessId)?.payoutsEnabled ?? false,
+      total: money(s.totalCents),
+    }));
   }
+
+  // Automated payout of a settlement to the host's Connect account.
+  app.post("/api/admin/reward-settlements/:id/payout", async (req, res) => {
+    try {
+      const r = await payoutSettlement({ id: req.params.id, allowed: async () => true });
+      res.status(r.status).json(r.body);
+    } catch (error) {
+      console.error("Admin payout error:", error);
+      res.status(500).json({ error: "Failed to pay out settlement" });
+    }
+  });
+
+  app.post("/api/coordinator/reward-settlements/:id/payout", async (req, res) => {
+    try {
+      const bizIds = await territoryBusinessIds(req);
+      const r = await payoutSettlement({ id: req.params.id, allowed: async (hostId) => bizIds.includes(hostId) });
+      res.status(r.status).json(r.body);
+    } catch (error) {
+      console.error("Coordinator payout error:", error);
+      res.status(500).json({ error: "Failed to pay out settlement" });
+    }
+  });
 }
 
 // ── Shared operation handlers ───────────────────────────────────────────────
@@ -231,4 +276,43 @@ async function setSettlementStatus(input: {
     notes: typeof input.body?.notes === "string" ? input.body.notes : undefined,
   });
   return { status: 200, body: updated };
+}
+
+// Automated payout: transfer the settlement total to the host's Connect account
+// (platform funds it now; driver-side collection is a later phase). Idempotent
+// on the settlement id so a retry can't double-pay.
+async function payoutSettlement(input: { id: string; allowed: (hostBusinessId: string) => Promise<boolean> }) {
+  const settlement = await storage.getRewardSettlement(input.id);
+  if (!settlement) return { status: 404, body: { error: "Settlement not found" } };
+  if (!(await input.allowed(settlement.hostBusinessId))) {
+    return { status: 403, body: { error: "That settlement isn't in your territory." } };
+  }
+  if (settlement.status !== "pending") {
+    return { status: 409, body: { error: `Settlement is already ${settlement.status}.` } };
+  }
+  if (!(await getStripe())) {
+    return { status: 400, body: { error: "Payouts aren't configured (no Stripe key)." } };
+  }
+  const host = await storage.getBusiness(settlement.hostBusinessId);
+  const acct = (host as any)?.stripeConnectAccountId as string | null;
+  if (!acct || !(host as any)?.connectPayoutsEnabled) {
+    return { status: 409, body: { error: "The host hasn't finished connecting a payout account." } };
+  }
+  try {
+    const transferId = await createTransfer({
+      amountCents: settlement.totalCents,
+      destinationAccountId: acct,
+      idempotencyKey: `reward_settlement_${settlement.id}`,
+      metadata: { settlementId: settlement.id, hostBusinessId: settlement.hostBusinessId, periodMonth: settlement.periodMonth },
+    });
+    const updated = await storage.updateRewardSettlement(settlement.id, {
+      status: "paid",
+      method: "stripe_connect",
+      stripeTransferId: transferId,
+      reference: transferId,
+    });
+    return { status: 200, body: updated };
+  } catch (e: any) {
+    return { status: 402, body: { error: e?.message?.slice(0, 160) || "Stripe transfer failed" } };
+  }
 }

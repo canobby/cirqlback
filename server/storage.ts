@@ -448,6 +448,23 @@ export class DatabaseStorage implements IStorage {
     return business || undefined;
   }
 
+  // Stripe Connect: update payout-readiness for the business owning a connected
+  // account (used by the account.updated webhook — status flips asynchronously).
+  async setBusinessConnectStatus(
+    accountId: string,
+    patch: { payoutsEnabled?: boolean; detailsSubmitted?: boolean },
+  ): Promise<void> {
+    await db
+      .update(businesses)
+      .set({
+        ...(patch.payoutsEnabled !== undefined ? { connectPayoutsEnabled: patch.payoutsEnabled } : {}),
+        ...(patch.detailsSubmitted !== undefined ? { connectDetailsSubmitted: patch.detailsSubmitted } : {}),
+        ...(patch.payoutsEnabled ? { connectOnboardedAt: new Date() } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(businesses.stripeConnectAccountId, accountId));
+  }
+
   // Hosted Business Page (add-on): resolve a business by its public website slug.
   async getBusinessBySlug(slug: string): Promise<Business | undefined> {
     const [business] = await db.select().from(businesses).where(eq(businesses.websiteSlug, slug));
@@ -3460,7 +3477,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateRewardSettlement(
     id: string,
-    patch: { status?: string; reference?: string; notes?: string },
+    patch: { status?: string; reference?: string; notes?: string; method?: string; stripeTransferId?: string },
   ): Promise<RewardSettlement> {
     const [row] = await db
       .update(rewardSettlements)
@@ -3468,6 +3485,8 @@ export class DatabaseStorage implements IStorage {
         ...(patch.status ? { status: patch.status, paidAt: patch.status === "paid" ? new Date() : null } : {}),
         ...(patch.reference !== undefined ? { reference: patch.reference } : {}),
         ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
+        ...(patch.method !== undefined ? { method: patch.method } : {}),
+        ...(patch.stripeTransferId !== undefined ? { stripeTransferId: patch.stripeTransferId } : {}),
       })
       .where(eq(rewardSettlements.id, id))
       .returning();

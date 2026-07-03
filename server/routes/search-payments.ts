@@ -291,6 +291,16 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
     }
 
     try {
+      // Stripe Connect: a connected account's payout-readiness changed (can flip
+      // asynchronously after Stripe review). Keep the business's flags in sync.
+      if (event.type === "account.updated") {
+        const acct = event.data.object as any;
+        await storage.setBusinessConnectStatus(acct.id, {
+          payoutsEnabled: !!acct.payouts_enabled,
+          detailsSubmitted: !!acct.details_submitted,
+        });
+        return res.json({ received: true });
+      }
       if (event.type === "payment_intent.succeeded") {
         const pi = event.data.object as any;
         const meta = pi.metadata || {};

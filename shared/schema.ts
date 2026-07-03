@@ -100,6 +100,12 @@ export const businesses = pgTable("businesses", {
   logo: varchar("logo"),
   ownerId: varchar("owner_id").references(() => users.id),
   territoryId: varchar("territory_id").references(() => territories.id), // CHR-31: coordinator territory scoping
+  // Stripe Connect (Express) — so a business can RECEIVE automated payouts (e.g.
+  // its share owed as a shared-campaign host). Onboarding is Stripe-hosted.
+  stripeConnectAccountId: varchar("stripe_connect_account_id"),
+  connectPayoutsEnabled: boolean("connect_payouts_enabled").default(false),
+  connectDetailsSubmitted: boolean("connect_details_submitted").default(false),
+  connectOnboardedAt: timestamp("connect_onboarded_at"),
   verificationStatus: varchar("verification_status").default("unverified"), // CHR-31: unverified, verified, rejected (coordinator-verified)
   isFeatured: boolean("is_featured").default(false), // CHR-54: coordinator-controlled map promotion (territory-scoped)
   // CHR-34/70: 501(c)(3) nonprofit participation. A nonprofit is a business row
@@ -1550,6 +1556,7 @@ export const rewardSettlements = pgTable("reward_settlements", {
   status: varchar("status").notNull().default("pending"), // pending | paid | void
   method: varchar("method").default("manual"), // manual | stripe_connect
   reference: varchar("reference"),
+  stripeTransferId: varchar("stripe_transfer_id"), // set when settled via Connect payout
   notes: text("notes"),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import GroupCampaignsPanel from "@/components/merchant/group-campaigns-panel";
 import CampaignSettlementsPanel from "@/components/merchant/campaign-settlements-panel";
+import ConnectPayoutsPanel from "@/components/merchant/connect-payouts-panel";
 import AddonsPanel from "@/components/merchant/addons-panel";
 import TapBrandingEditor from "@/components/merchant/tap-branding-editor";
 import WebsiteEditor from "@/components/merchant/website-editor";
@@ -76,6 +77,9 @@ export default function MerchantBento() {
 
         {/* Shared-campaign cost split: what I owe hosts / am owed as host */}
         <CampaignSettlementsPanel />
+
+        {/* Stripe Connect onboarding — receive automated payouts */}
+        <ConnectPayoutsPanel />
 
         {/* CHR-35/66: add-on entitlement status */}
         <AddonsPanel />

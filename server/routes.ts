@@ -23,6 +23,7 @@ import { registerProfileQuestSalesRoutes } from "./routes/profile-quest-sales";
 import { registerMessageRoutes } from "./routes/messages";
 import { registerRewardsOpsRoutes } from "./routes/rewards-ops";
 import { registerRewardSettlementRoutes } from "./routes/reward-settlements";
+import { registerConnectRoutes } from "./routes/connect";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -111,6 +112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Shared-campaign reward cost-split settlements (merchant view + admin/
   // coordinator generate & mark-settled).
   registerRewardSettlementRoutes(app, deps);
+  // Stripe Connect (Express) onboarding so businesses can receive payouts.
+  registerConnectRoutes(app, deps);
 
   const httpServer = createServer(app);
 
