@@ -106,6 +106,13 @@
       "when": 1783100260780,
       "tag": "0014_dizzy_maddog",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1783100534754,
+      "tag": "0015_striped_echo",
+      "breakpoints": true
     }
   ]
 }

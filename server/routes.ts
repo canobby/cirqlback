@@ -27,6 +27,7 @@ import { registerConnectRoutes } from "./routes/connect";
 import { registerBadgeRoutes } from "./routes/badges";
 import { registerPointsEconomyRoutes } from "./routes/points-economy";
 import { registerReferralRoutes } from "./routes/referrals";
+import { registerCollectionRoutes } from "./routes/collections";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -123,6 +124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerPointsEconomyRoutes(app, deps);
   // Rewarded referral loop (both parties earn on the referee's first tap).
   registerReferralRoutes(app, deps);
+  // Collections / passports (visit a curated set of businesses → bonus points).
+  registerCollectionRoutes(app, deps);
 
   const httpServer = createServer(app);
 

@@ -1664,3 +1664,44 @@ export const pointRedemptions = pgTable("point_redemptions", {
 
 export type PointReward = typeof pointRewards.$inferSelect;
 export type PointRedemption = typeof pointRedemptions.$inferSelect;
+
+// ── Collections / passports ──
+// A curated set of businesses ("visit all N coffee shops → Coffee Passport").
+// Completing it (visiting every member) grants bonus points. Admin/coordinator
+// curated. Advances on tap, like group campaigns but discovery-themed.
+export const collections = pgTable("collections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  emoji: varchar("emoji"),
+  color: varchar("color").default("#7c3aed"),
+  rewardPoints: integer("reward_points").notNull().default(100),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdByRole: varchar("created_by_role").notNull().default("admin"), // admin | coordinator
+  territoryId: varchar("territory_id").references(() => territories.id),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const collectionItems = pgTable("collection_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  collectionId: varchar("collection_id").references(() => collections.id).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+}, (table) => ({
+  uniqueItem: unique("collection_items_unique").on(table.collectionId, table.businessId),
+}));
+
+export const collectionProgress = pgTable("collection_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  collectionId: varchar("collection_id").references(() => collections.id).notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  customerEmail: varchar("customer_email"),
+  deviceFingerprint: varchar("device_fingerprint"),
+  visitedBusinessIds: jsonb("visited_business_ids").default(sql`'[]'`),
+  completedAt: timestamp("completed_at"),
+  rewardGranted: boolean("reward_granted").notNull().default(false),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Collection = typeof collections.$inferSelect;
+export type CollectionProgress = typeof collectionProgress.$inferSelect;

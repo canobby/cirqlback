@@ -12,6 +12,7 @@ import BadgesPanel from "@/components/badges/badges-panel";
 import PointsStorePanel from "@/components/points/points-store-panel";
 import StreakCard from "@/components/gamification/streak-card";
 import ReferralPanel from "@/components/gamification/referral-panel";
+import PassportsPanel from "@/components/gamification/passports-panel";
 
 export default function CustomerBento() {
   const [, setLocation] = useLocation();
@@ -75,6 +76,9 @@ export default function CustomerBento() {
 
         {/* Refer friends — both earn on the friend's first tap */}
         <ReferralPanel />
+
+        {/* Passports: collect a set of businesses for bonus points */}
+        <PassportsPanel />
 
         {/* Messages: contact a business you follow (Slice 4) */}
         <MessageCenter role="customer" />

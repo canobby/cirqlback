@@ -36,6 +36,9 @@ import {
   badgeAwards,
   pointRewards,
   pointRedemptions,
+  collections,
+  collectionItems,
+  collectionProgress,
   salesData,
   monthlySalesSummary,
   businessGoals,
@@ -88,6 +91,7 @@ import {
   type BadgeAward,
   type PointReward,
   type PointRedemption,
+  type Collection,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
@@ -2474,7 +2478,7 @@ export class DatabaseStorage implements IStorage {
   async processTap(
     tap: InsertTap,
     opts?: { latitude?: number; longitude?: number }
-  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; earnedBadges?: string[]; luckyBonus?: number; message: string; reason?: string; groupProgress?: any[]; donations?: any[]; progress?: { count: number; goal: number; rewardEarned: boolean } }> {
+  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; earnedBadges?: string[]; luckyBonus?: number; completedCollections?: string[]; message: string; reason?: string; groupProgress?: any[]; donations?: any[]; progress?: { count: number; goal: number; rewardEarned: boolean } }> {
     try {
       const now = Date.now();
 
@@ -2651,6 +2655,7 @@ export class DatabaseStorage implements IStorage {
       // A real customer tap advances their daily streak (milestone bonuses paid
       // into points) and completes any pending referral (rewards both parties).
       let earnedBadges: string[] = [];
+      let completedCollections: string[] = [];
       if (customer) {
         try {
           await this.updateStreak(customer.id);
@@ -2660,6 +2665,10 @@ export class DatabaseStorage implements IStorage {
           console.error("streak/referral/badge update failed:", e);
         }
       }
+      // Advance passports/collections (works for accounts + fingerprint identity).
+      try {
+        completedCollections = await this.advanceCollections(tap.businessId, tap.customerEmail, (tap as any).deviceFingerprint, customer);
+      } catch (e) { console.error("collection advance failed:", e); }
       // Business achievement badges (independent of whether the tapper has an account).
       try { await this.evaluateBusinessAchievements(tap.businessId); } catch (e) { console.error("biz badge eval failed:", e); }
 
@@ -2699,6 +2708,7 @@ export class DatabaseStorage implements IStorage {
         pointsEarned: points,
         earnedBadges,
         luckyBonus,
+        completedCollections,
         groupProgress,
         donations: donationsBooked,
         progress,
@@ -3948,6 +3958,113 @@ export class DatabaseStorage implements IStorage {
       earned.push(b.name);
     }
     return earned;
+  }
+
+  // ── Collections / passports ───────────────────────────────────────────────
+  async createCollection(data: {
+    name: string; description?: string | null; emoji?: string | null; color?: string | null;
+    rewardPoints: number; createdByUserId: string; createdByRole: string; territoryId?: string | null;
+  }): Promise<Collection> {
+    const [row] = await db.insert(collections).values(data).returning();
+    return row;
+  }
+
+  async addCollectionItem(collectionId: string, businessId: string): Promise<void> {
+    await db.insert(collectionItems).values({ collectionId, businessId }).onConflictDoNothing();
+  }
+
+  async getCollectionItemIds(collectionId: string): Promise<string[]> {
+    const rows = await db.select({ b: collectionItems.businessId }).from(collectionItems).where(eq(collectionItems.collectionId, collectionId));
+    return rows.map((r) => r.b);
+  }
+
+  async getActiveCollections(): Promise<Collection[]> {
+    return await db.select().from(collections).where(eq(collections.isActive, true)).orderBy(desc(collections.createdAt));
+  }
+
+  async getAllCollections(): Promise<Collection[]> {
+    return await db.select().from(collections).orderBy(desc(collections.createdAt));
+  }
+
+  // Active collections + their member businesses + this customer's progress.
+  async getCollectionsProgressForCustomer(email: string | null, userId: string | null): Promise<any[]> {
+    const cols = await this.getActiveCollections();
+    const out: any[] = [];
+    for (const c of cols) {
+      const itemRows = await db
+        .select({ id: collectionItems.businessId, name: businesses.name })
+        .from(collectionItems)
+        .innerJoin(businesses, eq(collectionItems.businessId, businesses.id))
+        .where(eq(collectionItems.collectionId, c.id));
+      const idConds = identityConds(collectionProgress.customerEmail, collectionProgress.deviceFingerprint, email, null);
+      const [p] = idConds.length
+        ? await db.select().from(collectionProgress).where(and(eq(collectionProgress.collectionId, c.id), or(...idConds)))
+        : [];
+      const visited: string[] = Array.isArray(p?.visitedBusinessIds) ? (p!.visitedBusinessIds as string[]) : [];
+      const memberIds = new Set(itemRows.map((i) => i.id));
+      const visitedCount = visited.filter((v) => memberIds.has(v)).length;
+      out.push({
+        id: c.id, name: c.name, emoji: c.emoji, color: c.color, rewardPoints: c.rewardPoints,
+        total: itemRows.length,
+        visitedCount,
+        completed: !!p?.completedAt,
+        businesses: itemRows.map((i) => ({ id: i.id, name: i.name, visited: visited.includes(i.id) })),
+      });
+    }
+    return out;
+  }
+
+  // Advance the customer's progress in every active collection the tapped store
+  // belongs to; completing one grants its reward points (once). Returns the
+  // names of any newly-completed collections.
+  async advanceCollections(
+    businessId: string,
+    customerEmail: string | null | undefined,
+    deviceFingerprint: string | null | undefined,
+    customer: User | undefined,
+  ): Promise<string[]> {
+    const memberCols = await db
+      .select({ id: collections.id, name: collections.name, rewardPoints: collections.rewardPoints })
+      .from(collectionItems)
+      .innerJoin(collections, eq(collectionItems.collectionId, collections.id))
+      .where(and(eq(collectionItems.businessId, businessId), eq(collections.isActive, true)));
+    const completed: string[] = [];
+    for (const c of memberCols) {
+      const itemIds = await this.getCollectionItemIds(c.id);
+      const memberSet = new Set(itemIds);
+      const idConds = identityConds(collectionProgress.customerEmail, collectionProgress.deviceFingerprint, customerEmail, deviceFingerprint);
+      let [p] = idConds.length
+        ? await db.select().from(collectionProgress).where(and(eq(collectionProgress.collectionId, c.id), or(...idConds)))
+        : [];
+      if (!p) {
+        [p] = await db.insert(collectionProgress).values({
+          collectionId: c.id, userId: customer?.id ?? null,
+          customerEmail: customerEmail ?? null, deviceFingerprint: deviceFingerprint ?? null,
+          visitedBusinessIds: [],
+        }).returning();
+      }
+      const visited: string[] = Array.isArray(p.visitedBusinessIds) ? (p.visitedBusinessIds as string[]) : [];
+      if (visited.includes(businessId)) continue;
+      visited.push(businessId);
+      const done = itemIds.every((id) => visited.includes(id)) && !p.completedAt;
+      await db.update(collectionProgress).set({
+        visitedBusinessIds: visited,
+        completedAt: done ? new Date() : p.completedAt,
+        rewardGranted: done ? true : p.rewardGranted,
+        updatedAt: new Date(),
+      }).where(eq(collectionProgress.id, p.id));
+      if (done) {
+        completed.push(c.name);
+        if (customer && (c.rewardPoints ?? 0) > 0) {
+          await db.update(users).set({
+            totalPoints: sql`COALESCE(${users.totalPoints},0) + ${c.rewardPoints}`,
+            availablePoints: sql`COALESCE(${users.availablePoints},0) + ${c.rewardPoints}`,
+            totalPointsEarned: sql`COALESCE(${users.totalPointsEarned},0) + ${c.rewardPoints}`,
+          }).where(eq(users.id, customer.id));
+        }
+      }
+    }
+    return completed;
   }
 
   // ── Points economy (redemption) ───────────────────────────────────────────
