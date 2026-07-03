@@ -6,6 +6,13 @@ import type { RouteDeps } from "./_shared";
 // CHR-33 / CHR-56: first-class multi-store group campaigns. This ticket covers
 // the model + create/read; join (CHR-58), tap progress (CHR-57) and map
 // surfacing (CHR-59) build on top.
+// A reward that a business actually funds (vs. platform-issued points). These
+// require an explicit funding host so the cost never lands on the arbitrary
+// store where the customer happens to complete the trail.
+function isFundedReward(rewardType?: string | null): boolean {
+  return rewardType === "discount" || rewardType === "free_item";
+}
+
 export function registerGroupCampaignRoutes(app: Express, deps: RouteDeps) {
   const { userOwnsBusiness } = deps;
   // Create a group campaign. The creator (business owner or coordinator) may
@@ -22,6 +29,7 @@ export function registerGroupCampaignRoutes(app: Express, deps: RouteDeps) {
         rewardTitle,
         rewardValue,
         rewardPoints,
+        fundingBusinessId,
         isOpen,
         territoryId,
         businessIds,
@@ -39,6 +47,32 @@ export function registerGroupCampaignRoutes(app: Express, deps: RouteDeps) {
         scopedTerritoryId = territoryId;
       }
 
+      // Resolve which requested stores the creator is entitled to add BEFORE
+      // creating anything, so we can validate the funding host against them.
+      const ids: string[] = Array.isArray(businessIds) ? businessIds : [];
+      const allowedIds: string[] = [];
+      for (const bid of ids) {
+        const allowed =
+          creatorType === "coordinator"
+            ? await storage.coordinatorOwnsBusiness(coordinator!.id, bid)
+            : await userOwnsBusiness(userId, bid);
+        if (allowed) allowedIds.push(bid);
+      }
+
+      // A funded (business-paid) reward must name a host, and the host must be a
+      // participating store. For an open self-join campaign the host defaults to
+      // the creator's own included store.
+      let host: string | null = null;
+      if (isFundedReward(rewardType)) {
+        host = fundingBusinessId || (creatorType === "business" ? allowedIds[0] : null) || null;
+        if (!host) {
+          return res.status(400).json({ error: "A funded reward needs a host business to fund and redeem it." });
+        }
+        if (!allowedIds.includes(host)) {
+          return res.status(400).json({ error: "The funding host must be one of the participating stores." });
+        }
+      }
+
       const campaign = await storage.createGroupCampaign({
         name,
         description,
@@ -48,29 +82,19 @@ export function registerGroupCampaignRoutes(app: Express, deps: RouteDeps) {
         rewardTitle,
         rewardValue: rewardValue != null ? String(rewardValue) : null,
         rewardPoints: Number(rewardPoints) || 0,
+        fundingBusinessId: host,
         createdByUserId: userId,
         creatorType,
         territoryId: scopedTerritoryId,
         isOpen: !!isOpen,
       } as any);
 
-      const ids: string[] = Array.isArray(businessIds) ? businessIds : [];
-      let added = 0;
-      for (const bid of ids) {
-        let allowed = false;
-        if (creatorType === "coordinator") {
-          allowed = await storage.coordinatorOwnsBusiness(coordinator!.id, bid);
-        } else {
-          allowed = await userOwnsBusiness(userId, bid);
-        }
-        if (allowed) {
-          await storage.addGroupCampaignMember(campaign.id, bid, "joined");
-          added++;
-        }
+      for (const bid of allowedIds) {
+        await storage.addGroupCampaignMember(campaign.id, bid, "joined");
       }
 
       const full = await storage.getGroupCampaignWithMembers(campaign.id);
-      res.status(201).json({ ...full, addedMembers: added, skippedMembers: ids.length - added });
+      res.status(201).json({ ...full, addedMembers: allowedIds.length, skippedMembers: ids.length - allowedIds.length });
     } catch (error) {
       console.error("Create group campaign error:", error);
       res.status(500).json({ error: "Failed to create group campaign" });
@@ -99,15 +123,19 @@ export function registerGroupCampaignRoutes(app: Express, deps: RouteDeps) {
       // Members = the host + any of the merchant's own stores selected.
       const ids: string[] = Array.from(new Set([businessId, ...(Array.isArray(storeIds) ? storeIds : [])]));
 
+      const resolvedType = rewardType || "points";
       const campaign = await storage.createGroupCampaign({
         name,
         description,
         ruleType: "any_n",
         requiredStores: Number(requiredStores) > 0 ? Number(requiredStores) : Math.max(1, ids.length),
-        rewardType: rewardType || "points",
+        rewardType: resolvedType,
         rewardTitle,
         rewardValue: rewardValue != null ? String(rewardValue) : null,
         rewardPoints: Number(rewardPoints) || 0,
+        // A merchant's hunt spans their OWN stores, so the host is always their
+        // business — it funds/redeems any tangible prize (self-funded = fair).
+        fundingBusinessId: isFundedReward(resolvedType) ? businessId : null,
         createdByUserId: userId,
         creatorType: "business",
         isOpen: false,

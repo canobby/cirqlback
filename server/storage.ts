@@ -1881,7 +1881,13 @@ export class DatabaseStorage implements IStorage {
       .from(groupCampaignMembers)
       .innerJoin(businesses, eq(groupCampaignMembers.businessId, businesses.id))
       .where(eq(groupCampaignMembers.groupCampaignId, id));
-    return { ...campaign, members: memberRows };
+    // Surface the funding host's name so the UI can show "reward hosted by X".
+    const hostName = campaign.fundingBusinessId
+      ? (memberRows.find((m) => m.businessId === campaign.fundingBusinessId)?.name
+        ?? (await this.getBusiness(campaign.fundingBusinessId))?.name
+        ?? null)
+      : null;
+    return { ...campaign, members: memberRows, hostName };
   }
 
   // CHR-54: partial update of a group campaign (feature toggle, activation, etc.).
@@ -2084,6 +2090,7 @@ export class DatabaseStorage implements IStorage {
         rewardTitle: groupCampaigns.rewardTitle,
         rewardValue: groupCampaigns.rewardValue,
         rewardPoints: groupCampaigns.rewardPoints,
+        fundingBusinessId: groupCampaigns.fundingBusinessId,
       })
       .from(groupCampaignMembers)
       .innerJoin(groupCampaigns, eq(groupCampaignMembers.groupCampaignId, groupCampaigns.id))
@@ -2169,11 +2176,16 @@ export class DatabaseStorage implements IStorage {
       let rewardId = progress.rewardId ?? null;
 
       if (nowComplete && !rewardId) {
+        // Attribute the reward to the campaign's funding host (the business that
+        // agreed to fund/redeem it), NOT the arbitrary store where the customer
+        // happened to finish. Falls back to the completing store only when no
+        // host is set (points/platform-funded campaigns).
+        const rewardBusinessId = gc.fundingBusinessId ?? businessId;
         const [gr] = await db
           .insert(rewards)
           .values({
             userId: customer?.id ?? null,
-            businessId,
+            businessId: rewardBusinessId,
             campaignId: null,
             type: gc.rewardType ?? "discount",
             title: gc.rewardTitle ?? `${gc.name} Reward`,

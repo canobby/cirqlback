@@ -364,6 +364,10 @@ export const groupCampaigns = pgTable("group_campaigns", {
   rewardTitle: varchar("reward_title"),
   rewardValue: decimal("reward_value", { precision: 10, scale: 2 }),
   rewardPoints: integer("reward_points").default(0),
+  // The host that FUNDS and redeems a tangible reward (discount/free_item).
+  // Null for points (platform-funded). Fixes the old "arbitrary completing store
+  // pays" attribution — a funded reward is always attributed to this host.
+  fundingBusinessId: varchar("funding_business_id").references(() => businesses.id),
   createdByUserId: varchar("created_by_user_id").references(() => users.id),
   creatorType: varchar("creator_type").default("business"), // business | coordinator
   territoryId: varchar("territory_id").references(() => territories.id), // set for coordinator city-wide

@@ -246,8 +246,12 @@ export default function CoordinatorDashboard() {
     requiredStores: string;
     rewardTitle: string;
     rewardPoints: string;
+    rewardMode: "points" | "funded";
+    rewardValue: string;
+    fundingBusinessId: string;
     businessIds: string[];
-  }>({ name: "", ruleType: "any_n", requiredStores: "2", rewardTitle: "", rewardPoints: "50", businessIds: [] });
+  }>({ name: "", ruleType: "any_n", requiredStores: "2", rewardTitle: "", rewardPoints: "50", rewardMode: "points", rewardValue: "", fundingBusinessId: "", businessIds: [] });
+  const emptyCampaignForm = { name: "", ruleType: "any_n", requiredStores: "2", rewardTitle: "", rewardPoints: "50", rewardMode: "points" as const, rewardValue: "", fundingBusinessId: "", businessIds: [] as string[] };
 
   const toggleCampaignStore = (id: string) =>
     setCampaignForm((f) => ({
@@ -261,25 +265,31 @@ export default function CoordinatorDashboard() {
     queryClient.invalidateQueries({ queryKey: ["/api/coordinator/group-campaigns"] });
 
   const createCampaign = useMutation({
-    mutationFn: async () =>
-      apiRequest("POST", "/api/coordinator/group-campaigns", {
+    mutationFn: async () => {
+      const funded = campaignForm.rewardMode === "funded";
+      return apiRequest("POST", "/api/coordinator/group-campaigns", {
         name: campaignForm.name,
         ruleType: campaignForm.ruleType,
         requiredStores: Number(campaignForm.requiredStores) || 1,
         rewardTitle: campaignForm.rewardTitle || undefined,
-        rewardPoints: Number(campaignForm.rewardPoints) || 0,
+        // Points (platform-funded) vs. a funded prize hosted by one store.
+        rewardType: funded ? "free_item" : "points",
+        rewardPoints: funded ? 0 : Number(campaignForm.rewardPoints) || 0,
+        rewardValue: funded && campaignForm.rewardValue ? campaignForm.rewardValue : undefined,
+        fundingBusinessId: funded ? campaignForm.fundingBusinessId : undefined,
         territoryId: firstTerritoryId,
         businessIds: campaignForm.businessIds,
-      }),
+      });
+    },
     onSuccess: (r: any) => {
       toast({
         title: "Campaign created",
         description: `${r?.addedMembers ?? 0} store(s) added${r?.skippedMembers ? `, ${r.skippedMembers} skipped` : ""}.`,
       });
-      setCampaignForm({ name: "", ruleType: "any_n", requiredStores: "2", rewardTitle: "", rewardPoints: "50", businessIds: [] });
+      setCampaignForm(emptyCampaignForm);
       refreshCampaigns();
     },
-    onError: () => toast({ title: "Couldn't create campaign", variant: "destructive" }),
+    onError: (e: any) => toast({ title: "Couldn't create campaign", description: String(e?.message ?? "").slice(0, 140), variant: "destructive" }),
   });
 
   const featureCampaign = useMutation({
@@ -818,17 +828,55 @@ export default function CoordinatorDashboard() {
                 />
               </div>
             )}
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <span>Reward points</span>
-              <Input
-                type="number"
-                min={0}
-                value={campaignForm.rewardPoints}
-                onChange={(e) => setCampaignForm({ ...campaignForm, rewardPoints: e.target.value })}
-                className="w-24"
-              />
-            </div>
+            <select
+              value={campaignForm.rewardMode}
+              onChange={(e) => setCampaignForm({ ...campaignForm, rewardMode: e.target.value as "points" | "funded" })}
+              className="h-9 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 text-sm"
+            >
+              <option value="points">Reward: points (platform-funded)</option>
+              <option value="funded">Reward: funded prize (a host store pays)</option>
+            </select>
+            {campaignForm.rewardMode === "points" ? (
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span>Points</span>
+                <Input
+                  type="number" min={0}
+                  value={campaignForm.rewardPoints}
+                  onChange={(e) => setCampaignForm({ ...campaignForm, rewardPoints: e.target.value })}
+                  className="w-24"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span>Value $</span>
+                <Input
+                  type="number" min={0} step="0.01"
+                  value={campaignForm.rewardValue}
+                  onChange={(e) => setCampaignForm({ ...campaignForm, rewardValue: e.target.value })}
+                  className="w-24" placeholder="optional"
+                />
+              </div>
+            )}
           </div>
+
+          {campaignForm.rewardMode === "funded" && (
+            <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+              <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Host store (funds & redeems the prize)</div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                A funded prize is paid for and redeemed at one host store — the others drive traffic. Pick the host from your selected stores.
+              </p>
+              <select
+                value={campaignForm.fundingBusinessId}
+                onChange={(e) => setCampaignForm({ ...campaignForm, fundingBusinessId: e.target.value })}
+                className="w-full h-9 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 text-sm"
+              >
+                <option value="">Select the host store…</option>
+                {(overview?.stores || [])
+                  .filter((s) => campaignForm.businessIds.includes(s.id))
+                  .map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          )}
 
           <div className="mb-3">
             <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -863,7 +911,12 @@ export default function CoordinatorDashboard() {
 
           <Button
             onClick={() => createCampaign.mutate()}
-            disabled={!campaignForm.name || campaignForm.businessIds.length < 2 || createCampaign.isPending}
+            disabled={
+              !campaignForm.name ||
+              campaignForm.businessIds.length < 2 ||
+              (campaignForm.rewardMode === "funded" && !campaignForm.fundingBusinessId) ||
+              createCampaign.isPending
+            }
             className="bg-gradient-to-r from-purple-600 to-pink-600 text-white"
           >
             Create campaign

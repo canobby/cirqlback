@@ -367,7 +367,7 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
       const coordinator = coordinatorOf(req);
       const {
         name, description, ruleType, requiredStores, rewardType,
-        rewardTitle, rewardValue, rewardPoints, territoryId, businessIds, isOpen,
+        rewardTitle, rewardValue, rewardPoints, fundingBusinessId, territoryId, businessIds, isOpen,
       } = req.body || {};
       if (!name) return res.status(400).json({ error: "name is required" });
 
@@ -385,6 +385,21 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
         if (await storage.coordinatorOwnsBusiness(coordinator.id, bid)) ownedIds.push(bid);
       }
 
+      // A funded (business-paid) reward across DIFFERENT owners must explicitly
+      // name the host that funds & redeems it — never the arbitrary completing
+      // store. The host must be one of the participating stores.
+      let host: string | null = null;
+      const isFunded = rewardType === "discount" || rewardType === "free_item";
+      if (isFunded) {
+        if (!fundingBusinessId) {
+          return res.status(400).json({ error: "A funded reward needs a host business to fund and redeem it." });
+        }
+        if (!ownedIds.includes(fundingBusinessId)) {
+          return res.status(400).json({ error: "The funding host must be one of the participating stores in your territory." });
+        }
+        host = fundingBusinessId;
+      }
+
       const campaign = await storage.createGroupCampaign({
         name,
         description,
@@ -394,6 +409,7 @@ export function registerCoordinatorRoutes(app: Express, _deps: RouteDeps) {
         rewardTitle,
         rewardValue: rewardValue != null ? String(rewardValue) : null,
         rewardPoints: Number(rewardPoints) || 0,
+        fundingBusinessId: host,
         createdByUserId: coordinator.userId,
         creatorType: "coordinator",
         territoryId: scopedTerritoryId,
