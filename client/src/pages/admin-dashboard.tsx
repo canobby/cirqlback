@@ -16,6 +16,8 @@ import { CoordinatorSharePanel } from "@/components/admin/coordinator-share-pane
 import CommandCenter from "@/components/admin/command-center";
 import RevenuePanel from "@/components/admin/revenue-panel";
 import TrustSafetyPanel from "@/components/admin/trust-safety-panel";
+import CoordinatorLeaderboard from "@/components/admin/coordinator-leaderboard";
+import PlatformConfigPanel from "@/components/admin/platform-config-panel";
 import { 
   Shield,
   Users,
@@ -278,8 +280,8 @@ export default function AdminDashboard() {
               <TabsTrigger value="overview" className="px-2 text-xs lg:px-3 lg:text-sm">Overview</TabsTrigger>
               <TabsTrigger value="revenue" className="px-2 text-xs lg:px-3 lg:text-sm">Revenue</TabsTrigger>
               <TabsTrigger value="trust" className="px-2 text-xs lg:px-3 lg:text-sm">Trust &amp; Safety</TabsTrigger>
-              <TabsTrigger value="coordinators" className="px-2 text-xs lg:px-3 lg:text-sm">Coordinators</TabsTrigger>
-              <TabsTrigger value="users" className="px-2 text-xs lg:px-3 lg:text-sm">Users</TabsTrigger>
+              <TabsTrigger value="coordinators" className="px-2 text-xs lg:px-3 lg:text-sm">Territories</TabsTrigger>
+              <TabsTrigger value="users" className="px-2 text-xs lg:px-3 lg:text-sm">People</TabsTrigger>
               <TabsTrigger value="templates" className="px-2 text-xs lg:px-3 lg:text-sm">Templates</TabsTrigger>
               <TabsTrigger value="subscriptions" className="px-2 text-xs lg:px-3 lg:text-sm">Subscriptions</TabsTrigger>
               <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Analytics</TabsTrigger>
@@ -704,45 +706,17 @@ export default function AdminDashboard() {
             <TrustSafetyPanel />
           </TabsContent>
 
-          {/* Coordinator revenue share */}
+          {/* Territories: leaderboard + coordinator revenue share */}
           <TabsContent value="coordinators" className="space-y-6">
+            <h2 className="text-xl font-semibold">Territories</h2>
+            <CoordinatorLeaderboard />
             <CoordinatorSharePanel />
           </TabsContent>
 
-          {/* Platform Settings */}
+          {/* Platform: integrations, add-on catalog, pricing (read-only) */}
           <TabsContent value="platform" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Settings className="h-5 w-5 mr-2" />
-                  Platform Configuration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Platform Status</Label>
-                    <div className="flex items-center space-x-2">
-                      <Switch defaultChecked />
-                      <span className="text-sm">Platform Active</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Maintenance Mode</Label>
-                    <div className="flex items-center space-x-2">
-                      <Switch />
-                      <span className="text-sm">Enable Maintenance</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Platform Announcement</Label>
-                  <Textarea placeholder="Global platform message for all users..." />
-                  <Button>Update Platform Message</Button>
-                </div>
-              </CardContent>
-            </Card>
+            <h2 className="text-xl font-semibold">Platform</h2>
+            <PlatformConfigPanel />
           </TabsContent>
         </Tabs>
       </div>

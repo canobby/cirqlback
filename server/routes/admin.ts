@@ -191,6 +191,31 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // Territories tab: coordinator leaderboard.
+  app.get("/api/admin/coordinator-leaderboard", async (_req, res) => {
+    try {
+      res.json(await storage.getCoordinatorLeaderboard());
+    } catch (error) {
+      console.error("Leaderboard error:", error);
+      res.status(500).json({ error: "Failed to load leaderboard" });
+    }
+  });
+
+  // Platform tab: which integrations are configured (booleans only — never the
+  // secret values themselves).
+  app.get("/api/admin/platform-config", (_req, res) => {
+    const has = (v?: string) => !!(v && v.trim());
+    res.json({
+      integrations: {
+        database: has(process.env.DATABASE_URL),
+        stripe: has(process.env.STRIPE_SECRET_KEY),
+        stripeWebhook: has(process.env.STRIPE_WEBHOOK_SECRET),
+        googleMaps: has(process.env.GOOGLE_MAPS_API_KEY) || has(process.env.VITE_GOOGLE_MAPS_API_KEY),
+        openai: has(process.env.OPENAI_API_KEY),
+      },
+    });
+  });
+
   // The built-in campaign template catalog (shared with coordinators).
   app.get("/api/admin/campaign-templates", (_req, res) => {
     res.json(

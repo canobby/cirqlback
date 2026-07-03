@@ -610,6 +610,30 @@ export class DatabaseStorage implements IStorage {
       .limit(200);
   }
 
+  // Territories tab: coordinator leaderboard — businesses signed, verified,
+  // lifetime share earned, and unpaid balance, ranked by earnings.
+  async getCoordinatorLeaderboard(): Promise<Array<{
+    id: string; name: string; email: string | null; sharePct: number;
+    businesses: number; verified: number; lifetimeShareCents: number; unpaidCents: number;
+  }>> {
+    const coords = await this.listCoordinators();
+    const rows = await Promise.all(coords.map(async (c) => {
+      const [biz, earn] = await Promise.all([
+        this.getBusinessesForCoordinator(c.id),
+        this.getCoordinatorEarningsSummary(c.id),
+      ]);
+      const name = c.displayName || [c.firstName, c.lastName].filter(Boolean).join(" ") || c.email || "Coordinator";
+      return {
+        id: c.id, name, email: c.email, sharePct: c.sharePct,
+        businesses: biz.length,
+        verified: biz.filter((b: any) => b.verificationStatus === "verified").length,
+        lifetimeShareCents: earn.lifetime.shareCents,
+        unpaidCents: earn.unpaid.shareCents,
+      };
+    }));
+    return rows.sort((a, b) => b.lifetimeShareCents - a.lifetimeShareCents);
+  }
+
   // Real list of platform users for the admin user-management table.
   async listPlatformUsers(limit = 200): Promise<
     Array<Pick<User, "id" | "email" | "firstName" | "lastName" | "role" | "subscriptionTier" | "subscriptionStatus" | "createdAt">>
