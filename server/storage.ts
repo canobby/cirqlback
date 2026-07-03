@@ -730,6 +730,46 @@ export class DatabaseStorage implements IStorage {
     return out.sort((a, b) => rank(b) - rank(a));
   }
 
+  // Admin geographic view: business points (for a heatmap weighted by taps) +
+  // a per-territory coverage breakdown (businesses, taps, coordinator).
+  async getAdminGeo(): Promise<{
+    points: Array<{ lat: number; lng: number; name: string; claimed: boolean; taps: number }>;
+    regions: Array<{ name: string; city: string | null; state: string | null; coordinator: string | null; businesses: number; taps: number }>;
+  }> {
+    const [coordBiz, allBiz, tapAgg, terrRows, coords] = await Promise.all([
+      db.select({ id: businesses.id, name: businesses.name, lat: businesses.latitude, lng: businesses.longitude, ownerId: businesses.ownerId })
+        .from(businesses).where(and(eq(businesses.isActive, true), isNotNull(businesses.latitude), isNotNull(businesses.longitude))),
+      db.select({ id: businesses.id, territoryId: businesses.territoryId }).from(businesses).where(eq(businesses.isActive, true)),
+      db.select({ b: taps.businessId, n: count() }).from(taps).groupBy(taps.businessId),
+      db.select({ id: territories.id, name: territories.name, city: territories.city, state: territories.state, coordinatorId: territories.coordinatorId }).from(territories),
+      this.listCoordinators(),
+    ]);
+    const tapMap = new Map(tapAgg.map((r) => [r.b, Number(r.n)]));
+    const coordName = new Map(coords.map((c) => [c.id, c.displayName || [c.firstName, c.lastName].filter(Boolean).join(" ") || c.email]));
+
+    const points = coordBiz.map((b) => ({
+      lat: b.lat as number, lng: b.lng as number, name: b.name, claimed: !!b.ownerId, taps: tapMap.get(b.id) ?? 0,
+    }));
+
+    const agg = new Map<string, { businesses: number; taps: number }>();
+    for (const b of allBiz) {
+      const key = b.territoryId || "__unassigned";
+      const cur = agg.get(key) || { businesses: 0, taps: 0 };
+      cur.businesses++; cur.taps += tapMap.get(b.id) ?? 0;
+      agg.set(key, cur);
+    }
+    const regions = terrRows.map((t) => ({
+      name: t.name, city: t.city, state: t.state,
+      coordinator: t.coordinatorId ? (coordName.get(t.coordinatorId) ?? null) : null,
+      businesses: agg.get(t.id)?.businesses ?? 0, taps: agg.get(t.id)?.taps ?? 0,
+    }));
+    const un = agg.get("__unassigned");
+    if (un && un.businesses > 0) regions.push({ name: "Unassigned", city: null, state: null, coordinator: null, businesses: un.businesses, taps: un.taps });
+    regions.sort((a, b) => b.businesses - a.businesses);
+
+    return { points, regions };
+  }
+
   // Real list of platform users for the admin user-management table.
   async listPlatformUsers(limit = 200): Promise<
     Array<Pick<User, "id" | "email" | "firstName" | "lastName" | "role" | "subscriptionTier" | "subscriptionStatus" | "createdAt">>

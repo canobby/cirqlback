@@ -114,6 +114,16 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // Geographic view: business points (heatmap) + territory coverage.
+  app.get("/api/admin/geo", async (_req, res) => {
+    try {
+      res.json(await storage.getAdminGeo());
+    } catch (error) {
+      console.error("Admin geo error:", error);
+      res.status(500).json({ error: "Failed to load geo data" });
+    }
+  });
+
   // Retention watch: at-risk businesses (dormant / never activated / trial ending).
   app.get("/api/admin/at-risk", async (_req, res) => {
     try {

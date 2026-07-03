@@ -16,6 +16,7 @@ import { CoordinatorSharePanel } from "@/components/admin/coordinator-share-pane
 import CommandCenter from "@/components/admin/command-center";
 import AdminInsights from "@/components/admin/admin-insights";
 import AtRiskPanel from "@/components/admin/at-risk-panel";
+import AdminGeoPanel from "@/components/admin/geo-panel";
 import RevenuePanel from "@/components/admin/revenue-panel";
 import TrustSafetyPanel from "@/components/admin/trust-safety-panel";
 import CoordinatorLeaderboard from "@/components/admin/coordinator-leaderboard";
@@ -278,11 +279,12 @@ export default function AdminDashboard() {
 
         <Tabs value={adminTab} onValueChange={setAdminTab} className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="grid grid-cols-9 min-w-max lg:w-full">
+            <TabsList className="grid grid-cols-10 min-w-max lg:w-full">
               <TabsTrigger value="overview" className="px-2 text-xs lg:px-3 lg:text-sm">Overview</TabsTrigger>
               <TabsTrigger value="revenue" className="px-2 text-xs lg:px-3 lg:text-sm">Revenue</TabsTrigger>
               <TabsTrigger value="trust" className="px-2 text-xs lg:px-3 lg:text-sm">Trust &amp; Safety</TabsTrigger>
               <TabsTrigger value="coordinators" className="px-2 text-xs lg:px-3 lg:text-sm">Territories</TabsTrigger>
+              <TabsTrigger value="map" className="px-2 text-xs lg:px-3 lg:text-sm">Map</TabsTrigger>
               <TabsTrigger value="users" className="px-2 text-xs lg:px-3 lg:text-sm">People</TabsTrigger>
               <TabsTrigger value="templates" className="px-2 text-xs lg:px-3 lg:text-sm">Templates</TabsTrigger>
               <TabsTrigger value="subscriptions" className="px-2 text-xs lg:px-3 lg:text-sm">Subscriptions</TabsTrigger>
@@ -708,6 +710,12 @@ export default function AdminDashboard() {
           <TabsContent value="trust" className="space-y-6">
             <h2 className="text-xl font-semibold">Trust &amp; Safety</h2>
             <TrustSafetyPanel />
+          </TabsContent>
+
+          {/* Map: geographic heatmap + territory coverage */}
+          <TabsContent value="map" className="space-y-6">
+            <h2 className="text-xl font-semibold">Map</h2>
+            <AdminGeoPanel />
           </TabsContent>
 
           {/* Territories: leaderboard + coordinator revenue share */}
