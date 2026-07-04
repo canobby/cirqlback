@@ -121,6 +121,33 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
     }
   });
 
+  // CHR-104: record today's Daily Circle result (the shared daily puzzle).
+  // Idempotent per UTC day — the first completion counts; a modest bonus lands
+  // in the points economy once/day. Stored in game_progress.state.dailyCircle.
+  const DAILY_CIRCLE_POINTS = 15;
+  app.post("/api/game/daily-circle", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const moves = Math.floor(Number(req.body?.moves));
+      if (!Number.isFinite(moves) || moves < 1 || moves > 1_000_000) return res.status(400).json({ error: "Invalid result" });
+      const rawTime = Math.floor(Number(req.body?.timeMs));
+      const timeMs = Number.isFinite(rawTime) && rawTime >= 0 && rawTime <= 86_400_000 ? rawTime : 0;
+      const p = await storage.getOrCreateGameProgress(userId);
+      const s = (p.state as any) || {};
+      const today = utcDay(Date.now());
+      if (s.dailyCircle?.date === today) {
+        return res.json({ result: s.dailyCircle, pointsAwarded: 0, alreadyDone: true });
+      }
+      const result = { date: today, moves, timeMs };
+      await storage.updateUserPoints(userId, DAILY_CIRCLE_POINTS);
+      await storage.saveGameProgress(userId, { state: { ...s, dailyCircle: result } });
+      res.json({ result, pointsAwarded: DAILY_CIRCLE_POINTS, alreadyDone: false });
+    } catch (err) {
+      console.error("daily circle error:", err);
+      res.status(500).json({ error: "Failed to record daily result" });
+    }
+  });
+
   // CHR-95: a world was restored — server-authoritative. Increments the count
   // and awards points through the existing economy (rate-limited to curb
   // farming; deeper anti-abuse, like taps, can follow).

@@ -60,3 +60,21 @@ export function generateWorld(index: number, playerSeed = 0): WorldConfig {
 
   return { id: `gen-${index}`, name, ringColors, accent, ringCount, span, difficulty };
 }
+
+// ── Daily Circle (CHR-104) ──────────────────────────────────────────────────
+// One shared world per UTC day — the SAME for every player, so results are
+// comparable and shareable. Seeded only by the day number (no player seed), and
+// the difficulty index is kept in a fair, moderate band (not the endless ramp).
+export const DAILY_MS = 86400000;
+const DAILY_EPOCH = Math.floor(Date.parse("2026-01-01T00:00:00Z") / DAILY_MS); // puzzle #1
+const DAILY_SALT = 0x5eed;
+
+export function todayDay(now = Date.now()): number { return Math.floor(now / DAILY_MS); }
+export function dailyPuzzleNumber(day: number): number { return day - DAILY_EPOCH + 1; }
+
+export function dailyWorld(day: number): WorldConfig {
+  const rng = mulberry32(((day + 1) * 2654435761 ^ DAILY_SALT) >>> 0);
+  const idx = 3 + Math.floor(rng() * 5); // 3..7 → 4–6 rings, moderate difficulty (fair daily)
+  const w = generateWorld(idx, (day ^ DAILY_SALT) >>> 0);
+  return { ...w, id: `daily-${day}` };
+}

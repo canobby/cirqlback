@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Sparkles, Gift, Flame, Gem, Map as MapIcon } from "lucide-react";
+import { ArrowLeft, Sparkles, Gift, Flame, Gem, Map as MapIcon, CalendarDays, Share2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlEngine, type GameState } from "@/game/cirql-engine";
 import { CRAFTED_WORLDS, type WorldConfig } from "@/game/worlds";
-import { generateWorld } from "@/game/procedural";
+import { generateWorld, dailyWorld, todayDay, dailyPuzzleNumber } from "@/game/procedural";
 import { CirqlCollection } from "@/components/game/cirql-collection";
 import { WorldMap } from "@/components/game/world-map";
+import { DailyResult } from "@/components/game/daily-result";
 import { getCosmetic, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
+
+const todayStr = () => new Date().toISOString().slice(0, 10); // UTC yyyy-mm-dd (matches the server)
 
 // The world at an absolute index: crafted "signature" worlds first, then an
 // infinite procedurally-generated tail (CHR-101), seeded per player.
@@ -34,6 +37,14 @@ export default function Play() {
   const dailyLoadedRef = useRef(false);
   const [daily, setDaily] = useState<{ canClaim: boolean; streak: number; reward: number } | null>(null);
   const [dailyClaimed, setDailyClaimed] = useState<{ points: number; streak: number } | null>(null);
+  // CHR-104 Daily Circle — one shared world per day + a shareable result.
+  const dailyPuzzle = useMemo(() => { const day = todayDay(); return { day, num: dailyPuzzleNumber(day), world: dailyWorld(day) }; }, []);
+  const dailyModeRef = useRef(false);
+  const dailyStartRef = useRef(0);
+  const [dailyMode, setDailyMode] = useState(false);
+  const [dailyDone, setDailyDone] = useState(false);
+  const [dailyResult, setDailyResult] = useState<{ moves: number; timeMs: number; points: number } | null>(null);
+  const [showDaily, setShowDaily] = useState(false);
   // CHR-91 world map
   const [showMap, setShowMap] = useState(false);
   // CHR-92 Your Cirql + collection
@@ -77,6 +88,11 @@ export default function Play() {
         const st = p.state || {};
         if (typeof st.dailyStreak === "number") setStreak(st.dailyStreak);
         if (typeof st.cosmetic === "string") { setEquipped(st.cosmetic); applyAura(st.cosmetic); }
+        // CHR-104: was today's Daily Circle already completed?
+        if (st.dailyCircle?.date === todayStr()) {
+          setDailyDone(true);
+          setDailyResult({ moves: st.dailyCircle.moves, timeMs: st.dailyCircle.timeMs || 0, points: 0 });
+        }
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,12 +133,31 @@ export default function Play() {
       .finally(() => setEquipBusy(null));
   };
 
-  // A world was restored (won: false -> true). Server records it + awards points
-  // (CHR-95); guests just get a local count.
+  // A world was restored (won: false -> true).
   useEffect(() => {
     if (hud.won && !wonRef.current) {
       wonRef.current = true;
-      if (user) {
+      if (dailyModeRef.current) {
+        // CHR-104: Daily Circle completion — record once/day + show the share card.
+        const moves = hud.moves;
+        const timeMs = Math.round(performance.now() - dailyStartRef.current);
+        setDailyDone(true);
+        if (user) {
+          fetch("/api/game/daily-circle", {
+            method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ moves, timeMs }),
+          })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((res) => {
+              const rr = res?.result;
+              setDailyResult({ moves: rr?.moves ?? moves, timeMs: rr?.timeMs ?? timeMs, points: res?.pointsAwarded || 0 });
+              setShowDaily(true);
+            })
+            .catch(() => { setDailyResult({ moves, timeMs, points: 0 }); setShowDaily(true); });
+        } else {
+          setDailyResult({ moves, timeMs, points: 0 }); setShowDaily(true);
+        }
+      } else if (user) {
+        // CHR-95: normal restore — server records it + awards points.
         fetch("/api/game/restored", {
           method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ worldIndex: index }),
         })
@@ -137,7 +172,22 @@ export default function Play() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hud.won]);
 
-  const goIndex = (i: number) => { setAward(0); setIndex(i); engineRef.current?.setWorld(worldAt(i, playerSeed)); save({ worldIndex: i }); };
+  const goIndex = (i: number) => {
+    setAward(0);
+    if (dailyModeRef.current) { dailyModeRef.current = false; setDailyMode(false); setShowDaily(false); wonRef.current = false; }
+    setIndex(i); engineRef.current?.setWorld(worldAt(i, playerSeed)); save({ worldIndex: i });
+  };
+
+  // CHR-104: enter / leave the shared Daily Circle without disturbing the resume point.
+  const startDaily = () => {
+    setShowDaily(false); wonRef.current = false; dailyStartRef.current = performance.now();
+    dailyModeRef.current = true; setDailyMode(true);
+    engineRef.current?.setWorld(dailyPuzzle.world);
+  };
+  const exitDaily = () => {
+    dailyModeRef.current = false; setDailyMode(false); setShowDaily(false); wonRef.current = false;
+    engineRef.current?.setWorld(worldAt(index, playerSeed));
+  };
   const nextWorld = () => goIndex(index + 1);
   const endless = () => goIndex(Math.max(index + 1, CRAFTED_WORLDS.length));
   const toggleMute = () => { const m = !muted; setMuted(m); engineRef.current?.setMuted(m); };
@@ -186,8 +236,14 @@ export default function Play() {
       </div>
 
       <div className="mt-2 text-[11px] text-violet-300/60 tabular-nums">
-        World {index + 1} · <span className="text-violet-200/90">{hud.worldName}</span>{inEndless ? " · endless" : ""}
-        {user ? <span className="text-emerald-300/70"> · {restored} restored</span> : <span className="text-violet-300/40"> · log in to save</span>}
+        {dailyMode ? (
+          <span className="text-violet-200/90">🗓 Daily Circle #{dailyPuzzle.num} · {hud.worldName}</span>
+        ) : (
+          <>
+            World {index + 1} · <span className="text-violet-200/90">{hud.worldName}</span>{inEndless ? " · endless" : ""}
+            {user ? <span className="text-emerald-300/70"> · {restored} restored</span> : <span className="text-violet-300/40"> · log in to save</span>}
+          </>
+        )}
       </div>
 
       {/* CHR-93 · Daily reward — one calm, escalating bonus per day for playing */}
@@ -218,6 +274,33 @@ export default function Play() {
         </div>
       )}
 
+      {/* CHR-104 · Daily Circle — one shared world per day + shareable result */}
+      <div className="mt-2 px-4 w-full max-w-lg">
+        {dailyMode ? (
+          <div className="rounded-2xl border border-violet-400/30 bg-violet-500/10 px-4 py-2 flex items-center justify-center gap-2 text-xs">
+            <CalendarDays className="h-4 w-4 text-violet-300" />
+            <span className="font-semibold text-violet-100">Daily Circle #{dailyPuzzle.num}</span>
+            <button onClick={exitDaily} data-testid="button-exit-daily" className="ml-1 rounded-lg border border-violet-400/30 px-2 py-0.5 text-violet-200/80 hover:bg-white/5">Exit</button>
+          </div>
+        ) : dailyDone ? (
+          <div data-testid="daily-done" className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 flex items-center justify-center gap-2 text-xs">
+            <CalendarDays className="h-4 w-4 text-emerald-300" />
+            <span className="font-semibold text-emerald-200">Daily Circle #{dailyPuzzle.num} complete</span>
+            {dailyResult && (
+              <button onClick={() => setShowDaily(true)} data-testid="button-share-daily-open" className="ml-1 rounded-lg border border-emerald-400/30 px-2 py-0.5 text-emerald-200/90 hover:bg-white/5 inline-flex items-center gap-1"><Share2 className="h-3 w-3" /> Share</button>
+            )}
+          </div>
+        ) : (
+          <button
+            onClick={startDaily}
+            data-testid="button-play-daily"
+            className="w-full rounded-2xl border border-violet-400/30 bg-violet-500/10 px-4 py-2 flex items-center justify-center gap-2 text-xs font-semibold text-violet-100 hover:bg-violet-500/20 transition"
+          >
+            <CalendarDays className="h-4 w-4 text-violet-300" /> Play today's Daily Circle #{dailyPuzzle.num}
+          </button>
+        )}
+      </div>
+
       <div className="flex gap-5 items-center my-2 text-sm tabular-nums">
         <span className="text-emerald-400 font-semibold">{hud.aligned}/{hud.total} aligned</span>
         <span>Moves <b>{hud.moves}</b></span>
@@ -225,7 +308,7 @@ export default function Play() {
 
       <div className="relative" style={{ width: "min(92vw, 540px)", aspectRatio: "1" }}>
         <canvas ref={canvasRef} className="block touch-none" style={{ cursor: "grab" }} aria-label="Ring alignment puzzle" />
-        {hud.won && (
+        {hud.won && !dailyMode && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center backdrop-blur-[2px]">
             <h2
               className="text-2xl font-extrabold"
@@ -262,6 +345,17 @@ export default function Play() {
         )}
       </div>
       <Link href="/customer" className="text-xs text-violet-300/60 mb-6 inline-flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Back</Link>
+
+      <DailyResult
+        open={showDaily && !!dailyResult}
+        puzzleNumber={dailyPuzzle.num}
+        worldName={dailyPuzzle.world.name}
+        rings={dailyPuzzle.world.ringCount}
+        moves={dailyResult?.moves ?? 0}
+        timeMs={dailyResult?.timeMs ?? 0}
+        pointsAwarded={dailyResult?.points ?? 0}
+        onClose={() => (dailyMode ? exitDaily() : setShowDaily(false))}
+      />
 
       <WorldMap
         open={showMap}
