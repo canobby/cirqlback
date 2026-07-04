@@ -317,7 +317,7 @@ export default function Play() {
     if (!result) return;
     const stars = result.comboMax >= 10 ? "★★★" : result.comboMax >= 5 ? "★★☆" : "★☆☆";
     const rankLine = dailyRank ? `\nRanked #${dailyRank.rank} of ${dailyRank.total}` : "";
-    const txt = `Cirqlbreak · Daily Circle #${result.dailyNum} ${stars}\nScore ${result.score.toLocaleString()} · best combo ×${result.comboMax}${rankLine}\n${result.restored ? "restored 🟣" : "faded ⚫"}\ncirqlback.onrender.com/play`;
+    const txt = `CirqlBreak · Daily Circle #${result.dailyNum} ${stars}\nScore ${result.score.toLocaleString()} · best combo ×${result.comboMax}${rankLine}\n${result.restored ? "restored 🟣" : "faded ⚫"}\ncirqlback.onrender.com/play`;
     if (navigator.share) navigator.share({ text: txt }).catch(() => {});
     else navigator.clipboard?.writeText(txt).then(() => { setShareLabel("Copied!"); setTimeout(() => setShareLabel("Share result"), 1600); }).catch(() => {});
   };
@@ -334,7 +334,7 @@ export default function Play() {
     >
       {/* the game surface */}
       <div className="relative" style={{ width: "min(94vw,94vh,680px)", aspectRatio: "1" }}>
-        <canvas ref={canvasRef} className="block touch-none rounded-full" style={{ boxShadow: "0 0 90px rgba(124,58,237,.15)" }} aria-label="Cirqlbreak" />
+        <canvas ref={canvasRef} className="block touch-none rounded-full" style={{ boxShadow: "0 0 90px rgba(124,58,237,.15)" }} aria-label="CirqlBreak" />
       </div>
 
       {/* ---------- HUD (in-run) ---------- */}
@@ -381,7 +381,7 @@ export default function Play() {
         <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }}>
           <div className="w-[min(92vw,440px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
             <div className="text-[12px] font-extrabold uppercase tracking-[0.44em] text-violet-400" style={{ marginLeft: ".44em" }}>Cirqlback</div>
-            <h1 className="mb-1 mt-2 text-[clamp(28px,6.5vw,42px)] font-extrabold leading-none tracking-tight" style={{ background: "linear-gradient(115deg,#e9d5ff,#ec4899 55%,#22d3ee)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Cirqlbreak</h1>
+            <h1 className="mb-1 mt-2 text-[clamp(28px,6.5vw,42px)] font-extrabold leading-none tracking-tight" style={{ background: "linear-gradient(115deg,#e9d5ff,#ec4899 55%,#22d3ee)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>CirqlBreak</h1>
 
             <div className="mb-2 mt-4 text-left text-[11px] uppercase tracking-[0.2em] text-violet-300/60">Mode</div>
             <div className="grid grid-cols-2 gap-2">

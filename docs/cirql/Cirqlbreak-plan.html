@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Cirqlbreak — Build Plan</title>
+<title>CirqlBreak — Build Plan</title>
 <style>
   @page { size: Letter; margin: 16mm 15mm; }
   :root{
@@ -76,7 +76,7 @@
 
   <div class="cover">
     <div class="eyebrow">Cirqlback · Build Plan</div>
-    <h1>Cirqlbreak<span class="dots"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span></span></h1>
+    <h1>CirqlBreak<span class="dots"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span></span></h1>
     <p class="tag">Port the validated circular-Breakout roguelike prototype into the Cirqlback <span class="mono">/play</span> route, wire it to real taps, badges, and a cross-player daily leaderboard — then decide on a standalone app.</p>
   </div>
 
@@ -89,7 +89,7 @@
 
   <div class="callout">
     <h3>Why this port is cheap</h3>
-    <p>A repo audit confirms the <b>entire reward-bridge backend is already game-agnostic and wired</b>: <span class="mono">game_progress.state</span> is a jsonb blob (new fields need <b>zero schema change</b>), the <b>tap → in-game reward hook is live</b> inside <span class="mono">processTap</span>, and game achievements already mint real badges via <span class="mono">awarderRole:"game"</span>. So the work is mostly a <b>client-engine swap</b> (retire ~1,300 lines of ring game, drop in the Cirqlbreak canvas engine) + <b>catalog reshape</b>. The only genuinely-new build is a cross-player daily-score leaderboard.</p>
+    <p>A repo audit confirms the <b>entire reward-bridge backend is already game-agnostic and wired</b>: <span class="mono">game_progress.state</span> is a jsonb blob (new fields need <b>zero schema change</b>), the <b>tap → in-game reward hook is live</b> inside <span class="mono">processTap</span>, and game achievements already mint real badges via <span class="mono">awarderRole:"game"</span>. So the work is mostly a <b>client-engine swap</b> (retire ~1,300 lines of ring game, drop in the CirqlBreak canvas engine) + <b>catalog reshape</b>. The only genuinely-new build is a cross-player daily-score leaderboard.</p>
   </div>
 
   <div class="prog">
@@ -108,11 +108,11 @@
   <h2 class="section">The work, by phase</h2>
 
   <div class="phase">
-    <div class="phead"><span class="chip p0">P0</span><h3>Port the core — make /play <em>be</em> Cirqlbreak</h3><span class="meta">5 issues · 23 pts · ✅ Done</span></div>
+    <div class="phead"><span class="chip p0">P0</span><h3>Port the core — make /play <em>be</em> CirqlBreak</h3><span class="meta">5 issues · 23 pts · ✅ Done</span></div>
     <table>
       <tr><th>ID</th><th>Issue</th><th class="ef">Size</th><th class="pt">Pts</th></tr>
       <tr><td class="id">CHR-110</td><td>Extract the prototype into a TypeScript engine module<span class="desc">Framework-agnostic engine: physics, boss, music, relics, Pulse, Supernova, 4 modes. Clean events-out / inputs-in API.</span></td><td class="ef">L</td><td class="pt mono">8</td></tr>
-      <tr><td class="id">CHR-111</td><td>Rehost /play on the engine (modes, HUD, menu)<span class="desc">React shell: mode picker, HUD, overlays, auth-aware save, Cirqlbreak branding. Keeps lazy code-split.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
+      <tr><td class="id">CHR-111</td><td>Rehost /play on the engine (modes, HUD, menu)<span class="desc">React shell: mode picker, HUD, overlays, auth-aware save, CirqlBreak branding. Keeps lazy code-split.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
       <tr><td class="id">CHR-112</td><td>Retire the ring-alignment game &amp; Light-Ball<span class="desc">Delete cirql-engine, pinball, worlds, world-map; strip ring vocabulary; remove /api/game/pinball.</span></td><td class="ef">S/M</td><td class="pt mono">3</td></tr>
       <tr><td class="id">CHR-113</td><td>Persist state in game_progress (no schema change)<span class="desc">journeyBest, furthestWorld, streak, cosmetic, settings into the jsonb state blob.</span></td><td class="ef">S</td><td class="pt mono">2</td></tr>
       <tr><td class="id">CHR-114</td><td>Mobile, touch &amp; performance pass<span class="desc">Two-thumb Party, DPR sizing, 60fps on mid-range, iOS graceful, reduced-motion.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
@@ -123,9 +123,9 @@
     <div class="phead"><span class="chip p1">P1</span><h3>Reward bridge — real taps → real power</h3><span class="meta">4 issues · 15 pts · ✅ Done</span></div>
     <table>
       <tr><th>ID</th><th>Issue</th><th class="ef">Size</th><th class="pt">Pts</th></tr>
-      <tr><td class="id">CHR-115</td><td>Reshape the perk catalog into Cirqlbreak energy/power-ups<span class="desc">perksForTap grants Supernova charge + power-up tokens on real partner taps. Anti-abuse inherited.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
+      <tr><td class="id">CHR-115</td><td>Reshape the perk catalog into CirqlBreak energy/power-ups<span class="desc">perksForTap grants Supernova charge + power-up tokens on real partner taps. Anti-abuse inherited.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
       <tr><td class="id">CHR-116</td><td>Wire real taps → Partner Power &amp; power-ups in-engine<span class="desc">The money shot: tap a shop → charge a Supernova. Server-authoritative spend. "Tap to power up" onboarding.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
-      <tr><td class="id">CHR-117</td><td>Reshape achievements → mint real Cirqlback badges<span class="desc">Cirqlbreak metrics → existing awarderRole:"game" mint path → profile.</span></td><td class="ef">S/M</td><td class="pt mono">3</td></tr>
+      <tr><td class="id">CHR-117</td><td>Reshape achievements → mint real Cirqlback badges<span class="desc">CirqlBreak metrics → existing awarderRole:"game" mint path → profile.</span></td><td class="ef">S/M</td><td class="pt mono">3</td></tr>
       <tr><td class="id">CHR-118</td><td>Daily reward + play-streak reconcile &amp; surface<span class="desc">One coherent daily loop; idempotent per UTC day; streak shown in-game + on profile.</span></td><td class="ef">S</td><td class="pt mono">2</td></tr>
     </table>
   </div>
@@ -136,8 +136,8 @@
       <tr><th>ID</th><th>Issue</th><th class="ef">Size</th><th class="pt">Pts</th></tr>
       <tr><td class="id">CHR-122</td><td>Cross-player Daily leaderboard (new table + endpoints)<span class="desc">The one new build: daily_scores table + guarded apply-0020 + submit/leaderboard endpoints + rank.</span></td><td class="ef">L</td><td class="pt mono">8</td></tr>
       <tr><td class="id">CHR-119</td><td>Score integrity / anti-cheat for ranked Daily<span class="desc">Server plausibility, rate limits, run-summary signature, one ranked run/day. Deterrence, not DRM.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
-      <tr><td class="id">CHR-120</td><td>Community feed + Great Ring for Cirqlbreak<span class="desc">Reuse echoes + community counter for a live worlds-restored stat + recent-restorations feed.</span></td><td class="ef">S</td><td class="pt mono">3</td></tr>
-      <tr><td class="id">CHR-121</td><td>Shareable "Cirqlbreak · Daily Circle" result card<span class="desc">Wordle-style share loop; navigator.share + clipboard fallback; rank line.</span></td><td class="ef">S</td><td class="pt mono">2</td></tr>
+      <tr><td class="id">CHR-120</td><td>Community feed + Great Ring for CirqlBreak<span class="desc">Reuse echoes + community counter for a live worlds-restored stat + recent-restorations feed.</span></td><td class="ef">S</td><td class="pt mono">3</td></tr>
+      <tr><td class="id">CHR-121</td><td>Shareable "CirqlBreak · Daily Circle" result card<span class="desc">Wordle-style share loop; navigator.share + clipboard fallback; rank line.</span></td><td class="ef">S</td><td class="pt mono">2</td></tr>
     </table>
   </div>
 
@@ -206,7 +206,7 @@
   </div>
 
   <div class="foot">
-    <span>Cirqlbreak — <span class="kpi">20 issues</span>, <span class="kpi">92 pts</span>, project <span class="mono">linear.app/cirqlback</span></span>
+    <span>CirqlBreak — <span class="kpi">20 issues</span>, <span class="kpi">92 pts</span>, project <span class="mono">linear.app/cirqlback</span></span>
     <span>Prototype: Artifact v10 · replaces the retired ring game</span>
   </div>
 
