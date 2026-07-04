@@ -94,7 +94,9 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
       await storage.saveGameProgress(userId, {
         state: { ...s, dailyLastDate: today, dailyStreak: streak },
       });
-      res.json({ pointsAwarded, streak });
+      let badges: string[] = [];
+      try { badges = await storage.evaluateGameAchievements(userId); } catch (e) { console.error("achievement eval failed:", e); } // CHR-103 streak badges
+      res.json({ pointsAwarded, streak, badges });
     } catch (err) {
       console.error("game daily claim error:", err);
       res.status(500).json({ error: "Failed to claim daily reward" });
@@ -185,10 +187,24 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
         ...(worldIndex !== undefined ? { worldIndex } : {}),
         state: { ...((p.state as any) || {}), lastRestoreAt: now },
       });
-      res.json({ worldsRestored: saved.worldsRestored, pointsAwarded });
+      // CHR-103: surface any newly-earned achievements as shared badges.
+      let badges: string[] = [];
+      try { badges = await storage.evaluateGameAchievements(userId); } catch (e) { console.error("achievement eval failed:", e); }
+      res.json({ worldsRestored: saved.worldsRestored, pointsAwarded, badges });
     } catch (err) {
       console.error("game restored error:", err);
       res.status(500).json({ error: "Failed to record restoration" });
+    }
+  });
+
+  // CHR-103: the player's game-earned badges (the in-game Awards display; they
+  // also appear on the Cirqlback profile via /api/badges/mine).
+  app.get("/api/game/badges", isAuthenticated, async (req, res) => {
+    try {
+      res.json(await storage.getGameBadgesForUser((req.user as any).id));
+    } catch (err) {
+      console.error("game badges error:", err);
+      res.status(500).json({ error: "Failed to load badges" });
     }
   });
 }

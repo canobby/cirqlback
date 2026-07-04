@@ -104,6 +104,7 @@ import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
 import { tierForPoints, levelForPoints, pointsToNextLevel } from "./gamification";
 import { perksForTap, isPerkId, type PerkBank } from "@shared/cirql-perks";
+import { GAME_ACHIEVEMENTS, achievementsEarned } from "@shared/cirql-achievements";
 import { ADDON_CATALOG, isAddonIncludedInTier, resolveAddonAmountCents } from "./addons";
 import { PLAN_PRICING } from "./pricing";
 import { resolveBilling, billingBlocksAccess } from "./billing-state";
@@ -1686,6 +1687,51 @@ export class DatabaseStorage implements IStorage {
     if (fields.state !== undefined) set.state = fields.state;
     const [row] = await db.update(gameProgress).set(set).where(eq(gameProgress.userId, userId)).returning();
     return row;
+  }
+
+  // CHR-103 bridge (game → platform): game achievements become real badges in
+  // the shared ledger, tagged awarderRole "game" so both the game and the
+  // Cirqlback profile read the same entries.
+  private gameBadgeDefsReady = false;
+  private async ensureGameBadgeDefs(): Promise<Map<string, string>> {
+    // Idempotently create the game achievement definitions (unique by key).
+    if (!this.gameBadgeDefsReady) {
+      for (const a of GAME_ACHIEVEMENTS) {
+        await db.insert(badgeDefinitions).values({
+          key: a.key, name: a.name, description: a.desc, emoji: a.emoji, color: a.color,
+          audience: "customer", awardableBy: "system",
+        }).onConflictDoNothing();
+      }
+      this.gameBadgeDefsReady = true;
+    }
+    const keys = GAME_ACHIEVEMENTS.map((a) => a.key);
+    const rows = await db.select({ id: badgeDefinitions.id, key: badgeDefinitions.key })
+      .from(badgeDefinitions).where(inArray(badgeDefinitions.key, keys));
+    return new Map(rows.map((r) => [r.key, r.id]));
+  }
+
+  // Award any newly-earned game achievements to the player. Returns their names.
+  async evaluateGameAchievements(userId: string): Promise<string[]> {
+    const p = await this.getOrCreateGameProgress(userId);
+    const streak = Number((p.state as any)?.dailyStreak) || 0;
+    const earned = achievementsEarned({ worlds: p.worldsRestored || 0, streak });
+    if (earned.length === 0) return [];
+    const defs = await this.ensureGameBadgeDefs();
+    const newly: string[] = [];
+    for (const a of earned) {
+      const defId = defs.get(a.key);
+      if (!defId) continue;
+      const has = await this.hasBadgeAward({ badgeDefinitionId: defId, recipientUserId: userId });
+      if (has) continue;
+      await this.awardBadge({ badgeDefinitionId: defId, recipientUserId: userId, awarderRole: "game" });
+      newly.push(a.name);
+    }
+    return newly;
+  }
+
+  // The player's game-earned badges (for the in-game Awards display).
+  async getGameBadgesForUser(userId: string): Promise<any[]> {
+    return this.awardsWith(and(eq(badgeAwards.recipientUserId, userId), eq(badgeAwards.awarderRole, "game")));
   }
 
   // CHR-96 bridge (platform → game): a partner tap banks in-game perks into the

@@ -5,8 +5,12 @@
 // so the server validates equips against the exact same data. Equipping is a
 // live tint (the parent calls engine.setAura) and is persisted server-side.
 
-import { Lock, Check, X, Gem } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Lock, Check, X, Gem, Award } from "lucide-react";
 import { COSMETICS, getCosmetic, isUnlocked, levelInfo, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
+import { GAME_ACHIEVEMENTS } from "@shared/cirql-achievements";
+
+interface BadgeRow { id: string; name: string; emoji: string | null; color: string | null; description: string | null; }
 
 interface Props {
   open: boolean;
@@ -21,8 +25,19 @@ interface Props {
 const KIND_LABEL: Record<string, string> = { aura: "Aura", skin: "Skin", trail: "Trail" };
 
 export function CirqlCollection({ open, onClose, worlds, streak, equipped, onEquip, busy }: Props) {
+  // CHR-103: the player's game-earned badges (also shown on the Cirqlback profile).
+  const [badges, setBadges] = useState<BadgeRow[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/game/badges", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((b) => Array.isArray(b) && setBadges(b))
+      .catch(() => {});
+  }, [open]);
+
   if (!open) return null;
   const { level, into, need, pct } = levelInfo(worlds);
+  const earnedKeys = new Set(badges.map((b) => b.name));
   const eq = getCosmetic(equipped);
   const progress = { worlds, streak };
   const unlockedCount = COSMETICS.filter((c) => isUnlocked(c, progress)).length;
@@ -116,6 +131,25 @@ export function CirqlCollection({ open, onClose, worlds, streak, equipped, onEqu
             );
           })}
         </div>
+
+        {/* CHR-103 · Awards — game achievements (also shown on your Cirqlback profile) */}
+        <div className="mt-4 text-[11px] font-semibold text-violet-300/70 inline-flex items-center gap-1"><Award className="h-3.5 w-3.5" /> Awards <span className="text-violet-300/40">· {badges.length}/{GAME_ACHIEVEMENTS.length}</span></div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {GAME_ACHIEVEMENTS.map((a) => {
+            const earned = earnedKeys.has(a.name);
+            return (
+              <div key={a.key} data-testid={`award-${a.key}`} className="rounded-xl border p-2.5 flex items-center gap-2"
+                style={{ borderColor: earned ? a.color : "rgba(150,130,255,.2)", background: earned ? `${a.color}18` : "rgba(255,255,255,.03)" }}>
+                <span className="text-xl shrink-0" style={{ filter: earned ? "none" : "grayscale(1)", opacity: earned ? 1 : 0.4 }}>{a.emoji}</span>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold truncate">{a.name}</div>
+                  <div className="text-[10px] text-violet-300/50 leading-tight">{earned ? "Earned" : a.desc}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-[10px] text-violet-300/40">Awards also appear on your Cirqlback profile.</p>
       </div>
     </div>
   );

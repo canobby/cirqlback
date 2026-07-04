@@ -34,6 +34,7 @@ export default function Play() {
   });
   const [muted, setMuted] = useState(false);
   const [award, setAward] = useState(0);
+  const [newBadges, setNewBadges] = useState<string[]>([]); // CHR-103: achievements just earned
   // CHR-93 daily reward
   const dailyLoadedRef = useRef(false);
   const [daily, setDaily] = useState<{ canClaim: boolean; streak: number; reward: number } | null>(null);
@@ -168,7 +169,7 @@ export default function Play() {
           method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ worldIndex: index }),
         })
           .then((r) => (r.ok ? r.json() : null))
-          .then((res) => { if (res) { setRestored(res.worldsRestored); setAward(res.pointsAwarded || 0); } })
+          .then((res) => { if (res) { setRestored(res.worldsRestored); setAward(res.pointsAwarded || 0); setNewBadges(res.badges || []); } })
           .catch(() => {});
       } else {
         setRestored((r) => r + 1);
@@ -179,7 +180,7 @@ export default function Play() {
   }, [hud.won]);
 
   const goIndex = (i: number) => {
-    setAward(0); setGuidingActive(false); // Guiding Light is per-world; engine resets it too
+    setAward(0); setNewBadges([]); setGuidingActive(false); // Guiding Light is per-world; engine resets it too
     if (dailyModeRef.current) { dailyModeRef.current = false; setDailyMode(false); setShowDaily(false); wonRef.current = false; }
     setIndex(i); engineRef.current?.setWorld(worldAt(i, playerSeed)); save({ worldIndex: i });
   };
@@ -365,6 +366,9 @@ export default function Play() {
             {user && award > 0 && (
               <div className="text-sm font-semibold text-emerald-300" data-testid="points-award">+{award} ✦ points</div>
             )}
+            {newBadges.map((name) => (
+              <div key={name} data-testid="badge-earned" className="text-sm font-semibold text-amber-300 inline-flex items-center gap-1">🏅 {name} unlocked</div>
+            ))}
             <button
               onClick={nextWorld}
               data-testid="button-next-world"

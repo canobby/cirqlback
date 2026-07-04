@@ -52,7 +52,8 @@ export function registerBadgeRoutes(app: Express, _deps: RouteDeps) {
     return awards.map((a) => ({
       ...a,
       awardedBy:
-        a.awarderRole === "admin" || a.awarderRole === "system" ? "Cirqlback"
+        a.awarderRole === "game" ? "CIRQL"
+        : a.awarderRole === "admin" || a.awarderRole === "system" ? "Cirqlback"
         : a.awarderBusinessId ? (bizNames.get(a.awarderBusinessId) || "A business")
         : a.awarderUserId ? (userNames.get(a.awarderUserId) || "Someone")
         : "Someone",
