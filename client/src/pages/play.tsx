@@ -66,6 +66,7 @@ export default function Play() {
   const [leaderboard, setLeaderboard] = useState<{ top: any[]; you: { rank: number; score: number } | null; total: number } | null>(null);
   const [greatRing, setGreatRing] = useState<number | null>(null); // community-wide worlds restored
   const [echoes, setEchoes] = useState<{ name?: string; world?: string }[]>([]);
+  const [daily, setDaily] = useState<{ canClaim: boolean; streak: number; reward: number } | null>(null); // daily reward status
 
   // Menu stats come from the server for logged-in players (cross-device), and from
   // the engine's localStorage for guests.
@@ -185,6 +186,10 @@ export default function Play() {
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => { const list = Array.isArray(d) ? d : d?.echoes || []; setEchoes(list.slice(0, 3)); })
         .catch(() => {});
+      fetch("/api/game/daily", { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d) setDaily({ canClaim: !!d.canClaim, streak: d.streak || 0, reward: d.reward || 0 }); })
+        .catch(() => {});
     }
   }, [phase, user]);
 
@@ -223,6 +228,19 @@ export default function Play() {
     if (engineRef.current) refreshMenuInfo(engineRef.current);
   };
   const pickRelic = (id: RelicId) => { relic?.pick(id); setRelic(null); };
+  // CHR-118: claim the once-a-day reward (server-authoritative + idempotent). The
+  // daily streak it advances is the single source of truth the menu shows.
+  const claimDaily = () => {
+    fetch("/api/game/daily", { method: "POST", credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        setDaily({ canClaim: false, streak: d.streak, reward: 0 });
+        progressRef.current = { ...progressRef.current, dailyStreak: d.streak };
+        if (engineRef.current) refreshMenuInfo(engineRef.current);
+      })
+      .catch(() => {});
+  };
   const toggleSound = () => setSound((v) => { const n = !v; engineRef.current?.setMuted(!n); lsSet("cb_sound", n ? "1" : "0"); persist({ settings: { sound: n, haptics } }); return n; });
   const toggleHaptics = () => setHaptics((v) => { const n = !v; engineRef.current?.setHaptics(n); lsSet("cb_hap", n ? "1" : "0"); if (n) navigator.vibrate?.(20); persist({ settings: { sound, haptics: n } }); return n; });
 
@@ -305,6 +323,15 @@ export default function Play() {
               ))}
             </div>
 
+            {user && daily && (daily.canClaim ? (
+              <button onClick={claimDaily} data-testid="claim-daily" className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-white transition hover:brightness-110" style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)", boxShadow: "0 8px 24px rgba(124,58,237,.3)" }}>
+                🎁 Claim daily reward · +{daily.reward} ✦{daily.streak > 0 && <span className="inline-flex items-center gap-0.5 text-amber-200/90">🔥{daily.streak}</span>}
+              </button>
+            ) : (
+              <div className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-[13px] font-semibold text-emerald-200" data-testid="daily-claimed">
+                ✓ Daily reward claimed{daily.streak > 0 && <span className="inline-flex items-center gap-1 text-amber-300/90">· 🔥 {daily.streak}-day streak</span>}
+              </div>
+            ))}
             {mode === "journey" && (
               <p className="mt-4 min-h-[40px] px-1 text-[13px] leading-relaxed text-violet-300/70">
                 {menuInfo.jbest ? <>Your best: <b className="text-violet-100">{menuInfo.jbest.toLocaleString()}</b> · reached World {menuInfo.jworld}.<br />Starts gentle, climbs forever — beat it.</> : <>One long run that starts gentle and climbs forever.<br />How deep into the dark can you get?</>}
