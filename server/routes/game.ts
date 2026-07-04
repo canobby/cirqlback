@@ -182,15 +182,23 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
       const last = Number((p.state as any)?.lastRestoreAt) || 0;
       const pointsAwarded = now - last >= RESTORE_MIN_INTERVAL_MS ? RESTORE_POINTS : 0;
       if (pointsAwarded > 0) await storage.updateUserPoints(userId, pointsAwarded);
+      const perfect = req.body?.perfect === true; // CHR-105: no wasted moves
+      const shiny = req.body?.shiny === true;     // CHR-108: a rare shiny world
+      const prevState = (p.state as any) || {};
+      const shinies = (Number(prevState.shinies) || 0) + (shiny ? 1 : 0);
       const saved = await storage.saveGameProgress(userId, {
         worldsRestored: p.worldsRestored + 1,
         ...(worldIndex !== undefined ? { worldIndex } : {}),
-        state: { ...((p.state as any) || {}), lastRestoreAt: now },
+        state: { ...prevState, lastRestoreAt: now, shinies },
       });
-      // CHR-103: surface any newly-earned achievements as shared badges.
+      // CHR-103/105/108: surface newly-earned achievements as shared badges.
       let badges: string[] = [];
-      try { badges = await storage.evaluateGameAchievements(userId); } catch (e) { console.error("achievement eval failed:", e); }
-      res.json({ worldsRestored: saved.worldsRestored, pointsAwarded, badges });
+      try {
+        badges = await storage.evaluateGameAchievements(userId);
+        if (perfect) { const n = await storage.awardGameBadge(userId, "game_perfect"); if (n) badges.push(n); }
+        if (shiny) { const n = await storage.awardGameBadge(userId, "game_shiny"); if (n) badges.push(n); }
+      } catch (e) { console.error("achievement eval failed:", e); }
+      res.json({ worldsRestored: saved.worldsRestored, pointsAwarded, badges, shinies });
     } catch (err) {
       console.error("game restored error:", err);
       res.status(500).json({ error: "Failed to record restoration" });

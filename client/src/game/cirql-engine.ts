@@ -348,12 +348,13 @@ export class CirqlEngine {
         this.shocks.push({ x: cx, y: cy, r: outerR * 0.9, maxR: outerR + 22, life: 0.8, color: "#c4b5fd", width: 2 }); }
     } else this.attractTimer = 900;
 
-    // life-bloom
+    // life-bloom (CHR-108: shiny worlds glow a touch brighter)
     const accent = this.accent();
+    const shiny = this.world.shiny ? 1.45 : 1;
     const life = 0.12 + 0.88 * progress;
     const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.62);
-    bloom.addColorStop(0, `rgba(${accent},${0.12 + 0.24 * life})`);
-    bloom.addColorStop(0.5, `rgba(${accent},${0.03 + 0.09 * life})`);
+    bloom.addColorStop(0, `rgba(${accent},${(0.12 + 0.24 * life) * shiny})`);
+    bloom.addColorStop(0.5, `rgba(${accent},${(0.03 + 0.09 * life) * shiny})`);
     bloom.addColorStop(1, "rgba(5,4,15,0)");
     ctx.fillStyle = bloom; ctx.fillRect(0, 0, W, H);
 
@@ -362,7 +363,7 @@ export class CirqlEngine {
       if (!this.reduce) { s.x += s.vx * sec; s.y += s.vy * sec; s.tw += sec * 1.5;
         if (s.x < 0) s.x += W; if (s.x > W) s.x -= W; if (s.y < 0) s.y += H; if (s.y > H) s.y -= H; }
       const tw = this.reduce ? 1 : 0.6 + 0.4 * Math.sin(s.tw);
-      ctx.globalAlpha = s.a * tw * (0.5 + 0.5 * life); ctx.fillStyle = `rgb(${s.hue})`;
+      ctx.globalAlpha = Math.min(1, s.a * tw * (0.5 + 0.5 * life) * shiny); ctx.fillStyle = `rgb(${s.hue})`;
       ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, TWO); ctx.fill();
     });
     ctx.globalAlpha = 1;

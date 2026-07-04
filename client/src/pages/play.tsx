@@ -35,6 +35,8 @@ export default function Play() {
   const [muted, setMuted] = useState(false);
   const [award, setAward] = useState(0);
   const [newBadges, setNewBadges] = useState<string[]>([]); // CHR-103: achievements just earned
+  const [perfectWin, setPerfectWin] = useState(false); // CHR-105: no-wasted-moves solve
+  const [shinies, setShinies] = useState(0); // CHR-108: shiny worlds discovered
   // CHR-93 daily reward
   const dailyLoadedRef = useRef(false);
   const [daily, setDaily] = useState<{ canClaim: boolean; streak: number; reward: number } | null>(null);
@@ -100,6 +102,7 @@ export default function Play() {
         }
         // CHR-96: banked perks from partner taps.
         if (st.perks && typeof st.perks === "object") setPerks(st.perks);
+        if (typeof st.shinies === "number") setShinies(st.shinies); // CHR-108
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -163,16 +166,24 @@ export default function Play() {
         } else {
           setDailyResult({ moves, timeMs, points: 0 }); setShowDaily(true);
         }
-      } else if (user) {
-        // CHR-95: normal restore — server records it + awards points.
-        fetch("/api/game/restored", {
-          method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ worldIndex: index }),
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((res) => { if (res) { setRestored(res.worldsRestored); setAward(res.pointsAwarded || 0); setNewBadges(res.badges || []); } })
-          .catch(() => {});
       } else {
-        setRestored((r) => r + 1);
+        // CHR-105/108: perfect = no wasted moves; shiny = a rare world.
+        const perfect = hud.moves > 0 && hud.moves <= hud.total;
+        const shiny = !!worldAt(index, playerSeed).shiny;
+        setPerfectWin(perfect);
+        if (user) {
+          // CHR-95: normal restore — server records it + awards points/badges.
+          fetch("/api/game/restored", {
+            method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+            body: JSON.stringify({ worldIndex: index, perfect, shiny }),
+          })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((res) => { if (res) { setRestored(res.worldsRestored); setAward(res.pointsAwarded || 0); setNewBadges(res.badges || []); if (typeof res.shinies === "number") setShinies(res.shinies); } })
+            .catch(() => {});
+        } else {
+          setRestored((r) => r + 1);
+          if (shiny) setShinies((s) => s + 1);
+        }
       }
     }
     if (!hud.won) wonRef.current = false;
@@ -180,7 +191,7 @@ export default function Play() {
   }, [hud.won]);
 
   const goIndex = (i: number) => {
-    setAward(0); setNewBadges([]); setGuidingActive(false); // Guiding Light is per-world; engine resets it too
+    setAward(0); setNewBadges([]); setPerfectWin(false); setGuidingActive(false); // Guiding Light is per-world; engine resets it too
     if (dailyModeRef.current) { dailyModeRef.current = false; setDailyMode(false); setShowDaily(false); wonRef.current = false; }
     setIndex(i); engineRef.current?.setWorld(worldAt(i, playerSeed)); save({ worldIndex: i });
   };
@@ -261,7 +272,9 @@ export default function Play() {
           <span className="text-violet-200/90">🗓 Daily Circle #{dailyPuzzle.num} · {hud.worldName}</span>
         ) : (
           <>
-            World {index + 1} · <span className="text-violet-200/90">{hud.worldName}</span>{inEndless ? " · endless" : ""}
+            World {index + 1} · <span className="text-violet-200/90">{hud.worldName}</span>
+            {worldAt(index, playerSeed).shiny && <span className="text-fuchsia-300 font-semibold" data-testid="shiny-tag"> · 🌈 Shiny</span>}
+            {inEndless ? " · endless" : ""}
             {user ? <span className="text-emerald-300/70"> · {restored} restored</span> : <span className="text-violet-300/40"> · log in to save</span>}
           </>
         )}
@@ -363,6 +376,9 @@ export default function Play() {
               {hud.worldName} Restored
             </h2>
             <p className="text-sm text-violet-300">Beautiful. The circle is whole again.</p>
+            {perfectWin && (
+              <div data-testid="perfect-win" className="text-sm font-bold inline-flex items-center gap-1" style={{ color: "#67e8f9" }}>💎 Perfect — no wasted moves</div>
+            )}
             {user && award > 0 && (
               <div className="text-sm font-semibold text-emerald-300" data-testid="points-award">+{award} ✦ points</div>
             )}
@@ -420,6 +436,7 @@ export default function Play() {
         onClose={() => setShowCollection(false)}
         worlds={restored}
         streak={streak}
+        shinies={shinies}
         equipped={equipped}
         onEquip={equip}
         busy={equipBusy}

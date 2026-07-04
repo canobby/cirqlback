@@ -13,6 +13,7 @@ export interface WorldConfig {
   ringCount: number;    // 3–6
   span: number;         // base arc width (radians)
   difficulty: number;   // 0..1 — scales idle-drift speed now; more axes later (CHR-101)
+  shiny?: boolean;      // CHR-108 — a rare, extra-radiant variant (procedural only)
 }
 
 export const CRAFTED_WORLDS: WorldConfig[] = [

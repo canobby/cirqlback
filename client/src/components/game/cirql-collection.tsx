@@ -17,6 +17,7 @@ interface Props {
   onClose: () => void;
   worlds: number;
   streak: number;
+  shinies: number;
   equipped: string;
   onEquip: (id: string) => void;
   busy?: string | null; // id currently being equipped (in-flight)
@@ -24,7 +25,7 @@ interface Props {
 
 const KIND_LABEL: Record<string, string> = { aura: "Aura", skin: "Skin", trail: "Trail" };
 
-export function CirqlCollection({ open, onClose, worlds, streak, equipped, onEquip, busy }: Props) {
+export function CirqlCollection({ open, onClose, worlds, streak, shinies, equipped, onEquip, busy }: Props) {
   // CHR-103: the player's game-earned badges (also shown on the Cirqlback profile).
   const [badges, setBadges] = useState<BadgeRow[]>([]);
   useEffect(() => {
@@ -81,9 +82,10 @@ export function CirqlCollection({ open, onClose, worlds, streak, equipped, onEqu
         </div>
 
         {/* Stats */}
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div className="mt-3 grid grid-cols-4 gap-2 text-center">
           <Stat label="Worlds" value={worlds} />
           <Stat label="Streak" value={streak} />
+          <Stat label="🌈 Shiny" value={shinies} />
           <Stat label="Collected" value={`${unlockedCount}/${COSMETICS.length}`} />
         </div>
 

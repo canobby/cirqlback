@@ -11,7 +11,9 @@ export interface GameAchievement {
   emoji: string;
   color: string;
   desc: string;
-  metric: "worlds" | "streak";
+  // "worlds"/"streak" auto-award on threshold; "event" is awarded on a specific
+  // action (a perfect restore, discovering a shiny) — never by threshold eval.
+  metric: "worlds" | "streak" | "event";
   threshold: number;
 }
 
@@ -22,9 +24,14 @@ export const GAME_ACHIEVEMENTS: GameAchievement[] = [
   { key: "game_universe", name: "Universe Keeper", emoji: "🌟", color: "#f59e0b", desc: "Restore 50 worlds", metric: "worlds", threshold: 50 },
   { key: "game_devoted", name: "Devoted", emoji: "🔥", color: "#fb923c", desc: "Reach a 3-day play streak", metric: "streak", threshold: 3 },
   { key: "game_faithful", name: "Faithful", emoji: "💫", color: "#ec4899", desc: "Reach a 7-day play streak", metric: "streak", threshold: 7 },
+  { key: "game_perfect", name: "Perfect Restore", emoji: "💎", color: "#22d3ee", desc: "Restore a world with no wasted moves", metric: "event", threshold: 0 },
+  { key: "game_shiny", name: "Shiny Hunter", emoji: "🌈", color: "#f0abfc", desc: "Discover a shiny world", metric: "event", threshold: 0 },
 ];
 
-// Which achievements the player's progress has earned.
+// Which threshold achievements the player's progress has earned (event badges
+// are awarded elsewhere on the specific action).
 export function achievementsEarned(p: { worlds: number; streak: number }): GameAchievement[] {
-  return GAME_ACHIEVEMENTS.filter((a) => (a.metric === "worlds" ? p.worlds : p.streak) >= a.threshold);
+  return GAME_ACHIEVEMENTS.filter(
+    (a) => (a.metric === "worlds" && p.worlds >= a.threshold) || (a.metric === "streak" && p.streak >= a.threshold),
+  );
 }

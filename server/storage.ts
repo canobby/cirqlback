@@ -1729,6 +1729,19 @@ export class DatabaseStorage implements IStorage {
     return newly;
   }
 
+  // Award a specific game badge by its achievement key (for event badges like a
+  // perfect restore or discovering a shiny). Deduped; returns its name or null.
+  async awardGameBadge(userId: string, key: string): Promise<string | null> {
+    const a = GAME_ACHIEVEMENTS.find((x) => x.key === key);
+    if (!a) return null;
+    const defs = await this.ensureGameBadgeDefs();
+    const defId = defs.get(key);
+    if (!defId) return null;
+    if (await this.hasBadgeAward({ badgeDefinitionId: defId, recipientUserId: userId })) return null;
+    await this.awardBadge({ badgeDefinitionId: defId, recipientUserId: userId, awarderRole: "game" });
+    return a.name;
+  }
+
   // The player's game-earned badges (for the in-game Awards display).
   async getGameBadgesForUser(userId: string): Promise<any[]> {
     return this.awardsWith(and(eq(badgeAwards.recipientUserId, userId), eq(badgeAwards.awarderRole, "game")));

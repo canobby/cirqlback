@@ -57,8 +57,9 @@ export function generateWorld(index: number, playerSeed = 0): WorldConfig {
   const span = Math.max(0.94, 1.16 - Math.min(index, 12) * 0.012);    // arcs tighten slowly
   const difficulty = Math.min(1, 0.2 + index * 0.045);
   const name = `${ADJ[Math.floor(rng() * ADJ.length)]} ${NOUN[Math.floor(rng() * NOUN.length)]}`;
+  const shiny = rng() < 0.05; // CHR-108: ~1 in 20 worlds is a rare shiny (deterministic per seed)
 
-  return { id: `gen-${index}`, name, ringColors, accent, ringCount, span, difficulty };
+  return { id: `gen-${index}`, name, ringColors, accent, ringCount, span, difficulty, shiny };
 }
 
 // ── Daily Circle (CHR-104) ──────────────────────────────────────────────────
