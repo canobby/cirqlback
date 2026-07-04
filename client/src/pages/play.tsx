@@ -40,6 +40,7 @@ export default function Play() {
   const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<CirqlbreakEngine | null>(null);
+  const progressRef = useRef<Record<string, any>>({}); // logged-in players: the server-side game_progress.state blob
 
   const [phase, setPhase] = useState<"menu" | "playing" | "over">("menu");
   const [hud, setHud] = useState<HudState | null>(null);
@@ -54,10 +55,29 @@ export default function Play() {
   const [menuInfo, setMenuInfo] = useState({ jbest: 0, jworld: 0, streak: 0, dailyNum: 0 });
   const [shareLabel, setShareLabel] = useState("Share result");
 
+  // Menu stats come from the server for logged-in players (cross-device), and from
+  // the engine's localStorage for guests.
   const refreshMenuInfo = useCallback((eng: CirqlbreakEngine) => {
-    const jb = eng.journeyBest();
-    setMenuInfo({ jbest: jb.score, jworld: jb.world, streak: eng.peekStreak(), dailyNum: eng.dailyNumber() });
-  }, []);
+    const st = progressRef.current;
+    if (user && (st.journeyBest != null || st.furthestWorld != null || st.dailyStreak != null)) {
+      setMenuInfo({ jbest: st.journeyBest || 0, jworld: st.furthestWorld || 0, streak: st.dailyStreak ?? eng.peekStreak(), dailyNum: eng.dailyNumber() });
+    } else {
+      const jb = eng.journeyBest();
+      setMenuInfo({ jbest: jb.score, jworld: jb.world, streak: eng.peekStreak(), dailyNum: eng.dailyNumber() });
+    }
+  }, [user]);
+
+  // Merge a patch into the server state blob and persist it (logged-in only).
+  const persist = useCallback((patch: Record<string, any>) => {
+    progressRef.current = { ...progressRef.current, ...patch };
+    if (!user) return;
+    fetch("/api/game/progress", {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state: progressRef.current }),
+    }).catch(() => {});
+  }, [user]);
 
   // Build the engine once, on mount.
   useEffect(() => {
@@ -68,13 +88,49 @@ export default function Play() {
       onHud: setHud,
       onRelicOffer: (options, pick) => setRelic({ options, pick }),
       onWorldRestored: () => { /* CHR-115/116: POST /api/game/restored → points + badges */ },
-      onRunEnd: (r) => { setResult(r); setPhase("over"); setShareLabel("Share result"); refreshMenuInfo(eng); },
+      onRunEnd: (r) => { setResult(r); setPhase("over"); setShareLabel("Share result"); },
     });
     engineRef.current = eng;
     refreshMenuInfo(eng);
     return () => { eng.destroy(); engineRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Hydrate the server progress blob when a logged-in player arrives (settings +
+  // best/streak sync across devices); reset to local for guests.
+  useEffect(() => {
+    if (!user) { progressRef.current = {}; if (engineRef.current) refreshMenuInfo(engineRef.current); return; }
+    let cancelled = false;
+    fetch("/api/game/progress", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d) return;
+        progressRef.current = d.state || {};
+        const s = progressRef.current.settings;
+        if (s && typeof s.sound === "boolean") { setSound(s.sound); engineRef.current?.setMuted(!s.sound); }
+        if (s && typeof s.haptics === "boolean") { setHaptics(s.haptics); engineRef.current?.setHaptics(s.haptics); }
+        if (engineRef.current) refreshMenuInfo(engineRef.current);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user, refreshMenuInfo]);
+
+  // Persist bests / streak / worlds-restored at the end of each run.
+  useEffect(() => {
+    if (!result) return;
+    const st = progressRef.current;
+    const patch: Record<string, any> = {};
+    if (result.mode === "journey") {
+      patch.journeyBest = Math.max(st.journeyBest || 0, result.score);
+      patch.furthestWorld = Math.max(st.furthestWorld || 0, result.world);
+    }
+    if (result.mode === "daily") patch.dailyStreak = result.streak;
+    const cleared = result.mode === "daily" ? (result.restored ? 1 : 0) : Math.max(0, result.world - 1);
+    if (cleared) patch.worldsRestored = (st.worldsRestored || 0) + cleared;
+    if (Object.keys(patch).length) persist(patch);
+    if (engineRef.current) refreshMenuInfo(engineRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
 
   const startRun = () => {
     setResult(null);
@@ -90,8 +146,8 @@ export default function Play() {
     if (engineRef.current) refreshMenuInfo(engineRef.current);
   };
   const pickRelic = (id: RelicId) => { relic?.pick(id); setRelic(null); };
-  const toggleSound = () => setSound((v) => { const n = !v; engineRef.current?.setMuted(!n); lsSet("cb_sound", n ? "1" : "0"); return n; });
-  const toggleHaptics = () => setHaptics((v) => { const n = !v; engineRef.current?.setHaptics(n); lsSet("cb_hap", n ? "1" : "0"); if (n) navigator.vibrate?.(20); return n; });
+  const toggleSound = () => setSound((v) => { const n = !v; engineRef.current?.setMuted(!n); lsSet("cb_sound", n ? "1" : "0"); persist({ settings: { sound: n, haptics } }); return n; });
+  const toggleHaptics = () => setHaptics((v) => { const n = !v; engineRef.current?.setHaptics(n); lsSet("cb_hap", n ? "1" : "0"); if (n) navigator.vibrate?.(20); persist({ settings: { sound, haptics: n } }); return n; });
 
   const shareDaily = () => {
     if (!result) return;
