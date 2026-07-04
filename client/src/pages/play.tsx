@@ -26,6 +26,7 @@ export default function Play() {
     worldName: CRAFTED_WORLDS[0].name, aligned: 0, total: CRAFTED_WORLDS[0].ringCount, moves: 0, won: false,
   });
   const [muted, setMuted] = useState(false);
+  const [award, setAward] = useState(0);
 
   // Fire-and-forget save (logged-in only).
   const save = (patch: { worldIndex?: number; worldsRestored?: number }) => {
@@ -58,19 +59,27 @@ export default function Play() {
       .catch(() => {});
   }, [user]);
 
-  // Count a restoration (won: false -> true) and persist.
+  // A world was restored (won: false -> true). Server records it + awards points
+  // (CHR-95); guests just get a local count.
   useEffect(() => {
     if (hud.won && !wonRef.current) {
       wonRef.current = true;
-      const nr = restored + 1;
-      setRestored(nr);
-      save({ worldsRestored: nr, worldIndex: index });
+      if (user) {
+        fetch("/api/game/restored", {
+          method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ worldIndex: index }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((res) => { if (res) { setRestored(res.worldsRestored); setAward(res.pointsAwarded || 0); } })
+          .catch(() => {});
+      } else {
+        setRestored((r) => r + 1);
+      }
     }
     if (!hud.won) wonRef.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hud.won]);
 
-  const goIndex = (i: number) => { setIndex(i); engineRef.current?.setWorld(worldAt(i, playerSeed)); save({ worldIndex: i }); };
+  const goIndex = (i: number) => { setAward(0); setIndex(i); engineRef.current?.setWorld(worldAt(i, playerSeed)); save({ worldIndex: i }); };
   const nextWorld = () => goIndex(index + 1);
   const endless = () => goIndex(Math.max(index + 1, CRAFTED_WORLDS.length));
   const toggleMute = () => { const m = !muted; setMuted(m); engineRef.current?.setMuted(m); };
@@ -139,6 +148,9 @@ export default function Play() {
               {hud.worldName} Restored
             </h2>
             <p className="text-sm text-violet-300">Beautiful. The circle is whole again.</p>
+            {user && award > 0 && (
+              <div className="text-sm font-semibold text-emerald-300" data-testid="points-award">+{award} ✦ points</div>
+            )}
             <button
               onClick={nextWorld}
               data-testid="button-next-world"

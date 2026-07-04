@@ -36,4 +36,31 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
       res.status(500).json({ error: "Failed to save progress" });
     }
   });
+
+  // CHR-95: a world was restored — server-authoritative. Increments the count
+  // and awards points through the existing economy (rate-limited to curb
+  // farming; deeper anti-abuse, like taps, can follow).
+  const RESTORE_POINTS = 5;
+  const RESTORE_MIN_INTERVAL_MS = 4000;
+  app.post("/api/game/restored", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const idx = Number(req.body?.worldIndex);
+      const worldIndex = Number.isFinite(idx) ? Math.max(0, Math.min(1_000_000, Math.floor(idx))) : undefined;
+      const p = await storage.getOrCreateGameProgress(userId);
+      const now = Date.now();
+      const last = Number((p.state as any)?.lastRestoreAt) || 0;
+      const pointsAwarded = now - last >= RESTORE_MIN_INTERVAL_MS ? RESTORE_POINTS : 0;
+      if (pointsAwarded > 0) await storage.updateUserPoints(userId, pointsAwarded);
+      const saved = await storage.saveGameProgress(userId, {
+        worldsRestored: p.worldsRestored + 1,
+        ...(worldIndex !== undefined ? { worldIndex } : {}),
+        state: { ...((p.state as any) || {}), lastRestoreAt: now },
+      });
+      res.json({ worldsRestored: saved.worldsRestored, pointsAwarded });
+    } catch (err) {
+      console.error("game restored error:", err);
+      res.status(500).json({ error: "Failed to record restoration" });
+    }
+  });
 }
