@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Sparkles, Gift, Flame, Gem } from "lucide-react";
+import { ArrowLeft, Sparkles, Gift, Flame, Gem, Map as MapIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlEngine, type GameState } from "@/game/cirql-engine";
 import { CRAFTED_WORLDS, type WorldConfig } from "@/game/worlds";
 import { generateWorld } from "@/game/procedural";
 import { CirqlCollection } from "@/components/game/cirql-collection";
+import { WorldMap } from "@/components/game/world-map";
 import { getCosmetic, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
 
 // The world at an absolute index: crafted "signature" worlds first, then an
@@ -33,6 +34,8 @@ export default function Play() {
   const dailyLoadedRef = useRef(false);
   const [daily, setDaily] = useState<{ canClaim: boolean; streak: number; reward: number } | null>(null);
   const [dailyClaimed, setDailyClaimed] = useState<{ points: number; streak: number } | null>(null);
+  // CHR-91 world map
+  const [showMap, setShowMap] = useState(false);
   // CHR-92 Your Cirql + collection
   const [showCollection, setShowCollection] = useState(false);
   const [equipped, setEquipped] = useState<string>(DEFAULT_COSMETIC);
@@ -249,6 +252,9 @@ export default function Play() {
       <div className="flex gap-2 my-4 flex-wrap justify-center">
         <button onClick={() => engineRef.current?.newPuzzle()} data-testid="button-new-puzzle" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold">New puzzle</button>
         <button onClick={toggleMute} aria-pressed={muted} className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold">{muted ? "🔇 Muted" : "🔊 Sound"}</button>
+        <button onClick={() => setShowMap(true)} data-testid="button-world-map" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5">
+          <MapIcon className="h-4 w-4 text-violet-300" /> Worlds
+        </button>
         {user && (
           <button onClick={() => setShowCollection(true)} data-testid="button-your-cirql" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5">
             <Gem className="h-4 w-4 text-violet-300" /> Your Cirql
@@ -256,6 +262,15 @@ export default function Play() {
         )}
       </div>
       <Link href="/customer" className="text-xs text-violet-300/60 mb-6 inline-flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Back</Link>
+
+      <WorldMap
+        open={showMap}
+        onClose={() => setShowMap(false)}
+        current={index}
+        restored={restored}
+        resolve={(i) => worldAt(i, playerSeed)}
+        onGo={goIndex}
+      />
 
       <CirqlCollection
         open={showCollection}
