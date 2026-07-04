@@ -28,16 +28,26 @@ interface Ring {
   radius: number; thick: number; span: number; color: string;
   rot: number; tween: { from: number; to: number; t: number } | null;
   aligned: boolean; wasAligned: boolean; glow: number;
-  drift: number; driftResumeAt: number;
+  drift: number; driftResumeAt: number; vel: number; // vel = flick-to-spin momentum (rad/s)
 }
 interface Star { x: number; y: number; r: number; vx: number; vy: number; a: number; tw: number; hue: string; }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; color: string; }
 interface Wisp { x: number; y: number; vy: number; life: number; drift: number; }
 interface Spark { a: { x: number; y: number }; b: { x: number; y: number }; color: string; life: number; }
+// CHR-87 juice: expanding ring pulse on lock/solve/attract-invite.
+interface Shock { x: number; y: number; r: number; maxR: number; life: number; color: string; width: number; }
+// CHR-87 juice: a mote of light travelling from an aligned ring's node into the core.
+interface Energy { x: number; y: number; sx: number; sy: number; t: number; color: string; }
+// CHR-87 juice: transient "x2/x3…" combo flourish text.
+interface ComboPop { x: number; y: number; life: number; text: string; }
 
 const ALIGN_TOL = 0.10;
 const SNAP_TOL = 0.34;
 const TWO = Math.PI * 2;
+// CHR-87 juice tuning — kept gentle ("satisfying, not arcade").
+const COMBO_WINDOW = 2200; // ms between locks to keep a combo alive
+const MAX_VEL = 12;        // clamp on flick momentum (rad/s)
+const ATTRACT_DELAY = 6000; // ms of idle before the puzzle starts inviting play
 
 export class CirqlEngine {
   private ctx: CanvasRenderingContext2D;
@@ -46,9 +56,12 @@ export class CirqlEngine {
   private rings: Ring[] = [];
   private world!: WorldConfig; private accentRgb = "124,58,237";
   private moves = 0; private won = false;
-  private drag: { i: number; startA: number; startRot: number; moved: boolean } | null = null;
+  private drag: { i: number; startA: number; startRot: number; moved: boolean; lastA: number; lastT: number; vel: number } | null = null;
   private selected = 0;
   private particles: Particle[] = []; private wisps: Wisp[] = []; private sparks: Spark[] = []; private stars: Star[] = [];
+  private shocks: Shock[] = []; private energy: Energy[] = []; private combos: ComboPop[] = [];
+  private combo = 0; private lastLockAt = 0; private coreEnergy = 0; private winFlash = 0;
+  private lastInputAt = performance.now(); private attractTimer = 0;
   private t0 = performance.now(); private sparkTimer = 1400; private wispTimer = 0;
   private muted = false; private actx: AudioContext | null = null;
   private raf = 0; private lastEmit = ""; private ro: ResizeObserver;
@@ -126,10 +139,12 @@ export class CirqlEngine {
         radius, thick: Math.max(14, step * 0.52), span: this.world.span - i * 0.03,
         color: this.world.ringColors[i % this.world.ringColors.length], rot, tween: null,
         aligned: false, wasAligned: false, glow: 0,
-        drift: (Math.random() * 0.05 + 0.03) * (i % 2 ? 1 : -1) * (0.8 + 0.6 * this.world.difficulty), driftResumeAt: 0,
+        drift: (Math.random() * 0.05 + 0.03) * (i % 2 ? 1 : -1) * (0.8 + 0.6 * this.world.difficulty), driftResumeAt: 0, vel: 0,
       });
     }
     this.won = false; this.moves = 0; this.particles = []; this.wisps = []; this.sparks = []; this.selected = 0;
+    this.shocks = []; this.energy = []; this.combos = []; this.combo = 0; this.lastLockAt = 0; this.coreEnergy = 0; this.winFlash = 0;
+    this.lastInputAt = performance.now();
     this.emit(0);
   }
 
@@ -154,7 +169,20 @@ export class CirqlEngine {
     } catch { /* ignore */ }
   }
   private clickSnap() { this.tone(520 + Math.random() * 40, 0.18, "triangle", 0.05); }
+  // A lock tone that steps up a pentatonic ladder with the combo, so chaining
+  // reads as a rising, rewarding figure (kept soft — satisfying, not arcade).
+  private lockTone(combo: number) {
+    const ladder = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66];
+    const f = ladder[Math.min(combo - 1, ladder.length - 1)] || ladder[0];
+    this.tone(f, 0.22, "triangle", 0.05);
+    if (combo >= 2) this.tone(f * 1.5, 0.16, "sine", 0.025); // a shimmer harmonic on a chain
+  }
   private chime() { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => setTimeout(() => this.tone(f, 0.9, "sine", 0.05), i * 90)); }
+  // Haptics (where supported) — gated by the same mute toggle so there's a kill switch.
+  private haptic(pattern: number | number[]) {
+    if (this.muted) return;
+    try { navigator.vibrate?.(pattern); } catch { /* ignore */ }
+  }
 
   // ---- input ----
   private pAngle(e: PointerEvent) { const r = this.canvas.getBoundingClientRect(); return Math.atan2((e.clientY - r.top) - this.cy, (e.clientX - r.left) - this.cx); }
@@ -165,31 +193,51 @@ export class CirqlEngine {
     return best;
   }
   private onDown = (e: PointerEvent) => {
+    this.lastInputAt = performance.now();
     if (this.won) return;
     const i = this.hitRing(e); if (i < 0) return;
     this.canvas.setPointerCapture(e.pointerId);
-    this.selected = i; this.rings[i].tween = null;
-    this.drag = { i, startA: this.pAngle(e), startRot: this.rings[i].rot, moved: false };
+    this.selected = i; this.rings[i].tween = null; this.rings[i].vel = 0;
+    const a = this.pAngle(e);
+    this.drag = { i, startA: a, startRot: this.rings[i].rot, moved: false, lastA: a, lastT: performance.now(), vel: 0 };
   };
   private onMove = (e: PointerEvent) => {
     if (!this.drag) return;
-    const d = this.norm(this.pAngle(e) - this.drag.startA);
+    const a = this.pAngle(e);
+    const d = this.norm(a - this.drag.startA);
     this.rings[this.drag.i].rot = this.drag.startRot + d;
     this.drag.moved = this.drag.moved || Math.abs(d) > 0.02;
+    // Track angular velocity for flick-to-spin (smoothed, rad/s).
+    const now = performance.now(); const gap = now - this.drag.lastT;
+    if (gap > 0) {
+      const inst = this.norm(a - this.drag.lastA) / (gap / 1000);
+      this.drag.vel = this.drag.vel * 0.6 + inst * 0.4;
+      this.drag.lastA = a; this.drag.lastT = now;
+    }
   };
   private onUp = () => {
     if (!this.drag) return;
     const r = this.rings[this.drag.i];
     if (this.drag.moved) this.moves++;
-    if (this.dist(r.rot, 0) < SNAP_TOL) r.tween = { from: r.rot, to: Math.round(r.rot / TWO) * TWO, t: 0 };
-    else r.driftResumeAt = performance.now() + 900;
+    this.lastInputAt = performance.now();
+    const v = this.drag.vel;
+    // A slow release near the top settles with a spring; a real flick keeps its
+    // momentum and spins on, snapping once it winds down (see the frame loop).
+    if (this.dist(r.rot, 0) < SNAP_TOL && Math.abs(v) < 2.2) {
+      r.tween = { from: r.rot, to: Math.round(r.rot / TWO) * TWO, t: 0 }; r.vel = 0;
+    } else if (Math.abs(v) > 0.6) {
+      r.vel = Math.max(-MAX_VEL, Math.min(MAX_VEL, v)); r.driftResumeAt = performance.now() + 900;
+    } else {
+      r.vel = 0; r.driftResumeAt = performance.now() + 900;
+    }
     this.drag = null;
   };
   private onKey = (e: KeyboardEvent) => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") this.lastInputAt = performance.now();
     if (this.won) return;
     if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
       const r = this.rings[this.selected]; if (!r) return;
-      r.tween = null; r.rot = this.norm(r.rot + (e.key === "ArrowLeft" ? -0.09 : 0.09));
+      r.tween = null; r.vel = 0; r.rot = this.norm(r.rot + (e.key === "ArrowLeft" ? -0.09 : 0.09));
       r.driftResumeAt = performance.now() + 900; this.moves++;
       e.preventDefault();
     }
@@ -200,36 +248,85 @@ export class CirqlEngine {
       this.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color }); }
   }
 
+  // A ring settled onto the top — the "lock" moment. Builds the combo, feeds the
+  // core, rings a shockwave, and (on a chain) pops a little "x2/x3" flourish.
+  private onLock(r: Ring, p: { x: number; y: number }, now: number) {
+    this.combo = now - this.lastLockAt < COMBO_WINDOW ? this.combo + 1 : 1;
+    this.lastLockAt = now;
+    this.lockTone(this.combo);
+    this.haptic(this.combo >= 3 ? [12, 22, 12] : 14);
+    if (!this.reduce) {
+      this.shocks.push({ x: p.x, y: p.y, r: 4, maxR: r.thick * 1.8 + 26, life: 1, color: r.color, width: 3 });
+      for (let i = 0; i < 4 + this.combo; i++) this.energy.push({ x: p.x, y: p.y, sx: p.x, sy: p.y, t: Math.random() * 0.12, color: r.color });
+      if (this.combo >= 2) this.combos.push({ x: p.x, y: p.y, life: 1, text: "×" + this.combo });
+    }
+  }
+
   // ---- render loop ----
   private frame = (now: number) => {
     const dt = Math.min(40, now - this.t0); this.t0 = now; const sec = dt / 1000;
     const ctx = this.ctx; const { cx, cy, W, H } = this;
     ctx.clearRect(0, 0, W, H);
+    this.coreEnergy = Math.max(0, this.coreEnergy - sec * 0.8);
+    this.winFlash = Math.max(0, this.winFlash - sec * 0.9);
+    // Attract mode (CHR-87): after a spell of no input, the puzzle stirs a little
+    // livelier and periodically blooms an inviting ring at the rim.
+    const attract = !this.won && !this.drag && !this.reduce && (now - this.lastInputAt > ATTRACT_DELAY);
 
     let alignedCount = 0;
     this.rings.forEach((r, i) => {
       const dragging = this.drag && this.drag.i === i;
       if (r.tween) {
-        r.tween.t += dt / 150;
-        const k = r.tween.t >= 1 ? 1 : 1 - Math.pow(1 - r.tween.t, 3);
+        r.tween.t += dt / 165;
+        const tt = r.tween.t >= 1 ? 1 : r.tween.t;
+        // Spring-settle: a small overshoot (easeOutBack); plain ease when reduced-motion.
+        const k = tt >= 1 ? 1
+          : this.reduce ? 1 - Math.pow(1 - tt, 3)
+          : (() => { const c1 = 1.15, c3 = c1 + 1, u = tt - 1; return 1 + c3 * u * u * u + c1 * u * u; })();
         r.rot = r.tween.from + (r.tween.to - r.tween.from) * k;
         if (r.tween.t >= 1) { r.rot = this.norm(r.tween.to); r.tween = null; }
+      } else if (!dragging && !this.won && Math.abs(r.vel) > 0.15) {
+        // Flick-to-spin inertia — momentum decays, then snaps if it lands near the top.
+        r.rot = this.norm(r.rot + r.vel * sec);
+        r.vel *= Math.pow(0.86, dt / 16);
+        if (Math.abs(r.vel) <= 0.15) { r.vel = 0; if (this.dist(r.rot, 0) < SNAP_TOL) r.tween = { from: r.rot, to: Math.round(r.rot / TWO) * TWO, t: 0 }; }
       } else if (!this.reduce && !this.won && !dragging && !r.aligned && now >= r.driftResumeAt) {
-        r.rot = this.norm(r.rot + r.drift * sec);
+        r.rot = this.norm(r.rot + r.drift * sec * (attract ? 1.5 : 1));
       }
+      const settled = !r.tween && Math.abs(r.vel) < 0.25; // a real lock, not a fly-through
       r.aligned = !r.tween && this.dist(r.rot, 0) < ALIGN_TOL && (!this.drag || this.drag.i !== i);
       if (r.aligned) alignedCount++;
       r.glow += ((r.aligned ? 1 : 0) - r.glow) * Math.min(1, dt / 120);
-      if (r.aligned && !r.wasAligned) { const p = this.nodePt(r); this.burst(p.x, p.y, r.color, 14, 2.4); this.clickSnap(); }
+      if (r.aligned && !r.wasAligned) {
+        const p = this.nodePt(r); this.burst(p.x, p.y, r.color, 14, 2.4);
+        if (settled) this.onLock(r, p, now); else this.clickSnap(); // whipping past → just a tick
+      }
       r.wasAligned = r.aligned;
     });
 
+    const outerR0 = this.rings[0]?.radius || 200;
     const solved = this.rings.length > 0 && alignedCount === this.rings.length;
-    if (solved && !this.won) { this.won = true; this.burst(cx, cy, "#c4b5fd", 46, 3.4); this.chime(); this.opts.onWin?.(); }
+    if (solved && !this.won) {
+      this.won = true; this.rings.forEach(r => (r.vel = 0));
+      this.burst(cx, cy, "#c4b5fd", 46, 3.4); this.chime();
+      this.winFlash = 1; this.coreEnergy = 1.2; // big bloom
+      if (!this.reduce) {
+        this.shocks.push({ x: cx, y: cy, r: 8, maxR: outerR0 * 1.7, life: 1, color: "#c4b5fd", width: 5 });
+        this.shocks.push({ x: cx, y: cy, r: 4, maxR: outerR0 * 1.15, life: 1, color: "#ec4899", width: 3 });
+      }
+      this.haptic([18, 40, 24, 40, 40]);
+      this.opts.onWin?.();
+    }
 
     const progress = alignedCount / Math.max(1, this.rings.length);
     const pulse = this.reduce ? 0.5 : 0.5 + 0.5 * Math.sin(now / 900);
     const outerR = this.rings[0]?.radius || 200;
+
+    if (attract) {
+      this.attractTimer -= dt;
+      if (this.attractTimer <= 0) { this.attractTimer = 2600;
+        this.shocks.push({ x: cx, y: cy, r: outerR * 0.9, maxR: outerR + 22, life: 0.8, color: "#c4b5fd", width: 2 }); }
+    } else this.attractTimer = 900;
 
     // life-bloom
     const life = 0.12 + 0.88 * progress;
@@ -277,9 +374,31 @@ export class CirqlEngine {
       ctx.shadowBlur = 12 * r.glow; ctx.shadowColor = r.color; ctx.fill(); ctx.shadowBlur = 0;
     });
 
+    // shockwaves — expanding rings from locks / the win / attract invites
+    this.shocks = this.shocks.filter(s => s.life > 0);
+    this.shocks.forEach(s => {
+      s.life -= sec * 1.8; s.r += (s.maxR - s.r) * Math.min(1, sec * 3.2);
+      ctx.globalAlpha = Math.max(0, s.life) * 0.5; ctx.strokeStyle = s.color; ctx.lineWidth = s.width * s.life + 0.5;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, TWO); ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+
+    // energy-to-core — motes stream from locked nodes into the core and brighten it
+    this.energy.forEach(e => {
+      e.t += sec * 1.6;
+      if (e.t >= 1) { this.coreEnergy = Math.min(1.2, this.coreEnergy + 0.1); return; }
+      const ke = 1 - Math.pow(1 - e.t, 2); // ease in toward the centre
+      e.x = e.sx + (cx - e.sx) * ke; e.y = e.sy + (cy - e.sy) * ke;
+      ctx.globalAlpha = 0.85 * (1 - e.t * 0.4); ctx.fillStyle = e.color;
+      ctx.shadowBlur = 6; ctx.shadowColor = e.color;
+      ctx.beginPath(); ctx.arc(e.x, e.y, 2.2 * (1 - e.t * 0.5) + 0.6, 0, TWO); ctx.fill();
+    });
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    this.energy = this.energy.filter(e => e.t < 1);
+
     // core + wisps
-    const coreR = (Math.min(W, H) * 0.07) * (1 + 0.06 * pulse) * (this.won ? 1.35 : 1);
-    const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 2.4); const b = 0.25 + 0.75 * progress;
+    const coreR = (Math.min(W, H) * 0.07) * (1 + 0.06 * pulse + 0.12 * this.coreEnergy) * (this.won ? 1.35 : 1);
+    const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 2.4); const b = Math.min(1.15, 0.25 + 0.75 * progress + 0.4 * this.coreEnergy);
     cg.addColorStop(0, `rgba(255,255,255,${0.7 * b + (this.won ? 0.3 : 0)})`);
     cg.addColorStop(0.4, `rgba(${this.accentRgb},${0.5 * b})`); cg.addColorStop(1, `rgba(${this.accentRgb},0)`);
     ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, coreR * 2.4, 0, TWO); ctx.fill();
@@ -328,10 +447,31 @@ export class CirqlEngine {
       ctx.beginPath(); ctx.arc(p.x, p.y, 2.4 * p.life + 0.5, 0, TWO); ctx.fill(); });
     ctx.globalAlpha = 1;
 
+    // combo flourishes — rising "×2/×3…" as quick locks chain
+    this.combos = this.combos.filter(c => c.life > 0);
+    this.combos.forEach(c => {
+      c.life -= sec * 1.1; c.y -= sec * 22;
+      ctx.globalAlpha = Math.max(0, c.life); ctx.fillStyle = "#fbcfe8"; ctx.textAlign = "center";
+      ctx.font = `700 ${13 + (1 - c.life) * 5}px system-ui, -apple-system, sans-serif`;
+      ctx.shadowBlur = 8; ctx.shadowColor = "#ec4899"; ctx.fillText(c.text, c.x, c.y); ctx.shadowBlur = 0;
+    });
+    ctx.globalAlpha = 1; ctx.textAlign = "start";
+
     // vignette
     const vig = ctx.createRadialGradient(cx, cy, outerR * 0.7, cx, cy, Math.max(W, H) * 0.66);
     vig.addColorStop(0, "rgba(5,4,15,0)"); vig.addColorStop(1, `rgba(3,2,10,${0.55 - 0.4 * life})`);
     ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+
+    // big-bloom flash on solve (additive, brief) — drawn last so the vignette can't dim it
+    if (this.winFlash > 0) {
+      const wf = this.winFlash;
+      const fg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.6);
+      fg.addColorStop(0, `rgba(255,255,255,${0.5 * wf})`);
+      fg.addColorStop(0.4, `rgba(196,181,253,${0.28 * wf})`);
+      fg.addColorStop(1, "rgba(5,4,15,0)");
+      ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = fg; ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = "source-over";
+    }
 
     this.emit(alignedCount);
     this.raf = requestAnimationFrame(this.frame);
