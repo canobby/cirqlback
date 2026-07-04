@@ -1664,9 +1664,14 @@ export class DatabaseStorage implements IStorage {
   async getOrCreateGameProgress(userId: string): Promise<GameProgress> {
     const [existing] = await db.select().from(gameProgress).where(eq(gameProgress.userId, userId));
     if (existing) return existing;
+    // Race-safe insert: the play page loads progress + daily-reward status
+    // concurrently, so two requests can reach this point before either row
+    // exists. ON CONFLICT DO NOTHING makes the loser a no-op; then we re-select.
     const seed = Math.floor(Math.random() * 1_000_000_000);
-    const [row] = await db.insert(gameProgress).values({ userId, playerSeed: seed }).returning();
-    return row;
+    const [row] = await db.insert(gameProgress).values({ userId, playerSeed: seed }).onConflictDoNothing().returning();
+    if (row) return row;
+    const [created] = await db.select().from(gameProgress).where(eq(gameProgress.userId, userId));
+    return created;
   }
 
   async saveGameProgress(

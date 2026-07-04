@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles, Gift, Flame } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlEngine, type GameState } from "@/game/cirql-engine";
 import { CRAFTED_WORLDS, type WorldConfig } from "@/game/worlds";
@@ -27,6 +27,10 @@ export default function Play() {
   });
   const [muted, setMuted] = useState(false);
   const [award, setAward] = useState(0);
+  // CHR-93 daily reward
+  const dailyLoadedRef = useRef(false);
+  const [daily, setDaily] = useState<{ canClaim: boolean; streak: number; reward: number } | null>(null);
+  const [dailyClaimed, setDailyClaimed] = useState<{ points: number; streak: number } | null>(null);
 
   // Fire-and-forget save (logged-in only).
   const save = (patch: { worldIndex?: number; worldsRestored?: number }) => {
@@ -58,6 +62,28 @@ export default function Play() {
       })
       .catch(() => {});
   }, [user]);
+
+  // Load daily-reward status once the user is known (logged-in only).
+  useEffect(() => {
+    if (!user || dailyLoadedRef.current) return;
+    dailyLoadedRef.current = true;
+    fetch("/api/game/daily", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setDaily(d); })
+      .catch(() => {});
+  }, [user]);
+
+  const claimDaily = () => {
+    if (!user || !daily?.canClaim) return;
+    setDaily((d) => (d ? { ...d, canClaim: false } : d)); // optimistic: prevent double-claim
+    fetch("/api/game/daily", { method: "POST", credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res) setDailyClaimed({ points: res.pointsAwarded, streak: res.streak });
+        else setDaily((d) => (d ? { ...d, canClaim: true } : d)); // 409/err — allow retry
+      })
+      .catch(() => setDaily((d) => (d ? { ...d, canClaim: true } : d)));
+  };
 
   // A world was restored (won: false -> true). Server records it + awards points
   // (CHR-95); guests just get a local count.
@@ -131,6 +157,34 @@ export default function Play() {
         World {index + 1} · <span className="text-violet-200/90">{hud.worldName}</span>{inEndless ? " · endless" : ""}
         {user ? <span className="text-emerald-300/70"> · {restored} restored</span> : <span className="text-violet-300/40"> · log in to save</span>}
       </div>
+
+      {/* CHR-93 · Daily reward — one calm, escalating bonus per day for playing */}
+      {user && (daily?.canClaim || dailyClaimed) && (
+        <div className="mt-2 px-4 w-full max-w-lg">
+          {dailyClaimed ? (
+            <div
+              data-testid="daily-claimed"
+              className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 flex items-center justify-center gap-2 text-sm"
+            >
+              <Gift className="h-4 w-4 text-emerald-300" />
+              <span className="font-semibold text-emerald-200">Daily reward claimed · +{dailyClaimed.points} ✦</span>
+              <span className="inline-flex items-center gap-1 text-amber-300/90"><Flame className="h-3.5 w-3.5" />{dailyClaimed.streak}-day streak</span>
+            </div>
+          ) : (
+            <button
+              onClick={claimDaily}
+              data-testid="button-claim-daily"
+              className="w-full rounded-2xl px-4 py-2.5 flex items-center justify-center gap-2 text-sm font-bold text-white shadow-lg shadow-purple-500/25 transition hover:brightness-110"
+              style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)" }}
+            >
+              <Gift className="h-4 w-4" /> Claim daily reward · +{daily?.reward} ✦
+              {daily && daily.streak > 0 && (
+                <span className="inline-flex items-center gap-1 text-amber-200/90 font-semibold"><Flame className="h-3.5 w-3.5" />{daily.streak}</span>
+              )}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-5 items-center my-2 text-sm tabular-nums">
         <span className="text-emerald-400 font-semibold">{hud.aligned}/{hud.total} aligned</span>
