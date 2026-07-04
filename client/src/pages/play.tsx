@@ -506,8 +506,8 @@ export default function Play() {
 
       {/* CHR-109 · Light-Ball — optional energetic alternate mode (opt-in, lazy) */}
       {pinballOn && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center text-slate-100 select-none" style={{ background: "radial-gradient(1000px 700px at 50% -12%, rgba(245,158,11,.18), transparent 60%), #05040f" }}>
-          <div className="w-full max-w-lg px-4 pt-5 text-center">
+        <div className="fixed inset-0 z-50 flex flex-col items-center text-slate-100 select-none overflow-y-auto py-4" style={{ background: "radial-gradient(1000px 700px at 50% -12%, rgba(245,158,11,.18), transparent 60%), #05040f" }}>
+          <div className="w-full max-w-lg px-4 pt-2 text-center">
             <div className="text-[12px] tracking-[0.42em] font-bold text-amber-300 ml-[0.42em] inline-flex items-center gap-2"><Zap className="h-4 w-4" /> LIGHT-BALL</div>
             <p className="text-xs text-amber-200/60 mt-1">Hold and drag to steer the light. Ricochet off the bumpers — hit the core for a jackpot.</p>
           </div>
@@ -516,7 +516,7 @@ export default function Play() {
             {(pinballState?.combo ?? 0) >= 2 && <span className="text-amber-300 font-bold">×{pinballState?.combo}</span>}
             <span className="text-amber-200/70">Best {Math.max(pinballBest, pinballState?.best ?? 0)}</span>
           </div>
-          <div className="relative" style={{ width: "min(92vw, 540px)", aspectRatio: "1" }}>
+          <div className="relative shrink-0" style={{ width: "min(82vw, 460px)", aspectRatio: "1" }}>
             <canvas ref={pinballCanvasRef} className="block touch-none" style={{ cursor: "grab" }} aria-label="Light-Ball" />
           </div>
           <div className="flex gap-2 my-4">
