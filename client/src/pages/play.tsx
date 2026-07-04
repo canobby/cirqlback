@@ -13,8 +13,33 @@ import {
   type PowerupType,
 } from "@/game/cirqlbreak-engine";
 import { PERKS } from "@shared/cirql-perks";
-import { COSMETICS, getCosmetic, isUnlocked, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
-import { GAME_ACHIEVEMENTS } from "@shared/cirql-achievements";
+import { COSMETICS, getCosmetic, isUnlocked, DEFAULT_COSMETIC, levelInfo } from "@shared/cirql-cosmetics";
+import { GAME_ACHIEVEMENTS, nextWorldMilestone } from "@shared/cirql-achievements";
+
+// CHR-124: a galaxy you light up as you restore worlds — each star is a world,
+// the first `worlds` are lit and joined into a constellation.
+function GalaxyCanvas({ worlds, accent }: { worlds: number; accent: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = ref.current; if (!cv) return;
+    const ctx = cv.getContext("2d"); if (!ctx) return;
+    const DPR = Math.min(window.devicePixelRatio || 1, 2), S = 300, TAU = Math.PI * 2, N = 84;
+    cv.width = S * DPR; cv.height = S * DPR; cv.style.width = S + "px"; cv.style.height = S + "px"; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const cx = S / 2, cy = S / 2;
+    const pts = Array.from({ length: N }, (_, i) => { const a = i * 2.399963, r = Math.sqrt(i / N) * (S * 0.45); return { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, lit: i < worlds }; });
+    ctx.clearRect(0, 0, S, S);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, S * 0.5);
+    g.addColorStop(0, "rgba(124,58,237,.28)"); g.addColorStop(1, "rgba(5,4,15,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, S * 0.5, 0, TAU); ctx.fill();
+    ctx.strokeStyle = accent + "55"; ctx.lineWidth = 1;
+    for (let i = 1; i < Math.min(worlds, N); i++) { ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke(); }
+    for (const p of pts) {
+      if (p.lit) { ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = accent; ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(p.x, p.y, 2.6, 0, TAU); ctx.fill(); ctx.restore(); }
+      else { ctx.fillStyle = "rgba(150,130,255,.22)"; ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, TAU); ctx.fill(); }
+    }
+  }, [worlds, accent]);
+  return <canvas ref={ref} className="mx-auto block" />;
+}
 
 // The banked power-up tokens (everything but the Partner Power) map 1:1 to engine
 // power-up types.
@@ -73,6 +98,7 @@ export default function Play() {
   const [worldsRestored, setWorldsRestored] = useState(0); // lifetime worlds restored (drives cosmetic unlocks)
   const [showSkins, setShowSkins] = useState(false);
   const [showAwards, setShowAwards] = useState(false);
+  const [showGalaxy, setShowGalaxy] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState<Set<string>>(new Set()); // lowercased keys/names of earned game badges
 
   // Menu stats come from the server for logged-in players (cross-device), and from
@@ -466,6 +492,7 @@ export default function Play() {
               <Link href="/customer" className="inline-flex items-center gap-1 text-xs text-violet-300/60"><ArrowLeft className="h-3 w-3" /> Back</Link>
               {user && <button onClick={() => setShowSkins(true)} data-testid="button-skins" className="inline-flex items-center gap-1 text-xs text-violet-300/60 transition hover:text-violet-200">🎨 Skins</button>}
               {user && <button onClick={() => setShowAwards(true)} data-testid="button-awards" className="inline-flex items-center gap-1 text-xs text-violet-300/60 transition hover:text-violet-200">🏆 Awards</button>}
+              {user && <button onClick={() => setShowGalaxy(true)} data-testid="button-galaxy" className="inline-flex items-center gap-1 text-xs text-violet-300/60 transition hover:text-violet-200">🌌 Galaxy</button>}
             </div>
           </div>
         </div>
@@ -531,6 +558,24 @@ export default function Play() {
                 })}
               </div>
               <button onClick={() => setShowAwards(false)} className="mt-4 w-full rounded-2xl border border-violet-400/20 py-3 font-semibold text-violet-300/80 transition hover:bg-white/[0.04] hover:text-white">Done</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ---------- Galaxy map ---------- */}
+      {showGalaxy && (() => {
+        const lvl = levelInfo(worldsRestored);
+        const next = nextWorldMilestone(worldsRestored);
+        return (
+          <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }} data-testid="galaxy-overlay" onClick={() => setShowGalaxy(false)}>
+            <div className="w-[min(92vw,400px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }} onClick={(e) => e.stopPropagation()}>
+              <div className="text-[12px] font-extrabold uppercase tracking-[0.44em] text-violet-400" style={{ marginLeft: ".44em" }}>Galaxy</div>
+              <h1 className="mb-3 mt-2 text-[clamp(24px,5.5vw,34px)] font-extrabold" style={{ background: "linear-gradient(115deg,#e9d5ff,#ec4899 55%,#22d3ee)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Bring back the light</h1>
+              <GalaxyCanvas worlds={worldsRestored} accent={getCosmetic(equipped).accent} />
+              <div className="mt-3 text-sm text-violet-100"><b>{worldsRestored.toLocaleString()}</b> world{worldsRestored === 1 ? "" : "s"} restored · <b>Level {lvl.level}</b></div>
+              <div className="mt-1 text-[12px] text-violet-300/60">{next ? <>Next: <span className="text-violet-200/80">{next.name}</span> at {next.to} worlds</> : "Every milestone reached — keep the light going."}</div>
+              <button onClick={() => setShowGalaxy(false)} className="mt-4 w-full rounded-2xl border border-violet-400/20 py-3 font-semibold text-violet-300/80 transition hover:bg-white/[0.04] hover:text-white">Done</button>
             </div>
           </div>
         );
