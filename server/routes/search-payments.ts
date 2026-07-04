@@ -8,7 +8,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import { openaiService } from "../openai-service";
 import { isAuthenticated, isAdminAuthenticated } from "../auth";
-import { PLAN_PRICING, resolvePlanAmountCents, type BillingInterval } from "../pricing";
+import { PLAN_PRICING, resolvePlanAmountCents, planLookupKey, type BillingInterval } from "../pricing";
 import { ADDON_CATALOG, resolveAddonAmountCents, isAddonKey, isAddonIncludedInTier } from "../addons";
 import type { RouteDeps } from "./_shared";
 
@@ -262,6 +262,86 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // Phase 3: create a recurring Stripe Subscription for a plan, anchored to the
+  // 10th of the month. Returns the first invoice's client secret so the client
+  // confirms the (prorated) first payment. Prices are resolved by lookup_key
+  // (run scripts/stripe-setup-products.ts once).
+  app.post("/api/subscription/create", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const email = (req.user as any).email as string | undefined;
+      const planId = String(req.body?.planId || "");
+      const interval: BillingInterval = req.body?.billingInterval === "yearly" ? "yearly" : "monthly";
+      if (!PLAN_PRICING[planId]) {
+        return res.status(400).json({ error: "Unknown or non-purchasable plan" });
+      }
+
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeSecretKey) {
+        return res.status(400).json({ error: "Payment processing not configured. Please set STRIPE_SECRET_KEY." });
+      }
+      const stripe = new (await import("stripe")).default(stripeSecretKey, {
+        apiVersion: "2025-07-30.basil" as any,
+      });
+
+      // Resolve the recurring Price by lookup_key.
+      const lookupKey = planLookupKey(planId, interval);
+      const prices = await stripe.prices.list({ lookup_keys: [lookupKey], active: true, limit: 1 });
+      const price = prices.data[0];
+      if (!price) {
+        return res.status(400).json({
+          error: "Subscription pricing isn't set up yet. Run scripts/stripe-setup-products.ts.",
+        });
+      }
+
+      // Reuse or create the Stripe Customer for this user.
+      const existing = await storage.getUser(userId);
+      let customerId = existing?.stripeCustomerId || undefined;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email,
+          metadata: { userId },
+        });
+        customerId = customer.id;
+        await storage.setUserStripeIds(userId, { customerId });
+      }
+
+      // Anchor billing to the next 10th (strictly in the future). With proration
+      // on, the first invoice covers now -> the 10th (a partial, prorated charge).
+      const now = new Date();
+      const anchor = new Date(now.getFullYear(), now.getMonth(), 10, 0, 0, 0, 0);
+      if (anchor <= now) anchor.setMonth(anchor.getMonth() + 1);
+      const anchorTs = Math.floor(anchor.getTime() / 1000);
+
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: price.id }],
+        billing_cycle_anchor: anchorTs,
+        proration_behavior: "create_prorations",
+        payment_behavior: "default_incomplete",
+        payment_settings: { save_default_payment_method: "on_subscription" },
+        // API 2025-07-30 exposes the first payment's client secret on the invoice
+        // as `confirmation_secret` (there is no invoice.payment_intent anymore).
+        expand: ["latest_invoice.confirmation_secret"],
+        metadata: { userId, planId, billingInterval: interval },
+      });
+      await storage.setUserStripeIds(userId, { subscriptionId: subscription.id });
+
+      const invoice = subscription.latest_invoice as any;
+      res.json({
+        subscriptionId: subscription.id,
+        clientSecret: invoice?.confirmation_secret?.client_secret || null,
+        firstChargeAmount: typeof invoice?.amount_due === "number" ? invoice.amount_due / 100 : null,
+        planName: PLAN_PRICING[planId].name,
+        billingInterval: interval,
+        billingDay: 10,
+      });
+    } catch (error: any) {
+      console.error("Subscription create error:", error);
+      res.status(500).json({ error: "Failed to create subscription" });
+    }
+  });
+
   // Stripe webhook — verifies payment success SERVER-SIDE (never trust the
   // client's "payment succeeded"). Uses the raw request body captured in
   // server/index.ts for signature verification. Stripe calls this unauthenticated,
@@ -299,6 +379,71 @@ export function registerSearchPaymentsRoutes(app: Express, deps: RouteDeps) {
           payoutsEnabled: !!acct.payouts_enabled,
           detailsSubmitted: !!acct.details_submitted,
         });
+        return res.json({ received: true });
+      }
+      // Phase 3: a subscription invoice was paid (first payment or monthly
+      // renewal). Mark the account current and record the coordinator's share.
+      if (event.type === "invoice.paid") {
+        const invoice = event.data.object as any;
+        const customerId = invoice.customer as string | undefined;
+        const user = customerId ? await storage.getUserByStripeCustomerId(customerId) : undefined;
+        if (user) {
+          let planId: string | undefined;
+          try {
+            if (invoice.subscription) {
+              const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
+              planId = (sub.metadata as any)?.planId;
+              await storage.setUserStripeIds(user.id, { subscriptionId: sub.id });
+            }
+          } catch (subErr) {
+            console.error("Subscription retrieve failed:", subErr);
+          }
+          const periodEnd = invoice.lines?.data?.[0]?.period?.end;
+          const paidThrough = periodEnd ? new Date(periodEnd * 1000) : undefined;
+          await storage.clearUserPastDue(user.id, paidThrough); // current again; resets dunning stamps
+          await storage.updateUserSubscription(user.id, {
+            subscriptionStatus: "active",
+            ...(planId && PLAN_PRICING[planId] ? { subscriptionTier: planId } : {}),
+          });
+          // Idempotency key = the invoice id (no payment_intent field in this
+          // API version); each monthly invoice records the coordinator's share once.
+          try {
+            await storage.recordCoordinatorEarning({
+              paymentIntentId: invoice.id,
+              userId: user.id,
+              planId,
+              source: "subscription",
+              description: planId ? PLAN_PRICING[planId]?.name : undefined,
+              grossAmountCents: Number(invoice.amount_paid) || 0,
+              currency: invoice.currency || "usd",
+            });
+          } catch (attrErr) {
+            console.error("Subscription earning attribution failed:", attrErr);
+          }
+        }
+        return res.json({ received: true });
+      }
+      // A subscription payment failed — start the delinquency clock (drives the
+      // Phase 1/2 grace -> lock -> suspend + dunning). COALESCE preserves the
+      // original past-due date across retries.
+      if (event.type === "invoice.payment_failed") {
+        const invoice = event.data.object as any;
+        const customerId = invoice.customer as string | undefined;
+        const user = customerId ? await storage.getUserByStripeCustomerId(customerId) : undefined;
+        if (user) {
+          await storage.setUserPastDue(user.id);
+          await storage.updateUserSubscription(user.id, { subscriptionStatus: "past_due" });
+        }
+        return res.json({ received: true });
+      }
+      // Subscription cancelled/ended.
+      if (event.type === "customer.subscription.deleted") {
+        const sub = event.data.object as any;
+        const customerId = sub.customer as string | undefined;
+        const user = customerId ? await storage.getUserByStripeCustomerId(customerId) : undefined;
+        if (user) {
+          await storage.updateUserSubscription(user.id, { subscriptionStatus: "cancelled" });
+        }
         return res.json({ received: true });
       }
       if (event.type === "payment_intent.succeeded") {

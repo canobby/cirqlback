@@ -33,3 +33,11 @@ export function resolvePlanAmountCents(
   const cents = interval === "yearly" ? plan.yearlyCents : plan.monthlyCents;
   return cents > 0 ? cents : null;
 }
+
+// Stable Stripe Price lookup_key for a plan+interval (Phase 3 subscriptions).
+// The setup script (scripts/stripe-setup-products.ts) creates Prices with these
+// keys, and the subscription endpoint resolves the Price by key at runtime — so
+// no Price IDs are hardcoded in the app.
+export function planLookupKey(planId: string, interval: BillingInterval): string {
+  return `cirqlback_${planId}_${interval}`;
+}

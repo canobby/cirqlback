@@ -1640,6 +1640,23 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users).where(isNotNull(users.pastDueSince));
   }
 
+  // Stripe subscription linkage (Phase 3).
+  async setUserStripeIds(
+    userId: string,
+    ids: { customerId?: string; subscriptionId?: string },
+  ): Promise<void> {
+    const set: Record<string, any> = {};
+    if (ids.customerId !== undefined) set.stripeCustomerId = ids.customerId;
+    if (ids.subscriptionId !== undefined) set.stripeSubscriptionId = ids.subscriptionId;
+    if (Object.keys(set).length === 0) return;
+    await db.update(users).set(set).where(eq(users.id, userId));
+  }
+
+  async getUserByStripeCustomerId(customerId: string): Promise<User | undefined> {
+    const [row] = await db.select().from(users).where(eq(users.stripeCustomerId, customerId));
+    return row;
+  }
+
   // Stamp that the lock / suspension email has been sent for this delinquency.
   async markBillingNotified(userId: string, kind: "lock" | "suspend"): Promise<void> {
     await db
