@@ -55,6 +55,7 @@ export class CirqlEngine {
   private W = 540; private H = 540; private cx = 270; private cy = 270; private DPR = 1;
   private rings: Ring[] = [];
   private world!: WorldConfig; private accentRgb = "124,58,237";
+  private auraRgb: string | null = null; // CHR-92: equipped cosmetic tints the core/bloom over the world accent
   private moves = 0; private won = false;
   private drag: { i: number; startA: number; startRot: number; moved: boolean; lastA: number; lastT: number; vel: number } | null = null;
   private selected = 0;
@@ -95,6 +96,9 @@ export class CirqlEngine {
   newPuzzle() { this.initLevel(); }
   setWorld(world: WorldConfig) { this.world = world; this.accentRgb = hexToRgb(world.accent); this.initLevel(); }
   setMuted(m: boolean) { this.muted = m; }
+  // CHR-92: an equipped cosmetic tints the core/bloom; null falls back to the world accent.
+  setAura(hex: string | null) { this.auraRgb = hex ? hexToRgb(hex) : null; }
+  private accent() { return this.auraRgb ?? this.accentRgb; }
 
   // ---- helpers ----
   private norm(a: number) { a %= TWO; if (a < -Math.PI) a += TWO; if (a > Math.PI) a -= TWO; return a; }
@@ -329,10 +333,11 @@ export class CirqlEngine {
     } else this.attractTimer = 900;
 
     // life-bloom
+    const accent = this.accent();
     const life = 0.12 + 0.88 * progress;
     const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.62);
-    bloom.addColorStop(0, `rgba(${this.accentRgb},${0.12 + 0.24 * life})`);
-    bloom.addColorStop(0.5, `rgba(${this.accentRgb},${0.03 + 0.09 * life})`);
+    bloom.addColorStop(0, `rgba(${accent},${0.12 + 0.24 * life})`);
+    bloom.addColorStop(0.5, `rgba(${accent},${0.03 + 0.09 * life})`);
     bloom.addColorStop(1, "rgba(5,4,15,0)");
     ctx.fillStyle = bloom; ctx.fillRect(0, 0, W, H);
 
@@ -400,7 +405,7 @@ export class CirqlEngine {
     const coreR = (Math.min(W, H) * 0.07) * (1 + 0.06 * pulse + 0.12 * this.coreEnergy) * (this.won ? 1.35 : 1);
     const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 2.4); const b = Math.min(1.15, 0.25 + 0.75 * progress + 0.4 * this.coreEnergy);
     cg.addColorStop(0, `rgba(255,255,255,${0.7 * b + (this.won ? 0.3 : 0)})`);
-    cg.addColorStop(0.4, `rgba(${this.accentRgb},${0.5 * b})`); cg.addColorStop(1, `rgba(${this.accentRgb},0)`);
+    cg.addColorStop(0.4, `rgba(${accent},${0.5 * b})`); cg.addColorStop(1, `rgba(${accent},0)`);
     ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, coreR * 2.4, 0, TWO); ctx.fill();
     ctx.fillStyle = `rgba(255,255,255,${0.5 + 0.5 * progress})`;
     ctx.beginPath(); ctx.arc(cx, cy, coreR * 0.5, 0, TWO); ctx.fill();

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Sparkles, Gift, Flame } from "lucide-react";
+import { ArrowLeft, Sparkles, Gift, Flame, Gem } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlEngine, type GameState } from "@/game/cirql-engine";
 import { CRAFTED_WORLDS, type WorldConfig } from "@/game/worlds";
 import { generateWorld } from "@/game/procedural";
+import { CirqlCollection } from "@/components/game/cirql-collection";
+import { getCosmetic, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
 
 // The world at an absolute index: crafted "signature" worlds first, then an
 // infinite procedurally-generated tail (CHR-101), seeded per player.
@@ -31,6 +33,15 @@ export default function Play() {
   const dailyLoadedRef = useRef(false);
   const [daily, setDaily] = useState<{ canClaim: boolean; streak: number; reward: number } | null>(null);
   const [dailyClaimed, setDailyClaimed] = useState<{ points: number; streak: number } | null>(null);
+  // CHR-92 Your Cirql + collection
+  const [showCollection, setShowCollection] = useState(false);
+  const [equipped, setEquipped] = useState<string>(DEFAULT_COSMETIC);
+  const [streak, setStreak] = useState(0);
+  const [equipBusy, setEquipBusy] = useState<string | null>(null);
+
+  // The default cosmetic means "the world's own light" (no override); any other
+  // tints the core/bloom regardless of world.
+  const applyAura = (id: string) => engineRef.current?.setAura(id && id !== DEFAULT_COSMETIC ? getCosmetic(id).accent : null);
 
   // Fire-and-forget save (logged-in only).
   const save = (patch: { worldIndex?: number; worldsRestored?: number }) => {
@@ -59,8 +70,13 @@ export default function Play() {
         setPlayerSeed(seed);
         setRestored(p.worldsRestored || 0);
         if (p.worldIndex > 0) { setIndex(p.worldIndex); engineRef.current.setWorld(worldAt(p.worldIndex, seed)); }
+        // CHR-92: restore the equipped cosmetic + streak from saved state.
+        const st = p.state || {};
+        if (typeof st.dailyStreak === "number") setStreak(st.dailyStreak);
+        if (typeof st.cosmetic === "string") { setEquipped(st.cosmetic); applyAura(st.cosmetic); }
       })
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Load daily-reward status once the user is known (logged-in only).
@@ -69,7 +85,7 @@ export default function Play() {
     dailyLoadedRef.current = true;
     fetch("/api/game/daily", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) setDaily(d); })
+      .then((d) => { if (d) { setDaily(d); setStreak((s) => Math.max(s, d.streak || 0)); } })
       .catch(() => {});
   }, [user]);
 
@@ -79,10 +95,23 @@ export default function Play() {
     fetch("/api/game/daily", { method: "POST", credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((res) => {
-        if (res) setDailyClaimed({ points: res.pointsAwarded, streak: res.streak });
+        if (res) { setDailyClaimed({ points: res.pointsAwarded, streak: res.streak }); setStreak(res.streak); }
         else setDaily((d) => (d ? { ...d, canClaim: true } : d)); // 409/err — allow retry
       })
       .catch(() => setDaily((d) => (d ? { ...d, canClaim: true } : d)));
+  };
+
+  // CHR-92: equip a cosmetic — server validates it's unlocked, then we tint live.
+  const equip = (id: string) => {
+    if (!user || equipBusy) return;
+    setEquipBusy(id);
+    fetch("/api/game/cosmetic", {
+      method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ cosmetic: id }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => { if (res?.cosmetic) { setEquipped(res.cosmetic); applyAura(res.cosmetic); } })
+      .catch(() => {})
+      .finally(() => setEquipBusy(null));
   };
 
   // A world was restored (won: false -> true). Server records it + awards points
@@ -217,11 +246,26 @@ export default function Play() {
         )}
       </div>
 
-      <div className="flex gap-2 my-4">
+      <div className="flex gap-2 my-4 flex-wrap justify-center">
         <button onClick={() => engineRef.current?.newPuzzle()} data-testid="button-new-puzzle" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold">New puzzle</button>
         <button onClick={toggleMute} aria-pressed={muted} className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold">{muted ? "🔇 Muted" : "🔊 Sound"}</button>
+        {user && (
+          <button onClick={() => setShowCollection(true)} data-testid="button-your-cirql" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5">
+            <Gem className="h-4 w-4 text-violet-300" /> Your Cirql
+          </button>
+        )}
       </div>
       <Link href="/customer" className="text-xs text-violet-300/60 mb-6 inline-flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Back</Link>
+
+      <CirqlCollection
+        open={showCollection}
+        onClose={() => setShowCollection(false)}
+        worlds={restored}
+        streak={streak}
+        equipped={equipped}
+        onEquip={equip}
+        busy={equipBusy}
+      />
     </div>
   );
 }

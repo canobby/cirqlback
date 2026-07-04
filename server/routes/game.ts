@@ -3,6 +3,7 @@ import { z } from "zod";
 import { storage } from "../storage";
 import { isAuthenticated } from "../auth";
 import type { RouteDeps } from "./_shared";
+import { getCosmetic, isUnlocked } from "@shared/cirql-cosmetics";
 
 // CIRQL game progress (CHR-94). Guests play without saving; logged-in players
 // persist their resume point + a stable per-player seed for the infinite stream.
@@ -96,6 +97,27 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
     } catch (err) {
       console.error("game daily claim error:", err);
       res.status(500).json({ error: "Failed to claim daily reward" });
+    }
+  });
+
+  // CHR-92: equip a cosmetic for "Your Cirql". Server-authoritative — the
+  // requested cosmetic must actually be unlocked by the player's progress
+  // (worlds restored + daily streak), so a locked skin can't be forced on.
+  app.post("/api/game/cosmetic", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const id = String(req.body?.cosmetic ?? "");
+      const cosmetic = getCosmetic(id);
+      if (cosmetic.id !== id) return res.status(400).json({ error: "Unknown cosmetic" });
+      const p = await storage.getOrCreateGameProgress(userId);
+      const s = (p.state as any) || {};
+      const progress = { worlds: p.worldsRestored || 0, streak: Number(s.dailyStreak) || 0 };
+      if (!isUnlocked(cosmetic, progress)) return res.status(403).json({ error: "That cosmetic isn't unlocked yet" });
+      await storage.saveGameProgress(userId, { state: { ...s, cosmetic: cosmetic.id } });
+      res.json({ cosmetic: cosmetic.id });
+    } catch (err) {
+      console.error("game cosmetic equip error:", err);
+      res.status(500).json({ error: "Failed to equip cosmetic" });
     }
   });
 
