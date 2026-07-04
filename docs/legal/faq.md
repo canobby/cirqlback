@@ -70,7 +70,7 @@ If you're paid $600+ in a year, you'll receive a **1099-NEC**. Set aside part of
 ## Trust & safety
 
 **How do you keep the platform secure?**
-Payments run through PCI-compliant Stripe (we don't store card numbers), traffic is encrypted, and we use security headers, rate limiting, access controls, and an admin audit log. See our [security safeguards](insurance-and-security-safeguards.md) overview.
+Payments run through PCI-compliant Stripe (we don't store card numbers), traffic is encrypted, and we use security headers, rate limiting, access controls, and an admin audit log.
 
 **How do I report a problem or abuse?**
 Contact **[SUPPORT EMAIL]**. For privacy requests, **[PRIVACY EMAIL]**. For legal matters, **[LEGAL EMAIL]**.

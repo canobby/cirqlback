@@ -5,14 +5,15 @@ import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 
-// Whitelist: slug -> filename. Only these can be fetched.
+// Public whitelist: slug -> filename. Only these can be fetched/served.
+// NOTE: the insurance-and-security-safeguards memo is intentionally NOT here —
+// it's an internal owner document (kept in docs/legal/ but not served publicly).
 const DOCS: Record<string, string> = {
   terms: "terms-of-service.md",
   privacy: "privacy-policy.md",
   merchant: "merchant-agreement.md",
   coordinator: "coordinator-independent-contractor-agreement.md",
   "coordinator-1099": "coordinator-1099-guide.md",
-  safeguards: "insurance-and-security-safeguards.md",
   faq: "faq.md",
 };
 
@@ -29,6 +30,14 @@ const cache = new Map<string, string>();
 
 export function isLegalSlug(slug: string): boolean {
   return Object.prototype.hasOwnProperty.call(DOCS, slug);
+}
+
+// Absolute path to the generated PDF for a whitelisted slug (docs/legal/pdf/),
+// or null if the slug isn't public or the PDF hasn't been generated.
+export function getLegalPdfPath(slug: string): string | null {
+  if (!isLegalSlug(slug)) return null;
+  const p = resolve(legalDir(), "pdf", DOCS[slug].replace(/\.md$/, ".pdf"));
+  return existsSync(p) ? p : null;
 }
 
 export function getLegalDoc(slug: string): string | null {

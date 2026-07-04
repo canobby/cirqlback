@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { Loader2, ShieldCheck, Download } from "lucide-react";
 
 // Map cross-document .md links to their in-app routes so links in the Markdown
 // resolve on the website. Anything not mapped renders as plain (non-link) text.
@@ -11,7 +11,6 @@ const LINK_MAP: Record<string, string> = {
   "merchant-agreement.md": "/legal/merchant",
   "coordinator-independent-contractor-agreement.md": "/legal/coordinator",
   "coordinator-1099-guide.md": "/legal/coordinator-1099",
-  "insurance-and-security-safeguards.md": "/legal/safeguards",
 };
 
 function resolveHref(href: string): string | null {
@@ -180,7 +179,20 @@ export default function LegalDoc({ slug }: { slug: string }) {
               We couldn't load this document. Please try again later.
             </div>
           )}
-          {data && <article>{renderMarkdown(data.markdown)}</article>}
+          {data && (
+            <>
+              <div className="mb-4 flex justify-end">
+                <a
+                  href={`/api/legal/${slug}/pdf`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-sm font-medium text-purple-700 transition hover:border-purple-300 hover:bg-purple-100"
+                  data-testid="link-download-pdf"
+                >
+                  <Download className="h-4 w-4" /> Download PDF
+                </a>
+              </div>
+              <article>{renderMarkdown(data.markdown)}</article>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Store, Users, Share2, TrendingUp, Coffee, Zap, Smartphone,
   BarChart3, Target, Gift, ArrowRight, Settings, Globe,
-  MessageSquare, Calendar, DollarSign, Crown, Trophy
+  MessageSquare, Calendar, DollarSign, Crown, Trophy, FileText
 } from "lucide-react";
 import GroupCampaignsPanel from "@/components/merchant/group-campaigns-panel";
 import CampaignInvitesPanel from "@/components/merchant/campaign-invites-panel";
@@ -96,6 +96,16 @@ export default function MerchantBento() {
 
         {/* CHR-35/66: add-on entitlement status */}
         <AddonsPanel />
+
+        {/* Legal: your subscriber agreement */}
+        <Link href="/legal/merchant" className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 hover:border-purple-300 hover:bg-purple-50/50 transition" data-testid="link-merchant-agreement">
+          <FileText className="h-5 w-5 text-purple-600 shrink-0" />
+          <div className="flex-1">
+            <div className="text-sm font-semibold text-gray-900">Business Subscriber Agreement</div>
+            <div className="text-xs text-gray-500">Billing, auto-renewal, funded campaigns & payout terms. Draft — not legal advice.</div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-gray-400" />
+        </Link>
 
         {/* CHR-68: custom tap-screen branding editor (add-on) */}
         <TapBrandingEditor />

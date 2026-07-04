@@ -2,9 +2,9 @@ import { useParams } from "wouter";
 import LegalDoc from "@/components/legal/legal-doc";
 
 // Generic page for legal/compliance docs at /legal/:slug (merchant agreement,
-// coordinator agreement, 1099 guide, safeguards memo). Terms/Privacy/FAQ keep
-// their own friendly routes.
-const KNOWN = new Set(["terms", "privacy", "faq", "merchant", "coordinator", "coordinator-1099", "safeguards"]);
+// coordinator agreement, 1099 guide). Terms/Privacy/FAQ keep their own friendly
+// routes. The insurance/safeguards memo is intentionally internal (not routed).
+const KNOWN = new Set(["terms", "privacy", "faq", "merchant", "coordinator", "coordinator-1099"]);
 
 export default function LegalDocPage() {
   const params = useParams();
