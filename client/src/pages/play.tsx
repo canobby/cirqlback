@@ -10,6 +10,7 @@ import { WorldMap } from "@/components/game/world-map";
 import { DailyResult } from "@/components/game/daily-result";
 import { getCosmetic, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
 import { PERKS } from "@shared/cirql-perks";
+import { nextCommunityMilestone } from "@shared/cirql-community";
 
 const todayStr = () => new Date().toISOString().slice(0, 10); // UTC yyyy-mm-dd (matches the server)
 
@@ -38,6 +39,15 @@ export default function Play() {
   const [newBadges, setNewBadges] = useState<string[]>([]); // CHR-103: achievements just earned
   const [perfectWin, setPerfectWin] = useState(false); // CHR-105: no-wasted-moves solve
   const [shinies, setShinies] = useState(0); // CHR-108: shiny worlds discovered
+  const [greatRing, setGreatRing] = useState<number | null>(null); // CHR-97: shared community total
+
+  const refreshGreatRing = () => {
+    fetch("/api/game/great-ring", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && typeof d.total === "number") setGreatRing(d.total); })
+      .catch(() => {});
+  };
+  useEffect(() => { refreshGreatRing(); }, []);
   // CHR-93 daily reward
   const dailyLoadedRef = useRef(false);
   const [daily, setDaily] = useState<{ canClaim: boolean; streak: number; reward: number } | null>(null);
@@ -179,7 +189,7 @@ export default function Play() {
             body: JSON.stringify({ worldIndex: index, perfect, shiny }),
           })
             .then((r) => (r.ok ? r.json() : null))
-            .then((res) => { if (res) { setRestored(res.worldsRestored); setAward(res.pointsAwarded || 0); setNewBadges(res.badges || []); if (typeof res.shinies === "number") setShinies(res.shinies); } })
+            .then((res) => { if (res) { setRestored(res.worldsRestored); setAward(res.pointsAwarded || 0); setNewBadges(res.badges || []); if (typeof res.shinies === "number") setShinies(res.shinies); refreshGreatRing(); } })
             .catch(() => {});
         } else {
           setRestored((r) => r + 1);
@@ -237,6 +247,25 @@ export default function Play() {
         <h1 className="text-lg font-bold mt-2">Restore the Circle</h1>
         <p className="text-xs text-violet-300/70 mt-0.5">Drag each ring so its light points to the top. Align them all to bring the world back.</p>
       </div>
+
+      {/* CHR-97 · Great Ring — one shared community total, filled by every restoration everywhere */}
+      {greatRing !== null && (() => {
+        const m = nextCommunityMilestone(greatRing);
+        return (
+          <div className="w-full max-w-lg px-4 mt-1" data-testid="great-ring">
+            <div className="rounded-2xl border border-violet-400/20 bg-white/[0.03] px-4 py-2">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-violet-200/90 font-semibold">🌍 Great Ring · together</span>
+                <span className="text-violet-300/70 tabular-nums">{greatRing.toLocaleString()} worlds restored</span>
+              </div>
+              <div className="mt-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${Math.round(Math.max(0, Math.min(1, m.pct)) * 100)}%`, background: "linear-gradient(90deg,#7c3aed,#ec4899,#22d3ee)" }} />
+              </div>
+              <div className="mt-1 text-[10px] text-violet-300/50 tabular-nums">Next: {m.name} · {greatRing.toLocaleString()}/{m.to.toLocaleString()}</div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* World selector — crafted worlds + the endless stream (placeholder until the CHR-91 map) */}
       <div className="flex gap-2 mt-2 flex-wrap justify-center px-4">

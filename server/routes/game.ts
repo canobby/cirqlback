@@ -205,6 +205,17 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
     }
   });
 
+  // CHR-97: the Great Ring — one shared community total (PUBLIC; guests see it
+  // too, since it's an aspirational community stat with no personal data).
+  app.get("/api/game/great-ring", async (_req, res) => {
+    try {
+      res.json({ total: await storage.getGreatRingTotal() });
+    } catch (err) {
+      console.error("great ring error:", err);
+      res.status(500).json({ error: "Failed to load community progress" });
+    }
+  });
+
   // CHR-103: the player's game-earned badges (the in-game Awards display; they
   // also appear on the Cirqlback profile via /api/badges/mine).
   app.get("/api/game/badges", isAuthenticated, async (req, res) => {

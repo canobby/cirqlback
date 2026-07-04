@@ -1742,6 +1742,13 @@ export class DatabaseStorage implements IStorage {
     return a.name;
   }
 
+  // CHR-97 Great Ring: total worlds restored across ALL players — one shared
+  // community counter. Every restoration everywhere fills the same ring.
+  async getGreatRingTotal(): Promise<number> {
+    const [row] = await db.select({ total: sql<number>`COALESCE(SUM(${gameProgress.worldsRestored}), 0)` }).from(gameProgress);
+    return Number(row?.total) || 0;
+  }
+
   // The player's game-earned badges (for the in-game Awards display).
   async getGameBadgesForUser(userId: string): Promise<any[]> {
     return this.awardsWith(and(eq(badgeAwards.recipientUserId, userId), eq(badgeAwards.awarderRole, "game")));
