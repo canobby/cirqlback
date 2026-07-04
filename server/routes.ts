@@ -34,6 +34,7 @@ import { registerSocialRoutes } from "./routes/social";
 import { registerAssistantRoutes } from "./routes/assistant";
 import { registerLegalRoutes } from "./routes/legal";
 import { registerBillingRoutes } from "./routes/billing";
+import { registerGameRoutes } from "./routes/game";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -144,6 +145,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerLegalRoutes(app, deps);
   // Billing status + enforcement (Phase 1).
   registerBillingRoutes(app, deps);
+  // CIRQL game progress (save/load).
+  registerGameRoutes(app, deps);
 
   const httpServer = createServer(app);
 

@@ -97,6 +97,8 @@ import {
   type PointRedemption,
   type Collection,
   type Event,
+  gameProgress,
+  type GameProgress,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
@@ -1654,6 +1656,29 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByStripeCustomerId(customerId: string): Promise<User | undefined> {
     const [row] = await db.select().from(users).where(eq(users.stripeCustomerId, customerId));
+    return row;
+  }
+
+  // CIRQL game progress (CHR-94). Creates a row with a random player seed on
+  // first access so the player's infinite world stream is stable + unique.
+  async getOrCreateGameProgress(userId: string): Promise<GameProgress> {
+    const [existing] = await db.select().from(gameProgress).where(eq(gameProgress.userId, userId));
+    if (existing) return existing;
+    const seed = Math.floor(Math.random() * 1_000_000_000);
+    const [row] = await db.insert(gameProgress).values({ userId, playerSeed: seed }).returning();
+    return row;
+  }
+
+  async saveGameProgress(
+    userId: string,
+    fields: { worldIndex?: number; worldsRestored?: number; state?: unknown },
+  ): Promise<GameProgress> {
+    await this.getOrCreateGameProgress(userId); // ensure the row + seed exist
+    const set: Record<string, any> = { updatedAt: new Date() };
+    if (fields.worldIndex !== undefined) set.worldIndex = fields.worldIndex;
+    if (fields.worldsRestored !== undefined) set.worldsRestored = fields.worldsRestored;
+    if (fields.state !== undefined) set.state = fields.state;
+    const [row] = await db.update(gameProgress).set(set).where(eq(gameProgress.userId, userId)).returning();
     return row;
   }
 

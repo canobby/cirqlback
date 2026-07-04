@@ -1,24 +1,39 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, Sparkles } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { CirqlEngine, type GameState } from "@/game/cirql-engine";
 import { CRAFTED_WORLDS, type WorldConfig } from "@/game/worlds";
 import { generateWorld } from "@/game/procedural";
 
 // The world at an absolute index: crafted "signature" worlds first, then an
-// infinite procedurally-generated tail (CHR-101).
-const worldAt = (i: number): WorldConfig => (i < CRAFTED_WORLDS.length ? CRAFTED_WORLDS[i] : generateWorld(i));
+// infinite procedurally-generated tail (CHR-101), seeded per player.
+const worldAt = (i: number, seed = 0): WorldConfig =>
+  i < CRAFTED_WORLDS.length ? CRAFTED_WORLDS[i] : generateWorld(i, seed);
 
-// CIRQL — the in-app game page (lazy-loaded at /play, code-split). React owns
-// the HUD/chrome; the canvas + game loop live in CirqlEngine.
+// CIRQL — the in-app game page (lazy-loaded at /play, code-split). Guests play
+// without saving; logged-in players resume where they left off (CHR-94).
 export default function Play() {
+  const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<CirqlEngine | null>(null);
+  const loadedRef = useRef(false);
+  const wonRef = useRef(false);
   const [index, setIndex] = useState(0);
+  const [playerSeed, setPlayerSeed] = useState(0);
+  const [restored, setRestored] = useState(0);
   const [hud, setHud] = useState<GameState>({
     worldName: CRAFTED_WORLDS[0].name, aligned: 0, total: CRAFTED_WORLDS[0].ringCount, moves: 0, won: false,
   });
   const [muted, setMuted] = useState(false);
+
+  // Fire-and-forget save (logged-in only).
+  const save = (patch: { worldIndex?: number; worldsRestored?: number }) => {
+    if (!user) return;
+    fetch("/api/game/progress", {
+      method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(patch),
+    }).catch(() => {});
+  };
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -27,7 +42,35 @@ export default function Play() {
     return () => { engine.destroy(); engineRef.current = null; };
   }, []);
 
-  const goIndex = (i: number) => { setIndex(i); engineRef.current?.setWorld(worldAt(i)); };
+  // Load saved progress once the user is known.
+  useEffect(() => {
+    if (!user || loadedRef.current) return;
+    loadedRef.current = true;
+    fetch("/api/game/progress", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p) => {
+        if (!p || !engineRef.current) return;
+        const seed = typeof p.playerSeed === "number" ? p.playerSeed : 0;
+        setPlayerSeed(seed);
+        setRestored(p.worldsRestored || 0);
+        if (p.worldIndex > 0) { setIndex(p.worldIndex); engineRef.current.setWorld(worldAt(p.worldIndex, seed)); }
+      })
+      .catch(() => {});
+  }, [user]);
+
+  // Count a restoration (won: false -> true) and persist.
+  useEffect(() => {
+    if (hud.won && !wonRef.current) {
+      wonRef.current = true;
+      const nr = restored + 1;
+      setRestored(nr);
+      save({ worldsRestored: nr, worldIndex: index });
+    }
+    if (!hud.won) wonRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hud.won]);
+
+  const goIndex = (i: number) => { setIndex(i); engineRef.current?.setWorld(worldAt(i, playerSeed)); save({ worldIndex: i }); };
   const nextWorld = () => goIndex(index + 1);
   const endless = () => goIndex(Math.max(index + 1, CRAFTED_WORLDS.length));
   const toggleMute = () => { const m = !muted; setMuted(m); engineRef.current?.setMuted(m); };
@@ -77,6 +120,7 @@ export default function Play() {
 
       <div className="mt-2 text-[11px] text-violet-300/60 tabular-nums">
         World {index + 1} · <span className="text-violet-200/90">{hud.worldName}</span>{inEndless ? " · endless" : ""}
+        {user ? <span className="text-emerald-300/70"> · {restored} restored</span> : <span className="text-violet-300/40"> · log in to save</span>}
       </div>
 
       <div className="flex gap-5 items-center my-2 text-sm tabular-nums">

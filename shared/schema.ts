@@ -1736,3 +1736,15 @@ export const events = pgTable("events", {
 });
 
 export type Event = typeof events.$inferSelect;
+
+// CIRQL game progress (CHR-94) — one row per user; guests don't persist.
+export const gameProgress = pgTable("game_progress", {
+  userId: varchar("user_id").primaryKey().references(() => users.id),
+  worldIndex: integer("world_index").notNull().default(0), // resume point (absolute world index)
+  worldsRestored: integer("worlds_restored").notNull().default(0),
+  playerSeed: integer("player_seed").notNull().default(0), // seeds the infinite procedural stream (unique per player)
+  state: jsonb("state"), // extensible blob (per-world stars, cosmetics, XP, …)
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type GameProgress = typeof gameProgress.$inferSelect;
