@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Sparkles, Gift, Flame, Gem, Map as MapIcon, CalendarDays, Share2, Radio } from "lucide-react";
+import { ArrowLeft, Sparkles, Gift, Flame, Gem, Map as MapIcon, CalendarDays, Share2, Radio, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlEngine, type GameState } from "@/game/cirql-engine";
 import { CRAFTED_WORLDS, type WorldConfig } from "@/game/worlds";
@@ -9,6 +9,7 @@ import { CirqlCollection } from "@/components/game/cirql-collection";
 import { WorldMap } from "@/components/game/world-map";
 import { DailyResult } from "@/components/game/daily-result";
 import { Echoes } from "@/components/game/echoes";
+import type { PinballEngine, PinballState } from "@/game/pinball-engine";
 import { getCosmetic, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
 import { PERKS } from "@shared/cirql-perks";
 import { nextCommunityMilestone } from "@shared/cirql-community";
@@ -68,6 +69,12 @@ export default function Play() {
   const [showMap, setShowMap] = useState(false);
   // CHR-98 Echoes
   const [showEchoes, setShowEchoes] = useState(false);
+  // CHR-109 Light-Ball (optional alternate mode) — lazy-loaded, opt-in.
+  const [pinballOn, setPinballOn] = useState(false);
+  const [pinballState, setPinballState] = useState<PinballState | null>(null);
+  const [pinballBest, setPinballBest] = useState(0);
+  const pinballCanvasRef = useRef<HTMLCanvasElement>(null);
+  const pinballEngineRef = useRef<PinballEngine | null>(null);
   // CHR-92 Your Cirql + collection
   const [showCollection, setShowCollection] = useState(false);
   const [equipped, setEquipped] = useState<string>(DEFAULT_COSMETIC);
@@ -117,6 +124,7 @@ export default function Play() {
         // CHR-96: banked perks from partner taps.
         if (st.perks && typeof st.perks === "object") setPerks(st.perks);
         if (typeof st.shinies === "number") setShinies(st.shinies); // CHR-108
+        if (typeof st.pinballBest === "number") setPinballBest(st.pinballBest); // CHR-109
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -131,6 +139,33 @@ export default function Play() {
       .then((d) => { if (d) { setDaily(d); setStreak((s) => Math.max(s, d.streak || 0)); } })
       .catch(() => {});
   }, [user]);
+
+  // CHR-109: mount the Light-Ball engine only while opted in (lazy-imported, so
+  // its code never ships in the default /play load).
+  useEffect(() => {
+    if (!pinballOn || !pinballCanvasRef.current) return;
+    let engine: PinballEngine | null = null;
+    let cancelled = false;
+    import("@/game/pinball-engine").then(({ PinballEngine }) => {
+      if (cancelled || !pinballCanvasRef.current) return;
+      engine = new PinballEngine(pinballCanvasRef.current, worldAt(index, playerSeed), { best: pinballBest, onState: setPinballState });
+      engine.setMuted(muted);
+      pinballEngineRef.current = engine;
+    });
+    return () => { cancelled = true; engine?.destroy(); pinballEngineRef.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinballOn]);
+
+  const exitPinball = () => {
+    const best = pinballState?.best ?? 0;
+    if (user && best > 0) {
+      fetch("/api/game/pinball", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ score: best }) })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((res) => { if (res?.best) setPinballBest(res.best); })
+        .catch(() => {});
+    } else if (best > pinballBest) setPinballBest(best);
+    setPinballOn(false); setPinballState(null);
+  };
 
   const claimDaily = () => {
     if (!user || !daily?.canClaim) return;
@@ -454,6 +489,7 @@ export default function Play() {
             <Gem className="h-4 w-4 text-violet-300" /> Your Cirql
           </button>
         )}
+        <button onClick={() => { setPinballState(null); setPinballOn(true); }} data-testid="button-lightball" className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 inline-flex items-center gap-1.5"><Zap className="h-4 w-4 text-amber-300" /> Light-Ball</button>
       </div>
       <Link href="/customer" className="text-xs text-violet-300/60 mb-6 inline-flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Back</Link>
 
@@ -467,6 +503,28 @@ export default function Play() {
         pointsAwarded={dailyResult?.points ?? 0}
         onClose={() => (dailyMode ? exitDaily() : setShowDaily(false))}
       />
+
+      {/* CHR-109 · Light-Ball — optional energetic alternate mode (opt-in, lazy) */}
+      {pinballOn && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center text-slate-100 select-none" style={{ background: "radial-gradient(1000px 700px at 50% -12%, rgba(245,158,11,.18), transparent 60%), #05040f" }}>
+          <div className="w-full max-w-lg px-4 pt-5 text-center">
+            <div className="text-[12px] tracking-[0.42em] font-bold text-amber-300 ml-[0.42em] inline-flex items-center gap-2"><Zap className="h-4 w-4" /> LIGHT-BALL</div>
+            <p className="text-xs text-amber-200/60 mt-1">Hold and drag to steer the light. Ricochet off the bumpers — hit the core for a jackpot.</p>
+          </div>
+          <div className="flex gap-6 items-center my-3 text-sm tabular-nums">
+            <span className="font-semibold text-white" data-testid="pinball-score">Score {pinballState?.score ?? 0}</span>
+            {(pinballState?.combo ?? 0) >= 2 && <span className="text-amber-300 font-bold">×{pinballState?.combo}</span>}
+            <span className="text-amber-200/70">Best {Math.max(pinballBest, pinballState?.best ?? 0)}</span>
+          </div>
+          <div className="relative" style={{ width: "min(92vw, 540px)", aspectRatio: "1" }}>
+            <canvas ref={pinballCanvasRef} className="block touch-none" style={{ cursor: "grab" }} aria-label="Light-Ball" />
+          </div>
+          <div className="flex gap-2 my-4">
+            <button onClick={() => pinballEngineRef.current?.reset(worldAt(index, playerSeed))} data-testid="button-pinball-restart" className="rounded-xl border border-amber-400/25 bg-white/5 px-4 py-2 text-sm font-semibold">Restart</button>
+            <button onClick={exitPinball} data-testid="button-pinball-exit" className="rounded-xl px-4 py-2 text-sm font-bold text-white" style={{ background: "linear-gradient(135deg,#f59e0b,#ec4899)" }}>← Back to Restore</button>
+          </div>
+        </div>
+      )}
 
       <Echoes open={showEchoes} onClose={() => setShowEchoes(false)} />
 
