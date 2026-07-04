@@ -26,7 +26,7 @@ You will promote, onboard, verify, and support local businesses on the Cirqlback
 ## 3. Compensation — revenue share
 
 - **Share.** Cirqlback will pay you a **revenue share** of the gross subscription and add-on revenue actually collected from businesses in your territory, at the rate shown in your dashboard (default **70%** to Coordinator / **30%** to Company), which an administrator may set within a **50%–100%** band. Each charge snapshots the rate in effect at the time of that charge; rate changes apply prospectively only.
-- **When earned/paid.** Amounts accrue as revenue is collected and become payable per Cirqlback's payout schedule. Payouts are reconciled to a statement and paid to your designated account (which may be via **Stripe**). Chargebacks, refunds, and failed collections reduce or reverse the associated share.
+- **When earned/paid.** Amounts accrue as revenue is collected. Payouts are issued on the **15th of each month** for share amounts earned and cleared as of that date, reconciled to a statement and paid to your designated account (which may be via **Stripe**). Chargebacks, refunds, and failed collections reduce or reverse the associated share.
 - **No draw or guarantee.** Compensation is entirely performance-based. Cirqlback does not guarantee any minimum earnings, number of businesses, or income.
 - **Sole compensation.** This revenue share is your sole compensation. You are responsible for your own expenses.
 

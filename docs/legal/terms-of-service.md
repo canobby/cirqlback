@@ -45,7 +45,7 @@ Businesses are responsible for honoring the rewards and offers they publish, for
 
 ## 6. Payments
 
-Paid plans, add-ons, and related fees are described at checkout and in the [Merchant Agreement](merchant-agreement.md). Prices are set by Cirqlback and enforced server-side. Payment processing is handled by **Stripe**, subject to Stripe's terms; you authorize us and Stripe to charge your payment method for amounts you incur. Except as required by law or expressly stated, fees are non-refundable. Subscriptions renew automatically until cancelled as described in the Merchant Agreement.
+Paid plans, add-ons, and related fees are described at checkout and in the [Merchant Agreement](merchant-agreement.md). Prices are set by Cirqlback and enforced server-side. Payment processing is handled by **Stripe**, subject to Stripe's terms; you authorize us and Stripe to charge your payment method for amounts you incur. Monthly subscriptions are charged on the **10th of each service month**; if payment isn't completed by month-end your dashboard and taps are locked, and after **90 days** unpaid the service is suspended (full details in the Merchant Agreement). Except as required by law or expressly stated, fees are non-refundable. Subscriptions renew automatically until cancelled as described in the Merchant Agreement.
 
 ## 7. Intellectual property
 

@@ -17,9 +17,10 @@ This Business Subscriber Agreement ("**Agreement**") is between **[COMPANY LEGAL
 ## 2. Billing, auto-renewal, and cancellation
 
 - **Authorization.** You authorize Cirqlback and **Stripe** to charge your payment method for your selected plan and add-ons, plus applicable taxes, on a recurring **monthly or annual** basis.
+- **Billing date.** For **monthly** plans, your subscription and any add-ons are charged on the **10th of each service month** (the month the service covers). **Annual** plans are charged on their annual renewal date. [For counsel: confirm proration/first-charge handling for mid-month sign-ups.]
 - **Auto-renewal.** Subscriptions **renew automatically** at the then-current price until you cancel. You may cancel at any time from your account or by contacting **[SUPPORT EMAIL]**; cancellation takes effect at the end of the current billing period.
 - **Refunds.** Except where required by law or expressly stated, fees are non-refundable. [REFUND WINDOW: state your actual policy, e.g., "14-day money-back guarantee on a first paid subscription."]
-- **Failed payments.** If a charge fails, we may retry, and may suspend paid features after a grace period. You remain responsible for amounts owed.
+- **Late or failed payment.** If payment for a service month is not successfully completed by the **end of that month**, we will notify you by email and your **business dashboard will be locked and your Cirqlback taps will stop working** until your balance is brought current. If your account remains unpaid for **90 days**, your service will be **suspended**, which may include taking down your hosted page, campaigns, and listings. You remain responsible for all amounts owed, and reactivation may require settling the outstanding balance.
 - **Taxes.** Prices exclude taxes unless stated. You are responsible for applicable sales, use, or similar taxes; we may collect and remit them where required.
 
 ## 3. Your responsibilities as a Business
@@ -40,7 +41,7 @@ If you join or host a **multi-store campaign** with a **funded reward**:
 
 ## 5. Payouts (Stripe Connect)
 
-Where you receive funds (e.g., as a funding host), payouts are made through **Stripe Connect** to your connected account. You must complete Stripe's onboarding and verification and are subject to Stripe's Connected Account Agreement. Cirqlback is not responsible for delays or holds imposed by Stripe or arising from your failure to complete verification.
+Where you receive funds (e.g., as a funding host), payouts are made through **Stripe Connect** to your connected account. Payouts are generally issued on the **15th of each month** for amounts that have been settled and cleared as of that date; timing may vary with Stripe processing. You must complete Stripe's onboarding and verification and are subject to Stripe's Connected Account Agreement. Cirqlback is not responsible for delays or holds imposed by Stripe or arising from your failure to complete verification.
 
 ## 6. Content license and ownership
 

@@ -46,6 +46,9 @@ When several stores fund a shared reward, the cost is split **tap-weighted** acr
 **How do I get paid when I host a funded reward?**
 Through **Stripe Connect** to your connected account, after completing Stripe's onboarding.
 
+**When am I charged, and what if I miss a payment?**
+Monthly plans are charged on the **10th of each service month**. If payment isn't completed by the end of that month, we'll email you and your **dashboard locks and your taps stop working** until you're caught up. After **90 days** unpaid, the service is suspended. See the [Merchant Agreement](merchant-agreement.md), Section 2.
+
 **Can I cancel anytime?**
 Yes. Subscriptions auto-renew until you cancel; cancellation takes effect at the end of your billing period. See the [Merchant Agreement](merchant-agreement.md), Section 2.
 
@@ -60,7 +63,7 @@ A local partner (an **independent contractor**) who grows and supports Cirqlback
 No — you're a **1099 independent contractor**. You control how you work, use your own equipment, and handle your own taxes. See the [1099 Guide](coordinator-1099-guide.md) and [Contractor Agreement](coordinator-independent-contractor-agreement.md).
 
 **How and when do I get paid?**
-You earn a share of revenue actually collected from businesses in your territory, reconciled to a statement and paid out on Cirqlback's schedule. Refunds/chargebacks reduce the associated share.
+You earn a share of revenue actually collected from businesses in your territory. Payouts are issued on the **15th of each month** for amounts earned and cleared, reconciled to a statement. Refunds/chargebacks reduce the associated share.
 
 **Will I get a tax form?**
 If you're paid $600+ in a year, you'll receive a **1099-NEC**. Set aside part of each payout for taxes — see the [1099 Guide](coordinator-1099-guide.md).
