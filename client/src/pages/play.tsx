@@ -61,6 +61,8 @@ export default function Play() {
   const [menuInfo, setMenuInfo] = useState({ jbest: 0, jworld: 0, streak: 0, dailyNum: 0 });
   const [shareLabel, setShareLabel] = useState("Share result");
   const [bank, setBank] = useState<Record<string, number>>({}); // tap-earned rewards (Partner Power + power-ups)
+  const [dailyRank, setDailyRank] = useState<{ rank: number; total: number } | null>(null); // your rank after a Daily run
+  const [leaderboard, setLeaderboard] = useState<{ top: any[]; you: { rank: number; score: number } | null; total: number } | null>(null);
 
   // Menu stats come from the server for logged-in players (cross-device), and from
   // the engine's localStorage for guests.
@@ -137,8 +139,27 @@ export default function Play() {
     if (cleared) patch.worldsRestored = (st.worldsRestored || 0) + cleared;
     if (Object.keys(patch).length) persist(patch);
     if (engineRef.current) refreshMenuInfo(engineRef.current);
+    // Submit the Daily run to the cross-player leaderboard (logged-in only).
+    if (result.mode === "daily" && user) {
+      setDailyRank(null);
+      fetch("/api/game/daily/score", {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ score: result.score, bestCombo: result.comboMax, restored: result.restored }),
+      }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setDailyRank({ rank: d.rank, total: d.total }); }).catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
+
+  // Load the Daily leaderboard when viewing the Daily menu (and refresh after a run).
+  useEffect(() => {
+    if (phase !== "menu" || mode !== "daily" || !user) return;
+    let cancelled = false;
+    fetch("/api/game/daily/leaderboard", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled) setLeaderboard(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [phase, mode, user, dailyRank]);
 
   const startRun = async () => {
     setResult(null);
@@ -262,10 +283,32 @@ export default function Play() {
               </p>
             )}
             {mode === "daily" && (
-              <p className="mt-4 min-h-[40px] px-1 text-[13px] leading-relaxed text-violet-300/70">
-                <b className="text-violet-100">Daily Circle #{menuInfo.dailyNum}</b> — the same board for everyone today, one ranked run.<br />
-                {menuInfo.streak ? <>🔥 <b className="text-amber-400">{menuInfo.streak}-day streak</b> — play today to keep it alive.</> : "Play today to start a streak."}
-              </p>
+              <>
+                <p className="mt-4 min-h-[40px] px-1 text-[13px] leading-relaxed text-violet-300/70">
+                  <b className="text-violet-100">Daily Circle #{menuInfo.dailyNum}</b> — the same board for everyone today, one ranked run.<br />
+                  {menuInfo.streak ? <>🔥 <b className="text-amber-400">{menuInfo.streak}-day streak</b> — play today to keep it alive.</> : "Play today to start a streak."}
+                </p>
+                {user && leaderboard && leaderboard.top.length > 0 && (
+                  <div className="mt-3 rounded-2xl border border-violet-400/20 bg-white/[0.03] px-4 py-3 text-left" data-testid="daily-leaderboard">
+                    <div className="mb-1.5 flex items-center justify-between text-[11px] uppercase tracking-[0.16em] text-violet-300/60">
+                      <span>Today's leaderboard</span><span className="tabular-nums">{leaderboard.total} player{leaderboard.total === 1 ? "" : "s"}</span>
+                    </div>
+                    <div className="space-y-1">
+                      {leaderboard.top.slice(0, 5).map((r: any) => (
+                        <div key={r.rank} className={"flex items-center justify-between text-[13px] " + (r.you ? "font-bold text-cyan-300" : "text-violet-100/90")}>
+                          <span className="truncate pr-2 tabular-nums">#{r.rank} {r.name}{r.you ? " (you)" : ""}</span>
+                          <span className="tabular-nums">{r.score.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {leaderboard.you && leaderboard.you.rank > 5 && (
+                      <div className="mt-1.5 flex items-center justify-between border-t border-violet-400/10 pt-1.5 text-[13px] font-bold text-cyan-300">
+                        <span className="tabular-nums">#{leaderboard.you.rank} You</span><span className="tabular-nums">{leaderboard.you.score.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
             {mode === "party" && (
               <p className="mt-4 min-h-[40px] px-1 text-[13px] leading-relaxed text-violet-300/70">
@@ -358,7 +401,12 @@ export default function Play() {
               <div className="text-[13px] text-violet-300/70">Best combo<b className="mt-0.5 block text-[22px] text-white tabular-nums">×{result.comboMax}</b></div>
             </div>
             <div className="mt-2 text-[15px] text-violet-300/70">Score<b className="block text-[34px] text-white tabular-nums" data-testid="end-score">{result.score.toLocaleString()}</b></div>
-            {result.mode === "daily" && <div className="mt-2.5 text-xs text-cyan-300">🔥 <b className="text-amber-400">{result.streak}-day streak</b></div>}
+            {result.mode === "daily" && (
+              <div className="mt-2.5 text-xs text-cyan-300" data-testid="daily-rank">
+                {dailyRank && <span className="mr-2">🏆 <b className="text-white">#{dailyRank.rank}</b> of {dailyRank.total}</span>}
+                🔥 <b className="text-amber-400">{result.streak}-day streak</b>
+              </div>
+            )}
             <button onClick={startRun} data-testid="button-again" className="mt-5 w-full rounded-2xl py-4 text-base font-extrabold text-white transition hover:brightness-110" style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)", boxShadow: "0 12px 34px rgba(124,58,237,.4)" }}>{result.mode === "daily" ? "Replay (unranked)" : "Play again"}</button>
             {result.mode === "daily" && (
               <button onClick={shareDaily} data-testid="button-share" className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl border border-violet-400/20 py-3 font-semibold text-violet-300/80 transition hover:bg-white/[0.04] hover:text-white"><Share2 className="h-4 w-4" /> {shareLabel}</button>

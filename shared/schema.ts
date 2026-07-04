@@ -1748,3 +1748,19 @@ export const gameProgress = pgTable("game_progress", {
 });
 
 export type GameProgress = typeof gameProgress.$inferSelect;
+
+// Cirqlbreak — cross-player Daily leaderboard (CHR-122). One best row per user per
+// UTC day, ranked by score. Composite PK (user_id, day) enforces one ranked run
+// per day; the row keeps the player's best score for that day.
+export const dailyScores = pgTable("daily_scores", {
+  userId: varchar("user_id").notNull().references(() => users.id),
+  day: varchar("day").notNull(), // UTC yyyy-mm-dd
+  dailyNum: integer("daily_num").notNull().default(0),
+  score: integer("score").notNull().default(0),
+  bestCombo: integer("best_combo").notNull().default(0),
+  restored: boolean("restored").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [primaryKey({ columns: [t.userId, t.day] })]);
+
+export type DailyScore = typeof dailyScores.$inferSelect;

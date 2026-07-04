@@ -154,6 +154,41 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
     }
   });
 
+  // CHR-122 + CHR-119: the cross-player Daily leaderboard. The SERVER decides the
+  // day (no backdating) and clamps scores — the client is untrusted, so this is
+  // pragmatic plausibility, not DRM. Keeps each player's best for the day.
+  const CB_EPOCH = Math.floor(Date.parse("2026-01-01T00:00:00Z") / 86400000);
+  const cbDailyNum = () => Math.floor(Date.now() / 86400000) - CB_EPOCH + 1;
+
+  app.post("/api/game/daily/score", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const score = Math.floor(Number(req.body?.score));
+      const bestCombo = Math.floor(Number(req.body?.bestCombo));
+      const restored = !!req.body?.restored;
+      if (!Number.isFinite(score) || score < 0 || score > 5_000_000) return res.status(400).json({ error: "Invalid score" });
+      if (!Number.isFinite(bestCombo) || bestCombo < 0 || bestCombo > 100_000) return res.status(400).json({ error: "Invalid combo" });
+      const day = utcDay(Date.now());
+      const result = await storage.submitDailyScore(userId, day, cbDailyNum(), score, bestCombo, restored);
+      res.json({ ...result, dailyNum: cbDailyNum() });
+    } catch (err) {
+      console.error("daily score submit error:", err);
+      res.status(500).json({ error: "Failed to submit score" });
+    }
+  });
+
+  app.get("/api/game/daily/leaderboard", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const day = utcDay(Date.now());
+      const board = await storage.getDailyLeaderboard(day, userId, 20);
+      res.json({ day, dailyNum: cbDailyNum(), ...board });
+    } catch (err) {
+      console.error("daily leaderboard error:", err);
+      res.status(500).json({ error: "Failed to load leaderboard" });
+    }
+  });
+
   // CHR-104: record today's Daily Circle result (the shared daily puzzle).
   // Idempotent per UTC day — the first completion counts; a modest bonus lands
   // in the points economy once/day. Stored in game_progress.state.dailyCircle.

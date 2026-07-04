@@ -98,6 +98,7 @@ import {
   type Collection,
   type Event,
   gameProgress,
+  dailyScores,
   type GameProgress,
 } from "@shared/schema";
 import { db } from "./db";
@@ -1812,6 +1813,54 @@ export class DatabaseStorage implements IStorage {
     }
     if (Object.keys(spent).length) await this.saveGameProgress(userId, { state: { ...s, perks } });
     return { spent, perks: perks as PerkBank };
+  }
+
+  // CHR-122: submit a Daily run for the cross-player leaderboard. Keeps the
+  // player's BEST score for the day (composite PK dedupes one row per user/day),
+  // then computes their rank (1 + players with a strictly higher score today).
+  async submitDailyScore(
+    userId: string, day: string, dailyNum: number, score: number, bestCombo: number, restored: boolean,
+  ): Promise<{ best: number; rank: number; total: number }> {
+    const [existing] = await db.select().from(dailyScores).where(and(eq(dailyScores.userId, userId), eq(dailyScores.day, day)));
+    let best = score;
+    if (existing) {
+      if (score > existing.score) {
+        await db.update(dailyScores).set({ score, bestCombo, restored, updatedAt: new Date() })
+          .where(and(eq(dailyScores.userId, userId), eq(dailyScores.day, day)));
+      } else {
+        best = existing.score;
+      }
+    } else {
+      await db.insert(dailyScores).values({ userId, day, dailyNum, score, bestCombo, restored }).onConflictDoNothing();
+      const [row] = await db.select().from(dailyScores).where(and(eq(dailyScores.userId, userId), eq(dailyScores.day, day)));
+      best = row ? row.score : score;
+    }
+    const [ahead] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(and(eq(dailyScores.day, day), sql`${dailyScores.score} > ${best}`));
+    const [tot] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(eq(dailyScores.day, day));
+    return { best, rank: Number(ahead?.n || 0) + 1, total: Number(tot?.n || 0) };
+  }
+
+  // CHR-122: the Daily leaderboard for a given UTC day — top N by score plus the
+  // requesting player's own rank (even if outside the top N).
+  async getDailyLeaderboard(day: string, userId: string | null, limit = 20): Promise<{ top: any[]; you: { rank: number; score: number } | null; total: number }> {
+    const rows = await db.select().from(dailyScores).where(eq(dailyScores.day, day)).orderBy(desc(dailyScores.score)).limit(limit);
+    const top: any[] = [];
+    let rank = 1;
+    for (const r of rows) {
+      const u = await this.getUser(r.userId);
+      const name = [u?.firstName, u?.lastName].filter(Boolean).join(" ").trim() || (u?.email ? u.email.split("@")[0] : "Cirqler");
+      top.push({ rank: rank++, name, score: r.score, bestCombo: r.bestCombo, restored: r.restored, you: userId === r.userId });
+    }
+    const [tot] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(eq(dailyScores.day, day));
+    let you: { rank: number; score: number } | null = null;
+    if (userId) {
+      const [mine] = await db.select().from(dailyScores).where(and(eq(dailyScores.userId, userId), eq(dailyScores.day, day)));
+      if (mine) {
+        const [ahead] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(and(eq(dailyScores.day, day), sql`${dailyScores.score} > ${mine.score}`));
+        you = { rank: Number(ahead?.n || 0) + 1, score: mine.score };
+      }
+    }
+    return { top, you, total: Number(tot?.n || 0) };
   }
 
   // Stamp that the lock / suspension email has been sent for this delinquency.
