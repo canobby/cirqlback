@@ -355,8 +355,8 @@ export class CirqlbreakEngine {
   }
 
   // ---------- fx spawners ----------
-  private burst(x: number, y: number, color: string, n: number, spd: number) { for (let i = 0; i < n; i++) { const a = Math.random() * TAU, s = spd * (0.4 + Math.random()); this.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color }); } }
-  private frag(x: number, y: number, color: string) { if (this.reduce) return; for (let i = 0; i < 4; i++) { const a = Math.random() * TAU, s = this.baseSpeed * (0.3 + Math.random() * 0.5); this.frags.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, rot: Math.random() * TAU, vr: (Math.random() - 0.5) * 10, life: 1, color, len: 5 + Math.random() * 7 }); } }
+  private burst(x: number, y: number, color: string, n: number, spd: number) { n = Math.min(n, 420 - this.parts.length); if (n <= 0) return; for (let i = 0; i < n; i++) { const a = Math.random() * TAU, s = spd * (0.4 + Math.random()); this.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color }); } }
+  private frag(x: number, y: number, color: string) { if (this.reduce || this.frags.length > 160) return; for (let i = 0; i < 4; i++) { const a = Math.random() * TAU, s = this.baseSpeed * (0.3 + Math.random() * 0.5); this.frags.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, rot: Math.random() * TAU, vr: (Math.random() - 0.5) * 10, life: 1, color, len: 5 + Math.random() * 7 }); } }
   private pop(x: number, y: number, txt: string, color: string) { this.pops.push({ x, y, txt, color, life: 1 }); }
   private shock(x: number, y: number, color: string, maxR: number) { if (!this.reduce) this.shocks.push({ x, y, r: 4, maxR, life: 1, color }); }
 
@@ -477,6 +477,9 @@ export class CirqlbreakEngine {
   // ---------- loop ----------
   private frame = (now: number) => {
     if (this.destroyed) return;
+    // Freeze when the tab is hidden so a ball can't drain while the player is away
+    // (and to save battery). Keep `last` synced so dt doesn't spike on return.
+    if (typeof document !== "undefined" && document.hidden) { this.last = now; this.raf = requestAnimationFrame(this.frame); return; }
     const rawDt = Math.min(40, now - this.last); this.last = now; const dt = rawDt / 1000;
     this.timeScale += ((now < this.slowUntil ? 0.5 : 1) - this.timeScale) * Math.min(1, rawDt / 120);
     if (this.wideUntil && now > this.wideUntil) { this.paddle.span += (this.paddle.baseSpan - this.paddle.span) * Math.min(1, rawDt / 200); if (Math.abs(this.paddle.span - this.paddle.baseSpan) < 0.01) { this.paddle.span = this.paddle.baseSpan; this.wideUntil = 0; } }
