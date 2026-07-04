@@ -285,6 +285,8 @@ export class CirqlbreakEngine {
   }
 
   releaseStuck() { for (const b of this.balls) if (b.stuck) this.releaseBall(b); }
+  /** Aim the (solo) paddle to an absolute rim angle — for the on-screen spin dial. */
+  aimTo(angle: number) { if (this.state === "playing") this.paddle.target = angle; }
 
   /** Reward bridge: real taps charge the Supernova (0..1 units). */
   grantEnergy(amount: number) { this.superCharge = clamp(this.superCharge + amount, 0, 1); this.emitHud(); }

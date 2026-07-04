@@ -45,6 +45,40 @@ function GalaxyCanvas({ worlds, accent }: { worlds: number; accent: string }) {
 // power-up types.
 const TOKEN_TYPES = ["multi", "wide", "slow", "catch", "life"] as const;
 
+// A spin dial that lives BELOW the circle so your thumb never covers the field.
+// The angle of your touch around the dial maps 1:1 to the paddle's rim angle
+// (dial "up" = paddle top), so it reads like a mini-map of the rim. Lifting off
+// releases a caught ball (aim-and-shoot).
+function AimWheel({ onAim, onRelease }: { onAim: (a: number) => void; onRelease: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [ang, setAng] = useState(-Math.PI / 2);
+  const dragging = useRef(false);
+  const SZ = 132, R = 47;
+  const compute = (e: React.PointerEvent) => {
+    const el = ref.current; if (!el) return;
+    const r = el.getBoundingClientRect();
+    const a = Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2));
+    setAng(a); onAim(a);
+  };
+  return (
+    <div
+      ref={ref}
+      data-testid="aim-wheel"
+      onPointerDown={(e) => { dragging.current = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ } compute(e); }}
+      onPointerMove={(e) => { if (dragging.current) compute(e); }}
+      onPointerUp={() => { dragging.current = false; onRelease(); }}
+      onPointerCancel={() => { dragging.current = false; }}
+      className="relative flex-none rounded-full"
+      style={{ width: SZ, height: SZ, touchAction: "none", cursor: "grab", background: "radial-gradient(circle at 50% 38%, rgba(124,58,237,.2), rgba(11,9,24,.92))", border: "1px solid rgba(150,130,255,.3)", boxShadow: "0 10px 34px rgba(0,0,0,.5), inset 0 0 22px rgba(124,58,237,.16)" }}
+    >
+      <div className="absolute inset-[10px] rounded-full" style={{ border: "1px dashed rgba(150,130,255,.22)" }} />
+      <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: "rgba(196,181,253,.5)" }} />
+      <div className="absolute h-7 w-7 rounded-full" style={{ left: SZ / 2 + Math.cos(ang) * R, top: SZ / 2 + Math.sin(ang) * R, transform: "translate(-50%,-50%)", background: "radial-gradient(circle at 38% 34%, #fff, #ec4899 75%)", boxShadow: "0 0 15px rgba(236,72,153,.75)" }} />
+      <div className="pointer-events-none absolute bottom-[9px] left-0 right-0 text-center text-[9px] uppercase tracking-[0.24em] text-violet-300/40">spin</div>
+    </div>
+  );
+}
+
 // Cirqlbreak — the in-app arcade game (lazy-loaded at /play, code-split). A
 // circular Breakout roguelike: rally the spark, shatter the rings, out-time the
 // boss core, restore a dead world. This page is a thin React host around
@@ -329,13 +363,34 @@ export default function Play() {
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center overflow-hidden text-slate-100 select-none"
+      className="fixed inset-0 z-50 flex flex-col items-center overflow-hidden text-slate-100 select-none"
       style={{ background: "radial-gradient(1100px 780px at 50% -10%, rgba(124,58,237,.22), transparent 60%), #05040f", touchAction: "none" }}
     >
-      {/* the game surface */}
-      <div className="relative" style={{ width: "min(94vw,94vh,680px)", aspectRatio: "1" }}>
-        <canvas ref={canvasRef} className="block touch-none rounded-full" style={{ boxShadow: "0 0 90px rgba(124,58,237,.15)" }} aria-label="CirqlBreak" />
+      {/* the game surface — fills the space above the control band */}
+      <div className="flex w-full flex-1 items-center justify-center p-2" style={{ minHeight: 0 }}>
+        <div className="relative" style={{ height: "min(100%, 94vw, 660px)", aspectRatio: "1" }}>
+          <canvas ref={canvasRef} className="block touch-none rounded-full" style={{ boxShadow: "0 0 90px rgba(124,58,237,.15)" }} aria-label="CirqlBreak" />
+        </div>
       </div>
+
+      {/* ---------- control band (below the circle, so your thumb never covers the field) ---------- */}
+      {phase === "playing" && hud && (
+        <div className="flex w-full flex-none items-center justify-center gap-6 px-4 pb-5 pt-1">
+          <button onClick={() => engineRef.current?.firePulse()} data-testid="button-pulse"
+            className="flex h-14 w-14 flex-col items-center justify-center rounded-full border leading-none transition"
+            style={{ borderColor: "rgba(34,211,238,.5)", background: "rgba(34,211,238,.12)", color: "#a5f3fc", opacity: hud.pulseReady ? 1 : 0.4, boxShadow: "0 0 20px rgba(34,211,238,.2)" }}>
+            <span className="text-lg">⟳</span><span className="mt-0.5 text-[8px] font-extrabold tracking-wider">PULSE</span>
+          </button>
+          {mode !== "party"
+            ? <AimWheel onAim={(a) => engineRef.current?.aimTo(a)} onRelease={() => engineRef.current?.releaseStuck()} />
+            : <div className="w-[132px] text-center text-[11px] leading-tight text-violet-300/60">2 players<br />two thumbs on the circle<br />P1 top · P2 bottom</div>}
+          <button onClick={() => engineRef.current?.fireSuper()} data-testid="button-super"
+            className={"flex h-14 w-14 flex-col items-center justify-center rounded-full border leading-none transition " + (hud.superCharge >= 1 ? "animate-pulse" : "")}
+            style={{ borderColor: "rgba(251,191,36,.5)", background: "rgba(251,191,36,.1)", color: "#fde68a", opacity: hud.superCharge >= 1 ? 1 : 0.3 + 0.4 * hud.superCharge, boxShadow: hud.superCharge >= 1 ? "0 0 28px rgba(251,191,36,.6)" : "0 0 16px rgba(251,191,36,.18)" }}>
+            <span className="text-lg">★</span><span className="mt-0.5 text-[8px] font-extrabold tracking-wider">NOVA</span>
+          </button>
+        </div>
+      )}
 
       {/* ---------- HUD (in-run) ---------- */}
       {phase === "playing" && hud && (
@@ -358,20 +413,6 @@ export default function Play() {
               <button onClick={toggleSound} title="Sound" className={"grid h-9 w-9 place-items-center rounded-xl border border-violet-400/20 bg-white/[0.04] text-base " + (sound ? "" : "opacity-40")}>{sound ? "🔊" : "🔇"}</button>
               <button onClick={quitToMenu} title="Menu" data-testid="button-quit" className="grid h-9 w-9 place-items-center rounded-xl border border-violet-400/20 bg-white/[0.04] text-base">⏸</button>
             </div>
-          </div>
-          <div className="absolute bottom-5 left-0 right-0 flex flex-wrap justify-center gap-2.5 px-3">
-            <button
-              onClick={() => engineRef.current?.firePulse()}
-              data-testid="button-pulse"
-              className="pointer-events-auto rounded-full border px-5 py-2.5 text-xs font-extrabold tracking-[0.13em] transition"
-              style={{ borderColor: "rgba(34,211,238,.5)", background: "rgba(34,211,238,.12)", color: "#a5f3fc", opacity: hud.pulseReady ? 1 : 0.35, boxShadow: "0 0 20px rgba(34,211,238,.2)" }}
-            >⟳ PULSE</button>
-            <button
-              onClick={() => engineRef.current?.fireSuper()}
-              data-testid="button-super"
-              className={"pointer-events-auto rounded-full border px-5 py-2.5 text-xs font-extrabold tracking-[0.13em] transition " + (hud.superCharge >= 1 ? "animate-pulse" : "")}
-              style={{ borderColor: "rgba(251,191,36,.5)", background: "rgba(251,191,36,.1)", color: "#fde68a", opacity: hud.superCharge >= 1 ? 1 : 0.28 + 0.4 * hud.superCharge, boxShadow: hud.superCharge >= 1 ? "0 0 30px rgba(251,191,36,.6)" : "0 0 18px rgba(251,191,36,.18)" }}
-            >★ SUPERNOVA</button>
           </div>
         </div>
       )}
