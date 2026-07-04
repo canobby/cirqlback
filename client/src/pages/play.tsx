@@ -1,552 +1,272 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Sparkles, Gift, Flame, Gem, Map as MapIcon, CalendarDays, Share2, Radio, Zap } from "lucide-react";
+import { ArrowLeft, Share2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { CirqlEngine, type GameState } from "@/game/cirql-engine";
-import { CRAFTED_WORLDS, type WorldConfig } from "@/game/worlds";
-import { generateWorld, dailyWorld, todayDay, dailyPuzzleNumber } from "@/game/procedural";
-import { CirqlCollection } from "@/components/game/cirql-collection";
-import { WorldMap } from "@/components/game/world-map";
-import { DailyResult } from "@/components/game/daily-result";
-import { Echoes } from "@/components/game/echoes";
-import type { PinballEngine, PinballState } from "@/game/pinball-engine";
-import { getCosmetic, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
-import { PERKS } from "@shared/cirql-perks";
-import { nextCommunityMilestone } from "@shared/cirql-community";
+import {
+  CirqlbreakEngine,
+  RELICS,
+  type HudState,
+  type RunResult,
+  type CirqlbreakMode,
+  type Difficulty,
+  type RelicId,
+} from "@/game/cirqlbreak-engine";
 
-const todayStr = () => new Date().toISOString().slice(0, 10); // UTC yyyy-mm-dd (matches the server)
+// Cirqlbreak — the in-app arcade game (lazy-loaded at /play, code-split). A
+// circular Breakout roguelike: rally the spark, shatter the rings, out-time the
+// boss core, restore a dead world. This page is a thin React host around
+// `CirqlbreakEngine` (which owns the canvas); it renders the menu, HUD, relic
+// pick, and end screen and drives the engine via its callbacks + action methods.
+//
+// Guests play without saving; logged-in players persist (server-backed in CHR-113,
+// local for now). Real taps → power-ups is CHR-115/116.
 
-// The world at an absolute index: crafted "signature" worlds first, then an
-// infinite procedurally-generated tail (CHR-101), seeded per player.
-const worldAt = (i: number, seed = 0): WorldConfig =>
-  i < CRAFTED_WORLDS.length ? CRAFTED_WORLDS[i] : generateWorld(i, seed);
+const lsGet = (k: string) => { try { return window.localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k: string, v: string) => { try { window.localStorage.setItem(k, v); } catch { /* ignore */ } };
 
-// CIRQL — the in-app game page (lazy-loaded at /play, code-split). Guests play
-// without saving; logged-in players resume where they left off (CHR-94).
+const MODES: { id: CirqlbreakMode; label: string; hint: string }[] = [
+  { id: "journey", label: "Journey", hint: "endless climb" },
+  { id: "daily", label: "Daily", hint: "shared · streak" },
+  { id: "freestyle", label: "Freestyle", hint: "your rules" },
+  { id: "party", label: "Party", hint: "2-player co-op" },
+];
+const DIFFS: { id: Difficulty; label: string; hint: string }[] = [
+  { id: "easy", label: "Easy", hint: "slow · wide · 5♥" },
+  { id: "medium", label: "Medium", hint: "balanced · 3♥" },
+  { id: "hard", label: "Hard", hint: "fast · narrow · 2♥" },
+];
+
 export default function Play() {
   const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const engineRef = useRef<CirqlEngine | null>(null);
-  const loadedRef = useRef(false);
-  const wonRef = useRef(false);
-  const [index, setIndex] = useState(0);
-  const [playerSeed, setPlayerSeed] = useState(0);
-  const [restored, setRestored] = useState(0);
-  const [hud, setHud] = useState<GameState>({
-    worldName: CRAFTED_WORLDS[0].name, aligned: 0, total: CRAFTED_WORLDS[0].ringCount, moves: 0, won: false,
-  });
-  const [muted, setMuted] = useState(false);
-  const [zen, setZen] = useState(false); // CHR-106 Zen mode
-  const [award, setAward] = useState(0);
-  const [newBadges, setNewBadges] = useState<string[]>([]); // CHR-103: achievements just earned
-  const [perfectWin, setPerfectWin] = useState(false); // CHR-105: no-wasted-moves solve
-  const [shinies, setShinies] = useState(0); // CHR-108: shiny worlds discovered
-  const [greatRing, setGreatRing] = useState<number | null>(null); // CHR-97: shared community total
+  const engineRef = useRef<CirqlbreakEngine | null>(null);
 
-  const refreshGreatRing = () => {
-    fetch("/api/game/great-ring", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d && typeof d.total === "number") setGreatRing(d.total); })
-      .catch(() => {});
-  };
-  useEffect(() => { refreshGreatRing(); }, []);
-  // CHR-93 daily reward
-  const dailyLoadedRef = useRef(false);
-  const [daily, setDaily] = useState<{ canClaim: boolean; streak: number; reward: number } | null>(null);
-  const [dailyClaimed, setDailyClaimed] = useState<{ points: number; streak: number } | null>(null);
-  // CHR-104 Daily Circle — one shared world per day + a shareable result.
-  const dailyPuzzle = useMemo(() => { const day = todayDay(); return { day, num: dailyPuzzleNumber(day), world: dailyWorld(day) }; }, []);
-  const dailyModeRef = useRef(false);
-  const dailyStartRef = useRef(0);
-  const [dailyMode, setDailyMode] = useState(false);
-  const [dailyDone, setDailyDone] = useState(false);
-  const [dailyResult, setDailyResult] = useState<{ moves: number; timeMs: number; points: number } | null>(null);
-  const [showDaily, setShowDaily] = useState(false);
-  // CHR-96 reward bridge — perks banked from partner taps, spent in-game.
-  const [perks, setPerks] = useState<Record<string, number>>({});
-  const [guidingActive, setGuidingActive] = useState(false);
-  // CHR-91 world map
-  const [showMap, setShowMap] = useState(false);
-  // CHR-98 Echoes
-  const [showEchoes, setShowEchoes] = useState(false);
-  // CHR-109 Light-Ball (optional alternate mode) — lazy-loaded, opt-in.
-  const [pinballOn, setPinballOn] = useState(false);
-  const [pinballState, setPinballState] = useState<PinballState | null>(null);
-  const [pinballBest, setPinballBest] = useState(0);
-  const pinballCanvasRef = useRef<HTMLCanvasElement>(null);
-  const pinballEngineRef = useRef<PinballEngine | null>(null);
-  // CHR-92 Your Cirql + collection
-  const [showCollection, setShowCollection] = useState(false);
-  const [equipped, setEquipped] = useState<string>(DEFAULT_COSMETIC);
-  const [streak, setStreak] = useState(0);
-  const [equipBusy, setEquipBusy] = useState<string | null>(null);
+  const [phase, setPhase] = useState<"menu" | "playing" | "over">("menu");
+  const [hud, setHud] = useState<HudState | null>(null);
+  const [mode, setMode] = useState<CirqlbreakMode>("journey");
+  const [diff, setDiff] = useState<Difficulty>("medium");
+  const [spd, setSpd] = useState(1);
+  const [chaos, setChaos] = useState(true);
+  const [relic, setRelic] = useState<{ options: RelicId[]; pick: (id: RelicId) => void } | null>(null);
+  const [result, setResult] = useState<RunResult | null>(null);
+  const [sound, setSound] = useState(() => lsGet("cb_sound") !== "0");
+  const [haptics, setHaptics] = useState(() => lsGet("cb_hap") !== "0");
+  const [menuInfo, setMenuInfo] = useState({ jbest: 0, jworld: 0, streak: 0, dailyNum: 0 });
+  const [shareLabel, setShareLabel] = useState("Share result");
 
-  // The default cosmetic means "the world's own light" (no override); any other
-  // tints the core/bloom regardless of world.
-  const applyAura = (id: string) => engineRef.current?.setAura(id && id !== DEFAULT_COSMETIC ? getCosmetic(id).accent : null);
-
-  // Fire-and-forget save (logged-in only).
-  const save = (patch: { worldIndex?: number; worldsRestored?: number }) => {
-    if (!user) return;
-    fetch("/api/game/progress", {
-      method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(patch),
-    }).catch(() => {});
-  };
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const engine = new CirqlEngine(canvasRef.current, worldAt(0), { onState: setHud });
-    engineRef.current = engine;
-    return () => { engine.destroy(); engineRef.current = null; };
+  const refreshMenuInfo = useCallback((eng: CirqlbreakEngine) => {
+    const jb = eng.journeyBest();
+    setMenuInfo({ jbest: jb.score, jworld: jb.world, streak: eng.peekStreak(), dailyNum: eng.dailyNumber() });
   }, []);
 
-  // Load saved progress once the user is known.
+  // Build the engine once, on mount.
   useEffect(() => {
-    if (!user || loadedRef.current) return;
-    loadedRef.current = true;
-    fetch("/api/game/progress", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((p) => {
-        if (!p || !engineRef.current) return;
-        const seed = typeof p.playerSeed === "number" ? p.playerSeed : 0;
-        setPlayerSeed(seed);
-        setRestored(p.worldsRestored || 0);
-        if (p.worldIndex > 0) { setIndex(p.worldIndex); engineRef.current.setWorld(worldAt(p.worldIndex, seed)); }
-        // CHR-92: restore the equipped cosmetic + streak from saved state.
-        const st = p.state || {};
-        if (typeof st.dailyStreak === "number") setStreak(st.dailyStreak);
-        if (typeof st.cosmetic === "string") { setEquipped(st.cosmetic); applyAura(st.cosmetic); }
-        // CHR-104: was today's Daily Circle already completed?
-        if (st.dailyCircle?.date === todayStr()) {
-          setDailyDone(true);
-          setDailyResult({ moves: st.dailyCircle.moves, timeMs: st.dailyCircle.timeMs || 0, points: 0 });
-        }
-        // CHR-96: banked perks from partner taps.
-        if (st.perks && typeof st.perks === "object") setPerks(st.perks);
-        if (typeof st.shinies === "number") setShinies(st.shinies); // CHR-108
-        if (typeof st.pinballBest === "number") setPinballBest(st.pinballBest); // CHR-109
-      })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  // Load daily-reward status once the user is known (logged-in only).
-  useEffect(() => {
-    if (!user || dailyLoadedRef.current) return;
-    dailyLoadedRef.current = true;
-    fetch("/api/game/daily", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) { setDaily(d); setStreak((s) => Math.max(s, d.streak || 0)); } })
-      .catch(() => {});
-  }, [user]);
-
-  // CHR-109: mount the Light-Ball engine only while opted in (lazy-imported, so
-  // its code never ships in the default /play load).
-  useEffect(() => {
-    if (!pinballOn || !pinballCanvasRef.current) return;
-    let engine: PinballEngine | null = null;
-    let cancelled = false;
-    import("@/game/pinball-engine").then(({ PinballEngine }) => {
-      if (cancelled || !pinballCanvasRef.current) return;
-      engine = new PinballEngine(pinballCanvasRef.current, worldAt(index, playerSeed), { best: pinballBest, onState: setPinballState });
-      engine.setMuted(muted);
-      pinballEngineRef.current = engine;
+    if (!canvasRef.current) return;
+    const eng = new CirqlbreakEngine(canvasRef.current, {
+      sound,
+      haptics,
+      onHud: setHud,
+      onRelicOffer: (options, pick) => setRelic({ options, pick }),
+      onWorldRestored: () => { /* CHR-115/116: POST /api/game/restored → points + badges */ },
+      onRunEnd: (r) => { setResult(r); setPhase("over"); setShareLabel("Share result"); refreshMenuInfo(eng); },
     });
-    return () => { cancelled = true; engine?.destroy(); pinballEngineRef.current = null; };
+    engineRef.current = eng;
+    refreshMenuInfo(eng);
+    return () => { eng.destroy(); engineRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pinballOn]);
+  }, []);
 
-  const exitPinball = () => {
-    const best = pinballState?.best ?? 0;
-    if (user && best > 0) {
-      fetch("/api/game/pinball", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ score: best }) })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((res) => { if (res?.best) setPinballBest(res.best); })
-        .catch(() => {});
-    } else if (best > pinballBest) setPinballBest(best);
-    setPinballOn(false); setPinballState(null);
+  const startRun = () => {
+    setResult(null);
+    setRelic(null);
+    setPhase("playing");
+    engineRef.current?.start(mode, { diff, spd, chaos });
+  };
+  const quitToMenu = () => {
+    engineRef.current?.toMenu();
+    setRelic(null);
+    setResult(null);
+    setPhase("menu");
+    if (engineRef.current) refreshMenuInfo(engineRef.current);
+  };
+  const pickRelic = (id: RelicId) => { relic?.pick(id); setRelic(null); };
+  const toggleSound = () => setSound((v) => { const n = !v; engineRef.current?.setMuted(!n); lsSet("cb_sound", n ? "1" : "0"); return n; });
+  const toggleHaptics = () => setHaptics((v) => { const n = !v; engineRef.current?.setHaptics(n); lsSet("cb_hap", n ? "1" : "0"); if (n) navigator.vibrate?.(20); return n; });
+
+  const shareDaily = () => {
+    if (!result) return;
+    const stars = result.comboMax >= 10 ? "★★★" : result.comboMax >= 5 ? "★★☆" : "★☆☆";
+    const txt = `Cirqlbreak · Daily Circle #${result.dailyNum} ${stars}\nScore ${result.score.toLocaleString()} · best combo ×${result.comboMax} · ${result.restored ? "restored 🟣" : "faded ⚫"}\ncirqlback.onrender.com/play`;
+    if (navigator.share) navigator.share({ text: txt }).catch(() => {});
+    else navigator.clipboard?.writeText(txt).then(() => { setShareLabel("Copied!"); setTimeout(() => setShareLabel("Share result"), 1600); }).catch(() => {});
   };
 
-  const claimDaily = () => {
-    if (!user || !daily?.canClaim) return;
-    setDaily((d) => (d ? { ...d, canClaim: false } : d)); // optimistic: prevent double-claim
-    fetch("/api/game/daily", { method: "POST", credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((res) => {
-        if (res) { setDailyClaimed({ points: res.pointsAwarded, streak: res.streak }); setStreak(res.streak); }
-        else setDaily((d) => (d ? { ...d, canClaim: true } : d)); // 409/err — allow retry
-      })
-      .catch(() => setDaily((d) => (d ? { ...d, canClaim: true } : d)));
-  };
-
-  // CHR-92: equip a cosmetic — server validates it's unlocked, then we tint live.
-  const equip = (id: string) => {
-    if (!user || equipBusy) return;
-    setEquipBusy(id);
-    fetch("/api/game/cosmetic", {
-      method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ cosmetic: id }),
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((res) => { if (res?.cosmetic) { setEquipped(res.cosmetic); applyAura(res.cosmetic); } })
-      .catch(() => {})
-      .finally(() => setEquipBusy(null));
-  };
-
-  // A world was restored (won: false -> true).
-  useEffect(() => {
-    if (hud.won && !wonRef.current) {
-      wonRef.current = true;
-      if (dailyModeRef.current) {
-        // CHR-104: Daily Circle completion — record once/day + show the share card.
-        const moves = hud.moves;
-        const timeMs = Math.round(performance.now() - dailyStartRef.current);
-        setDailyDone(true);
-        if (user) {
-          fetch("/api/game/daily-circle", {
-            method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ moves, timeMs }),
-          })
-            .then((r) => (r.ok ? r.json() : null))
-            .then((res) => {
-              const rr = res?.result;
-              setDailyResult({ moves: rr?.moves ?? moves, timeMs: rr?.timeMs ?? timeMs, points: res?.pointsAwarded || 0 });
-              setShowDaily(true);
-            })
-            .catch(() => { setDailyResult({ moves, timeMs, points: 0 }); setShowDaily(true); });
-        } else {
-          setDailyResult({ moves, timeMs, points: 0 }); setShowDaily(true);
-        }
-      } else {
-        // CHR-105/108: perfect = no wasted moves; shiny = a rare world.
-        const perfect = hud.moves > 0 && hud.moves <= hud.total;
-        const shiny = !!worldAt(index, playerSeed).shiny;
-        setPerfectWin(perfect);
-        if (user) {
-          // CHR-95: normal restore — server records it + awards points/badges.
-          fetch("/api/game/restored", {
-            method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-            body: JSON.stringify({ worldIndex: index, perfect, shiny, worldName: hud.worldName }),
-          })
-            .then((r) => (r.ok ? r.json() : null))
-            .then((res) => { if (res) { setRestored(res.worldsRestored); setAward(res.pointsAwarded || 0); setNewBadges(res.badges || []); if (typeof res.shinies === "number") setShinies(res.shinies); refreshGreatRing(); } })
-            .catch(() => {});
-        } else {
-          setRestored((r) => r + 1);
-          if (shiny) setShinies((s) => s + 1);
-        }
-      }
-    }
-    if (!hud.won) wonRef.current = false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hud.won]);
-
-  const goIndex = (i: number) => {
-    setAward(0); setNewBadges([]); setPerfectWin(false); setGuidingActive(false); // Guiding Light is per-world; engine resets it too
-    if (dailyModeRef.current) { dailyModeRef.current = false; setDailyMode(false); setShowDaily(false); wonRef.current = false; }
-    setIndex(i); engineRef.current?.setWorld(worldAt(i, playerSeed)); save({ worldIndex: i });
-  };
-
-  // CHR-96: spend a banked perk — apply the in-game effect, then consume server-side.
-  const usePerk = (perk: string) => {
-    if (dailyMode || !user || (perks[perk] || 0) <= 0) return; // perk-free in the competitive Daily Circle
-    if (perk === "echo") { if (!engineRef.current?.autoAlignOne()) return; } // nothing to align → don't spend
-    else if (perk === "guiding") { if (guidingActive) return; engineRef.current?.setGuidingLight(true); setGuidingActive(true); }
-    setPerks((p) => ({ ...p, [perk]: (p[perk] || 0) - 1 })); // optimistic
-    fetch("/api/game/perk/use", {
-      method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ perk }),
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((res) => { if (res?.perks) setPerks(res.perks); else setPerks((p) => ({ ...p, [perk]: (p[perk] || 0) + 1 })); })
-      .catch(() => setPerks((p) => ({ ...p, [perk]: (p[perk] || 0) + 1 })));
-  };
-
-  // CHR-104: enter / leave the shared Daily Circle without disturbing the resume point.
-  const startDaily = () => {
-    setShowDaily(false); wonRef.current = false; dailyStartRef.current = performance.now(); setGuidingActive(false);
-    dailyModeRef.current = true; setDailyMode(true);
-    engineRef.current?.setWorld(dailyPuzzle.world);
-  };
-  const exitDaily = () => {
-    dailyModeRef.current = false; setDailyMode(false); setShowDaily(false); wonRef.current = false; setGuidingActive(false);
-    engineRef.current?.setWorld(worldAt(index, playerSeed));
-  };
-  const nextWorld = () => goIndex(index + 1);
-  const endless = () => goIndex(Math.max(index + 1, CRAFTED_WORLDS.length));
-  const toggleMute = () => { const m = !muted; setMuted(m); engineRef.current?.setMuted(m); };
-  const toggleZen = () => { const z = !zen; setZen(z); engineRef.current?.setZen(z); };
-  const inEndless = index >= CRAFTED_WORLDS.length;
+  const seg = (active: boolean) =>
+    "rounded-xl border px-2 py-3 text-sm font-bold transition text-center " +
+    (active ? "text-white border-transparent" : "text-violet-300/70 border-violet-400/20 bg-white/[0.03] hover:text-white");
+  const segStyle = (active: boolean) => (active ? { background: "linear-gradient(135deg,rgba(124,58,237,.5),rgba(236,72,153,.4))" } : undefined);
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center text-slate-100 select-none"
-      style={{ background: "radial-gradient(1000px 700px at 50% -12%, rgba(124,58,237,.28), transparent 60%), #05040f" }}
+      className="fixed inset-0 z-50 grid place-items-center overflow-hidden text-slate-100 select-none"
+      style={{ background: "radial-gradient(1100px 780px at 50% -10%, rgba(124,58,237,.22), transparent 60%), #05040f", touchAction: "none" }}
     >
-      <div className="w-full max-w-lg px-4 pt-6 pb-1 text-center">
-        <div className="text-[12px] tracking-[0.42em] font-bold text-violet-300 ml-[0.42em]">C I R Q L</div>
-        <h1 className="text-lg font-bold mt-2">Restore the Circle</h1>
-        <p className="text-xs text-violet-300/70 mt-0.5">Drag each ring so its light points to the top. Align them all to bring the world back.</p>
+      {/* the game surface */}
+      <div className="relative" style={{ width: "min(94vw,94vh,680px)", aspectRatio: "1" }}>
+        <canvas ref={canvasRef} className="block touch-none rounded-full" style={{ boxShadow: "0 0 90px rgba(124,58,237,.15)" }} aria-label="Cirqlbreak" />
       </div>
 
-      {/* CHR-97 · Great Ring — one shared community total, filled by every restoration everywhere */}
-      {greatRing !== null && (() => {
-        const m = nextCommunityMilestone(greatRing);
-        return (
-          <div className="w-full max-w-lg px-4 mt-1" data-testid="great-ring">
-            <div className="rounded-2xl border border-violet-400/20 bg-white/[0.03] px-4 py-2">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-violet-200/90 font-semibold">🌍 Great Ring · together</span>
-                <span className="text-violet-300/70 tabular-nums">{greatRing.toLocaleString()} worlds restored</span>
+      {/* ---------- HUD (in-run) ---------- */}
+      {phase === "playing" && hud && (
+        <div className="pointer-events-none fixed inset-0">
+          <div className="absolute top-0 left-0 right-0 flex items-start justify-between gap-3 p-4">
+            <div>
+              <div className="text-[12px] uppercase tracking-[0.16em] text-violet-300/70">Score<b className="block text-[26px] leading-none text-white tabular-nums" data-testid="hud-score">{hud.score.toLocaleString()}</b></div>
+              <div className="mt-1.5 flex max-w-[120px] flex-wrap gap-1.5" data-testid="hud-lives">
+                {Array.from({ length: Math.max(hud.lives, 0) }).map((_, i) => (
+                  <span key={i} className="h-3 w-3 rounded-full" style={{ background: "radial-gradient(circle at 38% 34%,#fff,#ec4899 70%)", boxShadow: "0 0 10px rgba(236,72,153,.7)" }} />
+                ))}
               </div>
-              <div className="mt-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${Math.round(Math.max(0, Math.min(1, m.pct)) * 100)}%`, background: "linear-gradient(90deg,#7c3aed,#ec4899,#22d3ee)" }} />
-              </div>
-              <div className="mt-1 text-[10px] text-violet-300/50 tabular-nums">Next: {m.name} · {greatRing.toLocaleString()}/{m.to.toLocaleString()}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-[12px] uppercase tracking-[0.16em] text-violet-300/70">{hud.mode === "daily" ? "Daily" : "World"}<b className="block text-[26px] leading-none text-white tabular-nums">{hud.mode === "daily" ? "#" + hud.dailyNum : hud.world}</b></div>
+              {hud.combo >= 2 && <div className="mt-2 text-[12px] uppercase tracking-[0.16em]" style={{ color: "#22d3ee", textShadow: "0 0 18px rgba(34,211,238,.6)" }}>Combo<b className="block text-[22px] leading-none tabular-nums">×{hud.combo}</b></div>}
+            </div>
+            <div className="pointer-events-auto flex gap-2">
+              <button onClick={toggleHaptics} title="Haptics" className={"grid h-9 w-9 place-items-center rounded-xl border border-violet-400/20 bg-white/[0.04] text-base " + (haptics ? "" : "opacity-40")}>📳</button>
+              <button onClick={toggleSound} title="Sound" className={"grid h-9 w-9 place-items-center rounded-xl border border-violet-400/20 bg-white/[0.04] text-base " + (sound ? "" : "opacity-40")}>{sound ? "🔊" : "🔇"}</button>
+              <button onClick={quitToMenu} title="Menu" data-testid="button-quit" className="grid h-9 w-9 place-items-center rounded-xl border border-violet-400/20 bg-white/[0.04] text-base">⏸</button>
             </div>
           </div>
-        );
-      })()}
-
-      {/* World selector — crafted worlds + the endless stream (placeholder until the CHR-91 map) */}
-      <div className="flex gap-2 mt-2 flex-wrap justify-center px-4">
-        {CRAFTED_WORLDS.map((w, i) => (
-          <button
-            key={w.id}
-            onClick={() => goIndex(i)}
-            data-testid={`world-${w.id}`}
-            className="rounded-full border px-3 py-1 text-xs font-semibold transition"
-            style={{
-              borderColor: index === i ? w.accent : "rgba(150,130,255,.25)",
-              color: index === i ? "#fff" : "rgba(196,181,253,.75)",
-              background: index === i ? `${w.accent}22` : "transparent",
-            }}
-          >
-            {w.name}
-          </button>
-        ))}
-        <button
-          onClick={endless}
-          data-testid="world-endless"
-          className="rounded-full border px-3 py-1 text-xs font-semibold transition inline-flex items-center gap-1"
-          style={{
-            borderColor: inEndless ? "#c4b5fd" : "rgba(150,130,255,.25)",
-            color: inEndless ? "#fff" : "rgba(196,181,253,.75)",
-            background: inEndless ? "rgba(196,181,253,.13)" : "transparent",
-          }}
-        >
-          <Sparkles className="h-3 w-3" /> Endless
-        </button>
-      </div>
-
-      <div className="mt-2 text-[11px] text-violet-300/60 tabular-nums">
-        {dailyMode ? (
-          <span className="text-violet-200/90">🗓 Daily Circle #{dailyPuzzle.num} · {hud.worldName}</span>
-        ) : (
-          <>
-            World {index + 1} · <span className="text-violet-200/90">{hud.worldName}</span>
-            {worldAt(index, playerSeed).shiny && <span className="text-fuchsia-300 font-semibold" data-testid="shiny-tag"> · 🌈 Shiny</span>}
-            {inEndless ? " · endless" : ""}
-            {user ? <span className="text-emerald-300/70"> · {restored} restored</span> : <span className="text-violet-300/40"> · log in to save</span>}
-          </>
-        )}
-      </div>
-
-      {/* CHR-93 · Daily reward — one calm, escalating bonus per day for playing */}
-      {user && (daily?.canClaim || dailyClaimed) && (
-        <div className="mt-2 px-4 w-full max-w-lg">
-          {dailyClaimed ? (
-            <div
-              data-testid="daily-claimed"
-              className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 flex items-center justify-center gap-2 text-sm"
-            >
-              <Gift className="h-4 w-4 text-emerald-300" />
-              <span className="font-semibold text-emerald-200">Daily reward claimed · +{dailyClaimed.points} ✦</span>
-              <span className="inline-flex items-center gap-1 text-amber-300/90"><Flame className="h-3.5 w-3.5" />{dailyClaimed.streak}-day streak</span>
-            </div>
-          ) : (
+          <div className="absolute bottom-5 left-0 right-0 flex flex-wrap justify-center gap-2.5 px-3">
             <button
-              onClick={claimDaily}
-              data-testid="button-claim-daily"
-              className="w-full rounded-2xl px-4 py-2.5 flex items-center justify-center gap-2 text-sm font-bold text-white shadow-lg shadow-purple-500/25 transition hover:brightness-110"
-              style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)" }}
-            >
-              <Gift className="h-4 w-4" /> Claim daily reward · +{daily?.reward} ✦
-              {daily && daily.streak > 0 && (
-                <span className="inline-flex items-center gap-1 text-amber-200/90 font-semibold"><Flame className="h-3.5 w-3.5" />{daily.streak}</span>
-              )}
-            </button>
-          )}
+              onClick={() => engineRef.current?.firePulse()}
+              data-testid="button-pulse"
+              className="pointer-events-auto rounded-full border px-5 py-2.5 text-xs font-extrabold tracking-[0.13em] transition"
+              style={{ borderColor: "rgba(34,211,238,.5)", background: "rgba(34,211,238,.12)", color: "#a5f3fc", opacity: hud.pulseReady ? 1 : 0.35, boxShadow: "0 0 20px rgba(34,211,238,.2)" }}
+            >⟳ PULSE</button>
+            <button
+              onClick={() => engineRef.current?.fireSuper()}
+              data-testid="button-super"
+              className={"pointer-events-auto rounded-full border px-5 py-2.5 text-xs font-extrabold tracking-[0.13em] transition " + (hud.superCharge >= 1 ? "animate-pulse" : "")}
+              style={{ borderColor: "rgba(251,191,36,.5)", background: "rgba(251,191,36,.1)", color: "#fde68a", opacity: hud.superCharge >= 1 ? 1 : 0.28 + 0.4 * hud.superCharge, boxShadow: hud.superCharge >= 1 ? "0 0 30px rgba(251,191,36,.6)" : "0 0 18px rgba(251,191,36,.18)" }}
+            >★ SUPERNOVA</button>
+          </div>
         </div>
       )}
 
-      {/* CHR-104 · Daily Circle — one shared world per day + shareable result */}
-      <div className="mt-2 px-4 w-full max-w-lg">
-        {dailyMode ? (
-          <div className="rounded-2xl border border-violet-400/30 bg-violet-500/10 px-4 py-2 flex items-center justify-center gap-2 text-xs">
-            <CalendarDays className="h-4 w-4 text-violet-300" />
-            <span className="font-semibold text-violet-100">Daily Circle #{dailyPuzzle.num}</span>
-            <button onClick={exitDaily} data-testid="button-exit-daily" className="ml-1 rounded-lg border border-violet-400/30 px-2 py-0.5 text-violet-200/80 hover:bg-white/5">Exit</button>
-          </div>
-        ) : dailyDone ? (
-          <div data-testid="daily-done" className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 flex items-center justify-center gap-2 text-xs">
-            <CalendarDays className="h-4 w-4 text-emerald-300" />
-            <span className="font-semibold text-emerald-200">Daily Circle #{dailyPuzzle.num} complete</span>
-            {dailyResult && (
-              <button onClick={() => setShowDaily(true)} data-testid="button-share-daily-open" className="ml-1 rounded-lg border border-emerald-400/30 px-2 py-0.5 text-emerald-200/90 hover:bg-white/5 inline-flex items-center gap-1"><Share2 className="h-3 w-3" /> Share</button>
-            )}
-          </div>
-        ) : (
-          <button
-            onClick={startDaily}
-            data-testid="button-play-daily"
-            className="w-full rounded-2xl border border-violet-400/30 bg-violet-500/10 px-4 py-2 flex items-center justify-center gap-2 text-xs font-semibold text-violet-100 hover:bg-violet-500/20 transition"
-          >
-            <CalendarDays className="h-4 w-4 text-violet-300" /> Play today's Daily Circle #{dailyPuzzle.num}
-          </button>
-        )}
-      </div>
+      {/* ---------- Menu ---------- */}
+      {phase === "menu" && (
+        <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }}>
+          <div className="w-[min(92vw,440px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
+            <div className="text-[12px] font-extrabold uppercase tracking-[0.44em] text-violet-400" style={{ marginLeft: ".44em" }}>Cirqlback</div>
+            <h1 className="mb-1 mt-2 text-[clamp(28px,6.5vw,42px)] font-extrabold leading-none tracking-tight" style={{ background: "linear-gradient(115deg,#e9d5ff,#ec4899 55%,#22d3ee)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Cirqlbreak</h1>
 
-      <div className="flex gap-5 items-center my-2 text-sm tabular-nums">
-        {zen ? (
-          <span className="text-violet-300/80" data-testid="zen-indicator">🧘 Zen — just restore</span>
-        ) : (
-          <>
-            <span className="text-emerald-400 font-semibold">{hud.aligned}/{hud.total} aligned</span>
-            <span>Moves <b>{hud.moves}</b></span>
-          </>
-        )}
-      </div>
-
-      {/* CHR-96 · Perks — banked from partner taps, spent in-game (perk-free in the Daily Circle) */}
-      {user && !dailyMode && (
-        <div className="flex gap-2 flex-wrap justify-center px-4 min-h-[28px]" data-testid="perk-bar">
-          {PERKS.some((p) => (perks[p.id] || 0) > 0) ? (
-            PERKS.filter((p) => (perks[p.id] || 0) > 0).map((p) => {
-              const disabled = p.id === "guiding" && guidingActive;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => usePerk(p.id)}
-                  disabled={disabled}
-                  title={p.desc}
-                  data-testid={`perk-${p.id}`}
-                  className="rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-100 hover:bg-violet-500/20 transition disabled:opacity-40"
-                >
-                  {p.emoji} {p.name} <span className="text-violet-300/80">·{perks[p.id]}</span>{disabled ? " ✓" : ""}
+            <div className="mb-2 mt-4 text-left text-[11px] uppercase tracking-[0.2em] text-violet-300/60">Mode</div>
+            <div className="grid grid-cols-2 gap-2">
+              {MODES.map((m) => (
+                <button key={m.id} onClick={() => setMode(m.id)} data-testid={`mode-${m.id}`} className={seg(mode === m.id)} style={segStyle(mode === m.id)}>
+                  {m.label}<small className="mt-0.5 block text-[10.5px] font-medium opacity-70">{m.hint}</small>
                 </button>
-              );
-            })
-          ) : (
-            <span className="text-[11px] text-violet-300/45">🎯 Tap at partner shops to earn in-game perks</span>
-          )}
-        </div>
-      )}
+              ))}
+            </div>
 
-      <div className="relative" style={{ width: "min(92vw, 540px)", aspectRatio: "1" }}>
-        <canvas ref={canvasRef} className="block touch-none" style={{ cursor: "grab" }} aria-label="Ring alignment puzzle" />
-        {hud.won && !dailyMode && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center backdrop-blur-[2px]">
-            <h2
-              className="text-2xl font-extrabold"
-              style={{ background: "linear-gradient(120deg,#c4b5fd,#ec4899 75%)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}
-            >
-              {hud.worldName} Restored
-            </h2>
-            <p className="text-sm text-violet-300">Beautiful. The circle is whole again.</p>
-            {perfectWin && (
-              <div data-testid="perfect-win" className="text-sm font-bold inline-flex items-center gap-1" style={{ color: "#67e8f9" }}>💎 Perfect — no wasted moves</div>
+            {mode === "journey" && (
+              <p className="mt-4 min-h-[40px] px-1 text-[13px] leading-relaxed text-violet-300/70">
+                {menuInfo.jbest ? <>Your best: <b className="text-violet-100">{menuInfo.jbest.toLocaleString()}</b> · reached World {menuInfo.jworld}.<br />Starts gentle, climbs forever — beat it.</> : <>One long run that starts gentle and climbs forever.<br />How deep into the dark can you get?</>}
+              </p>
             )}
-            {user && award > 0 && (
-              <div className="text-sm font-semibold text-emerald-300" data-testid="points-award">+{award} ✦ points</div>
+            {mode === "daily" && (
+              <p className="mt-4 min-h-[40px] px-1 text-[13px] leading-relaxed text-violet-300/70">
+                <b className="text-violet-100">Daily Circle #{menuInfo.dailyNum}</b> — the same board for everyone today, one ranked run.<br />
+                {menuInfo.streak ? <>🔥 <b className="text-amber-400">{menuInfo.streak}-day streak</b> — play today to keep it alive.</> : "Play today to start a streak."}
+              </p>
             )}
-            {newBadges.map((name) => (
-              <div key={name} data-testid="badge-earned" className="text-sm font-semibold text-amber-300 inline-flex items-center gap-1">🏅 {name} unlocked</div>
-            ))}
-            <button
-              onClick={nextWorld}
-              data-testid="button-next-world"
-              className="rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-500/30"
-              style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)" }}
-            >
-              Next world →
-            </button>
-          </div>
-        )}
-      </div>
+            {mode === "party" && (
+              <p className="mt-4 min-h-[40px] px-1 text-[13px] leading-relaxed text-violet-300/70">
+                Two players, one circle. <b className="text-violet-100">P1 guards the top</b>, <b className="text-violet-100">P2 guards the bottom</b> — pass the ball across and restore each world together.<br /><b>P1:</b> A / D · <b>P2:</b> ← / → · or two thumbs on touch.
+              </p>
+            )}
+            {mode === "freestyle" && (
+              <div className="mt-4 text-left">
+                <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-violet-300/60">Difficulty</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {DIFFS.map((d) => (
+                    <button key={d.id} onClick={() => setDiff(d.id)} data-testid={`diff-${d.id}`} className={seg(diff === d.id)} style={segStyle(diff === d.id)}>
+                      {d.label}<small className="mt-0.5 block text-[10.5px] font-medium opacity-70">{d.hint}</small>
+                    </button>
+                  ))}
+                </div>
+                <div className="mb-2 mt-4 text-[11px] uppercase tracking-[0.2em] text-violet-300/60">Ball speed</div>
+                <div className="flex items-center gap-3">
+                  <input type="range" min={0.6} max={1.6} step={0.05} value={spd} onChange={(e) => setSpd(parseFloat(e.target.value))} className="h-1 flex-1" style={{ accentColor: "#ec4899" }} />
+                  <span className="w-11 text-right text-sm tabular-nums text-cyan-300">{spd.toFixed(1)}×</span>
+                </div>
+                <div className="mb-2 mt-4 text-[11px] uppercase tracking-[0.2em] text-violet-300/60">Modifiers</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setChaos(true)} className={seg(chaos)} style={segStyle(chaos)}>On<small className="mt-0.5 block text-[10.5px] font-medium opacity-70">gravity, chains, orbits</small></button>
+                  <button onClick={() => setChaos(false)} className={seg(!chaos)} style={segStyle(!chaos)}>Off<small className="mt-0.5 block text-[10.5px] font-medium opacity-70">pure breakout</small></button>
+                </div>
+              </div>
+            )}
 
-      <div className="flex gap-2 my-4 flex-wrap justify-center">
-        <button onClick={() => engineRef.current?.newPuzzle()} data-testid="button-new-puzzle" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold">New puzzle</button>
-        <button onClick={toggleMute} aria-pressed={muted} className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold">{muted ? "🔇 Muted" : "🔊 Sound"}</button>
-        <button onClick={toggleZen} aria-pressed={zen} data-testid="button-zen" className="rounded-xl border px-4 py-2 text-sm font-semibold" style={{ borderColor: zen ? "#c4b5fd" : "rgba(150,130,255,.25)", background: zen ? "rgba(196,181,253,.13)" : "rgba(255,255,255,.05)" }}>🧘 Zen</button>
-        <button onClick={() => setShowMap(true)} data-testid="button-world-map" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5">
-          <MapIcon className="h-4 w-4 text-violet-300" /> Worlds
-        </button>
-        {user && (
-          <button onClick={() => setShowEchoes(true)} data-testid="button-echoes" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5">
-            <Radio className="h-4 w-4 text-violet-300" /> Echoes
-          </button>
-        )}
-        {user && (
-          <button onClick={() => setShowCollection(true)} data-testid="button-your-cirql" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5">
-            <Gem className="h-4 w-4 text-violet-300" /> Your Cirql
-          </button>
-        )}
-        <button onClick={() => { setPinballState(null); setPinballOn(true); }} data-testid="button-lightball" className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 inline-flex items-center gap-1.5"><Zap className="h-4 w-4 text-amber-300" /> Light-Ball</button>
-      </div>
-      <Link href="/customer" className="text-xs text-violet-300/60 mb-6 inline-flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Back</Link>
-
-      <DailyResult
-        open={showDaily && !!dailyResult}
-        puzzleNumber={dailyPuzzle.num}
-        worldName={dailyPuzzle.world.name}
-        rings={dailyPuzzle.world.ringCount}
-        moves={dailyResult?.moves ?? 0}
-        timeMs={dailyResult?.timeMs ?? 0}
-        pointsAwarded={dailyResult?.points ?? 0}
-        onClose={() => (dailyMode ? exitDaily() : setShowDaily(false))}
-      />
-
-      {/* CHR-109 · Light-Ball — optional energetic alternate mode (opt-in, lazy) */}
-      {pinballOn && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center text-slate-100 select-none overflow-y-auto py-4" style={{ background: "radial-gradient(1000px 700px at 50% -12%, rgba(245,158,11,.18), transparent 60%), #05040f" }}>
-          <div className="w-full max-w-lg px-4 pt-2 text-center">
-            <div className="text-[12px] tracking-[0.42em] font-bold text-amber-300 ml-[0.42em] inline-flex items-center gap-2"><Zap className="h-4 w-4" /> LIGHT-BALL</div>
-            <p className="text-xs text-amber-200/60 mt-1">Hold and drag to steer the light. Ricochet off the bumpers — hit the core for a jackpot.</p>
-          </div>
-          <div className="flex gap-6 items-center my-3 text-sm tabular-nums">
-            <span className="font-semibold text-white" data-testid="pinball-score">Score {pinballState?.score ?? 0}</span>
-            {(pinballState?.combo ?? 0) >= 2 && <span className="text-amber-300 font-bold">×{pinballState?.combo}</span>}
-            <span className="text-amber-200/70">Best {Math.max(pinballBest, pinballState?.best ?? 0)}</span>
-          </div>
-          <div className="relative shrink-0" style={{ width: "min(82vw, 460px)", aspectRatio: "1" }}>
-            <canvas ref={pinballCanvasRef} className="block touch-none" style={{ cursor: "grab" }} aria-label="Light-Ball" />
-          </div>
-          <div className="flex gap-2 my-4">
-            <button onClick={() => pinballEngineRef.current?.reset(worldAt(index, playerSeed))} data-testid="button-pinball-restart" className="rounded-xl border border-amber-400/25 bg-white/5 px-4 py-2 text-sm font-semibold">Restart</button>
-            <button onClick={exitPinball} data-testid="button-pinball-exit" className="rounded-xl px-4 py-2 text-sm font-bold text-white" style={{ background: "linear-gradient(135deg,#f59e0b,#ec4899)" }}>← Back to Restore</button>
+            <button onClick={startRun} data-testid="button-play" className="mt-5 w-full rounded-2xl py-4 text-base font-extrabold text-white transition hover:brightness-110" style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)", boxShadow: "0 12px 34px rgba(124,58,237,.4)" }}>Play</button>
+            <p className="mt-3.5 text-[12px] leading-relaxed text-violet-300/60">
+              <b className="text-violet-100">Move</b> your mouse or finger to swing the paddle around the rim. Catch <b className="text-violet-100">power-ups</b>, clear every ring to wake the <b className="text-violet-100">core</b>, then strike its glowing gap. <b className="text-violet-100">E</b> Pulse · <b className="text-violet-100">Q</b> Supernova.
+            </p>
+            {!user && <p className="mt-3 text-[11px] text-violet-300/40">Log in to save your progress and earn power-ups from real taps.</p>}
+            <Link href="/customer" className="mt-4 inline-flex items-center gap-1 text-xs text-violet-300/60"><ArrowLeft className="h-3 w-3" /> Back</Link>
           </div>
         </div>
       )}
 
-      <Echoes open={showEchoes} onClose={() => setShowEchoes(false)} />
+      {/* ---------- Relic pick (Journey) ---------- */}
+      {relic && (
+        <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }} data-testid="relic-offer">
+          <div className="w-[min(92vw,440px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
+            <div className="text-[12px] font-extrabold uppercase tracking-[0.44em] text-violet-400" style={{ marginLeft: ".44em" }}>Choose a boon</div>
+            <h1 className="mb-1 mt-2 text-[clamp(24px,5.5vw,34px)] font-extrabold" style={{ background: "linear-gradient(115deg,#e9d5ff,#ec4899 55%,#22d3ee)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Pick your power</h1>
+            <p className="mx-auto mt-1 max-w-[36ch] text-sm text-violet-300/70">A relic for the rest of your run — and they stack.</p>
+            <div className="mt-4 grid gap-2.5">
+              {relic.options.map((id, i) => (
+                <button key={i} onClick={() => pickRelic(id)} data-testid={`relic-${id}`} className="flex items-center gap-3 rounded-2xl border border-violet-400/20 bg-white/[0.03] p-3.5 text-left transition hover:-translate-y-px hover:border-violet-400/50 hover:bg-violet-500/15">
+                  <div className="grid h-10 w-10 flex-none place-items-center rounded-xl text-xl" style={{ background: "rgba(124,58,237,.22)" }}>{RELICS[id].i}</div>
+                  <div><b className="block text-[15px] text-white">{RELICS[id].n}</b><span className="text-[12.5px] leading-snug text-violet-300/70">{RELICS[id].d}</span></div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
-      <WorldMap
-        open={showMap}
-        onClose={() => setShowMap(false)}
-        current={index}
-        restored={restored}
-        resolve={(i) => worldAt(i, playerSeed)}
-        onGo={goIndex}
-      />
-
-      <CirqlCollection
-        open={showCollection}
-        onClose={() => setShowCollection(false)}
-        worlds={restored}
-        streak={streak}
-        shinies={shinies}
-        equipped={equipped}
-        onEquip={equip}
-        busy={equipBusy}
-      />
+      {/* ---------- End screen ---------- */}
+      {phase === "over" && result && (
+        <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }} data-testid="end-screen">
+          <div className="w-[min(92vw,440px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
+            <div className="text-[12px] font-extrabold uppercase tracking-[0.44em]" style={{ marginLeft: ".44em", color: result.restored ? "#34d399" : "#7c3aed" }}>{result.restored ? "Restored" : "Faded"}</div>
+            <h1 className="mb-1 mt-2 text-[clamp(24px,5.5vw,34px)] font-extrabold text-white">
+              {result.mode === "daily" ? (result.restored ? "Daily Restored" : "Daily Complete") : "The Light Faded"}
+            </h1>
+            <p className="mx-auto mt-1 max-w-[38ch] text-sm text-violet-300/70">
+              {result.mode === "daily"
+                ? result.restored ? "You cleared today’s circle — come back tomorrow for a new one." : "Today’s circle held. One shot a day — try again tomorrow."
+                : result.mode === "party" ? `Together you restored ${result.world - 1} world${result.world - 1 === 1 ? "" : "s"} before the dark closed in.`
+                : `You reached World ${result.world} before the spark slipped away.`}
+            </p>
+            <div className="mt-3 flex justify-center gap-4">
+              <div className="text-[13px] text-violet-300/70">{result.mode === "daily" ? "Daily" : "World"}<b className="mt-0.5 block text-[22px] text-white tabular-nums">{result.mode === "daily" ? "#" + result.dailyNum : result.world}</b></div>
+              <div className="text-[13px] text-violet-300/70">Best combo<b className="mt-0.5 block text-[22px] text-white tabular-nums">×{result.comboMax}</b></div>
+            </div>
+            <div className="mt-2 text-[15px] text-violet-300/70">Score<b className="block text-[34px] text-white tabular-nums" data-testid="end-score">{result.score.toLocaleString()}</b></div>
+            {result.mode === "daily" && <div className="mt-2.5 text-xs text-cyan-300">🔥 <b className="text-amber-400">{result.streak}-day streak</b></div>}
+            <button onClick={startRun} data-testid="button-again" className="mt-5 w-full rounded-2xl py-4 text-base font-extrabold text-white transition hover:brightness-110" style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)", boxShadow: "0 12px 34px rgba(124,58,237,.4)" }}>{result.mode === "daily" ? "Replay (unranked)" : "Play again"}</button>
+            {result.mode === "daily" && (
+              <button onClick={shareDaily} data-testid="button-share" className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl border border-violet-400/20 py-3 font-semibold text-violet-300/80 transition hover:bg-white/[0.04] hover:text-white"><Share2 className="h-4 w-4" /> {shareLabel}</button>
+            )}
+            <button onClick={quitToMenu} data-testid="button-menu" className="mt-2.5 w-full rounded-2xl border border-violet-400/20 py-3 font-semibold text-violet-300/80 transition hover:bg-white/[0.04] hover:text-white">Menu</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
