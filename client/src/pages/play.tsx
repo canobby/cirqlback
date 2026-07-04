@@ -47,6 +47,7 @@ export default function Play() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<CirqlbreakEngine | null>(null);
   const progressRef = useRef<Record<string, any>>({}); // logged-in players: the server-side game_progress.state blob
+  const userRef = useRef(user); userRef.current = user; // fresh user for the engine's once-bound callbacks
 
   const [phase, setPhase] = useState<"menu" | "playing" | "over">("menu");
   const [hud, setHud] = useState<HudState | null>(null);
@@ -63,6 +64,8 @@ export default function Play() {
   const [bank, setBank] = useState<Record<string, number>>({}); // tap-earned rewards (Partner Power + power-ups)
   const [dailyRank, setDailyRank] = useState<{ rank: number; total: number } | null>(null); // your rank after a Daily run
   const [leaderboard, setLeaderboard] = useState<{ top: any[]; you: { rank: number; score: number } | null; total: number } | null>(null);
+  const [greatRing, setGreatRing] = useState<number | null>(null); // community-wide worlds restored
+  const [echoes, setEchoes] = useState<{ name?: string; world?: string }[]>([]);
 
   // Menu stats come from the server for logged-in players (cross-device), and from
   // the engine's localStorage for guests.
@@ -96,7 +99,15 @@ export default function Play() {
       haptics,
       onHud: setHud,
       onRelicOffer: (options, pick) => setRelic({ options, pick }),
-      onWorldRestored: () => { /* CHR-115/116: POST /api/game/restored → points + badges */ },
+      onWorldRestored: (info) => {
+        // CHR-117/120: record the restoration → points, achievement badges, and
+        // the community Echoes feed + Great Ring total.
+        if (!userRef.current) return;
+        fetch("/api/game/restored", {
+          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ worldName: info.worldName, perfect: info.noBallLost }),
+        }).catch(() => {});
+      },
       onRunEnd: (r) => { setResult(r); setPhase("over"); setShareLabel("Share result"); },
     });
     engineRef.current = eng;
@@ -161,6 +172,22 @@ export default function Play() {
     return () => { cancelled = true; };
   }, [phase, mode, user, dailyRank]);
 
+  // CHR-120: community stats on the menu — the Great Ring (worlds restored by
+  // everyone) and a recent-restorations feed.
+  useEffect(() => {
+    if (phase !== "menu") return;
+    fetch("/api/game/great-ring", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && typeof d.total === "number") setGreatRing(d.total); })
+      .catch(() => {});
+    if (user) {
+      fetch("/api/game/echoes", { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { const list = Array.isArray(d) ? d : d?.echoes || []; setEchoes(list.slice(0, 3)); })
+        .catch(() => {});
+    }
+  }, [phase, user]);
+
   const startRun = async () => {
     setResult(null);
     setRelic(null);
@@ -202,7 +229,8 @@ export default function Play() {
   const shareDaily = () => {
     if (!result) return;
     const stars = result.comboMax >= 10 ? "★★★" : result.comboMax >= 5 ? "★★☆" : "★☆☆";
-    const txt = `Cirqlbreak · Daily Circle #${result.dailyNum} ${stars}\nScore ${result.score.toLocaleString()} · best combo ×${result.comboMax} · ${result.restored ? "restored 🟣" : "faded ⚫"}\ncirqlback.onrender.com/play`;
+    const rankLine = dailyRank ? `\nRanked #${dailyRank.rank} of ${dailyRank.total}` : "";
+    const txt = `Cirqlbreak · Daily Circle #${result.dailyNum} ${stars}\nScore ${result.score.toLocaleString()} · best combo ×${result.comboMax}${rankLine}\n${result.restored ? "restored 🟣" : "faded ⚫"}\ncirqlback.onrender.com/play`;
     if (navigator.share) navigator.share({ text: txt }).catch(() => {});
     else navigator.clipboard?.writeText(txt).then(() => { setShareLabel("Copied!"); setTimeout(() => setShareLabel("Share result"), 1600); }).catch(() => {});
   };
@@ -357,6 +385,12 @@ export default function Play() {
             <p className="mt-3.5 text-[12px] leading-relaxed text-violet-300/60">
               <b className="text-violet-100">Move</b> your mouse or finger to swing the paddle around the rim. Catch <b className="text-violet-100">power-ups</b>, clear every ring to wake the <b className="text-violet-100">core</b>, then strike its glowing gap. <b className="text-violet-100">E</b> Pulse · <b className="text-violet-100">Q</b> Supernova.
             </p>
+            {greatRing != null && (
+              <div className="mt-3 text-[11px] text-violet-300/55" data-testid="great-ring">
+                🌍 <b className="text-violet-200/80">{greatRing.toLocaleString()}</b> worlds restored by the community
+                {echoes[0]?.name && <> · latest: <span className="text-violet-200/70">{echoes[0].name}{echoes[0].world ? ` restored ${echoes[0].world}` : ""}</span></>}
+              </div>
+            )}
             {!user && <p className="mt-3 text-[11px] text-violet-300/40">Log in to save your progress and earn power-ups from real taps.</p>}
             <Link href="/customer" className="mt-4 inline-flex items-center gap-1 text-xs text-violet-300/60"><ArrowLeft className="h-3 w-3" /> Back</Link>
           </div>
