@@ -14,6 +14,7 @@ import {
 } from "@/game/cirqlbreak-engine";
 import { PERKS } from "@shared/cirql-perks";
 import { COSMETICS, getCosmetic, isUnlocked, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
+import { GAME_ACHIEVEMENTS } from "@shared/cirql-achievements";
 
 // The banked power-up tokens (everything but the Partner Power) map 1:1 to engine
 // power-up types.
@@ -71,6 +72,8 @@ export default function Play() {
   const [equipped, setEquipped] = useState<string>(DEFAULT_COSMETIC); // equipped cosmetic id
   const [worldsRestored, setWorldsRestored] = useState(0); // lifetime worlds restored (drives cosmetic unlocks)
   const [showSkins, setShowSkins] = useState(false);
+  const [showAwards, setShowAwards] = useState(false);
+  const [earnedBadges, setEarnedBadges] = useState<Set<string>>(new Set()); // lowercased keys/names of earned game badges
 
   // Menu stats come from the server for logged-in players (cross-device), and from
   // the engine's localStorage for guests.
@@ -179,6 +182,27 @@ export default function Play() {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [phase, mode, user, dailyRank]);
+
+  // CHR-125: load earned game badges when the Awards screen opens (match by key
+  // or name, defensively — the endpoint returns enriched award objects).
+  useEffect(() => {
+    if (!showAwards || !user) return;
+    fetch("/api/game/badges", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!Array.isArray(d)) return;
+        const s = new Set<string>();
+        for (const b of d) {
+          const key = b?.key || b?.badgeKey || b?.badge?.key || b?.definition?.key;
+          const nm = b?.name || b?.badge?.name || b?.definition?.name;
+          if (key) s.add(String(key).toLowerCase());
+          if (nm) s.add(String(nm).toLowerCase());
+          if (b?.emoji) s.add(String(b.emoji)); // stable across badge renames
+        }
+        setEarnedBadges(s);
+      })
+      .catch(() => {});
+  }, [showAwards, user]);
 
   // CHR-120: community stats on the menu — the Great Ring (worlds restored by
   // everyone) and a recent-restorations feed.
@@ -441,6 +465,7 @@ export default function Play() {
             <div className="mt-4 flex items-center justify-center gap-4">
               <Link href="/customer" className="inline-flex items-center gap-1 text-xs text-violet-300/60"><ArrowLeft className="h-3 w-3" /> Back</Link>
               {user && <button onClick={() => setShowSkins(true)} data-testid="button-skins" className="inline-flex items-center gap-1 text-xs text-violet-300/60 transition hover:text-violet-200">🎨 Skins</button>}
+              {user && <button onClick={() => setShowAwards(true)} data-testid="button-awards" className="inline-flex items-center gap-1 text-xs text-violet-300/60 transition hover:text-violet-200">🏆 Awards</button>}
             </div>
           </div>
         </div>
@@ -473,6 +498,43 @@ export default function Play() {
           </div>
         </div>
       )}
+
+      {/* ---------- Awards (achievements) ---------- */}
+      {showAwards && (() => {
+        const earned = (a: typeof GAME_ACHIEVEMENTS[number]) =>
+          a.metric === "worlds" ? worldsRestored >= a.threshold
+          : a.metric === "streak" ? menuInfo.streak >= a.threshold
+          : earnedBadges.has(a.key.toLowerCase()) || earnedBadges.has(a.name.toLowerCase()) || earnedBadges.has(a.emoji);
+        const progress = (a: typeof GAME_ACHIEVEMENTS[number]) =>
+          a.metric === "worlds" ? `${Math.min(worldsRestored, a.threshold)} / ${a.threshold} worlds`
+          : a.metric === "streak" ? `${Math.min(menuInfo.streak, a.threshold)} / ${a.threshold}-day streak`
+          : a.desc;
+        const got = GAME_ACHIEVEMENTS.filter(earned).length;
+        return (
+          <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }} data-testid="awards-overlay" onClick={() => setShowAwards(false)}>
+            <div className="w-[min(92vw,460px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }} onClick={(e) => e.stopPropagation()}>
+              <div className="text-[12px] font-extrabold uppercase tracking-[0.44em] text-violet-400" style={{ marginLeft: ".44em" }}>Awards</div>
+              <h1 className="mb-1 mt-2 text-[clamp(24px,5.5vw,34px)] font-extrabold" style={{ background: "linear-gradient(115deg,#e9d5ff,#ec4899 55%,#22d3ee)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Achievements</h1>
+              <p className="mx-auto mt-1 max-w-[36ch] text-sm text-violet-300/70">{got} of {GAME_ACHIEVEMENTS.length} earned — they land on your Cirqlback profile too.</p>
+              <div className="mt-4 grid gap-2">
+                {GAME_ACHIEVEMENTS.map((a) => {
+                  const done = earned(a);
+                  return (
+                    <div key={a.key} data-testid={`award-${a.key}`} className={"flex items-center gap-3 rounded-2xl border p-3 text-left transition " + (done ? "border-amber-400/40 bg-amber-400/10" : "border-violet-400/15 bg-white/[0.02]")}>
+                      <span className={"grid h-9 w-9 flex-none place-items-center rounded-xl text-lg " + (done ? "" : "opacity-40 grayscale")} style={{ background: done ? a.color + "33" : "rgba(255,255,255,.04)" }}>{a.emoji}</span>
+                      <span className="min-w-0 flex-1">
+                        <b className={"block text-[14px] " + (done ? "text-white" : "text-violet-200/70")}>{a.name}{done ? " ✓" : ""}</b>
+                        <span className="block text-[11.5px] text-violet-300/55">{done ? a.desc : progress(a)}</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <button onClick={() => setShowAwards(false)} className="mt-4 w-full rounded-2xl border border-violet-400/20 py-3 font-semibold text-violet-300/80 transition hover:bg-white/[0.04] hover:text-white">Done</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ---------- Relic pick (Journey) ---------- */}
       {relic && (
