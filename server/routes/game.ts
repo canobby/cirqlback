@@ -218,23 +218,6 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
     }
   });
 
-  // CHR-109: record the best Light-Ball score (kept in game_progress.state).
-  app.post("/api/game/pinball", isAuthenticated, async (req, res) => {
-    try {
-      const userId = (req.user as any).id;
-      const score = Math.floor(Number(req.body?.score));
-      if (!Number.isFinite(score) || score < 0 || score > 10_000_000) return res.status(400).json({ error: "Invalid score" });
-      const p = await storage.getOrCreateGameProgress(userId);
-      const s = (p.state as any) || {};
-      const best = Math.max(Number(s.pinballBest) || 0, score);
-      if (best !== (Number(s.pinballBest) || 0)) await storage.saveGameProgress(userId, { state: { ...s, pinballBest: best } });
-      res.json({ best });
-    } catch (err) {
-      console.error("pinball score error:", err);
-      res.status(500).json({ error: "Failed to save score" });
-    }
-  });
-
   // CHR-98: Echoes — a calm feed of recent restorations by other players
   // (auth-gated since it shows first names).
   app.get("/api/game/echoes", isAuthenticated, async (_req, res) => {
