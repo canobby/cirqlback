@@ -103,6 +103,7 @@ import {
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizzle-orm";
 import { tierForPoints, levelForPoints, pointsToNextLevel } from "./gamification";
+import { perksForTap, isPerkId, type PerkBank } from "@shared/cirql-perks";
 import { ADDON_CATALOG, isAddonIncludedInTier, resolveAddonAmountCents } from "./addons";
 import { PLAN_PRICING } from "./pricing";
 import { resolveBilling, billingBlocksAccess } from "./billing-state";
@@ -1687,6 +1688,31 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
+  // CHR-96 bridge (platform → game): a partner tap banks in-game perks into the
+  // player's game_progress.state.perks. Runs off the tap flow, so the existing
+  // tap anti-abuse (cooldown/device/GPS) guards the perk economy for free.
+  async grantTapPerk(userId: string): Promise<void> {
+    const p = await this.getOrCreateGameProgress(userId);
+    const s = (p.state as any) || {};
+    const seq = (Number(s.perkTaps) || 0) + 1;
+    const perks: Record<string, number> = { ...(s.perks || {}) };
+    const grant = perksForTap(seq);
+    for (const [k, v] of Object.entries(grant)) perks[k] = (Number(perks[k]) || 0) + (v as number);
+    await this.saveGameProgress(userId, { state: { ...s, perkTaps: seq, perks } });
+  }
+
+  // Spend one banked perk. Returns the new bank, or null if the player had none.
+  async usePerk(userId: string, perkId: string): Promise<PerkBank | null> {
+    if (!isPerkId(perkId)) return null;
+    const p = await this.getOrCreateGameProgress(userId);
+    const s = (p.state as any) || {};
+    const perks: Record<string, number> = { ...(s.perks || {}) };
+    if (!(Number(perks[perkId]) > 0)) return null;
+    perks[perkId] = Number(perks[perkId]) - 1;
+    await this.saveGameProgress(userId, { state: { ...s, perks } });
+    return perks as PerkBank;
+  }
+
   // Stamp that the lock / suspension email has been sent for this delinquency.
   async markBillingNotified(userId: string, kind: "lock" | "suspend"): Promise<void> {
     await db
@@ -2843,6 +2869,7 @@ export class DatabaseStorage implements IStorage {
           await this.updateStreak(customer.id);
           if (tap.customerEmail) await this.processReferralCompletion(tap.customerEmail);
           earnedBadges = await this.evaluateCustomerAchievements(customer.id, tap.customerEmail);
+          await this.grantTapPerk(customer.id); // CHR-96: a partner tap banks in-game perks
         } catch (e) {
           console.error("streak/referral/badge update failed:", e);
         }

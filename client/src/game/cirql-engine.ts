@@ -56,6 +56,7 @@ export class CirqlEngine {
   private rings: Ring[] = [];
   private world!: WorldConfig; private accentRgb = "124,58,237";
   private auraRgb: string | null = null; // CHR-92: equipped cosmetic tints the core/bloom over the world accent
+  private guiding = false; // CHR-96 "Guiding Light" perk: wider snap for this world
   private moves = 0; private won = false;
   private drag: { i: number; startA: number; startRot: number; moved: boolean; lastA: number; lastT: number; vel: number } | null = null;
   private selected = 0;
@@ -94,11 +95,26 @@ export class CirqlEngine {
   }
 
   newPuzzle() { this.initLevel(); }
-  setWorld(world: WorldConfig) { this.world = world; this.accentRgb = hexToRgb(world.accent); this.initLevel(); }
+  setWorld(world: WorldConfig) { this.world = world; this.accentRgb = hexToRgb(world.accent); this.guiding = false; this.initLevel(); }
   setMuted(m: boolean) { this.muted = m; }
   // CHR-92: an equipped cosmetic tints the core/bloom; null falls back to the world accent.
   setAura(hex: string | null) { this.auraRgb = hex ? hexToRgb(hex) : null; }
   private accent() { return this.auraRgb ?? this.accentRgb; }
+
+  // CHR-96 perks. Echo Assist: instantly aligns one still-off ring (returns
+  // false if there's nothing to align, so the caller doesn't spend it for free).
+  autoAlignOne(): boolean {
+    if (this.won) return false;
+    const r = this.rings.find((r) => !r.aligned && !r.tween);
+    if (!r) return false;
+    r.vel = 0;
+    r.tween = { from: r.rot, to: Math.round(r.rot / TWO) * TWO, t: 0 };
+    return true;
+  }
+  // Guiding Light: widen the snap/align tolerance for the current world.
+  setGuidingLight(on: boolean) { this.guiding = on; }
+  private alignTol() { return this.guiding ? ALIGN_TOL * 2.2 : ALIGN_TOL; }
+  private snapTol() { return this.guiding ? SNAP_TOL * 1.5 : SNAP_TOL; }
 
   // ---- helpers ----
   private norm(a: number) { a %= TWO; if (a < -Math.PI) a += TWO; if (a > Math.PI) a -= TWO; return a; }
@@ -227,7 +243,7 @@ export class CirqlEngine {
     const v = this.drag.vel;
     // A slow release near the top settles with a spring; a real flick keeps its
     // momentum and spins on, snapping once it winds down (see the frame loop).
-    if (this.dist(r.rot, 0) < SNAP_TOL && Math.abs(v) < 2.2) {
+    if (this.dist(r.rot, 0) < this.snapTol() && Math.abs(v) < 2.2) {
       r.tween = { from: r.rot, to: Math.round(r.rot / TWO) * TWO, t: 0 }; r.vel = 0;
     } else if (Math.abs(v) > 0.6) {
       r.vel = Math.max(-MAX_VEL, Math.min(MAX_VEL, v)); r.driftResumeAt = performance.now() + 900;
@@ -298,7 +314,7 @@ export class CirqlEngine {
         r.rot = this.norm(r.rot + r.drift * sec * (attract ? 1.5 : 1));
       }
       const settled = !r.tween && Math.abs(r.vel) < 0.25; // a real lock, not a fly-through
-      r.aligned = !r.tween && this.dist(r.rot, 0) < ALIGN_TOL && (!this.drag || this.drag.i !== i);
+      r.aligned = !r.tween && this.dist(r.rot, 0) < this.alignTol() && (!this.drag || this.drag.i !== i);
       if (r.aligned) alignedCount++;
       r.glow += ((r.aligned ? 1 : 0) - r.glow) * Math.min(1, dt / 120);
       if (r.aligned && !r.wasAligned) {

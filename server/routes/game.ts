@@ -4,6 +4,7 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../auth";
 import type { RouteDeps } from "./_shared";
 import { getCosmetic, isUnlocked } from "@shared/cirql-cosmetics";
+import { isPerkId } from "@shared/cirql-perks";
 
 // CIRQL game progress (CHR-94). Guests play without saving; logged-in players
 // persist their resume point + a stable per-player seed for the infinite stream.
@@ -118,6 +119,22 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
     } catch (err) {
       console.error("game cosmetic equip error:", err);
       res.status(500).json({ error: "Failed to equip cosmetic" });
+    }
+  });
+
+  // CHR-96: spend one banked perk (Echo Assist / Guiding Light). Server-
+  // authoritative — decrements game_progress.state.perks so it can't be over-spent.
+  app.post("/api/game/perk/use", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const perk = String(req.body?.perk ?? "");
+      if (!isPerkId(perk)) return res.status(400).json({ error: "Unknown perk" });
+      const perks = await storage.usePerk(userId, perk);
+      if (!perks) return res.status(409).json({ error: "No perk to use" });
+      res.json({ perks });
+    } catch (err) {
+      console.error("perk use error:", err);
+      res.status(500).json({ error: "Failed to use perk" });
     }
   });
 

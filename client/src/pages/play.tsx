@@ -9,6 +9,7 @@ import { CirqlCollection } from "@/components/game/cirql-collection";
 import { WorldMap } from "@/components/game/world-map";
 import { DailyResult } from "@/components/game/daily-result";
 import { getCosmetic, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
+import { PERKS } from "@shared/cirql-perks";
 
 const todayStr = () => new Date().toISOString().slice(0, 10); // UTC yyyy-mm-dd (matches the server)
 
@@ -45,6 +46,9 @@ export default function Play() {
   const [dailyDone, setDailyDone] = useState(false);
   const [dailyResult, setDailyResult] = useState<{ moves: number; timeMs: number; points: number } | null>(null);
   const [showDaily, setShowDaily] = useState(false);
+  // CHR-96 reward bridge — perks banked from partner taps, spent in-game.
+  const [perks, setPerks] = useState<Record<string, number>>({});
+  const [guidingActive, setGuidingActive] = useState(false);
   // CHR-91 world map
   const [showMap, setShowMap] = useState(false);
   // CHR-92 Your Cirql + collection
@@ -93,6 +97,8 @@ export default function Play() {
           setDailyDone(true);
           setDailyResult({ moves: st.dailyCircle.moves, timeMs: st.dailyCircle.timeMs || 0, points: 0 });
         }
+        // CHR-96: banked perks from partner taps.
+        if (st.perks && typeof st.perks === "object") setPerks(st.perks);
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -173,19 +179,33 @@ export default function Play() {
   }, [hud.won]);
 
   const goIndex = (i: number) => {
-    setAward(0);
+    setAward(0); setGuidingActive(false); // Guiding Light is per-world; engine resets it too
     if (dailyModeRef.current) { dailyModeRef.current = false; setDailyMode(false); setShowDaily(false); wonRef.current = false; }
     setIndex(i); engineRef.current?.setWorld(worldAt(i, playerSeed)); save({ worldIndex: i });
   };
 
+  // CHR-96: spend a banked perk — apply the in-game effect, then consume server-side.
+  const usePerk = (perk: string) => {
+    if (dailyMode || !user || (perks[perk] || 0) <= 0) return; // perk-free in the competitive Daily Circle
+    if (perk === "echo") { if (!engineRef.current?.autoAlignOne()) return; } // nothing to align → don't spend
+    else if (perk === "guiding") { if (guidingActive) return; engineRef.current?.setGuidingLight(true); setGuidingActive(true); }
+    setPerks((p) => ({ ...p, [perk]: (p[perk] || 0) - 1 })); // optimistic
+    fetch("/api/game/perk/use", {
+      method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ perk }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => { if (res?.perks) setPerks(res.perks); else setPerks((p) => ({ ...p, [perk]: (p[perk] || 0) + 1 })); })
+      .catch(() => setPerks((p) => ({ ...p, [perk]: (p[perk] || 0) + 1 })));
+  };
+
   // CHR-104: enter / leave the shared Daily Circle without disturbing the resume point.
   const startDaily = () => {
-    setShowDaily(false); wonRef.current = false; dailyStartRef.current = performance.now();
+    setShowDaily(false); wonRef.current = false; dailyStartRef.current = performance.now(); setGuidingActive(false);
     dailyModeRef.current = true; setDailyMode(true);
     engineRef.current?.setWorld(dailyPuzzle.world);
   };
   const exitDaily = () => {
-    dailyModeRef.current = false; setDailyMode(false); setShowDaily(false); wonRef.current = false;
+    dailyModeRef.current = false; setDailyMode(false); setShowDaily(false); wonRef.current = false; setGuidingActive(false);
     engineRef.current?.setWorld(worldAt(index, playerSeed));
   };
   const nextWorld = () => goIndex(index + 1);
@@ -305,6 +325,31 @@ export default function Play() {
         <span className="text-emerald-400 font-semibold">{hud.aligned}/{hud.total} aligned</span>
         <span>Moves <b>{hud.moves}</b></span>
       </div>
+
+      {/* CHR-96 · Perks — banked from partner taps, spent in-game (perk-free in the Daily Circle) */}
+      {user && !dailyMode && (
+        <div className="flex gap-2 flex-wrap justify-center px-4 min-h-[28px]" data-testid="perk-bar">
+          {PERKS.some((p) => (perks[p.id] || 0) > 0) ? (
+            PERKS.filter((p) => (perks[p.id] || 0) > 0).map((p) => {
+              const disabled = p.id === "guiding" && guidingActive;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => usePerk(p.id)}
+                  disabled={disabled}
+                  title={p.desc}
+                  data-testid={`perk-${p.id}`}
+                  className="rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-100 hover:bg-violet-500/20 transition disabled:opacity-40"
+                >
+                  {p.emoji} {p.name} <span className="text-violet-300/80">·{perks[p.id]}</span>{disabled ? " ✓" : ""}
+                </button>
+              );
+            })
+          ) : (
+            <span className="text-[11px] text-violet-300/45">🎯 Tap at partner shops to earn in-game perks</span>
+          )}
+        </div>
+      )}
 
       <div className="relative" style={{ width: "min(92vw, 540px)", aspectRatio: "1" }}>
         <canvas ref={canvasRef} className="block touch-none" style={{ cursor: "grab" }} aria-label="Ring alignment puzzle" />
