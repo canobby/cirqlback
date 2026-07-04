@@ -140,6 +140,20 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
     }
   });
 
+  // CHR-116: redeem a set of banked tap-rewards into a run (Partner Power +
+  // power-ups). Server-authoritative — clamps to what's actually banked.
+  app.post("/api/game/perks/redeem", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const spend = req.body?.spend && typeof req.body.spend === "object" ? (req.body.spend as Record<string, number>) : {};
+      const result = await storage.redeemPerks(userId, spend);
+      res.json(result);
+    } catch (err) {
+      console.error("perk redeem error:", err);
+      res.status(500).json({ error: "Failed to redeem perks" });
+    }
+  });
+
   // CHR-104: record today's Daily Circle result (the shared daily puzzle).
   // Idempotent per UTC day — the first completion counts; a modest bonus lands
   // in the points economy once/day. Stored in game_progress.state.dailyCircle.

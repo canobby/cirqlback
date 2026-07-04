@@ -67,6 +67,12 @@ export interface StartOptions {
   chaos?: boolean;     // freestyle modifiers on/off
 }
 
+// Reward bridge: what banked tap-rewards a run boots with (CHR-116).
+export interface RunBoot {
+  nova?: boolean;             // start with the Supernova charged (a banked Partner Power)
+  powerups?: PowerupType[];   // power-ups dropped into world 1 (tap-earned)
+}
+
 export interface EngineOpts extends Partial<CirqlbreakSettings> {
   /** HUD values — fired only when they change. */
   onHud?: (s: HudState) => void;
@@ -207,7 +213,7 @@ export class CirqlbreakEngine {
   }
 
   // ---------- public API ----------
-  start(mode: CirqlbreakMode, o: StartOptions = {}) {
+  start(mode: CirqlbreakMode, o: StartOptions = {}, boot: RunBoot = {}) {
     this.mode = mode;
     if (o.diff) this.diff = o.diff;
     if (o.spd != null) this.spd = o.spd;
@@ -216,7 +222,7 @@ export class CirqlbreakEngine {
     this.timeScale = 1; this.slowUntil = 0; this.wideUntil = 0; this.bloom = 0; this.sticky = 0;
     this.paddle.angVel = 0; this.paddle._prev = null;
     this.relics = []; this.scoreMult = 1; this.engMult = 1; this.reviveLeft = 0; this.pulseReady = 0; this.superCharge = 0;
-    this.pendingPups = [];
+    this.pendingPups = (boot.powerups || []).slice(); // tap-earned power-ups drop into world 1
 
     if (mode === "daily") {
       const day = Math.floor(Date.now() / 86400000);
@@ -232,6 +238,7 @@ export class CirqlbreakEngine {
       this.rng = Math.random; this.lives = DIFF[this.diff].lives;
     }
     this.buildWorld(this.makeWorld(1));
+    if (boot.nova) this.superCharge = 1; // a banked Partner Power → Supernova ready
     this.state = "intro";
     this.stateUntil = performance.now() + 1700;
     this.emitHud();

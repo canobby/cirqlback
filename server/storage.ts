@@ -1796,6 +1796,24 @@ export class DatabaseStorage implements IStorage {
     return perks as PerkBank;
   }
 
+  // CHR-116: redeem a set of banked tap-rewards at once (clamped to what's
+  // actually banked). Server-authoritative so the bank can't be over-spent.
+  // Returns the amounts actually spent + the remaining bank.
+  async redeemPerks(userId: string, spend: Record<string, number>): Promise<{ spent: Record<string, number>; perks: PerkBank }> {
+    const p = await this.getOrCreateGameProgress(userId);
+    const s = (p.state as any) || {};
+    const perks: Record<string, number> = { ...(s.perks || {}) };
+    const spent: Record<string, number> = {};
+    for (const [id, want] of Object.entries(spend || {})) {
+      if (!isPerkId(id)) continue;
+      const have = Number(perks[id]) || 0;
+      const take = Math.max(0, Math.min(Math.floor(Number(want) || 0), have));
+      if (take > 0) { perks[id] = have - take; spent[id] = take; }
+    }
+    if (Object.keys(spent).length) await this.saveGameProgress(userId, { state: { ...s, perks } });
+    return { spent, perks: perks as PerkBank };
+  }
+
   // Stamp that the lock / suspension email has been sent for this delinquency.
   async markBillingNotified(userId: string, kind: "lock" | "suspend"): Promise<void> {
     await db

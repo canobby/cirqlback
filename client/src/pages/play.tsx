@@ -10,7 +10,13 @@ import {
   type CirqlbreakMode,
   type Difficulty,
   type RelicId,
+  type PowerupType,
 } from "@/game/cirqlbreak-engine";
+import { PERKS } from "@shared/cirql-perks";
+
+// The banked power-up tokens (everything but the Partner Power) map 1:1 to engine
+// power-up types.
+const TOKEN_TYPES = ["multi", "wide", "slow", "catch", "life"] as const;
 
 // Cirqlbreak — the in-app arcade game (lazy-loaded at /play, code-split). A
 // circular Breakout roguelike: rally the spark, shatter the rings, out-time the
@@ -54,6 +60,7 @@ export default function Play() {
   const [haptics, setHaptics] = useState(() => lsGet("cb_hap") !== "0");
   const [menuInfo, setMenuInfo] = useState({ jbest: 0, jworld: 0, streak: 0, dailyNum: 0 });
   const [shareLabel, setShareLabel] = useState("Share result");
+  const [bank, setBank] = useState<Record<string, number>>({}); // tap-earned rewards (Partner Power + power-ups)
 
   // Menu stats come from the server for logged-in players (cross-device), and from
   // the engine's localStorage for guests.
@@ -99,13 +106,14 @@ export default function Play() {
   // Hydrate the server progress blob when a logged-in player arrives (settings +
   // best/streak sync across devices); reset to local for guests.
   useEffect(() => {
-    if (!user) { progressRef.current = {}; if (engineRef.current) refreshMenuInfo(engineRef.current); return; }
+    if (!user) { progressRef.current = {}; setBank({}); if (engineRef.current) refreshMenuInfo(engineRef.current); return; }
     let cancelled = false;
     fetch("/api/game/progress", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled || !d) return;
         progressRef.current = d.state || {};
+        setBank((progressRef.current.perks as Record<string, number>) || {});
         const s = progressRef.current.settings;
         if (s && typeof s.sound === "boolean") { setSound(s.sound); engineRef.current?.setMuted(!s.sound); }
         if (s && typeof s.haptics === "boolean") { setHaptics(s.haptics); engineRef.current?.setHaptics(s.haptics); }
@@ -132,11 +140,32 @@ export default function Play() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
 
-  const startRun = () => {
+  const startRun = async () => {
     setResult(null);
     setRelic(null);
+    // Redeem tap-earned rewards into this run (Partner Power + power-ups), server-
+    // authoritative so the bank can't be over-spent.
+    let boot: { nova?: boolean; powerups?: PowerupType[] } = {};
+    if (user && mode !== "daily") { // Daily is competitive → perk-free
+      const spend: Record<string, number> = {};
+      if (bank.nova) spend.nova = 1;
+      TOKEN_TYPES.forEach((t) => { if (bank[t]) spend[t] = bank[t]; });
+      if (Object.keys(spend).length) {
+        const r = await fetch("/api/game/perks/redeem", {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" }, body: JSON.stringify({ spend }),
+        }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+        if (r?.spent) {
+          const powerups: PowerupType[] = [];
+          TOKEN_TYPES.forEach((t) => { for (let i = 0; i < (r.spent[t] || 0); i++) powerups.push(t); });
+          boot = { nova: (r.spent.nova || 0) > 0, powerups };
+          setBank(r.perks || {});
+          progressRef.current = { ...progressRef.current, perks: r.perks || {} };
+        }
+      }
+    }
+    engineRef.current?.start(mode, { diff, spd, chaos }, boot);
     setPhase("playing");
-    engineRef.current?.start(mode, { diff, spd, chaos });
   };
   const quitToMenu = () => {
     engineRef.current?.toMenu();
@@ -266,6 +295,21 @@ export default function Play() {
               </div>
             )}
 
+            {user && mode !== "daily" && (
+              Object.values(bank).some((n) => n > 0) ? (
+                <div className="mt-4 rounded-2xl border border-amber-400/25 bg-amber-500/10 px-4 py-2.5 text-left" data-testid="tap-bank">
+                  <div className="mb-1 text-[11px] uppercase tracking-[0.16em] text-amber-300/80">From your taps</div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-amber-100">
+                    {PERKS.filter((p) => (bank[p.id] || 0) > 0).map((p) => (
+                      <span key={p.id}>{p.emoji} {p.name}{(bank[p.id] || 0) > 1 ? ` ×${bank[p.id]}` : ""}</span>
+                    ))}
+                  </div>
+                  <div className="mt-1 text-[11px] text-amber-300/50">Unleashed when you press Play.</div>
+                </div>
+              ) : (
+                <p className="mt-4 text-[11px] text-amber-300/45">🎯 Tap partner shops to charge your Partner Power &amp; earn power-ups.</p>
+              )
+            )}
             <button onClick={startRun} data-testid="button-play" className="mt-5 w-full rounded-2xl py-4 text-base font-extrabold text-white transition hover:brightness-110" style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)", boxShadow: "0 12px 34px rgba(124,58,237,.4)" }}>Play</button>
             <p className="mt-3.5 text-[12px] leading-relaxed text-violet-300/60">
               <b className="text-violet-100">Move</b> your mouse or finger to swing the paddle around the rim. Catch <b className="text-violet-100">power-ups</b>, clear every ring to wake the <b className="text-violet-100">core</b>, then strike its glowing gap. <b className="text-violet-100">E</b> Pulse · <b className="text-violet-100">Q</b> Supernova.
