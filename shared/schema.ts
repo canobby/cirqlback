@@ -51,6 +51,13 @@ export const users = pgTable("users", {
   trialDiscountActive: boolean("trial_discount_active").default(false),
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
+  // Billing enforcement (Phase 1). `paidThroughDate` = end of the last paid
+  // service period; `pastDueSince` = when the current delinquency began (null
+  // when current). Together they drive the grace/locked/suspended states — see
+  // server/billing-state.ts. In Phase 3 these are set from Stripe invoice
+  // webhooks; until then they can be set by the admin billing control / scheduler.
+  paidThroughDate: timestamp("paid_through_date"),
+  pastDueSince: timestamp("past_due_since"),
   apiKey: varchar("api_key").unique(), // for API access to both Cirql and InSpektAI
   apiKeyCreatedAt: timestamp("api_key_created_at"),
   totalPoints: integer("total_points").default(0),

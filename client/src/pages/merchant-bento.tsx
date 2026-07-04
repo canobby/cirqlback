@@ -23,6 +23,7 @@ import RemindersPanel from "@/components/merchant/reminders-panel";
 import MessageCenter from "@/components/messaging/message-center";
 import AnnouncementsPanel from "@/components/messaging/announcements-panel";
 import HelpAssistant from "@/components/assistant/help-assistant";
+import BillingGate from "@/components/billing/billing-gate";
 
 export default function MerchantBento() {
   const [, setLocation] = useLocation();
@@ -49,6 +50,7 @@ export default function MerchantBento() {
   const recentActivity: any[] = Array.isArray(analytics?.recentActivity) ? analytics.recentActivity : [];
 
   return (
+    <BillingGate>
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30 pb-8 pt-20">
       <div className="max-w-6xl mx-auto px-4">
         
@@ -382,5 +384,6 @@ export default function MerchantBento() {
       </div>
       <HelpAssistant role="business" />
     </div>
+    </BillingGate>
   );
 }

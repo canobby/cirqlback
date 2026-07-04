@@ -8,6 +8,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import { openaiService } from "../openai-service";
 import { isAuthenticated, isAdminAuthenticated } from "../auth";
+import { requireActiveBilling } from "./billing";
 import { PLAN_PRICING, resolvePlanAmountCents, type BillingInterval } from "../pricing";
 import type { RouteDeps } from "./_shared";
 
@@ -250,7 +251,7 @@ export function registerBusinessesCampaignsNfcRoutes(app: Express, deps: RouteDe
     }
   });
 
-  app.post("/api/campaigns", isAuthenticated, async (req, res) => {
+  app.post("/api/campaigns", isAuthenticated, requireActiveBilling, async (req, res) => {
     try {
       const validatedData = insertCampaignSchema.parse(req.body);
       // CHR-16: only the owning business may create a campaign. Without this an
@@ -304,7 +305,7 @@ export function registerBusinessesCampaignsNfcRoutes(app: Express, deps: RouteDe
     }
   });
 
-  app.post("/api/nfc-tags", isAuthenticated, async (req, res) => {
+  app.post("/api/nfc-tags", isAuthenticated, requireActiveBilling, async (req, res) => {
     try {
       const validatedData = insertNfcTagSchema.parse(req.body);
       // CHR-16: only the owning business may mint NFC tags. Its PATCH/DELETE

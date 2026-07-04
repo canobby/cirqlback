@@ -103,6 +103,7 @@ import { eq, desc, and, or, sql, count, inArray, isNull, isNotNull } from "drizz
 import { tierForPoints, levelForPoints, pointsToNextLevel } from "./gamification";
 import { ADDON_CATALOG, isAddonIncludedInTier, resolveAddonAmountCents } from "./addons";
 import { PLAN_PRICING } from "./pricing";
+import { resolveBilling, billingBlocksAccess } from "./billing-state";
 
 export interface IStorage {
   // User operations (required for auth)
@@ -1579,6 +1580,46 @@ export class DatabaseStorage implements IStorage {
     return owner?.subscriptionTier ?? null;
   }
 
+  // Billing enforcement (Phase 1): is this business's owner locked or suspended
+  // for non-payment? Used to disable taps and gate merchant actions.
+  async isBusinessBillingBlocked(businessId: string): Promise<boolean> {
+    const business = await this.getBusiness(businessId);
+    if (!business?.ownerId) return false;
+    const owner = await this.getUser(business.ownerId);
+    if (!owner) return false;
+    return billingBlocksAccess(resolveBilling(owner).state);
+  }
+
+  // Mark a user past-due, PRESERVING an existing pastDueSince so the 90-day
+  // suspend clock isn't reset by repeated calls (idempotent for the sweep).
+  async setUserPastDue(userId: string, since: Date = new Date()): Promise<void> {
+    await db
+      .update(users)
+      .set({ pastDueSince: sql`COALESCE(${users.pastDueSince}, ${since})` })
+      .where(eq(users.id, userId));
+  }
+
+  // Mark a user current (payment received); optionally record the paid-through date.
+  async clearUserPastDue(userId: string, paidThrough?: Date): Promise<void> {
+    await db
+      .update(users)
+      .set({ pastDueSince: null, ...(paidThrough ? { paidThroughDate: paidThrough } : {}) })
+      .where(eq(users.id, userId));
+  }
+
+  // Explicit setter for the admin billing control / testing.
+  async setUserBilling(
+    userId: string,
+    fields: { pastDueSince?: Date | null; paidThroughDate?: Date | null },
+  ): Promise<User | undefined> {
+    const set: Record<string, any> = {};
+    if (fields.pastDueSince !== undefined) set.pastDueSince = fields.pastDueSince;
+    if (fields.paidThroughDate !== undefined) set.paidThroughDate = fields.paidThroughDate;
+    if (Object.keys(set).length === 0) return this.getUser(userId);
+    const [row] = await db.update(users).set(set).where(eq(users.id, userId)).returning();
+    return row;
+  }
+
   // Effective entitlement: a business "has" an add-on if it purchased it OR its
   // owner's plan includes it for free. This is the canonical gate used across
   // the feature routes so tier-included add-ons work without a purchase row.
@@ -2575,6 +2616,16 @@ export class DatabaseStorage implements IStorage {
             message: "Too many taps from this device. Please slow down and try again shortly.",
           };
         }
+      }
+
+      // Billing enforcement: taps don't earn when the owning business is locked
+      // or suspended for non-payment ("taps will not work").
+      if (tap.businessId && (await this.isBusinessBillingBlocked(tap.businessId))) {
+        return {
+          success: false,
+          reason: "business_unavailable",
+          message: "This business's rewards are paused right now. Please check back soon.",
+        };
       }
 
       // Resolve the campaign (if any) to determine reward + points. Fall back to

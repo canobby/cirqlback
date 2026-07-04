@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { openaiService } from "../openai-service";
 import { isAuthenticated, isAdminAuthenticated } from "../auth";
 import { PLAN_PRICING, resolvePlanAmountCents, type BillingInterval } from "../pricing";
+import { resolveBilling } from "../billing-state";
 import { CAMPAIGN_TEMPLATES } from "./coordinator";
 import type { RouteDeps } from "./_shared";
 
@@ -177,6 +178,33 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     } catch (error) {
       console.error("Suspend error:", error);
       res.status(500).json({ error: "Failed to update suspension" });
+    }
+  });
+
+  // Billing control (ops + testing): set/clear a user's delinquency directly.
+  // Accepts ISO dates (or null to clear). Backdating pastDueSince lets you
+  // exercise the grace -> locked -> suspended states. In production this state
+  // is normally driven by the scheduler / Stripe webhooks (Phases 2-3).
+  app.post("/api/admin/users/:id/billing", async (req, res) => {
+    try {
+      const target = await storage.getUser(req.params.id);
+      if (!target) return res.status(404).json({ error: "User not found" });
+      const parseDate = (v: any): Date | null | undefined => {
+        if (v === undefined) return undefined;
+        if (v === null || v === "") return null;
+        const d = new Date(v);
+        return isNaN(d.getTime()) ? undefined : d;
+      };
+      const updated = await storage.setUserBilling(target.id, {
+        pastDueSince: parseDate(req.body?.pastDueSince),
+        paidThroughDate: parseDate(req.body?.paidThroughDate),
+      });
+      audit(req, "user.billing", "user", target.id,
+        JSON.stringify({ pastDueSince: req.body?.pastDueSince ?? undefined, paidThroughDate: req.body?.paidThroughDate ?? undefined }));
+      res.json({ success: true, billing: resolveBilling(updated || target) });
+    } catch (error) {
+      console.error("Billing set error:", error);
+      res.status(500).json({ error: "Failed to update billing" });
     }
   });
 
