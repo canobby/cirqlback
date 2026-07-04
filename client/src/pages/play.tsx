@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Sparkles, Gift, Flame, Gem, Map as MapIcon, CalendarDays, Share2 } from "lucide-react";
+import { ArrowLeft, Sparkles, Gift, Flame, Gem, Map as MapIcon, CalendarDays, Share2, Radio } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlEngine, type GameState } from "@/game/cirql-engine";
 import { CRAFTED_WORLDS, type WorldConfig } from "@/game/worlds";
@@ -8,6 +8,7 @@ import { generateWorld, dailyWorld, todayDay, dailyPuzzleNumber } from "@/game/p
 import { CirqlCollection } from "@/components/game/cirql-collection";
 import { WorldMap } from "@/components/game/world-map";
 import { DailyResult } from "@/components/game/daily-result";
+import { Echoes } from "@/components/game/echoes";
 import { getCosmetic, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
 import { PERKS } from "@shared/cirql-perks";
 import { nextCommunityMilestone } from "@shared/cirql-community";
@@ -65,6 +66,8 @@ export default function Play() {
   const [guidingActive, setGuidingActive] = useState(false);
   // CHR-91 world map
   const [showMap, setShowMap] = useState(false);
+  // CHR-98 Echoes
+  const [showEchoes, setShowEchoes] = useState(false);
   // CHR-92 Your Cirql + collection
   const [showCollection, setShowCollection] = useState(false);
   const [equipped, setEquipped] = useState<string>(DEFAULT_COSMETIC);
@@ -186,7 +189,7 @@ export default function Play() {
           // CHR-95: normal restore — server records it + awards points/badges.
           fetch("/api/game/restored", {
             method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-            body: JSON.stringify({ worldIndex: index, perfect, shiny }),
+            body: JSON.stringify({ worldIndex: index, perfect, shiny, worldName: hud.worldName }),
           })
             .then((r) => (r.ok ? r.json() : null))
             .then((res) => { if (res) { setRestored(res.worldsRestored); setAward(res.pointsAwarded || 0); setNewBadges(res.badges || []); if (typeof res.shinies === "number") setShinies(res.shinies); refreshGreatRing(); } })
@@ -442,6 +445,11 @@ export default function Play() {
           <MapIcon className="h-4 w-4 text-violet-300" /> Worlds
         </button>
         {user && (
+          <button onClick={() => setShowEchoes(true)} data-testid="button-echoes" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5">
+            <Radio className="h-4 w-4 text-violet-300" /> Echoes
+          </button>
+        )}
+        {user && (
           <button onClick={() => setShowCollection(true)} data-testid="button-your-cirql" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5">
             <Gem className="h-4 w-4 text-violet-300" /> Your Cirql
           </button>
@@ -459,6 +467,8 @@ export default function Play() {
         pointsAwarded={dailyResult?.points ?? 0}
         onClose={() => (dailyMode ? exitDaily() : setShowDaily(false))}
       />
+
+      <Echoes open={showEchoes} onClose={() => setShowEchoes(false)} />
 
       <WorldMap
         open={showMap}

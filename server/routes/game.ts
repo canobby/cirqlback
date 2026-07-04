@@ -184,12 +184,14 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
       if (pointsAwarded > 0) await storage.updateUserPoints(userId, pointsAwarded);
       const perfect = req.body?.perfect === true; // CHR-105: no wasted moves
       const shiny = req.body?.shiny === true;     // CHR-108: a rare shiny world
+      const worldName = String(req.body?.worldName ?? "").slice(0, 60); // CHR-98 echo
       const prevState = (p.state as any) || {};
       const shinies = (Number(prevState.shinies) || 0) + (shiny ? 1 : 0);
       const saved = await storage.saveGameProgress(userId, {
         worldsRestored: p.worldsRestored + 1,
         ...(worldIndex !== undefined ? { worldIndex } : {}),
-        state: { ...prevState, lastRestoreAt: now, shinies },
+        // CHR-98: the player's latest restoration powers the community "Echoes" feed.
+        state: { ...prevState, lastRestoreAt: now, shinies, ...(worldName ? { lastEcho: { world: worldName, at: now } } : {}) },
       });
       // CHR-103/105/108: surface newly-earned achievements as shared badges.
       let badges: string[] = [];
@@ -213,6 +215,17 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
     } catch (err) {
       console.error("great ring error:", err);
       res.status(500).json({ error: "Failed to load community progress" });
+    }
+  });
+
+  // CHR-98: Echoes — a calm feed of recent restorations by other players
+  // (auth-gated since it shows first names).
+  app.get("/api/game/echoes", isAuthenticated, async (_req, res) => {
+    try {
+      res.json(await storage.getRecentEchoes(12));
+    } catch (err) {
+      console.error("echoes error:", err);
+      res.status(500).json({ error: "Failed to load echoes" });
     }
   });
 

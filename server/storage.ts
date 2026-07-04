@@ -1742,6 +1742,23 @@ export class DatabaseStorage implements IStorage {
     return a.name;
   }
 
+  // CHR-98 Echoes: a calm community feed of recent restorations (each player's
+  // latest, so no single player floods it). Reads game_progress.state.lastEcho.
+  async getRecentEchoes(limit = 12): Promise<{ name: string; world: string; at: number }[]> {
+    const rows = await db
+      .select({ userId: gameProgress.userId, state: gameProgress.state, updatedAt: gameProgress.updatedAt })
+      .from(gameProgress).orderBy(desc(gameProgress.updatedAt)).limit(50);
+    const withEcho = rows.filter((r) => (r.state as any)?.lastEcho?.world);
+    withEcho.sort((a, b) => (Number((b.state as any).lastEcho.at) || 0) - (Number((a.state as any).lastEcho.at) || 0));
+    const out: { name: string; world: string; at: number }[] = [];
+    for (const r of withEcho.slice(0, limit)) {
+      const u = await this.getUser(r.userId);
+      const e = (r.state as any).lastEcho;
+      out.push({ name: (u as any)?.firstName || "A wanderer", world: String(e.world).slice(0, 60), at: Number(e.at) || 0 });
+    }
+    return out;
+  }
+
   // CHR-97 Great Ring: total worlds restored across ALL players — one shared
   // community counter. Every restoration everywhere fills the same ring.
   async getGreatRingTotal(): Promise<number> {
