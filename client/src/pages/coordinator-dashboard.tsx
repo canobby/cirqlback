@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare, Route, Star, DollarSign, Download, TrendingUp, Trash2, Search, Megaphone } from "lucide-react";
+import { Globe, MapPin, Lock, Store, Users, Zap, Gift, CheckCircle, Plus, Sparkles, Ticket, MessageSquare, Route, Star, DollarSign, Download, TrendingUp, Trash2, Search, Megaphone, FileText, Receipt } from "lucide-react";
 import PitchDialog from "@/components/coordinator/pitch-dialog";
 import EarningsProjection from "@/components/coordinator/earnings-projection";
 import MessageCenter from "@/components/messaging/message-center";
@@ -740,6 +740,28 @@ export default function CoordinatorDashboard() {
 
             {/* Projection + goal tracker (motivational; computed from real share %) */}
             <EarningsProjection sharePct={earnings.sharePct} storageKey={data?.coordinator?.id || "me"} />
+
+            {/* Contractor resources: your agreement + how to handle 1099 taxes */}
+            <div className="mb-6 border-t border-gray-100 dark:border-gray-800 pt-4">
+              <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your agreement & tax guide</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Link href="/legal/coordinator" className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3 hover:border-purple-300 hover:bg-purple-50/50 transition" data-testid="link-coordinator-agreement">
+                  <FileText className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white">Independent Contractor Agreement</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">The terms of your engagement & revenue share.</div>
+                  </div>
+                </Link>
+                <Link href="/legal/coordinator-1099" className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3 hover:border-purple-300 hover:bg-purple-50/50 transition" data-testid="link-coordinator-1099">
+                  <Receipt className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white">1099 Contractor Tax Guide</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Taxes, W-9, estimated payments & deductions.</div>
+                  </div>
+                </Link>
+              </div>
+              <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Draft documents for your reference — not legal or tax advice.</div>
+            </div>
 
             {/* CHR-64: payout status (read-only; admins generate + mark paid) */}
             <div className="mb-6 border-t border-gray-100 dark:border-gray-800 pt-4">
