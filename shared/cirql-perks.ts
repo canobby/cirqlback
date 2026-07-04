@@ -1,13 +1,17 @@
-// CIRQL — in-game perk catalog + earn rules (CHR-102, the platform→game half of
-// the reward bridge CHR-96).
+// Cirqlbreak — in-game reward catalog + earn rules (the platform→game half of the
+// reward bridge, CHR-115).
 //
-// Perks are EARNED from Cirqlback participation (partner taps) and BANKED as
-// claimable boons in game_progress.state.perks, then spent in the game. Purely
+// Rewards are EARNED from Cirqlback participation (partner taps) and BANKED in
+// game_progress.state.perks, then spent at the start of a run. Purely
 // enhance-not-gate: the game is fully playable with zero perks, and competitive
-// modes (the Daily Circle) are perk-free. Anti-abuse comes free — perks ride on
-// taps, so the existing tap cooldown / device / GPS protections guard them.
+// modes (the Daily) are perk-free. Anti-abuse comes free — rewards ride on taps,
+// so the existing tap cooldown / device / GPS protections guard them.
+//
+// The headline is the **Partner Power** (`nova`): tapping real shops banks a
+// Supernova you unleash on your next run — the "tap a coffee shop → screen-clear"
+// hook nobody else has. Taps also drop the game's power-ups.
 
-export type PerkId = "echo" | "guiding";
+export type PerkId = "nova" | "multi" | "wide" | "slow" | "catch" | "life";
 
 export interface Perk {
   id: PerkId;
@@ -17,8 +21,12 @@ export interface Perk {
 }
 
 export const PERKS: Perk[] = [
-  { id: "echo", name: "Echo Assist", emoji: "🎯", desc: "Instantly aligns one ring." },
-  { id: "guiding", name: "Guiding Light", emoji: "🕯️", desc: "Wider snap for this world." },
+  { id: "nova", name: "Partner Power", emoji: "★", desc: "A banked Supernova — starts your next run charged." },
+  { id: "multi", name: "Multiball", emoji: "✦", desc: "Splits your spark into more." },
+  { id: "wide", name: "Wide Guard", emoji: "▬", desc: "A wider paddle." },
+  { id: "slow", name: "Slow-Mo", emoji: "◷", desc: "Eases the ball for a moment." },
+  { id: "catch", name: "Catch", emoji: "◎", desc: "Sticky paddle — aim your shot." },
+  { id: "life", name: "Extra Spark", emoji: "♥", desc: "One more life." },
 ];
 
 export const PERK_IDS: PerkId[] = PERKS.map((p) => p.id);
@@ -27,10 +35,14 @@ export function isPerkId(id: string): id is PerkId { return PERK_IDS.includes(id
 
 export type PerkBank = Partial<Record<PerkId, number>>;
 
-// What a single partner tap banks. `seq` is the player's running tap-perk count
-// so we can grant a rarer perk on a cadence (every 3rd tap → Guiding Light).
+// The power-up tokens a tap can drop (everything but the Partner Power), rotated
+// deterministically so the reward feels varied without server-side randomness.
+const POWERUP_CYCLE: PerkId[] = ["multi", "catch", "wide", "slow", "life"];
+
+// What a single partner tap banks. `seq` is the player's running tap-perk count,
+// so every tap drops a power-up and every 4th tap also banks a Partner Power.
 export function perksForTap(seq: number): PerkBank {
-  const grant: PerkBank = { echo: 1 };
-  if (seq % 3 === 0) grant.guiding = 1;
+  const grant: PerkBank = { [POWERUP_CYCLE[(seq - 1) % POWERUP_CYCLE.length]]: 1 };
+  if (seq % 4 === 0) grant.nova = 1;
   return grant;
 }
