@@ -10,6 +10,7 @@ import { openaiService } from "../openai-service";
 import { isAuthenticated, isAdminAuthenticated } from "../auth";
 import { PLAN_PRICING, resolvePlanAmountCents, type BillingInterval } from "../pricing";
 import { resolveBilling } from "../billing-state";
+import { runBillingSweep, runMonthlyPayouts } from "../scheduler";
 import { CAMPAIGN_TEMPLATES } from "./coordinator";
 import type { RouteDeps } from "./_shared";
 
@@ -205,6 +206,28 @@ export function registerAdminRoutes(app: Express, deps: RouteDeps) {
     } catch (error) {
       console.error("Billing set error:", error);
       res.status(500).json({ error: "Failed to update billing" });
+    }
+  });
+
+  // Manual triggers for the scheduled jobs (ops + testing). Both are idempotent.
+  app.post("/api/admin/jobs/billing-sweep", async (_req, res) => {
+    try {
+      const summary = await runBillingSweep();
+      res.json({ success: true, summary });
+    } catch (error) {
+      console.error("Billing sweep error:", error);
+      res.status(500).json({ error: "Sweep failed" });
+    }
+  });
+  app.post("/api/admin/jobs/monthly-payouts", async (req, res) => {
+    try {
+      const periodMonth = req.body?.periodMonth ? String(req.body.periodMonth) : undefined;
+      const summary = await runMonthlyPayouts(periodMonth);
+      audit(req, "jobs.monthly_payouts", "system", "payouts", JSON.stringify(summary));
+      res.json({ success: true, summary });
+    } catch (error) {
+      console.error("Monthly payouts error:", error);
+      res.status(500).json({ error: "Payout run failed" });
     }
   });
 

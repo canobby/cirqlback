@@ -58,6 +58,11 @@ export const users = pgTable("users", {
   // webhooks; until then they can be set by the admin billing control / scheduler.
   paidThroughDate: timestamp("paid_through_date"),
   pastDueSince: timestamp("past_due_since"),
+  // Dunning-email idempotency (Phase 2): stamped when the lock / suspension
+  // notice is sent for the current delinquency; both reset to null when the
+  // account becomes current again, so a future delinquency re-notifies.
+  billingLockNotifiedAt: timestamp("billing_lock_notified_at"),
+  billingSuspendNotifiedAt: timestamp("billing_suspend_notified_at"),
   apiKey: varchar("api_key").unique(), // for API access to both Cirql and InSpektAI
   apiKeyCreatedAt: timestamp("api_key_created_at"),
   totalPoints: integer("total_points").default(0),

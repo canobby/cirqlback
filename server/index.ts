@@ -5,6 +5,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { startScheduler } from "./scheduler";
 
 const app = express();
 
@@ -96,5 +97,7 @@ app.use((req, res, next) => {
   const host = process.env.HOST || (isProdEnv ? "0.0.0.0" : "127.0.0.1");
   server.listen(port, host, () => {
     log(`serving on http://${host}:${port}`);
+    // Start in-process scheduled jobs (billing dunning + monthly payouts).
+    startScheduler();
   });
 })();

@@ -1599,25 +1599,53 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId));
   }
 
-  // Mark a user current (payment received); optionally record the paid-through date.
+  // Mark a user current (payment received); optionally record the paid-through
+  // date. Becoming current resets the dunning-notification stamps so a future
+  // delinquency re-notifies.
   async clearUserPastDue(userId: string, paidThrough?: Date): Promise<void> {
     await db
       .update(users)
-      .set({ pastDueSince: null, ...(paidThrough ? { paidThroughDate: paidThrough } : {}) })
+      .set({
+        pastDueSince: null,
+        billingLockNotifiedAt: null,
+        billingSuspendNotifiedAt: null,
+        ...(paidThrough ? { paidThroughDate: paidThrough } : {}),
+      })
       .where(eq(users.id, userId));
   }
 
-  // Explicit setter for the admin billing control / testing.
+  // Explicit setter for the admin billing control / testing. Clearing
+  // pastDueSince also resets the dunning-notification stamps.
   async setUserBilling(
     userId: string,
     fields: { pastDueSince?: Date | null; paidThroughDate?: Date | null },
   ): Promise<User | undefined> {
     const set: Record<string, any> = {};
-    if (fields.pastDueSince !== undefined) set.pastDueSince = fields.pastDueSince;
+    if (fields.pastDueSince !== undefined) {
+      set.pastDueSince = fields.pastDueSince;
+      if (fields.pastDueSince === null) {
+        set.billingLockNotifiedAt = null;
+        set.billingSuspendNotifiedAt = null;
+      }
+    }
     if (fields.paidThroughDate !== undefined) set.paidThroughDate = fields.paidThroughDate;
     if (Object.keys(set).length === 0) return this.getUser(userId);
     const [row] = await db.update(users).set(set).where(eq(users.id, userId)).returning();
     return row;
+  }
+
+  // Users currently in a delinquency (pastDueSince set) — the daily dunning sweep
+  // walks these to send lock/suspend emails at the right transitions.
+  async listPastDueUsers(): Promise<User[]> {
+    return await db.select().from(users).where(isNotNull(users.pastDueSince));
+  }
+
+  // Stamp that the lock / suspension email has been sent for this delinquency.
+  async markBillingNotified(userId: string, kind: "lock" | "suspend"): Promise<void> {
+    await db
+      .update(users)
+      .set(kind === "lock" ? { billingLockNotifiedAt: new Date() } : { billingSuspendNotifiedAt: new Date() })
+      .where(eq(users.id, userId));
   }
 
   // Effective entitlement: a business "has" an add-on if it purchased it OR its
