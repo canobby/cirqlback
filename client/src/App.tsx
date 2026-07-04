@@ -3,7 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import Navbar from "@/components/layout/navbar";
 import ImpersonationBanner from "@/components/layout/impersonation-banner";
 import Footer from "@/components/layout/footer";
@@ -48,6 +48,9 @@ import AuthPage from "@/pages/auth";
 import UserGuide from "@/pages/user-guide";
 import PlatformOverview from "@/pages/platform-overview";
 
+// CIRQL game — code-split so customers who never play don't download the engine.
+const PlayPage = lazy(() => import("@/pages/play"));
+
 function Router() {
   const [location] = useLocation();
 
@@ -65,6 +68,7 @@ function Router() {
           {/* Core Bento Pages - Streamlined for first deployment */}
           <Route path="/" component={HomeBento} />
           <Route path="/customer" component={CustomerBento} />
+          <Route path="/play">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PlayPage /></Suspense>}</Route>
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />
           <Route path="/map" component={MapWorking} />
