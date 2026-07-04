@@ -13,6 +13,7 @@ import {
   type PowerupType,
 } from "@/game/cirqlbreak-engine";
 import { PERKS } from "@shared/cirql-perks";
+import { COSMETICS, getCosmetic, isUnlocked, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
 
 // The banked power-up tokens (everything but the Partner Power) map 1:1 to engine
 // power-up types.
@@ -67,6 +68,9 @@ export default function Play() {
   const [greatRing, setGreatRing] = useState<number | null>(null); // community-wide worlds restored
   const [echoes, setEchoes] = useState<{ name?: string; world?: string }[]>([]);
   const [daily, setDaily] = useState<{ canClaim: boolean; streak: number; reward: number } | null>(null); // daily reward status
+  const [equipped, setEquipped] = useState<string>(DEFAULT_COSMETIC); // equipped cosmetic id
+  const [worldsRestored, setWorldsRestored] = useState(0); // lifetime worlds restored (drives cosmetic unlocks)
+  const [showSkins, setShowSkins] = useState(false);
 
   // Menu stats come from the server for logged-in players (cross-device), and from
   // the engine's localStorage for guests.
@@ -128,6 +132,9 @@ export default function Play() {
         if (cancelled || !d) return;
         progressRef.current = d.state || {};
         setBank((progressRef.current.perks as Record<string, number>) || {});
+        setWorldsRestored(Number(d.worldsRestored) || 0);
+        const cos = progressRef.current.cosmetic;
+        if (cos) { setEquipped(cos); engineRef.current?.setCosmetic(getCosmetic(cos).accent); }
         const s = progressRef.current.settings;
         if (s && typeof s.sound === "boolean") { setSound(s.sound); engineRef.current?.setMuted(!s.sound); }
         if (s && typeof s.haptics === "boolean") { setHaptics(s.haptics); engineRef.current?.setHaptics(s.haptics); }
@@ -239,6 +246,18 @@ export default function Play() {
         progressRef.current = { ...progressRef.current, dailyStreak: d.streak };
         if (engineRef.current) refreshMenuInfo(engineRef.current);
       })
+      .catch(() => {});
+  };
+  // CHR-123: equip a cosmetic skin (server validates the unlock). Tints the spark.
+  const equipCosmetic = (id: string) => {
+    const cos = getCosmetic(id);
+    engineRef.current?.setCosmetic(cos.accent); // optimistic
+    setEquipped(id);
+    progressRef.current = { ...progressRef.current, cosmetic: id };
+    if (!user) return;
+    fetch("/api/game/cosmetic", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cosmetic: id }) })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!d) { /* rollback on reject */ setEquipped(DEFAULT_COSMETIC); engineRef.current?.setCosmetic(getCosmetic(DEFAULT_COSMETIC).accent); } })
       .catch(() => {});
   };
   const toggleSound = () => setSound((v) => { const n = !v; engineRef.current?.setMuted(!n); lsSet("cb_sound", n ? "1" : "0"); persist({ settings: { sound: n, haptics } }); return n; });
@@ -419,7 +438,38 @@ export default function Play() {
               </div>
             )}
             {!user && <p className="mt-3 text-[11px] text-violet-300/40">Log in to save your progress and earn power-ups from real taps.</p>}
-            <Link href="/customer" className="mt-4 inline-flex items-center gap-1 text-xs text-violet-300/60"><ArrowLeft className="h-3 w-3" /> Back</Link>
+            <div className="mt-4 flex items-center justify-center gap-4">
+              <Link href="/customer" className="inline-flex items-center gap-1 text-xs text-violet-300/60"><ArrowLeft className="h-3 w-3" /> Back</Link>
+              {user && <button onClick={() => setShowSkins(true)} data-testid="button-skins" className="inline-flex items-center gap-1 text-xs text-violet-300/60 transition hover:text-violet-200">🎨 Skins</button>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- Skins (cosmetics) ---------- */}
+      {showSkins && (
+        <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }} data-testid="skins-overlay" onClick={() => setShowSkins(false)}>
+          <div className="w-[min(92vw,460px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="text-[12px] font-extrabold uppercase tracking-[0.44em] text-violet-400" style={{ marginLeft: ".44em" }}>Skins</div>
+            <h1 className="mb-1 mt-2 text-[clamp(24px,5.5vw,34px)] font-extrabold" style={{ background: "linear-gradient(115deg,#e9d5ff,#ec4899 55%,#22d3ee)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Your spark</h1>
+            <p className="mx-auto mt-1 max-w-[36ch] text-sm text-violet-300/70">Tint your spark &amp; trail. Unlock more by restoring worlds and keeping streaks.</p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {COSMETICS.map((c) => {
+                const unlocked = isUnlocked(c, { worlds: worldsRestored, streak: menuInfo.streak });
+                const active = equipped === c.id;
+                return (
+                  <button key={c.id} disabled={!unlocked} onClick={() => equipCosmetic(c.id)} data-testid={`skin-${c.id}`}
+                    className={"flex items-center gap-2.5 rounded-2xl border p-3 text-left transition " + (active ? "border-cyan-400/60 bg-cyan-400/10" : unlocked ? "border-violet-400/20 bg-white/[0.03] hover:border-violet-400/40" : "cursor-not-allowed border-violet-400/10 opacity-50")}>
+                    <span className="h-8 w-8 flex-none rounded-full" style={{ background: c.accent, boxShadow: `0 0 12px ${c.accent}` }} />
+                    <span className="min-w-0">
+                      <b className="block truncate text-[13px] text-white">{c.name}{active ? " ✓" : ""}</b>
+                      <span className="block truncate text-[11px] text-violet-300/60">{unlocked ? c.kind : c.unlockLabel}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <button onClick={() => setShowSkins(false)} className="mt-4 w-full rounded-2xl border border-violet-400/20 py-3 font-semibold text-violet-300/80 transition hover:bg-white/[0.04] hover:text-white">Done</button>
           </div>
         </div>
       )}

@@ -74,6 +74,8 @@ export interface RunBoot {
 }
 
 export interface EngineOpts extends Partial<CirqlbreakSettings> {
+  /** Equipped cosmetic accent (CHR-123) — tints the spark + its trail. */
+  accent?: string;
   /** HUD values — fired only when they change. */
   onHud?: (s: HudState) => void;
   /** Journey world cleared → host shows a relic card and calls `pick`. */
@@ -185,8 +187,9 @@ export class CirqlbreakEngine {
   // reward-bridge inputs (applied at next world if not mid-run)
   private pendingPups: PowerupType[] = [];
 
-  // audio / haptics
+  // audio / haptics / cosmetics
   private ac: AudioContext | null = null; private muted = false; private haptics = true;
+  private accent = "#67e8f9"; // equipped cosmetic tint for the spark + trail
 
   // loop / listeners
   private raf = 0; private last = performance.now(); private lastHud = ""; private ro: ResizeObserver | null = null; private destroyed = false;
@@ -199,6 +202,7 @@ export class CirqlbreakEngine {
     this.opts = opts;
     this.muted = opts.sound === false;
     this.haptics = opts.haptics !== false;
+    if (opts.accent) this.accent = opts.accent;
 
     this.resize();
     this.ro = new ResizeObserver(() => this.resize());
@@ -292,6 +296,7 @@ export class CirqlbreakEngine {
 
   setMuted(m: boolean) { this.muted = m; }
   setHaptics(h: boolean) { this.haptics = h; }
+  setCosmetic(accent: string) { this.accent = accent || "#67e8f9"; }
   isMuted() { return this.muted; }
   /** Return to the menu (host shows its own menu overlay). */
   toMenu() { this.state = "menu"; this.core = null; }
@@ -708,8 +713,8 @@ export class CirqlbreakEngine {
     ctx.globalAlpha = 1;
 
     for (const b of this.balls) {
-      for (let i = 0; i < b.trail.length; i++) { const k = i / b.trail.length; ctx.globalAlpha = k * 0.35; ctx.fillStyle = "#a5f3fc"; ctx.beginPath(); ctx.arc(b.trail[i].x, b.trail[i].y, 6 * k, 0, TAU); ctx.fill(); }
-      ctx.globalAlpha = 1; ctx.save(); ctx.shadowBlur = 16; ctx.shadowColor = b.stuck ? "#fbbf24" : "#67e8f9"; ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(b.x, b.y, 6.5, 0, TAU); ctx.fill(); ctx.restore();
+      for (let i = 0; i < b.trail.length; i++) { const k = i / b.trail.length; ctx.globalAlpha = k * 0.35; ctx.fillStyle = this.accent; ctx.beginPath(); ctx.arc(b.trail[i].x, b.trail[i].y, 6 * k, 0, TAU); ctx.fill(); }
+      ctx.globalAlpha = 1; ctx.save(); ctx.shadowBlur = 16; ctx.shadowColor = b.stuck ? "#fbbf24" : this.accent; ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(b.x, b.y, 6.5, 0, TAU); ctx.fill(); ctx.restore();
       if (b.stuck) { ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 2; ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.arc(b.x, b.y, 10 + 2 * Math.sin(now / 110), 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; }
     }
     for (const p of this.pops) { ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color; ctx.font = "800 15px system-ui"; ctx.textAlign = "center"; ctx.shadowBlur = 8; ctx.shadowColor = p.color; ctx.fillText(p.txt, p.x, p.y); ctx.shadowBlur = 0; }

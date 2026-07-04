@@ -14,7 +14,7 @@ export interface Cosmetic {
   id: string;
   name: string;
   kind: CosmeticKind;
-  accent: string; // hex — tints the live core/bloom when equipped
+  accent: string; // hex — tints the spark + its trail when equipped (Cirqlbreak)
   unlock: { worlds?: number; streak?: number; level?: number }; // all provided thresholds must be met
   unlockLabel: string; // human hint shown while locked
 }
