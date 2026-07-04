@@ -2,23 +2,30 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { CirqlEngine, type GameState } from "@/game/cirql-engine";
+import { CRAFTED_WORLDS } from "@/game/worlds";
 
 // CIRQL — the in-app game page (lazy-loaded at /play, code-split so non-players
 // never download the engine). Owns the HUD/chrome in React; the canvas + game
-// loop live in CirqlEngine.
+// loop live in CirqlEngine. Worlds come from config (CHR-90); the procedural
+// infinite tail (CHR-101) plugs in later.
 export default function Play() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<CirqlEngine | null>(null);
-  const [hud, setHud] = useState<GameState>({ world: 1, aligned: 0, total: 3, moves: 0, won: false });
+  const [wi, setWi] = useState(0);
+  const [hud, setHud] = useState<GameState>({
+    worldName: CRAFTED_WORLDS[0].name, aligned: 0, total: CRAFTED_WORLDS[0].ringCount, moves: 0, won: false,
+  });
   const [muted, setMuted] = useState(false);
 
   useEffect(() => {
     if (!canvasRef.current) return;
-    const engine = new CirqlEngine(canvasRef.current, { onState: setHud });
+    const engine = new CirqlEngine(canvasRef.current, CRAFTED_WORLDS[0], { onState: setHud });
     engineRef.current = engine;
     return () => { engine.destroy(); engineRef.current = null; };
   }, []);
 
+  const goWorld = (i: number) => { setWi(i); engineRef.current?.setWorld(CRAFTED_WORLDS[i]); };
+  const nextWorld = () => goWorld((wi + 1) % CRAFTED_WORLDS.length);
   const toggleMute = () => { const m = !muted; setMuted(m); engineRef.current?.setMuted(m); };
 
   return (
@@ -32,8 +39,26 @@ export default function Play() {
         <p className="text-xs text-violet-300/70 mt-0.5">Drag each ring so its light points to the top. Align them all to bring the world back.</p>
       </div>
 
+      {/* World selector (placeholder until the CHR-91 map) */}
+      <div className="flex gap-2 mt-2 flex-wrap justify-center px-4">
+        {CRAFTED_WORLDS.map((w, i) => (
+          <button
+            key={w.id}
+            onClick={() => goWorld(i)}
+            data-testid={`world-${w.id}`}
+            className="rounded-full border px-3 py-1 text-xs font-semibold transition"
+            style={{
+              borderColor: i === wi ? w.accent : "rgba(150,130,255,.25)",
+              color: i === wi ? "#fff" : "rgba(196,181,253,.75)",
+              background: i === wi ? `${w.accent}22` : "transparent",
+            }}
+          >
+            {w.name}
+          </button>
+        ))}
+      </div>
+
       <div className="flex gap-5 items-center my-2 text-sm tabular-nums">
-        <span>World <b>{hud.world}</b></span>
         <span className="text-emerald-400 font-semibold">{hud.aligned}/{hud.total} aligned</span>
         <span>Moves <b>{hud.moves}</b></span>
       </div>
@@ -46,16 +71,16 @@ export default function Play() {
               className="text-2xl font-extrabold"
               style={{ background: "linear-gradient(120deg,#c4b5fd,#ec4899 75%)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}
             >
-              World Restored
+              {hud.worldName} Restored
             </h2>
             <p className="text-sm text-violet-300">Beautiful. The circle is whole again.</p>
             <button
-              onClick={() => engineRef.current?.nextWorld()}
+              onClick={nextWorld}
               data-testid="button-next-world"
               className="rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-500/30"
               style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)" }}
             >
-              Restore another →
+              Next world →
             </button>
           </div>
         )}

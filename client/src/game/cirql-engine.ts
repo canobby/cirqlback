@@ -9,8 +9,10 @@
 // win. Worlds-as-config (CHR-90) and the procedural engine (CHR-101) plug in
 // here later.
 
+import { type WorldConfig, hexToRgb } from "./worlds";
+
 export interface GameState {
-  world: number;
+  worldName: string;
   aligned: number;
   total: number;
   moves: number;
@@ -33,7 +35,6 @@ interface Particle { x: number; y: number; vx: number; vy: number; life: number;
 interface Wisp { x: number; y: number; vy: number; life: number; drift: number; }
 interface Spark { a: { x: number; y: number }; b: { x: number; y: number }; color: string; life: number; }
 
-const COLORS = ["#ec4899", "#8b5cf6", "#3bc9ff", "#38e0a6", "#f7a63b", "#c4b5fd"];
 const ALIGN_TOL = 0.10;
 const SNAP_TOL = 0.34;
 const TWO = Math.PI * 2;
@@ -43,7 +44,8 @@ export class CirqlEngine {
   private reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   private W = 540; private H = 540; private cx = 270; private cy = 270; private DPR = 1;
   private rings: Ring[] = [];
-  private level = 1; private wins = 0; private moves = 0; private won = false;
+  private world!: WorldConfig; private accentRgb = "124,58,237";
+  private moves = 0; private won = false;
   private drag: { i: number; startA: number; startRot: number; moved: boolean } | null = null;
   private selected = 0;
   private particles: Particle[] = []; private wisps: Wisp[] = []; private sparks: Spark[] = []; private stars: Star[] = [];
@@ -51,8 +53,9 @@ export class CirqlEngine {
   private muted = false; private actx: AudioContext | null = null;
   private raf = 0; private lastEmit = ""; private ro: ResizeObserver;
 
-  constructor(private canvas: HTMLCanvasElement, private opts: EngineOpts = {}) {
+  constructor(private canvas: HTMLCanvasElement, world: WorldConfig, private opts: EngineOpts = {}) {
     this.ctx = canvas.getContext("2d")!;
+    this.world = world; this.accentRgb = hexToRgb(world.accent);
     canvas.addEventListener("pointerdown", this.onDown);
     canvas.addEventListener("pointermove", this.onMove);
     canvas.addEventListener("pointerup", this.onUp);
@@ -77,7 +80,7 @@ export class CirqlEngine {
   }
 
   newPuzzle() { this.initLevel(); }
-  nextWorld() { this.wins++; this.level++; this.initLevel(); }
+  setWorld(world: WorldConfig) { this.world = world; this.accentRgb = hexToRgb(world.accent); this.initLevel(); }
   setMuted(m: boolean) { this.muted = m; }
 
   // ---- helpers ----
@@ -112,7 +115,7 @@ export class CirqlEngine {
   }
 
   private initLevel() {
-    const n = Math.min(3 + this.wins, 6);
+    const n = Math.max(3, Math.min(this.world.ringCount, 6));
     const maxR = Math.min(this.W, this.H) * 0.44;
     const step = (maxR - Math.min(this.W, this.H) * 0.14) / n;
     this.rings = [];
@@ -120,10 +123,10 @@ export class CirqlEngine {
       const radius = maxR - i * step;
       let rot = 0; while (this.dist(rot, 0) < 0.7) rot = Math.random() * TWO;
       this.rings.push({
-        radius, thick: Math.max(14, step * 0.52), span: 1.15 - i * 0.03,
-        color: COLORS[i % COLORS.length], rot, tween: null,
+        radius, thick: Math.max(14, step * 0.52), span: this.world.span - i * 0.03,
+        color: this.world.ringColors[i % this.world.ringColors.length], rot, tween: null,
         aligned: false, wasAligned: false, glow: 0,
-        drift: (Math.random() * 0.05 + 0.03) * (i % 2 ? 1 : -1), driftResumeAt: 0,
+        drift: (Math.random() * 0.05 + 0.03) * (i % 2 ? 1 : -1) * (0.8 + 0.6 * this.world.difficulty), driftResumeAt: 0,
       });
     }
     this.won = false; this.moves = 0; this.particles = []; this.wisps = []; this.sparks = []; this.selected = 0;
@@ -131,8 +134,8 @@ export class CirqlEngine {
   }
 
   private emit(aligned: number) {
-    const s: GameState = { world: this.level, aligned, total: this.rings.length, moves: this.moves, won: this.won };
-    const key = `${s.world}|${s.aligned}|${s.total}|${s.moves}|${s.won}`;
+    const s: GameState = { worldName: this.world.name, aligned, total: this.rings.length, moves: this.moves, won: this.won };
+    const key = `${s.worldName}|${s.aligned}|${s.total}|${s.moves}|${s.won}`;
     if (key !== this.lastEmit) { this.lastEmit = key; this.opts.onState?.(s); }
   }
 
@@ -231,8 +234,8 @@ export class CirqlEngine {
     // life-bloom
     const life = 0.12 + 0.88 * progress;
     const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.62);
-    bloom.addColorStop(0, `rgba(124,58,237,${0.10 + 0.22 * life})`);
-    bloom.addColorStop(0.5, `rgba(180,60,150,${0.04 + 0.10 * life})`);
+    bloom.addColorStop(0, `rgba(${this.accentRgb},${0.12 + 0.24 * life})`);
+    bloom.addColorStop(0.5, `rgba(${this.accentRgb},${0.03 + 0.09 * life})`);
     bloom.addColorStop(1, "rgba(5,4,15,0)");
     ctx.fillStyle = bloom; ctx.fillRect(0, 0, W, H);
 
@@ -278,7 +281,7 @@ export class CirqlEngine {
     const coreR = (Math.min(W, H) * 0.07) * (1 + 0.06 * pulse) * (this.won ? 1.35 : 1);
     const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 2.4); const b = 0.25 + 0.75 * progress;
     cg.addColorStop(0, `rgba(255,255,255,${0.7 * b + (this.won ? 0.3 : 0)})`);
-    cg.addColorStop(0.4, `rgba(180,150,255,${0.5 * b})`); cg.addColorStop(1, "rgba(124,58,237,0)");
+    cg.addColorStop(0.4, `rgba(${this.accentRgb},${0.5 * b})`); cg.addColorStop(1, `rgba(${this.accentRgb},0)`);
     ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, coreR * 2.4, 0, TWO); ctx.fill();
     ctx.fillStyle = `rgba(255,255,255,${0.5 + 0.5 * progress})`;
     ctx.beginPath(); ctx.arc(cx, cy, coreR * 0.5, 0, TWO); ctx.fill();
