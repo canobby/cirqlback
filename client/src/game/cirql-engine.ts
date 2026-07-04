@@ -57,6 +57,7 @@ export class CirqlEngine {
   private world!: WorldConfig; private accentRgb = "124,58,237";
   private auraRgb: string | null = null; // CHR-92: equipped cosmetic tints the core/bloom over the world accent
   private guiding = false; // CHR-96 "Guiding Light" perk: wider snap for this world
+  private zen = false; // CHR-106 Zen mode: quiet the scoreboard-y juice
   private moves = 0; private won = false;
   private drag: { i: number; startA: number; startRot: number; moved: boolean; lastA: number; lastT: number; vel: number } | null = null;
   private selected = 0;
@@ -113,6 +114,7 @@ export class CirqlEngine {
   }
   // Guiding Light: widen the snap/align tolerance for the current world.
   setGuidingLight(on: boolean) { this.guiding = on; }
+  setZen(on: boolean) { this.zen = on; } // CHR-106: quiet combo flourishes
   private alignTol() { return this.guiding ? ALIGN_TOL * 2.2 : ALIGN_TOL; }
   private snapTol() { return this.guiding ? SNAP_TOL * 1.5 : SNAP_TOL; }
 
@@ -278,7 +280,7 @@ export class CirqlEngine {
     if (!this.reduce) {
       this.shocks.push({ x: p.x, y: p.y, r: 4, maxR: r.thick * 1.8 + 26, life: 1, color: r.color, width: 3 });
       for (let i = 0; i < 4 + this.combo; i++) this.energy.push({ x: p.x, y: p.y, sx: p.x, sy: p.y, t: Math.random() * 0.12, color: r.color });
-      if (this.combo >= 2) this.combos.push({ x: p.x, y: p.y, life: 1, text: "×" + this.combo });
+      if (this.combo >= 2 && !this.zen) this.combos.push({ x: p.x, y: p.y, life: 1, text: "×" + this.combo });
     }
   }
 

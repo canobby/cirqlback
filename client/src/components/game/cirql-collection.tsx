@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import { Lock, Check, X, Gem, Award } from "lucide-react";
 import { COSMETICS, getCosmetic, isUnlocked, levelInfo, DEFAULT_COSMETIC } from "@shared/cirql-cosmetics";
-import { GAME_ACHIEVEMENTS } from "@shared/cirql-achievements";
+import { GAME_ACHIEVEMENTS, nextWorldMilestone } from "@shared/cirql-achievements";
 
 interface BadgeRow { id: string; name: string; emoji: string | null; color: string | null; description: string | null; }
 
@@ -80,6 +80,29 @@ export function CirqlCollection({ open, onClose, worlds, streak, shinies, equipp
             <div className="h-full rounded-full" style={{ width: `${Math.round(pct * 100)}%`, background: "linear-gradient(90deg,#7c3aed,#ec4899)" }} />
           </div>
         </div>
+
+        {/* CHR-107 · Universe Restored — cumulative light returned + next milestone */}
+        {(() => {
+          const m = nextWorldMilestone(worlds);
+          return (
+            <div className="mt-3 rounded-xl border border-violet-400/20 bg-white/[0.03] px-3 py-2" data-testid="universe-restored">
+              <div className="flex justify-between text-[11px]">
+                <span className="text-violet-200/90 font-semibold">🌌 Universe Restored</span>
+                <span className="text-violet-300/70 tabular-nums">{worlds} worlds of light</span>
+              </div>
+              {m ? (
+                <>
+                  <div className="mt-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${Math.round(m.pct * 100)}%`, background: "linear-gradient(90deg,#7c3aed,#22d3ee)" }} />
+                  </div>
+                  <div className="mt-1 text-[10px] text-violet-300/50 tabular-nums">Next: {m.name} · {worlds}/{m.to}</div>
+                </>
+              ) : (
+                <div className="mt-1 text-[10px] text-amber-300/80">Universe Keeper — the whole sky shines.</div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Stats */}
         <div className="mt-3 grid grid-cols-4 gap-2 text-center">

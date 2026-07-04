@@ -35,3 +35,14 @@ export function achievementsEarned(p: { worlds: number; streak: number }): GameA
     (a) => (a.metric === "worlds" && p.worlds >= a.threshold) || (a.metric === "streak" && p.streak >= a.threshold),
   );
 }
+
+// CHR-107 "Universe Restored": worlds are infinite, so we show progress toward
+// the next worlds milestone rather than a literal 100%. Null once all are done.
+export function nextWorldMilestone(worlds: number): { name: string; from: number; to: number; pct: number } | null {
+  const tiers = GAME_ACHIEVEMENTS.filter((a) => a.metric === "worlds").sort((a, b) => a.threshold - b.threshold);
+  const next = tiers.find((a) => worlds < a.threshold);
+  if (!next) return null;
+  const idx = tiers.indexOf(next);
+  const from = idx > 0 ? tiers[idx - 1].threshold : 0;
+  return { name: next.name, from, to: next.threshold, pct: Math.max(0, Math.min(1, (worlds - from) / (next.threshold - from))) };
+}

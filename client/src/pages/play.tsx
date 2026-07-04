@@ -33,6 +33,7 @@ export default function Play() {
     worldName: CRAFTED_WORLDS[0].name, aligned: 0, total: CRAFTED_WORLDS[0].ringCount, moves: 0, won: false,
   });
   const [muted, setMuted] = useState(false);
+  const [zen, setZen] = useState(false); // CHR-106 Zen mode
   const [award, setAward] = useState(0);
   const [newBadges, setNewBadges] = useState<string[]>([]); // CHR-103: achievements just earned
   const [perfectWin, setPerfectWin] = useState(false); // CHR-105: no-wasted-moves solve
@@ -223,6 +224,7 @@ export default function Play() {
   const nextWorld = () => goIndex(index + 1);
   const endless = () => goIndex(Math.max(index + 1, CRAFTED_WORLDS.length));
   const toggleMute = () => { const m = !muted; setMuted(m); engineRef.current?.setMuted(m); };
+  const toggleZen = () => { const z = !zen; setZen(z); engineRef.current?.setZen(z); };
   const inEndless = index >= CRAFTED_WORLDS.length;
 
   return (
@@ -336,8 +338,14 @@ export default function Play() {
       </div>
 
       <div className="flex gap-5 items-center my-2 text-sm tabular-nums">
-        <span className="text-emerald-400 font-semibold">{hud.aligned}/{hud.total} aligned</span>
-        <span>Moves <b>{hud.moves}</b></span>
+        {zen ? (
+          <span className="text-violet-300/80" data-testid="zen-indicator">🧘 Zen — just restore</span>
+        ) : (
+          <>
+            <span className="text-emerald-400 font-semibold">{hud.aligned}/{hud.total} aligned</span>
+            <span>Moves <b>{hud.moves}</b></span>
+          </>
+        )}
       </div>
 
       {/* CHR-96 · Perks — banked from partner taps, spent in-game (perk-free in the Daily Circle) */}
@@ -400,6 +408,7 @@ export default function Play() {
       <div className="flex gap-2 my-4 flex-wrap justify-center">
         <button onClick={() => engineRef.current?.newPuzzle()} data-testid="button-new-puzzle" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold">New puzzle</button>
         <button onClick={toggleMute} aria-pressed={muted} className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold">{muted ? "🔇 Muted" : "🔊 Sound"}</button>
+        <button onClick={toggleZen} aria-pressed={zen} data-testid="button-zen" className="rounded-xl border px-4 py-2 text-sm font-semibold" style={{ borderColor: zen ? "#c4b5fd" : "rgba(150,130,255,.25)", background: zen ? "rgba(196,181,253,.13)" : "rgba(255,255,255,.05)" }}>🧘 Zen</button>
         <button onClick={() => setShowMap(true)} data-testid="button-world-map" className="rounded-xl border border-violet-400/25 bg-white/5 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5">
           <MapIcon className="h-4 w-4 text-violet-300" /> Worlds
         </button>
