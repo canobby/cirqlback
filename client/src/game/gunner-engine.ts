@@ -19,6 +19,7 @@ export class GunnerEngine extends ArcadeEngine {
   private score = 0; private hp = 5; private best = +(LS.get("cgunner_best") || 0);
   private aim = -Math.PI / 2; private foes: Foe[] = []; private bullets: Bullet[] = [];
   private fireAt = 0; private spawnAt = 0; private t = 0; private lastHud = ""; private dragging = false;
+  spawnMul = 1; // freestyle: <1 = denser swarm, >1 = calmer
 
   constructor(canvas: HTMLCanvasElement, opts: GunnerOpts = {}) { super(canvas, opts); if (opts.accent) this.accent = opts.accent; this.opts = opts; this.emitHud(); }
 
@@ -39,7 +40,7 @@ export class GunnerEngine extends ArcadeEngine {
     // auto-fire stream
     if (now >= this.fireAt) { this.fireAt = now + 110; const sp = this.rimR * 2.4; this.bullets.push({ x: this.cx + Math.cos(this.aim) * this.rimR * 0.1, y: this.cy + Math.sin(this.aim) * this.rimR * 0.1, vx: Math.cos(this.aim) * sp, vy: Math.sin(this.aim) * sp }); this.tone(560, 0.03, "square", 0.02); }
     // spawn foes from the rim
-    this.spawnAt -= dt; if (this.spawnAt <= 0) { const a = Math.random() * TAU; this.foes.push({ x: this.cx + Math.cos(a) * this.rimR * 1.02, y: this.cy + Math.sin(a) * this.rimR * 1.02, hue: ["#fb7185", "#f472b6", "#a78bfa", "#fbbf24"][Math.floor(Math.random() * 4)], hp: 1 + Math.floor(this.t / 25) }); this.spawnAt = Math.max(0.3, 1.1 - this.t * 0.012); }
+    this.spawnAt -= dt; if (this.spawnAt <= 0) { const a = Math.random() * TAU; this.foes.push({ x: this.cx + Math.cos(a) * this.rimR * 1.02, y: this.cy + Math.sin(a) * this.rimR * 1.02, hue: ["#fb7185", "#f472b6", "#a78bfa", "#fbbf24"][Math.floor(Math.random() * 4)], hp: 1 + Math.floor(this.t / 25) }); this.spawnAt = Math.max(0.3, 1.1 - this.t * 0.012) * this.spawnMul; }
     const foeSpd = this.rimR * (0.14 + Math.min(0.12, this.t * 0.003));
     for (const f of this.foes) { const dx = this.cx - f.x, dy = this.cy - f.y, d = Math.hypot(dx, dy) || 1; f.x += dx / d * foeSpd * dt; f.y += dy / d * foeSpd * dt; if (d < this.rimR * 0.09) { (f as any).dead = true; this.hp--; this.shake = 10; this.tone(120, 0.2, "sawtooth", 0.05); this.buzz([20, 40]); this.burst(this.cx, this.cy, "#fb7185", 10, this.rimR * 0.6); if (this.hp <= 0) { this.gameOver(); return; } } }
     for (const b of this.bullets) { b.x += b.vx * dt; b.y += b.vy * dt; for (const f of this.foes) { if ((f as any).dead) continue; if (Math.hypot(f.x - b.x, f.y - b.y) < this.rimR * 0.03) { (b as any).dead = true; f.hp--; this.burst(b.x, b.y, f.hue, 4, this.rimR * 0.4); if (f.hp <= 0) { (f as any).dead = true; this.score += 10; this.burst(f.x, f.y, f.hue, 8, this.rimR * 0.7); this.tone(300, 0.05, "square", 0.03); } break; } } }

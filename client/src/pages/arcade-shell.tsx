@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Swords } from "lucide-react";
+import { ArrowLeft, Swords, SlidersHorizontal, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { HelpButton } from "@/components/how-to";
 import { DailyButton } from "@/components/daily-board";
+import { ARCADE_GAMES } from "@/game/registry";
 
 // ArcadeGameShell — the shared React host for CirqlArcade games. A game supplies a
 // GameConfig (id, look, how to build its engine, how to read its HUD/result) and
@@ -20,7 +21,10 @@ export interface ShellEngine {
   setMuted: (m: boolean) => void;
   setHaptics: (h: boolean) => void;
   destroy: () => void;
+  setTimeScale?: (s: number) => void; // freestyle game-speed (ArcadeEngine provides it)
 }
+// A freestyle slider — a tunable engine knob exposed to the player in Freestyle mode.
+export interface FreestyleKnob { key: string; label: string; min: number; max: number; step: number; def: number; fmt?: (v: number) => string; }
 export interface EngineHooks {
   sound: boolean; haptics: boolean;
   onHud: (h: any) => void;
@@ -50,7 +54,13 @@ export interface GameConfig {
   progress?: (hud: any) => { label: string; right: string; pct: number } | null; // zen-style progress bar
   startLabel?: string;  // "Play" | "Defend" | "Begin"
   online?: { href: string; label?: string }; // if set, the menu shows a "Play online" button
+  // Freestyle/practice mode. Available by default on real-time action games (by
+  // category); a game can add extra per-engine knobs here and how to apply them.
+  freestyle?: { knobs?: FreestyleKnob[]; apply?: (eng: any, vals: Record<string, number>) => void };
 }
+
+// Which categories get Freestyle (real-time games where speed/knobs make sense).
+const FREESTYLE_CATEGORIES = new Set(["classic", "blast", "skill"]);
 
 const lsGet = (k: string) => { try { return window.localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k: string, v: string) => { try { window.localStorage.setItem(k, v); } catch { /* ignore */ } };
@@ -99,13 +109,23 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
   const [dailyRank, setDailyRank] = useState<{ rank: number; total: number } | null>(null);
   const [dailyReward, setDailyReward] = useState<{ points: number } | null>(null);
 
+  // Freestyle / practice mode
+  const freestyleRef = useRef(false);
+  const [wasFreestyle, setWasFreestyle] = useState(false);
+  const category = ARCADE_GAMES.find((g) => g.id === c.gameId)?.category;
+  const freestyleEligible = (!!category && FREESTYLE_CATEGORIES.has(category)) || !!c.freestyle;
+  const knobs = c.freestyle?.knobs || [];
+  const [freestyleOpen, setFreestyleOpen] = useState(false);
+  const [freestyleVals, setFreestyleVals] = useState<Record<string, number>>(() => { const o: Record<string, number> = { speed: 1 }; for (const k of (c.freestyle?.knobs || [])) o[k.key] = k.def; return o; });
+
   useEffect(() => {
     if (!canvasRef.current) return;
     const eng = c.makeEngine(canvasRef.current, {
       sound, haptics,
       onHud: setHud,
       onRunEnd: (r: any) => {
-        setResult(r); setPhase("over");
+        setResult(r); setPhase("over"); setWasFreestyle(freestyleRef.current);
+        if (freestyleRef.current) return; // freestyle runs aren't saved or ranked
         const b = c.bestFrom(r); setBest(b);
         if (b > +(lsGet(c.lsKey) || 0)) lsSet(c.lsKey, String(b));
         const u = userRef.current; if (!u) return;
@@ -136,7 +156,19 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const startRun = () => { setResult(null); setDailyRank(null); setDailyReward(null); setPhase("playing"); engineRef.current?.start(); };
+  const startRun = () => {
+    freestyleRef.current = false;
+    const eng = engineRef.current; eng?.setTimeScale?.(1);
+    if (c.freestyle?.apply && eng) { const d: Record<string, number> = { speed: 1 }; for (const k of knobs) d[k.key] = k.def; c.freestyle.apply(eng, d); } // reset knobs to default for a ranked run
+    setResult(null); setDailyRank(null); setDailyReward(null); setPhase("playing"); eng?.start();
+  };
+  const startFreestyle = () => {
+    const eng = engineRef.current; if (!eng) return;
+    eng.setTimeScale?.(freestyleVals.speed ?? 1);
+    if (c.freestyle?.apply) c.freestyle.apply(eng, freestyleVals);
+    freestyleRef.current = true;
+    setFreestyleOpen(false); setResult(null); setDailyRank(null); setDailyReward(null); setPhase("playing"); eng.start();
+  };
   const toMenu = () => { setPhase("menu"); engineRef.current?.toMenu(); };
   const toggleSound = () => { const v = !sound; setSound(v); lsSet(c.lsKey + "_snd", v ? "1" : "0"); engineRef.current?.setMuted(!v); };
   const toggleHap = () => { const v = !haptics; setHaptics(v); lsSet(c.lsKey + "_hap", v ? "1" : "0"); engineRef.current?.setHaptics(v); };
@@ -178,9 +210,14 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
                 <Swords className="h-4 w-4" /> {c.online.label || "Play online"}
               </Link>
             )}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <HelpButton gameId={c.gameId} name={c.name} accent={c.accent} />
               <DailyButton gameId={c.gameId} name={c.name} accent={c.accent} />
+              {freestyleEligible && (
+                <button onClick={() => setFreestyleOpen(true)} data-testid="button-freestyle" className="flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-[12px] font-bold active:scale-95" style={{ borderColor: c.accent + "55", color: c.accent }}>
+                  <SlidersHorizontal className="h-3.5 w-3.5" /> Freestyle
+                </button>
+              )}
             </div>
             <div className="flex gap-4 text-[11px] text-violet-300/60"><button onClick={toggleSound} data-testid="toggle-sound">{sound ? "🔊 Sound" : "🔇 Muted"}</button><button onClick={toggleHap} data-testid="toggle-haptics">{haptics ? "📳 Haptics" : "Haptics off"}</button></div>
           </div>
@@ -197,6 +234,7 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
             </div>
             {dailyRank && <div className="text-xs text-cyan-300/80">Daily rank <b className="text-white">#{dailyRank.rank}</b> of {dailyRank.total}</div>}
             {dailyReward && <div className="text-xs text-amber-300/90">🎁 Daily reward <b className="text-white">+{dailyReward.points}</b> points</div>}
+            {wasFreestyle && <div className="text-[11px] text-violet-300/50">Freestyle run — not ranked</div>}
             {!user && <div className="text-[11px] text-violet-300/50">Log in to save your best &amp; join the Daily board.</div>}
             <div className="flex gap-3">
               <button onClick={startRun} data-testid="button-again" className="rounded-full px-8 py-3 text-[15px] font-extrabold tracking-wide active:scale-95" style={{ color: "#0a0714", background: grad, boxShadow: `0 8px 30px ${c.accent}80` }}>Play again</button>
@@ -226,6 +264,35 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
           )}
         </div>
       )}
+
+      {freestyleOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ background: "rgba(4,3,12,.72)", backdropFilter: "blur(2px)" }} onClick={() => setFreestyleOpen(false)} data-testid="freestyle-overlay">
+          <div className="w-full max-w-[360px] rounded-2xl border p-5" style={{ borderColor: c.accent + "55", background: "linear-gradient(180deg, rgba(20,14,40,.98), rgba(8,6,20,.99))", boxShadow: `0 24px 70px rgba(0,0,0,.6), 0 0 40px ${c.accent}22` }} onClick={(e) => e.stopPropagation()}>
+            <div className="mb-1 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-lg font-extrabold text-white"><SlidersHorizontal className="h-4 w-4" style={{ color: c.accent }} /> Freestyle</div>
+              <button onClick={() => setFreestyleOpen(false)} data-testid="button-freestyle-close" className="text-violet-300/60 hover:text-violet-200"><X className="h-5 w-5" /></button>
+            </div>
+            <p className="mb-4 text-[12px] text-violet-100/60">Tune the game to practise or crank the challenge. Freestyle runs aren't ranked.</p>
+            <Slider label="Game speed" value={freestyleVals.speed} min={0.5} max={1.6} step={0.1} accent={c.accent} fmt={(v) => (v < 0.85 ? "Chill" : v > 1.15 ? "Fast" : "Normal")} onChange={(v) => setFreestyleVals((s) => ({ ...s, speed: v }))} />
+            {knobs.map((k) => (
+              <Slider key={k.key} label={k.label} value={freestyleVals[k.key] ?? k.def} min={k.min} max={k.max} step={k.step} accent={c.accent} fmt={k.fmt} onChange={(v) => setFreestyleVals((s) => ({ ...s, [k.key]: v }))} />
+            ))}
+            <button onClick={startFreestyle} data-testid="button-freestyle-play" className="mt-2 w-full rounded-full py-3 text-[15px] font-extrabold active:scale-95" style={{ color: "#0a0714", background: grad, boxShadow: `0 8px 30px ${c.accent}70` }}>Play freestyle</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Slider({ label, value, min, max, step, accent, fmt, onChange }: { label: string; value: number; min: number; max: number; step: number; accent: string; fmt?: (v: number) => string; onChange: (v: number) => void }) {
+  return (
+    <div className="mb-3">
+      <div className="mb-1 flex items-center justify-between text-[12px]">
+        <span className="text-violet-100/85">{label}</span>
+        <span className="tabular-nums font-bold" style={{ color: accent }}>{fmt ? fmt(value) : value.toFixed(1) + "×"}</span>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(parseFloat(e.target.value))} className="w-full" style={{ accentColor: accent }} data-testid={`slider-${label.toLowerCase().replace(/\s+/g, "-")}`} />
     </div>
   );
 }

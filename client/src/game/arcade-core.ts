@@ -92,6 +92,9 @@ export abstract class ArcadeEngine {
   protected last = performance.now();
   protected destroyed = false;
   private ro: ResizeObserver | null = null;
+  // Freestyle: scales simulation dt (1 = normal). The host can slow a game down to
+  // practice or speed it up for a challenge. `now` stays real time.
+  protected timeScale = 1;
 
   constructor(canvas: HTMLCanvasElement, opts: ArcadeOpts = {}) {
     this.cv = canvas;
@@ -150,7 +153,7 @@ export abstract class ArcadeEngine {
   // ---------- the loop ----------
   private frame = (now: number) => {
     if (this.destroyed) return;
-    const dt = clamp((now - this.last) / 1000, 0, 0.05);
+    const dt = clamp((now - this.last) / 1000, 0, 0.05) * this.timeScale;
     this.last = now;
     if (!document.hidden) {
       this.step(dt, now);
@@ -239,6 +242,8 @@ export abstract class ArcadeEngine {
   setMuted(m: boolean) { this.muted = m; }
   setHaptics(h: boolean) { this.haptics = h; }
   isMuted() { return this.muted; }
+  /** Freestyle game-speed (0.25–3×). 1 = normal. */
+  setTimeScale(s: number) { this.timeScale = clamp(s, 0.25, 3); }
 
   // ---------- teardown ----------
   destroy() {

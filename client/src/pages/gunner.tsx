@@ -18,5 +18,9 @@ const config: GameConfig = {
   bestFrom: (r) => r.best,
   toDaily: (r) => ({ score: r.score, bestCombo: r.score }),
   dial: (eng) => (a) => eng.aimTo(a),
+  freestyle: {
+    knobs: [{ key: "density", label: "Enemy density", min: 0.5, max: 1.6, step: 0.1, def: 1, fmt: (v) => (v < 0.85 ? "Calm" : v > 1.15 ? "Intense" : "Normal") }],
+    apply: (eng, v) => { eng.spawnMul = 1 / (v.density || 1); },
+  },
 };
 export default function Gunner() { return <ArcadeGameShell config={config} />; }
