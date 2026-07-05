@@ -4,6 +4,7 @@ import { ArrowLeft, Swords, SlidersHorizontal, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { HelpButton } from "@/components/how-to";
 import { DailyButton } from "@/components/daily-board";
+import { PerkButton } from "@/components/perk-shop";
 import { ARCADE_GAMES } from "@/game/registry";
 
 // ArcadeGameShell — the shared React host for CirqlArcade games. A game supplies a
@@ -57,6 +58,9 @@ export interface GameConfig {
   // Freestyle/practice mode. Available by default on real-time action games (by
   // category); a game can add extra per-engine knobs here and how to apply them.
   freestyle?: { knobs?: FreestyleKnob[]; apply?: (eng: any, vals: Record<string, number>) => void };
+  // Arcade perks (the reward-bridge moat): apply the armed perk ids to the engine
+  // at run start. The catalog itself lives in shared/arcade-perks.ts by gameId.
+  perks?: { apply: (eng: any, ids: string[]) => void };
 }
 
 // Which categories get Freestyle (real-time games where speed/knobs make sense).
@@ -109,9 +113,11 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
   const [dailyRank, setDailyRank] = useState<{ rank: number; total: number } | null>(null);
   const [dailyReward, setDailyReward] = useState<{ points: number } | null>(null);
 
-  // Freestyle / practice mode
+  // Freestyle / practice mode + arcade perks
   const freestyleRef = useRef(false);
+  const perkedRef = useRef(false);
   const [wasFreestyle, setWasFreestyle] = useState(false);
+  const [wasPerked, setWasPerked] = useState(false);
   const category = ARCADE_GAMES.find((g) => g.id === c.gameId)?.category;
   const freestyleEligible = (!!category && FREESTYLE_CATEGORIES.has(category)) || !!c.freestyle;
   const knobs = c.freestyle?.knobs || [];
@@ -124,12 +130,13 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
       sound, haptics,
       onHud: setHud,
       onRunEnd: (r: any) => {
-        setResult(r); setPhase("over"); setWasFreestyle(freestyleRef.current);
+        setResult(r); setPhase("over"); setWasFreestyle(freestyleRef.current); setWasPerked(perkedRef.current);
         if (freestyleRef.current) return; // freestyle runs aren't saved or ranked
         const b = c.bestFrom(r); setBest(b);
         if (b > +(lsGet(c.lsKey) || 0)) lsSet(c.lsKey, String(b));
         const u = userRef.current; if (!u) return;
         fetch("/api/game/progress", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: c.gameId, state: { best: b, settings: { sound, haptics } } }) }).catch(() => {});
+        if (perkedRef.current) return; // perked run: personal best saved, but kept off the cross-player Daily board
         const d = c.toDaily(r); setDailyRank(null); setDailyReward(null);
         fetch("/api/game/daily/score", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: c.gameId, score: d.score, bestCombo: d.bestCombo, restored: false }) })
           .then((res) => (res.ok ? res.json() : null)).then((j) => { if (j) { setDailyRank({ rank: j.rank, total: j.total }); if (j.reward) setDailyReward(j.reward); } }).catch(() => {});
@@ -156,17 +163,23 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const startRun = () => {
-    freestyleRef.current = false;
+  const startRun = async () => {
+    freestyleRef.current = false; perkedRef.current = false;
     const eng = engineRef.current; eng?.setTimeScale?.(1);
     if (c.freestyle?.apply && eng) { const d: Record<string, number> = { speed: 1 }; for (const k of knobs) d[k.key] = k.def; c.freestyle.apply(eng, d); } // reset knobs to default for a ranked run
+    if (c.perks?.apply && eng) {
+      let ids: string[] = [];
+      if (userRef.current) { try { const r = await fetch("/api/game/perks/consume", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: c.gameId }) }); if (r.ok) { const j = await r.json(); if (Array.isArray(j.armed)) ids = j.armed; } } catch { /* ignore */ } }
+      c.perks.apply(eng, ids); perkedRef.current = ids.length > 0;
+    }
     setResult(null); setDailyRank(null); setDailyReward(null); setPhase("playing"); eng?.start();
   };
   const startFreestyle = () => {
     const eng = engineRef.current; if (!eng) return;
     eng.setTimeScale?.(freestyleVals.speed ?? 1);
     if (c.freestyle?.apply) c.freestyle.apply(eng, freestyleVals);
-    freestyleRef.current = true;
+    if (c.perks?.apply) c.perks.apply(eng, []); // freestyle runs ignore armed perks
+    freestyleRef.current = true; perkedRef.current = false;
     setFreestyleOpen(false); setResult(null); setDailyRank(null); setDailyReward(null); setPhase("playing"); eng.start();
   };
   const toMenu = () => { setPhase("menu"); engineRef.current?.toMenu(); };
@@ -213,6 +226,7 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
             <div className="flex flex-wrap items-center justify-center gap-2">
               <HelpButton gameId={c.gameId} name={c.name} accent={c.accent} />
               <DailyButton gameId={c.gameId} name={c.name} accent={c.accent} />
+              <PerkButton gameId={c.gameId} name={c.name} accent={c.accent} />
               {freestyleEligible && (
                 <button onClick={() => setFreestyleOpen(true)} data-testid="button-freestyle" className="flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-[12px] font-bold active:scale-95" style={{ borderColor: c.accent + "55", color: c.accent }}>
                   <SlidersHorizontal className="h-3.5 w-3.5" /> Freestyle
@@ -235,6 +249,7 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
             {dailyRank && <div className="text-xs text-cyan-300/80">Daily rank <b className="text-white">#{dailyRank.rank}</b> of {dailyRank.total}</div>}
             {dailyReward && <div className="text-xs text-amber-300/90">🎁 Daily reward <b className="text-white">+{dailyReward.points}</b> points</div>}
             {wasFreestyle && <div className="text-[11px] text-violet-300/50">Freestyle run — not ranked</div>}
+            {wasPerked && <div className="text-[11px] text-amber-300/70">✦ Perked run — off the Daily board</div>}
             {!user && <div className="text-[11px] text-violet-300/50">Log in to save your best &amp; join the Daily board.</div>}
             <div className="flex gap-3">
               <button onClick={startRun} data-testid="button-again" className="rounded-full px-8 py-3 text-[15px] font-extrabold tracking-wide active:scale-95" style={{ color: "#0a0714", background: grad, boxShadow: `0 8px 30px ${c.accent}80` }}>Play again</button>

@@ -21,6 +21,8 @@ export class InvadersEngine extends ArcadeEngine {
   private invs: Inv[] = []; private bullets: Bullet[] = [];
   private formRot = 0; private formR = 0; private rows = 3; private aim = -Math.PI / 2; private fireAt = 0;
   private lastHud = ""; private dragging = false;
+  private perkFireMs = 200; private perkShots = 1; private perkSlow = 1; // arcade perks
+  setPerks(ids: string[]) { this.perkFireMs = ids.includes("rapid") ? 110 : 200; this.perkShots = ids.includes("spread") ? 3 : 1; this.perkSlow = ids.includes("slow") ? 0.6 : 1; }
 
   constructor(canvas: HTMLCanvasElement, opts: InvadersOpts = {}) { super(canvas, opts); if (opts.accent) this.accent = opts.accent; this.opts = opts; this.emitHud(); }
   private loseR() { return this.rimR * 0.24; }
@@ -29,7 +31,13 @@ export class InvadersEngine extends ArcadeEngine {
   start() { this.flow = "playing"; this.score = 0; this.wave = 0; this.bullets = []; this.aim = -Math.PI / 2; this.clearFx(); this.nextWave(); this.emitHud(); }
   toMenu() { this.flow = "menu"; this.invs = []; this.bullets = []; this.clearFx(); }
   aimTo(a: number) { this.aim = a; }
-  fire() { if (this.flow !== "playing" || performance.now() < this.fireAt) return; this.fireAt = performance.now() + 200; const sp = this.rimR * 2.6; this.bullets.push({ x: this.cx, y: this.cy, vx: Math.cos(this.aim) * sp, vy: Math.sin(this.aim) * sp }); this.tone(600, 0.05, "square", 0.03); }
+  fire() {
+    if (this.flow !== "playing" || performance.now() < this.fireAt) return;
+    this.fireAt = performance.now() + this.perkFireMs; const sp = this.rimR * 2.6;
+    const spread = this.perkShots > 1 ? 0.14 : 0;
+    for (let i = 0; i < this.perkShots; i++) { const a = this.aim + (i - (this.perkShots - 1) / 2) * spread; this.bullets.push({ x: this.cx, y: this.cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp }); }
+    this.tone(600, 0.05, "square", 0.03);
+  }
   setCosmetic(a: string) { this.accent = a || "#34d399"; }
   peekBest() { return this.best; }
 
@@ -49,8 +57,8 @@ export class InvadersEngine extends ArcadeEngine {
 
   protected step(dt: number, _now: number) {
     if (this.flow !== "playing") return;
-    this.formRot += (0.25 + this.wave * 0.04) * dt;
-    this.formR -= (this.rimR * 0.02 + this.wave * this.rimR * 0.004) * dt; // spiral inward
+    this.formRot += (0.25 + this.wave * 0.04) * this.perkSlow * dt;
+    this.formR -= (this.rimR * 0.02 + this.wave * this.rimR * 0.004) * this.perkSlow * dt; // spiral inward
     for (const b of this.bullets) { b.x += b.vx * dt; b.y += b.vy * dt; }
     this.bullets = this.bullets.filter((b) => Math.hypot(b.x - this.cx, b.y - this.cy) < this.rimR * 1.05);
     const er = this.rimR * 0.032;

@@ -19,5 +19,6 @@ const config: GameConfig = {
   toDaily: (r) => ({ score: r.score, bestCombo: r.wave }),
   dial: (eng) => (a) => eng.aimTo(a),
   controls: (eng) => [{ testid: "button-fire", label: "FIRE", node: "◎", color: "#34d399", onPress: () => eng.fire(), hold: true }],
+  perks: { apply: (eng, ids) => eng.setPerks(ids) },
 };
 export default function Invaders() { return <ArcadeGameShell config={config} />; }

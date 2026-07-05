@@ -5,6 +5,7 @@ import { isAuthenticated } from "../auth";
 import type { RouteDeps } from "./_shared";
 import { getCosmetic, isUnlocked } from "@shared/cirql-cosmetics";
 import { isPerkId } from "@shared/cirql-perks";
+import { findArcadePerk } from "@shared/arcade-perks";
 
 // CIRQL game progress (CHR-94). Guests play without saving; logged-in players
 // persist their resume point + a stable per-player seed for the infinite stream.
@@ -160,6 +161,29 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
       console.error("perk redeem error:", err);
       res.status(500).json({ error: "Failed to redeem perks" });
     }
+  });
+
+  // Per-game arcade perk shop (the moat). Read state, arm a perk (spend points),
+  // and consume the armed perks at run start.
+  app.get("/api/game/perks/shop", isAuthenticated, async (req, res) => {
+    try { res.json(await storage.getPerkShop((req.user as any).id, gameKey(req))); }
+    catch (err) { console.error("perk shop error:", err); res.status(500).json({ error: "Failed to load perk shop" }); }
+  });
+  app.post("/api/game/perks/arm", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const gameId = gameKey(req);
+      const perkId = String(req.body?.perkId ?? "");
+      const perk = findArcadePerk(gameId, perkId);
+      if (!perk) return res.status(400).json({ error: "Unknown perk" });
+      const result = await storage.armPerk(userId, gameId, perkId, perk.cost);
+      if (!result.ok && result.reason === "points") return res.status(402).json(result);
+      res.json(result);
+    } catch (err) { console.error("perk arm error:", err); res.status(500).json({ error: "Failed to arm perk" }); }
+  });
+  app.post("/api/game/perks/consume", isAuthenticated, async (req, res) => {
+    try { res.json({ armed: await storage.consumeArmed((req.user as any).id, gameKey(req)) }); }
+    catch (err) { console.error("perk consume error:", err); res.status(500).json({ error: "Failed to consume perks" }); }
   });
 
   // CHR-122 + CHR-119: the cross-player Daily leaderboard. The SERVER decides the

@@ -1804,6 +1804,41 @@ export class DatabaseStorage implements IStorage {
     return perks as PerkBank;
   }
 
+  // ---- Per-game arcade perks (the generalised reward bridge / moat) ----
+  // Read the perk shop for a game: the player's spendable point balance + which
+  // perks are currently armed for their next run of that game.
+  async getPerkShop(userId: string, gameId: string): Promise<{ balance: number; armed: Record<string, boolean> }> {
+    const u = await this.getUser(userId);
+    const p = await this.getOrCreateGameProgress(userId, gameId);
+    return { balance: Number((u as any)?.availablePoints) || 0, armed: ((p.state as any)?.armed as Record<string, boolean>) || {} };
+  }
+
+  // Arm one perk for a game's next run: spend `cost` points (server-authoritative)
+  // and bank it in that game's game_progress.state.armed. Idempotent per perk.
+  async armPerk(userId: string, gameId: string, perkId: string, cost: number): Promise<{ ok: boolean; reason?: string; balance: number; armed: Record<string, boolean> }> {
+    const u = await this.getUser(userId);
+    const balance = Number((u as any)?.availablePoints) || 0;
+    const p = await this.getOrCreateGameProgress(userId, gameId);
+    const s = (p.state as any) || {};
+    const armed: Record<string, boolean> = { ...(s.armed || {}) };
+    if (armed[perkId]) return { ok: false, reason: "already", balance, armed };
+    if (balance < cost) return { ok: false, reason: "points", balance, armed };
+    await db.update(users).set({ availablePoints: sql`GREATEST(0, ${users.availablePoints} - ${cost})`, updatedAt: new Date() }).where(eq(users.id, userId));
+    armed[perkId] = true;
+    await this.saveGameProgress(userId, { state: { ...s, armed } }, gameId);
+    return { ok: true, balance: balance - cost, armed };
+  }
+
+  // Consume (and clear) the armed perks for a game at run start; returns the ids.
+  async consumeArmed(userId: string, gameId: string): Promise<string[]> {
+    const p = await this.getOrCreateGameProgress(userId, gameId);
+    const s = (p.state as any) || {};
+    const armed = (s.armed as Record<string, boolean>) || {};
+    const ids = Object.keys(armed).filter((k) => armed[k]);
+    if (ids.length) await this.saveGameProgress(userId, { state: { ...s, armed: {} } }, gameId);
+    return ids;
+  }
+
   // CHR-116: redeem a set of banked tap-rewards at once (clamped to what's
   // actually banked). Server-authoritative so the bank can't be over-spent.
   // Returns the amounts actually spent + the remaining bank.

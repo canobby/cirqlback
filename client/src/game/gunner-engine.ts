@@ -20,10 +20,12 @@ export class GunnerEngine extends ArcadeEngine {
   private aim = -Math.PI / 2; private foes: Foe[] = []; private bullets: Bullet[] = [];
   private fireAt = 0; private spawnAt = 0; private t = 0; private lastHud = ""; private dragging = false;
   spawnMul = 1; // freestyle: <1 = denser swarm, >1 = calmer
+  private perkFireMs = 110; private perkShots = 1; private perkHp = 5; // arcade perks
+  setPerks(ids: string[]) { this.perkFireMs = ids.includes("rapid") ? 60 : 110; this.perkShots = ids.includes("twin") ? 2 : 1; this.perkHp = ids.includes("fortify") ? 7 : 5; }
 
   constructor(canvas: HTMLCanvasElement, opts: GunnerOpts = {}) { super(canvas, opts); if (opts.accent) this.accent = opts.accent; this.opts = opts; this.emitHud(); }
 
-  start() { this.flow = "playing"; this.score = 0; this.hp = 5; this.aim = -Math.PI / 2; this.foes = []; this.bullets = []; this.t = 0; this.spawnAt = 0; this.clearFx(); this.emitHud(); }
+  start() { this.flow = "playing"; this.score = 0; this.hp = this.perkHp; this.aim = -Math.PI / 2; this.foes = []; this.bullets = []; this.t = 0; this.spawnAt = 0; this.clearFx(); this.emitHud(); }
   toMenu() { this.flow = "menu"; this.foes = []; this.bullets = []; this.clearFx(); }
   aimTo(a: number) { this.aim = a; }
   setCosmetic(c: string) { this.accent = c || "#67e8f9"; }
@@ -38,7 +40,12 @@ export class GunnerEngine extends ArcadeEngine {
     if (this.flow !== "playing") return;
     this.t += dt;
     // auto-fire stream
-    if (now >= this.fireAt) { this.fireAt = now + 110; const sp = this.rimR * 2.4; this.bullets.push({ x: this.cx + Math.cos(this.aim) * this.rimR * 0.1, y: this.cy + Math.sin(this.aim) * this.rimR * 0.1, vx: Math.cos(this.aim) * sp, vy: Math.sin(this.aim) * sp }); this.tone(560, 0.03, "square", 0.02); }
+    if (now >= this.fireAt) {
+      this.fireAt = now + this.perkFireMs; const sp = this.rimR * 2.4;
+      const spread = this.perkShots > 1 ? 0.12 : 0;
+      for (let i = 0; i < this.perkShots; i++) { const a = this.aim + (i - (this.perkShots - 1) / 2) * spread; this.bullets.push({ x: this.cx + Math.cos(a) * this.rimR * 0.1, y: this.cy + Math.sin(a) * this.rimR * 0.1, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp }); }
+      this.tone(560, 0.03, "square", 0.02);
+    }
     // spawn foes from the rim
     this.spawnAt -= dt; if (this.spawnAt <= 0) { const a = Math.random() * TAU; this.foes.push({ x: this.cx + Math.cos(a) * this.rimR * 1.02, y: this.cy + Math.sin(a) * this.rimR * 1.02, hue: ["#fb7185", "#f472b6", "#a78bfa", "#fbbf24"][Math.floor(Math.random() * 4)], hp: 1 + Math.floor(this.t / 25) }); this.spawnAt = Math.max(0.3, 1.1 - this.t * 0.012) * this.spawnMul; }
     const foeSpd = this.rimR * (0.14 + Math.min(0.12, this.t * 0.003));
