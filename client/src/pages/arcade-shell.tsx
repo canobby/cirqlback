@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, Swords } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { HelpButton } from "@/components/how-to";
 
 // ArcadeGameShell — the shared React host for CirqlArcade games. A game supplies a
 // GameConfig (id, look, how to build its engine, how to read its HUD/result) and
@@ -175,6 +176,7 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
                 <Swords className="h-4 w-4" /> {c.online.label || "Play online"}
               </Link>
             )}
+            <HelpButton gameId={c.gameId} name={c.name} accent={c.accent} />
             <div className="flex gap-4 text-[11px] text-violet-300/60"><button onClick={toggleSound} data-testid="toggle-sound">{sound ? "🔊 Sound" : "🔇 Muted"}</button><button onClick={toggleHap} data-testid="toggle-haptics">{haptics ? "📳 Haptics" : "Haptics off"}</button></div>
           </div>
         )}

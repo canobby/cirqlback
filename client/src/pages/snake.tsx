@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ChevronsLeft, ChevronsRight, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { HelpButton } from "@/components/how-to";
 import { SnakeEngine, type SnakeHud, type SnakeResult } from "@/game/snake-engine";
 
 // Cirql Snake — concentric-lane snake (lazy at /play/snake, code-split). Hop lanes
@@ -86,6 +87,7 @@ export default function Snake() {
             <p className="max-w-[34ch] text-sm leading-relaxed text-violet-100/70">Your snake circles forever. <b className="text-white">Hop in or out</b> a lane to catch orbs and dodge your own tail. <b className="text-white">Boost</b> to escape a tight loop.</p>
             <div className="text-sm text-amber-300/90">Best <b className="tabular-nums text-white">{best}</b></div>
             <button onClick={startRun} data-testid="button-snake-start" className="rounded-full px-10 py-3.5 text-[15px] font-extrabold tracking-wide active:scale-95" style={{ color: "#06231a", background: "linear-gradient(90deg,#34d399,#38bdf8)", boxShadow: "0 8px 30px rgba(52,211,153,.5)" }}>Play</button>
+            <HelpButton gameId="snake" name="Cirql Snake" accent="#34d399" />
             <div className="flex gap-4 text-[11px] text-violet-300/60"><button onClick={toggleSound} data-testid="toggle-sound">{sound ? "🔊 Sound" : "🔇 Muted"}</button><button onClick={toggleHap} data-testid="toggle-haptics">{haptics ? "📳 Haptics" : "Haptics off"}</button></div>
           </div>
         )}

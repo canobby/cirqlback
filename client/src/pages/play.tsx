@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, Share2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { HelpButton } from "@/components/how-to";
 import {
   CirqlbreakEngine,
   RELICS,
@@ -519,6 +520,7 @@ export default function Play() {
               )
             )}
             <button onClick={startRun} data-testid="button-play" className="mt-5 w-full rounded-2xl py-4 text-base font-extrabold text-white transition hover:brightness-110" style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)", boxShadow: "0 12px 34px rgba(124,58,237,.4)" }}>Play</button>
+            <div className="mt-3 flex justify-center"><HelpButton gameId="cirqlbreak" name="Cirql Bounce" accent="#ec4899" /></div>
             <p className="mt-3.5 text-[12px] leading-relaxed text-violet-300/60">
               <b className="text-violet-100">Move</b> your mouse or finger to swing the paddle around the rim. Catch <b className="text-violet-100">power-ups</b>, clear every ring to wake the <b className="text-violet-100">core</b>, then strike its glowing gap. <b className="text-violet-100">E</b> Pulse · <b className="text-violet-100">Q</b> Supernova.
             </p>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, RotateCw } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { HelpButton } from "@/components/how-to";
 import { SpinEngine, type SpinHud, type SpinResult } from "@/game/spin-engine";
 
 // Cirql Spin — circular Tetris (lazy-loaded at /play/spin, code-split). Domino
@@ -114,6 +115,7 @@ export default function Spin() {
             <p className="max-w-[34ch] text-sm leading-relaxed text-violet-100/70">Pieces fall inward. <b className="text-white">Spin</b> to a column, <b className="text-white">flip</b> the piece, and fill a whole ring to clear it. Don't let a column stack out to the rim.</p>
             <div className="text-sm text-amber-300/90">Best <b className="tabular-nums text-white">{best}</b></div>
             <button onClick={startRun} data-testid="button-spin-start" className="rounded-full px-10 py-3.5 text-[15px] font-extrabold tracking-wide active:scale-95" style={{ color: "#081226", background: "linear-gradient(90deg,#38bdf8,#a78bfa)", boxShadow: "0 8px 30px rgba(56,189,248,.5)" }}>Play</button>
+            <HelpButton gameId="spin" name="Cirql Spin" accent="#38bdf8" />
             <div className="flex gap-4 text-[11px] text-violet-300/60"><button onClick={toggleSound} data-testid="toggle-sound">{sound ? "🔊 Sound" : "🔇 Muted"}</button><button onClick={toggleHap} data-testid="toggle-haptics">{haptics ? "📳 Haptics" : "Haptics off"}</button></div>
           </div>
         )}
