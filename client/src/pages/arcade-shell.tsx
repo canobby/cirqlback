@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Swords } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 // ArcadeGameShell — the shared React host for CirqlArcade games. A game supplies a
@@ -47,6 +47,7 @@ export interface GameConfig {
   dial?: (eng: any) => (angle: number) => void; // if set, render the spin dial
   progress?: (hud: any) => { label: string; right: string; pct: number } | null; // zen-style progress bar
   startLabel?: string;  // "Play" | "Defend" | "Begin"
+  online?: { href: string; label?: string }; // if set, the menu shows a "Play online" button
 }
 
 const lsGet = (k: string) => { try { return window.localStorage.getItem(k); } catch { return null; } };
@@ -169,6 +170,11 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
             <p className="max-w-[34ch] text-sm leading-relaxed text-violet-100/70">{c.body}</p>
             <div className="text-sm text-amber-300/90">Best <b className="tabular-nums text-white">{best}</b></div>
             <button onClick={startRun} data-testid="button-start" className="rounded-full px-10 py-3.5 text-[15px] font-extrabold tracking-wide active:scale-95" style={{ color: "#0a0714", background: grad, boxShadow: `0 8px 30px ${c.accent}80` }}>{c.startLabel || "Play"}</button>
+            {c.online && (
+              <Link href={c.online.href} data-testid="button-online" className="flex items-center gap-1.5 rounded-full border px-6 py-2 text-[13px] font-bold active:scale-95" style={{ borderColor: c.accent + "66", color: c.accent }}>
+                <Swords className="h-4 w-4" /> {c.online.label || "Play online"}
+              </Link>
+            )}
             <div className="flex gap-4 text-[11px] text-violet-300/60"><button onClick={toggleSound} data-testid="toggle-sound">{sound ? "🔊 Sound" : "🔇 Muted"}</button><button onClick={toggleHap} data-testid="toggle-haptics">{haptics ? "📳 Haptics" : "Haptics off"}</button></div>
           </div>
         )}

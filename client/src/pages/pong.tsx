@@ -18,5 +18,6 @@ const config: GameConfig = {
   bestFrom: (r) => r.best,
   toDaily: (r) => ({ score: r.score, bestCombo: r.score }),
   dial: (eng) => (a) => eng.aimYou(a),
+  online: { href: "/play/pong/online" },
 };
 export default function Pong() { return <ArcadeGameShell config={config} />; }

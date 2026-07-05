@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
+import { setupMultiplayer } from "./multiplayer";
 import multer from "multer";
 import { handleTextTranslation, handleVoiceTranslation, handleTextToSpeech } from "./translation-service";
 import { getMapsConfig } from "./maps-proxy";
@@ -150,8 +151,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
 
+  // Real-time multiplayer game server (Pong + Sumo pilot); routed at /ws/mp below.
+  const mpWss = setupMultiplayer();
+
   // WebSocket server for real-time updates
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({ noServer: true });
   
   const clients = new Set<WebSocket>();
 
@@ -182,10 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   (global as any).broadcastToClients = broadcastToClients;
 
   // Setup WebSocket server for communication
-  const communicationWss = new WebSocketServer({ 
-    server: httpServer, 
-    path: '/ws/communication' 
-  });
+  const communicationWss = new WebSocketServer({ noServer: true });
 
   const connectedUsers = new Map<string, WebSocket>();
 
@@ -265,6 +266,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('error', (error) => {
       console.error('Communication WebSocket error:', error);
     });
+  });
+
+  // Single upgrade router for all app WebSocket paths. Each WSS above is
+  // `noServer` so they don't fight over the upgrade (in ws 8.x, a {server,path}
+  // WSS aborts + destroys any upgrade whose path it doesn't own, which corrupts
+  // the other paths' handshakes). Unrecognised paths are left untouched so Vite's
+  // HMR socket (dev) and any other listeners still work.
+  httpServer.on('upgrade', (req, socket, head) => {
+    let pathname = '';
+    try { pathname = new URL(req.url || '', 'http://localhost').pathname; } catch { pathname = ''; }
+    if (pathname === '/ws') wss.handleUpgrade(req, socket, head, (client) => wss.emit('connection', client, req));
+    else if (pathname === '/ws/communication') communicationWss.handleUpgrade(req, socket, head, (client) => communicationWss.emit('connection', client, req));
+    else if (pathname === '/ws/mp') mpWss.handleUpgrade(req, socket, head, (client) => mpWss.emit('connection', client, req));
+    // else: not ours — leave the socket for Vite HMR / other upgrade listeners.
   });
 
   return httpServer;

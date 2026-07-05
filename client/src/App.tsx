@@ -101,6 +101,8 @@ const CommandPage = lazy(() => import("@/pages/command"));
 const CoilPage = lazy(() => import("@/pages/coil"));
 const KeepPage = lazy(() => import("@/pages/keep"));
 const WeavePage = lazy(() => import("@/pages/weave"));
+const PongOnlinePage = lazy(() => import("@/pages/pong-online"));
+const SumoOnlinePage = lazy(() => import("@/pages/sumo-online"));
 
 function Router() {
   const [location] = useLocation();
@@ -140,6 +142,7 @@ function Router() {
           <Route path="/play/miner">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><MinerPage /></Suspense>}</Route>
           <Route path="/play/claim">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ClaimPage /></Suspense>}</Route>
           <Route path="/play/beat">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><BeatPage /></Suspense>}</Route>
+          <Route path="/play/pong/online">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PongOnlinePage /></Suspense>}</Route>
           <Route path="/play/pong">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PongPage /></Suspense>}</Route>
           <Route path="/play/whack">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><WhackPage /></Suspense>}</Route>
           <Route path="/play/reflex">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ReflexPage /></Suspense>}</Route>
@@ -164,6 +167,7 @@ function Router() {
           <Route path="/play/gunner">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><GunnerPage /></Suspense>}</Route>
           <Route path="/play/tap">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CirqlTapPage /></Suspense>}</Route>
           <Route path="/play/survivor">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SurvivorPage /></Suspense>}</Route>
+          <Route path="/play/sumo/online">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SumoOnlinePage /></Suspense>}</Route>
           <Route path="/play/sumo">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SumoPage /></Suspense>}</Route>
           <Route path="/play/command">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CommandPage /></Suspense>}</Route>
           <Route path="/play/coil">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CoilPage /></Suspense>}</Route>

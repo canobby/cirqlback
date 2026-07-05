@@ -17,5 +17,6 @@ const config: GameConfig = {
   endChips: (r) => [{ label: "Knockouts", value: r.score, color: "#fbbf24" }, { label: "Best", value: r.best, color: "#fde68a" }],
   bestFrom: (r) => r.best,
   toDaily: (r) => ({ score: r.score, bestCombo: r.score }),
+  online: { href: "/play/sumo/online" },
 };
 export default function Sumo() { return <ArcadeGameShell config={config} />; }
