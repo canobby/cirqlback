@@ -89,4 +89,11 @@ export const ARCADE_GAMES: ArcadeGame[] = [
   { id: "race", name: "Cirql Race", genre: "Slot-car", tagline: "Four racers, concentric lanes. Dive inside and boost to win.", route: "/play/race", accent: "#fbbf24", glyph: "⚑", status: "live" },
   { id: "miner", name: "Cirql Miner", genre: "Dig Dug", tagline: "Gobble gems on the rings, dodge the cave monsters.", route: "/play/miner", accent: "#fbbf24", glyph: "◇", status: "live" },
   { id: "claim", name: "Cirql Claim", genre: "Qix", tagline: "Claim wedges of the disc while a spark hunts the open ground.", route: "/play/claim", accent: "#38bdf8", glyph: "◔", status: "live" },
+  { id: "beat", name: "Cirql Beat", genre: "Rhythm", tagline: "Notes ride inward — tap the pulse the instant they hit the ring.", route: "/play/beat", accent: "#ec4899", glyph: "♪", status: "live" },
+  { id: "pong", name: "Cirql Pong", genre: "Pong", tagline: "Guard your half, volley the ball, slip it past the AI.", route: "/play/pong", accent: "#67e8f9", glyph: "◖", status: "live" },
+  { id: "whack", name: "Cirql Whack", genre: "Whack-a-mole", tagline: "Tap the critters as they pop; dodge the bombs. 30 seconds.", route: "/play/whack", accent: "#34d399", glyph: "✜", status: "live" },
+  { id: "reflex", name: "Cirql Reflex", genre: "Reaction", tagline: "Tap the instant the ring flares. Five rounds, fastest wins.", route: "/play/reflex", accent: "#67e8f9", glyph: "⚡", status: "live" },
+  { id: "pairs", name: "Cirql Pairs", genre: "Memory", tagline: "Flip the cards, find the matching pairs against the clock.", route: "/play/pairs", accent: "#a78bfa", glyph: "❒", status: "live" },
+  { id: "flip", name: "Cirql Flip", genre: "Lights-Out", tagline: "Flip a segment and its neighbours; light the whole ring.", route: "/play/flip", accent: "#34d399", glyph: "◍", status: "live" },
+  { id: "stack", name: "Cirql Stack", genre: "Stacker", tagline: "Lock the sweeping arc; keep the overlap; stack to the centre.", route: "/play/stack", accent: "#38bdf8", glyph: "▤", status: "live" },
 ];

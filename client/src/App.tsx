@@ -71,6 +71,13 @@ const PinballPage = lazy(() => import("@/pages/pinball"));
 const RacePage = lazy(() => import("@/pages/race"));
 const MinerPage = lazy(() => import("@/pages/miner"));
 const ClaimPage = lazy(() => import("@/pages/claim"));
+const BeatPage = lazy(() => import("@/pages/beat"));
+const PongPage = lazy(() => import("@/pages/pong"));
+const WhackPage = lazy(() => import("@/pages/whack"));
+const ReflexPage = lazy(() => import("@/pages/reflex"));
+const PairsPage = lazy(() => import("@/pages/pairs"));
+const FlipPage = lazy(() => import("@/pages/flip"));
+const StackPage = lazy(() => import("@/pages/stack"));
 
 function Router() {
   const [location] = useLocation();
@@ -109,6 +116,13 @@ function Router() {
           <Route path="/play/race">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><RacePage /></Suspense>}</Route>
           <Route path="/play/miner">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><MinerPage /></Suspense>}</Route>
           <Route path="/play/claim">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ClaimPage /></Suspense>}</Route>
+          <Route path="/play/beat">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><BeatPage /></Suspense>}</Route>
+          <Route path="/play/pong">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PongPage /></Suspense>}</Route>
+          <Route path="/play/whack">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><WhackPage /></Suspense>}</Route>
+          <Route path="/play/reflex">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ReflexPage /></Suspense>}</Route>
+          <Route path="/play/pairs">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PairsPage /></Suspense>}</Route>
+          <Route path="/play/flip">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><FlipPage /></Suspense>}</Route>
+          <Route path="/play/stack">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><StackPage /></Suspense>}</Route>
           <Route path="/play">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PlayPage /></Suspense>}</Route>
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />
