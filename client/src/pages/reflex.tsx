@@ -17,5 +17,6 @@ const config: GameConfig = {
   endChips: (r) => [{ label: "Avg", value: `${r.avg}ms`, color: "#67e8f9" }, { label: "Score", value: r.score }, { label: "Best", value: r.best, color: "#fbbf24" }],
   bestFrom: (r) => r.best,
   toDaily: (r) => ({ score: r.score, bestCombo: Math.max(0, 600 - r.avg) }),
+  online: { href: "/play/reflex/online", label: "Duel online" },
 };
 export default function Reflex() { return <ArcadeGameShell config={config} />; }

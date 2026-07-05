@@ -161,7 +161,147 @@ class SumoSim implements Sim {
   reset() { this.s = [0, 0]; this.done = null; this.resetT = 0.6; this.place(); }
 }
 
-const GAMES: Record<string, () => Sim> = { pong: () => new PongSim(), sumo: () => new SumoSim() };
+// ======================= Reflex (reaction duel) =======================
+// A ring waits a random beat, then flares. First to tap during the flare wins the
+// round; a tap during the wait is a false start (round to the other). First to 3.
+const RX = { WIN: 3, MINWAIT: 1.4, MAXWAIT: 3.6, GAP: 1.5 };
+class ReflexSim implements Sim {
+  private ph: "wait" | "flare" | "result" = "wait";
+  private timer = 0; private flareT = 0;
+  private s: [number, number] = [0, 0];
+  private done: { winner: Side } | null = null;
+  private roundWinner: Side | null = null; private msg = "";
+  private botReact = 0.3; private botTapped = false;
+  constructor() { this.newRound(); }
+  private newRound() { this.ph = "wait"; this.timer = RX.MINWAIT + Math.random() * (RX.MAXWAIT - RX.MINWAIT); this.flareT = 0; this.botTapped = false; this.botReact = 0.24 + Math.random() * 0.26; this.roundWinner = null; this.msg = ""; }
+  private tap(side: Side) {
+    if (this.ph === "wait") this.award((side ^ 1) as Side, "False start");
+    else if (this.ph === "flare") this.award(side, "Fastest");
+  }
+  private award(winner: Side, msg: string) {
+    if (this.ph === "result") return;
+    this.s[winner]++; this.roundWinner = winner; this.msg = msg; this.ph = "result"; this.timer = RX.GAP;
+    if (this.s[winner] >= RX.WIN) this.done = { winner };
+  }
+  input(side: Side, m: any) { if (m.tap) this.tap(side); }
+  botStep(side: Side, _dt: number) { if (this.ph === "flare" && !this.botTapped && this.flareT >= this.botReact) { this.botTapped = true; this.tap(side); } }
+  step(dt: number) {
+    if (this.done) return;
+    if (this.ph === "wait") { this.timer -= dt; if (this.timer <= 0) { this.ph = "flare"; this.flareT = 0; } }
+    else if (this.ph === "flare") { this.flareT += dt; }
+    else { this.timer -= dt; if (this.timer <= 0) this.newRound(); }
+  }
+  snapshot() { return { ph: this.ph, lit: this.ph === "flare", s: [this.s[0], this.s[1]], rw: this.roundWinner, msg: this.msg }; }
+  over() { return this.done; }
+  reset() { this.s = [0, 0]; this.done = null; this.newRound(); }
+}
+
+// ======================= Tap (osu score-duel) =======================
+// Both players see the same beat-dots bloom on a shared schedule; each independently
+// taps them as their approach ring closes. 40 seconds — the higher score wins.
+const TP = { LIFE: 1.4, HITWIN: 0.34, HITR: 0.15, SPAWN: 0.72, MATCH: 40 };
+interface TapDot { x: number; y: number; life: number; scored: [boolean, boolean]; botTried: boolean; }
+class TapSim implements Sim {
+  private dots: TapDot[] = [];
+  private s: [number, number] = [0, 0];
+  private c: [number, number] = [0, 0];
+  private spawnT = 0.4; private tl = TP.MATCH;
+  private done: { winner: Side } | null = null;
+  private scoreDot(side: Side, d: TapDot) { if (d.scored[side]) return; d.scored[side] = true; this.c[side]++; this.s[side] += 100 + (this.c[side] - 1) * 10; }
+  input(side: Side, m: any) {
+    if (!m.tap || typeof m.x !== "number" || typeof m.y !== "number") return;
+    let best: TapDot | null = null, bd = TP.HITR;
+    for (const d of this.dots) { if (d.scored[side] || d.life > TP.HITWIN) continue; const dist = Math.hypot(d.x - m.x, d.y - m.y); if (dist < bd) { bd = dist; best = d; } }
+    if (best) this.scoreDot(side, best);
+  }
+  botStep(side: Side, _dt: number) { for (const d of this.dots) { if (!d.botTried && d.life <= 0.2) { d.botTried = true; if (Math.random() < 0.85) this.scoreDot(side, d); } } }
+  step(dt: number) {
+    if (this.done) return;
+    this.tl -= dt; this.spawnT -= dt;
+    if (this.spawnT <= 0 && this.tl > 1) { this.spawnT = TP.SPAWN; const a = Math.random() * TAU, r = Math.random() * 0.72; this.dots.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, life: TP.LIFE, scored: [false, false], botTried: false }); }
+    for (const d of this.dots) d.life -= dt;
+    for (const d of this.dots) if (d.life <= 0) { if (!d.scored[0]) this.c[0] = 0; if (!d.scored[1]) this.c[1] = 0; }
+    this.dots = this.dots.filter((d) => d.life > 0);
+    if (this.tl <= 0 && this.dots.length === 0) { const w: Side = this.s[0] === this.s[1] ? (this.c[0] >= this.c[1] ? 0 : 1) : (this.s[0] > this.s[1] ? 0 : 1); this.done = { winner: w }; }
+  }
+  snapshot() { return { dots: this.dots.map((d) => ({ x: d.x, y: d.y, cl: Math.max(0, d.life / TP.LIFE) })), s: [this.s[0], this.s[1]], c: [this.c[0], this.c[1]], tl: Math.max(0, Math.ceil(this.tl)) }; }
+  over() { return this.done; }
+  reset() { this.dots = []; this.s = [0, 0]; this.c = [0, 0]; this.spawnT = 0.4; this.tl = TP.MATCH; this.done = null; }
+}
+
+// ======================= Command (Galcon 1v1) =======================
+// Owned nodes grow troops; fling a share from one of yours to a target to reinforce
+// or attack. Own everything (opponent has no nodes and no fleets in transit) to win.
+const CM = { PROD: 2.2, CAP: 60, SPEED: 0.55 };
+interface CNode { x: number; y: number; o: number; n: number; } // o: -1 neutral, 0/1 player
+interface CFleet { o: Side; n: number; from: number; to: number; t: number; dur: number; }
+const START_NODES = (): CNode[] => [
+  { x: -0.72, y: 0.42, o: 0, n: 22 },
+  { x: 0.72, y: -0.42, o: 1, n: 22 },
+  { x: 0, y: 0, o: -1, n: 18 },
+  { x: 0.62, y: 0.52, o: -1, n: 8 },
+  { x: -0.62, y: -0.52, o: -1, n: 8 },
+  { x: 0.14, y: -0.74, o: -1, n: 6 },
+  { x: -0.14, y: 0.74, o: -1, n: 6 },
+];
+class CommandSim implements Sim {
+  private nodes: CNode[] = START_NODES();
+  private fleets: CFleet[] = [];
+  private botT = 1.2;
+  private done: { winner: Side } | null = null;
+  input(side: Side, m: any) {
+    const from = this.nodes[m.from], to = this.nodes[m.to];
+    if (!from || !to || m.from === m.to || from.o !== side || from.n < 2) return;
+    const ratio = typeof m.ratio === "number" ? clamp(m.ratio, 0.1, 1) : 0.5;
+    const send = Math.floor(from.n * ratio); if (send < 1) return;
+    from.n -= send;
+    const dist = Math.hypot(to.x - from.x, to.y - from.y);
+    this.fleets.push({ o: side, n: send, from: m.from, to: m.to, t: 0, dur: Math.max(0.4, dist / CM.SPEED) });
+  }
+  private botMove(side: Side) {
+    const mine = this.nodes.map((nd, i) => ({ nd, i })).filter((o) => o.nd.o === side && o.nd.n >= 8);
+    if (!mine.length) return;
+    const src = mine.sort((a, b) => b.nd.n - a.nd.n)[0];
+    const targets = this.nodes.map((nd, i) => ({ nd, i })).filter((o) => o.nd.o !== side);
+    if (!targets.length) return;
+    targets.sort((a, b) => (a.nd.n + Math.hypot(a.nd.x - src.nd.x, a.nd.y - src.nd.y) * 12) - (b.nd.n + Math.hypot(b.nd.x - src.nd.x, b.nd.y - src.nd.y) * 12));
+    this.input(side, { from: src.i, to: targets[0].i, ratio: 0.6 });
+  }
+  botStep(side: Side, dt: number) { this.botT -= dt; if (this.botT <= 0) { this.botT = 1.0 + Math.random() * 0.9; this.botMove(side); } }
+  step(dt: number) {
+    if (this.done) return;
+    for (const nd of this.nodes) if (nd.o !== -1 && nd.n < CM.CAP) nd.n = Math.min(CM.CAP, nd.n + CM.PROD * dt);
+    for (const f of this.fleets) {
+      f.t += dt / f.dur;
+      if (f.t >= 1) {
+        const to = this.nodes[f.to];
+        if (to.o === f.o) to.n += f.n;
+        else { to.n -= f.n; if (to.n < 0) { to.o = f.o; to.n = -to.n; } else if (to.n === 0) to.o = f.o; }
+      }
+    }
+    this.fleets = this.fleets.filter((f) => f.t < 1);
+    for (const side of [0, 1] as Side[]) {
+      const other = (side ^ 1) as Side;
+      if (!this.nodes.some((nd) => nd.o === other) && !this.fleets.some((f) => f.o === other)) { this.done = { winner: side }; break; }
+    }
+  }
+  snapshot() {
+    return {
+      nodes: this.nodes.map((nd) => ({ x: nd.x, y: nd.y, o: nd.o, n: Math.round(nd.n) })),
+      fleets: this.fleets.map((f) => { const a = this.nodes[f.from], b = this.nodes[f.to]; return { x: a.x + (b.x - a.x) * f.t, y: a.y + (b.y - a.y) * f.t, o: f.o, n: f.n }; }),
+    };
+  }
+  over() { return this.done; }
+  reset() { this.nodes = START_NODES(); this.fleets = []; this.botT = 1.2; this.done = null; }
+}
+
+const GAMES: Record<string, () => Sim> = {
+  pong: () => new PongSim(),
+  sumo: () => new SumoSim(),
+  reflex: () => new ReflexSim(),
+  tap: () => new TapSim(),
+  command: () => new CommandSim(),
+};
 
 // ---------- connections / rooms ----------
 interface Conn { ws: WebSocket; name: string; game: string; room?: Room; side?: Side; }

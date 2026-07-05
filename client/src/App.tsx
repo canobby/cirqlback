@@ -103,6 +103,9 @@ const KeepPage = lazy(() => import("@/pages/keep"));
 const WeavePage = lazy(() => import("@/pages/weave"));
 const PongOnlinePage = lazy(() => import("@/pages/pong-online"));
 const SumoOnlinePage = lazy(() => import("@/pages/sumo-online"));
+const ReflexOnlinePage = lazy(() => import("@/pages/reflex-online"));
+const TapOnlinePage = lazy(() => import("@/pages/tap-online"));
+const CommandOnlinePage = lazy(() => import("@/pages/command-online"));
 
 function Router() {
   const [location] = useLocation();
@@ -145,6 +148,7 @@ function Router() {
           <Route path="/play/pong/online">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PongOnlinePage /></Suspense>}</Route>
           <Route path="/play/pong">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PongPage /></Suspense>}</Route>
           <Route path="/play/whack">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><WhackPage /></Suspense>}</Route>
+          <Route path="/play/reflex/online">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ReflexOnlinePage /></Suspense>}</Route>
           <Route path="/play/reflex">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ReflexPage /></Suspense>}</Route>
           <Route path="/play/pairs">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PairsPage /></Suspense>}</Route>
           <Route path="/play/flip">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><FlipPage /></Suspense>}</Route>
@@ -165,10 +169,12 @@ function Router() {
           <Route path="/play/tide">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><TidePage /></Suspense>}</Route>
           <Route path="/play/dodge">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><DodgePage /></Suspense>}</Route>
           <Route path="/play/gunner">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><GunnerPage /></Suspense>}</Route>
+          <Route path="/play/tap/online">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><TapOnlinePage /></Suspense>}</Route>
           <Route path="/play/tap">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CirqlTapPage /></Suspense>}</Route>
           <Route path="/play/survivor">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SurvivorPage /></Suspense>}</Route>
           <Route path="/play/sumo/online">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SumoOnlinePage /></Suspense>}</Route>
           <Route path="/play/sumo">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SumoPage /></Suspense>}</Route>
+          <Route path="/play/command/online">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CommandOnlinePage /></Suspense>}</Route>
           <Route path="/play/command">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CommandPage /></Suspense>}</Route>
           <Route path="/play/coil">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CoilPage /></Suspense>}</Route>
           <Route path="/play/keep">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><KeepPage /></Suspense>}</Route>

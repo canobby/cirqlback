@@ -17,5 +17,6 @@ const config: GameConfig = {
   endChips: (r) => [{ label: "Result", value: r.won ? "WON" : "Lost", color: r.won ? "#34d399" : "#fb7185" }, { label: "Battles", value: r.nodes }, { label: "Best", value: r.best, color: "#fbbf24" }],
   bestFrom: (r) => r.best,
   toDaily: (r) => ({ score: r.best, bestCombo: r.nodes }),
+  online: { href: "/play/command/online", label: "Battle online" },
 };
 export default function Command() { return <ArcadeGameShell config={config} />; }

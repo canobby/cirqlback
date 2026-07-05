@@ -18,5 +18,6 @@ const config: GameConfig = {
   bestFrom: (r) => r.best,
   toDaily: (r) => ({ score: r.score, bestCombo: r.comboMax }),
   progress: (h) => (h ? { label: "Meter", right: `${Math.round(h.health * 100)}%`, pct: h.health } : null),
+  online: { href: "/play/tap/online", label: "Duel online" },
 };
 export default function CirqlTap() { return <ArcadeGameShell config={config} />; }
