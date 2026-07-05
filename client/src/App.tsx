@@ -98,6 +98,9 @@ const CirqlTapPage = lazy(() => import("@/pages/cirqltap"));
 const SurvivorPage = lazy(() => import("@/pages/survivor"));
 const SumoPage = lazy(() => import("@/pages/sumo"));
 const CommandPage = lazy(() => import("@/pages/command"));
+const CoilPage = lazy(() => import("@/pages/coil"));
+const KeepPage = lazy(() => import("@/pages/keep"));
+const WeavePage = lazy(() => import("@/pages/weave"));
 
 function Router() {
   const [location] = useLocation();
@@ -163,6 +166,9 @@ function Router() {
           <Route path="/play/survivor">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SurvivorPage /></Suspense>}</Route>
           <Route path="/play/sumo">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SumoPage /></Suspense>}</Route>
           <Route path="/play/command">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CommandPage /></Suspense>}</Route>
+          <Route path="/play/coil">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CoilPage /></Suspense>}</Route>
+          <Route path="/play/keep">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><KeepPage /></Suspense>}</Route>
+          <Route path="/play/weave">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><WeavePage /></Suspense>}</Route>
           <Route path="/play">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PlayPage /></Suspense>}</Route>
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />

@@ -116,4 +116,7 @@ export const ARCADE_GAMES: ArcadeGame[] = [
   { id: "survivor", name: "Cirql Survivor", genre: "Roguelite", tagline: "Auto-fire, hoover the XP, level up, outlast the swarm.", route: "/play/survivor", accent: "#67e8f9", glyph: "✴", status: "live" },
   { id: "sumo", name: "Cirql Sumo", genre: "Ring-out", tagline: "Dash to shove rivals off the ring; keep your footing.", route: "/play/sumo", accent: "#fbbf24", glyph: "●", status: "live" },
   { id: "command", name: "Cirql Command", genre: "Galcon", tagline: "Fling troops between nodes and conquer the board.", route: "/play/command", accent: "#34d399", glyph: "⬡", status: "live" },
+  { id: "coil", name: "Cirql Coil", genre: "Zuma", tagline: "Fire marbles into the inward-winding chain; match three.", route: "/play/coil", accent: "#38bdf8", glyph: "◠", status: "live" },
+  { id: "keep", name: "Cirql Keep", genre: "Tower defense", tagline: "Build turrets along the spiral and hold the core.", route: "/play/keep", accent: "#a78bfa", glyph: "⌂", status: "live" },
+  { id: "weave", name: "Cirql Weave", genre: "Zen draw", tagline: "Tune two pendulums into looping harmonograph figures.", route: "/play/weave", accent: "#67e8f9", glyph: "∾", status: "live" },
 ];
