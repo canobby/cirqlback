@@ -43,6 +43,6 @@ export const ARCADE_GAMES: ArcadeGame[] = [
     route: "/play/pop",
     accent: "#a78bfa",
     glyph: "⬤",
-    status: "soon",
+    status: "live",
   },
 ];

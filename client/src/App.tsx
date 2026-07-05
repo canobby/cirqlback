@@ -53,6 +53,7 @@ import PlatformOverview from "@/pages/platform-overview";
 const PlayPage = lazy(() => import("@/pages/play"));
 const ArcadePage = lazy(() => import("@/pages/arcade"));
 const DefenderPage = lazy(() => import("@/pages/defender"));
+const PopPage = lazy(() => import("@/pages/pop"));
 
 function Router() {
   const [location] = useLocation();
@@ -73,6 +74,7 @@ function Router() {
           <Route path="/customer" component={CustomerBento} />
           <Route path="/arcade">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ArcadePage /></Suspense>}</Route>
           <Route path="/play/defender">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><DefenderPage /></Suspense>}</Route>
+          <Route path="/play/pop">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PopPage /></Suspense>}</Route>
           <Route path="/play">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PlayPage /></Suspense>}</Route>
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />
