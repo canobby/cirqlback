@@ -107,6 +107,10 @@ const ReflexOnlinePage = lazy(() => import("@/pages/reflex-online"));
 const TapOnlinePage = lazy(() => import("@/pages/tap-online"));
 const CommandOnlinePage = lazy(() => import("@/pages/command-online"));
 const RaceOnlinePage = lazy(() => import("@/pages/race-online"));
+const AuroraPage = lazy(() => import("@/pages/aurora"));
+const KaleidoPage = lazy(() => import("@/pages/kaleido"));
+const EmberPage = lazy(() => import("@/pages/ember"));
+const MancalaPage = lazy(() => import("@/pages/mancala"));
 
 function Router() {
   const [location] = useLocation();
@@ -181,6 +185,10 @@ function Router() {
           <Route path="/play/coil">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CoilPage /></Suspense>}</Route>
           <Route path="/play/keep">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><KeepPage /></Suspense>}</Route>
           <Route path="/play/weave">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><WeavePage /></Suspense>}</Route>
+          <Route path="/play/aurora">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><AuroraPage /></Suspense>}</Route>
+          <Route path="/play/kaleido">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><KaleidoPage /></Suspense>}</Route>
+          <Route path="/play/ember">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><EmberPage /></Suspense>}</Route>
+          <Route path="/play/mancala">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><MancalaPage /></Suspense>}</Route>
           <Route path="/play">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PlayPage /></Suspense>}</Route>
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />

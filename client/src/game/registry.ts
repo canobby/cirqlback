@@ -151,6 +151,11 @@ export const ARCADE_GAMES: ArcadeGame[] = [
   { id: "coil", name: "Cirql Coil", genre: "Zuma", category: "blast", tagline: "Fire marbles into the inward-winding chain; match three.", route: "/play/coil", accent: "#38bdf8", glyph: "◠", status: "live" },
   { id: "keep", name: "Cirql Keep", genre: "Tower defense", category: "strategy", tagline: "Build turrets along the spiral and hold the core.", route: "/play/keep", accent: "#a78bfa", glyph: "⌂", status: "live" },
   { id: "weave", name: "Cirql Weave", genre: "Zen draw", category: "zen", tagline: "Tune two pendulums into looping harmonograph figures.", route: "/play/weave", accent: "#67e8f9", glyph: "∾", status: "live" },
+  // --- Round two (evening out the Circles) ---
+  { id: "aurora", name: "Cirql Aurora", genre: "Zen sandbox", category: "zen", tagline: "Sweep shimmering northern-lights ribbons across the sky.", route: "/play/aurora", accent: "#a78bfa", glyph: "≋", status: "live" },
+  { id: "kaleido", name: "Cirql Kaleido", genre: "Kaleidoscope", category: "zen", tagline: "Tune a living kaleidoscope into ever-shifting symmetry.", route: "/play/kaleido", accent: "#f472b6", glyph: "❈", status: "live" },
+  { id: "ember", name: "Cirql Ember", genre: "Zen sandbox", category: "zen", tagline: "Tend a campfire, feed it sparks, watch the embers drift up.", route: "/play/ember", accent: "#fb7185", glyph: "✶", status: "live" },
+  { id: "mancala", name: "Cirql Mancala", genre: "Mancala", category: "strategy", tagline: "Sow stones around the pits and capture the rim.", route: "/play/mancala", accent: "#fbbf24", glyph: "⦾", status: "live" },
 ];
 
 // Games in a Circle (live only), in registry order.
