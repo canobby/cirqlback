@@ -110,4 +110,7 @@ export const ARCADE_GAMES: ArcadeGame[] = [
   { id: "crawler", name: "Cirql Crawler", genre: "Centipede", tagline: "Split the winding crawler before it reaches the centre.", route: "/play/crawler", accent: "#34d399", glyph: "∿", status: "live" },
   { id: "spiro", name: "Cirql Spiro", genre: "Zen draw", tagline: "A self-drawing spirograph. Reshape the gears. Relax.", route: "/play/spiro", accent: "#a78bfa", glyph: "✻", status: "live" },
   { id: "tide", name: "Cirql Tide", genre: "Zen sandbox", tagline: "Sweep a sea of light into slow, glowing currents.", route: "/play/tide", accent: "#38bdf8", glyph: "≈", status: "live" },
+  { id: "dodge", name: "Cirql Dodge", genre: "Bullet-hell", tagline: "Weave your spark through blooming storms of light.", route: "/play/dodge", accent: "#f472b6", glyph: "❖", status: "live" },
+  { id: "gunner", name: "Cirql Gunner", genre: "Twin-stick", tagline: "Hold the centre, rotate, and mow down the swarm.", route: "/play/gunner", accent: "#67e8f9", glyph: "⌖", status: "live" },
+  { id: "tap", name: "Cirql Tap", genre: "osu!", tagline: "Tap the dots the instant their ring closes in.", route: "/play/tap", accent: "#ec4899", glyph: "◎", status: "live" },
 ];
