@@ -203,9 +203,9 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
         <div className="flex w-full max-w-[560px] items-center justify-between gap-4 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-2">
           {dialFn ? (
             <>
-              {controls[0] && <ControlButton spec={controls[0]} hud={hud} />}
+              {controls.length >= 2 ? <ControlButton spec={controls[0]} hud={hud} /> : <div style={{ width: 74 }} />}
               <AimWheel onAim={dialFn} accent={c.accent} />
-              {controls[1] && <ControlButton spec={controls[1]} hud={hud} />}
+              {(controls.length >= 2 ? controls[1] : controls[0]) ? <ControlButton spec={controls.length >= 2 ? controls[1] : controls[0]} hud={hud} /> : <div style={{ width: 74 }} />}
             </>
           ) : (
             controls.map((s) => <ControlButton key={s.testid} spec={s} hud={hud} />)
