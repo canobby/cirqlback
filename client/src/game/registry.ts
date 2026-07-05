@@ -75,4 +75,8 @@ export const ARCADE_GAMES: ArcadeGame[] = [
     glyph: "❀",
     status: "live",
   },
+  { id: "reactor", name: "Cirql Reactor", genre: "Simon", tagline: "Watch the ring light up, then tap the pattern back. One more each round.", route: "/play/reactor", accent: "#a78bfa", glyph: "◉", status: "live" },
+  { id: "chain", name: "Cirql Chain", genre: "Chain reaction", tagline: "One tap sets off a cascade of light. Chain enough to clear the round.", route: "/play/chain", accent: "#fbbf24", glyph: "✸", status: "live" },
+  { id: "shift", name: "Cirql Shift", genre: "Color Switch", tagline: "Tap to match your colour to the next gate before you reach it.", route: "/play/shift", accent: "#34d399", glyph: "◑", status: "live" },
+  { id: "dash", name: "Cirql Dash", genre: "Frogger", tagline: "Hop inward across spinning hazard rings to reach the centre.", route: "/play/dash", accent: "#38bdf8", glyph: "⤞", status: "live" },
 ];
