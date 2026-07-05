@@ -82,4 +82,6 @@ export const ARCADE_GAMES: ArcadeGame[] = [
   { id: "runner", name: "Cirql Runner", genre: "Endless runner", tagline: "Race the loop, hop the spikes and gaps. It only gets faster.", route: "/play/runner", accent: "#fb7185", glyph: "➤", status: "live" },
   { id: "invaders", name: "Cirql Invaders", genre: "Space Invaders", tagline: "Rotate your cannon, fire outward, clear the spiraling waves.", route: "/play/invaders", accent: "#34d399", glyph: "❋", status: "live" },
   { id: "tunnel", name: "Cirql Tunnel", genre: "Tempest", tagline: "Slide the rim and shoot down the lanes before they surface.", route: "/play/tunnel", accent: "#38bdf8", glyph: "◈", status: "live" },
+  { id: "maze", name: "Cirql Maze", genre: "Brain game", tagline: "Rotate the rings to line up the gaps and drop the orb to the centre.", route: "/play/maze", accent: "#a78bfa", glyph: "◎", status: "live" },
+  { id: "link", name: "Cirql Link", genre: "Flow", tagline: "Connect matching nodes with paths that never cross. Relaxing.", route: "/play/link", accent: "#38bdf8", glyph: "∞", status: "live" },
 ];

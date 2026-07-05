@@ -64,6 +64,8 @@ const DashPage = lazy(() => import("@/pages/dash"));
 const RunnerPage = lazy(() => import("@/pages/runner"));
 const InvadersPage = lazy(() => import("@/pages/invaders"));
 const TunnelPage = lazy(() => import("@/pages/tunnel"));
+const MazePage = lazy(() => import("@/pages/maze"));
+const LinkPage = lazy(() => import("@/pages/link"));
 
 function Router() {
   const [location] = useLocation();
@@ -95,6 +97,8 @@ function Router() {
           <Route path="/play/runner">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><RunnerPage /></Suspense>}</Route>
           <Route path="/play/invaders">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><InvadersPage /></Suspense>}</Route>
           <Route path="/play/tunnel">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><TunnelPage /></Suspense>}</Route>
+          <Route path="/play/maze">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><MazePage /></Suspense>}</Route>
+          <Route path="/play/link">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><LinkPage /></Suspense>}</Route>
           <Route path="/play">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PlayPage /></Suspense>}</Route>
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />
