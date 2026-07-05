@@ -295,37 +295,6 @@ function card(g) {
   </div>`;
 }
 
-function worksheetHTML() {
-  const intro = `
-    <div class="doc-title">CirqlCade — Playtest &amp; Tuning Worksheet</div>
-    <p class="lede">Play each game on your phone, then fill its card. Gut reaction is the point — 30–60s per game is plenty.
-    Live at <a href="https://cirqlback.onrender.com/arcade">cirqlback.onrender.com/arcade</a> (spin wheel) or go straight to each route.
-    Dictate the notes back to me and I turn every ✎ Feel note into an engine-constant change.</p>
-    <div class="rubric">
-      <b>How to score (same axes every game):</b>
-      <ul>
-        <li><b>Fun</b> — did you want to play again? (the score that matters most) &nbsp;·&nbsp; <b>Controls</b> — responsive + intuitive scheme?</li>
-        <li><b>Speed</b> — overall pace &nbsp;·&nbsp; <b>Difficulty</b> — round 1 fair + ramps right? &nbsp;·&nbsp; <b>Readability</b> — always clear what to do?</li>
-        <li><b>Juice</b> — do hits/scores/deaths feel good (fx, sound, haptics)? &nbsp;·&nbsp; <b>Length</b> — right size for one-thumb play?</li>
-        <li><b>Verdict</b> — <b>KEEP</b> ship as-is · <b>TUNE</b> number tweaks · <b>REWORK</b> right idea wrong execution · <b>CUT</b> drop it</li>
-      </ul>
-      <b>Knobs</b> under each game = what I can turn without a redesign. If your note maps to a knob, tuning is a same-day change; if not, it's a REWORK.
-    </div>
-    <div class="rubric">
-      <b>Global questions (answer once for the whole set):</b>
-      <ul>
-        <li>Top 3–5 favourites? &nbsp; Weakest / most cuttable? &nbsp; Is the <code>/arcade</code> spin-wheel fun to use?</li>
-        <li>Is the shared neon look consistent &amp; appealing? &nbsp; Do controls feel consistent game-to-game?</li>
-        <li>Sound: on by default &amp; not annoying? &nbsp; Haptics right? &nbsp; Anything that confused you on first load?</li>
-        <li>Which games should get the reward-bridge perk catalog first (the moat)?</li>
-      </ul>
-    </div>
-    <h2>Priority — play these first (deepest / highest tuning leverage)</h2>
-    <p class="lede" style="margin-bottom:8px;">★ games: <b>21 Beat</b> · <b>45 Survivor</b> · <b>48 Coil</b> · <b>49 Keep</b> · <b>47 Command</b> · <b>42 Dodge</b> — then the flagship trio <b>1 Bounce / 2 Defender / 3 Pop</b>. Then sweep the rest in any order.</p>
-    <h2>The 50 games</h2>`;
-  const cards = GAMES.map(card).join("");
-  return page("CirqlCade Playtest Worksheet", intro + cards);
-}
 
 function planHTML() {
   const rows = [...GAMES]
@@ -338,33 +307,47 @@ function planHTML() {
       <td>${esc(g.watch)}</td>
       <td>${esc(g.knobs)}</td>
     </tr>`).join("");
-  const body = `
-    <div class="doc-title">CirqlCade Feel-Tuning Pass — Plan</div>
-    <p class="lede">The Linear project mirrored to print. All 50 games are built, live, and mechanically verified — but none are feel-tuned yet.
-    This plan captures owner + tester feel notes per game and turns them into engine-constant changes.
+  const planHead = `
+    <div class="doc-title">CirqlCade Feel-Tuning Pass — Plan &amp; Worksheet</div>
+    <p class="lede">The Linear project in print. All 50 games are built, live, and mechanically verified — but none are feel-tuned yet.
+    This captures owner + tester feel notes per game and turns them into engine-constant changes.
     Project: <a href="https://linear.app/cirqlback/project/cirqlcade-feel-tuning-pass-b3d8e84e2c9e">CirqlCade Feel-Tuning Pass</a> ·
-    issues <b>CHR-130 … CHR-179</b> (one per game) · worksheet: <code>docs/cirql/CirqlCade-Playtest-Notes.pdf</code>.</p>
+    issues <b>CHR-130 … CHR-179</b> (one per game) · fill-in worksheet also lives as a Linear document in the project.</p>
 
     <div class="rubric">
       <b>Workflow:</b>
       <ul>
-        <li>Play a game → open its issue → fill the scorecard (Fun / Controls / Speed / Difficulty / Readability / Juice / Length + Verdict).</li>
+        <li>Play a game → fill its card below (or its CHR issue): Fun / Controls / Speed / Difficulty / Readability / Juice / Length + Verdict.</li>
         <li>Jot <b>➕ Add</b> (missing), <b>➖ Cut</b> (annoying), <b>✎ Feel</b> (speed/weight/timing/sound/colour/spikes).</li>
-        <li>Move the issue Todo → In Review when scored. I map each ✎ Feel note to a <b>Knob</b> → tuning commit; queue <b>REWORK</b> games as tasks; action <b>CUT</b> calls; then Done.</li>
+        <li>Hand it back → I map each ✎ Feel note to a <b>Knob</b> → tuning commit; queue <b>REWORK</b> games as tasks; action <b>CUT</b> calls.</li>
       </ul>
       <span class="verdict-legend"><b>Verdicts:</b> <b>KEEP</b> ship as-is · <b>TUNE</b> number tweaks · <b>REWORK</b> right idea wrong execution · <b>CUT</b> drop it.
       <b>Knob</b> = a constant I can turn without a redesign (a Feel note that maps to one is a same-day change).</span>
     </div>
 
+    <div class="rubric">
+      <b>Global questions (answer once for the whole set):</b>
+      <ul>
+        <li>Top 3–5 favourites? &nbsp; Weakest / most cuttable? &nbsp; Is the <code>/arcade</code> spin-wheel fun to use?</li>
+        <li>Is the shared neon look consistent &amp; appealing? &nbsp; Do controls feel consistent game-to-game?</li>
+        <li>Sound: on by default &amp; not annoying? &nbsp; Haptics right? &nbsp; Anything that confused you on first load?</li>
+        <li>Which games should get the reward-bridge perk catalog first (the moat)?</li>
+      </ul>
+    </div>
+
     <h2>Priority order (deepest first — highest leverage)</h2>
     <p class="lede">★ <b>Beat</b> (CHR-130, audio-sync) · <b>Survivor</b> (CHR-131, needs an upgrade-choice decision) · <b>Coil</b> (CHR-132) · <b>Keep</b> (CHR-133) · <b>Command</b> (CHR-134) · <b>Dodge</b> (CHR-135) — then flagship trio Bounce/Defender/Pop (CHR-136/137/138), then the rest.</p>
 
-    <h2>All 50 issues</h2>
+    <h2>All 50 issues at a glance</h2>
     <table>
       <thead><tr><th>Issue</th><th>Game</th><th>Genre</th><th>Prio</th><th>Watch for</th><th>Knobs I can tune</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>`;
-  return page("CirqlCade Feel-Tuning Plan", body);
+    </table>
+
+    <h2 style="page-break-before:always;">Worksheet — one card per game (fill these in)</h2>
+    <p class="lede" style="margin-bottom:8px;">Play order. ★ = deepest games, play first. Circle the option, write the /5 scores, jot Add/Cut/Feel.</p>`;
+  const cards = GAMES.map(card).join("");
+  return page("CirqlCade Feel-Tuning Plan", planHead + cards);
 }
 
 // ---- render both via headless Chrome ----
@@ -387,7 +370,10 @@ if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
 const tmp = tmpdir();
 
 function render(name, html) {
-  const htmlPath = join(tmp, `cirq-${name}-${Date.now()}-${Math.random().toString(36).slice(2)}.html`);
+  // keep the HTML next to the PDF-temp so it can be opened for visual verification
+  const htmlPath = (process.env.PLAYTEST_HTML_OUT
+    ? resolve(process.env.PLAYTEST_HTML_OUT)
+    : join(tmp, `cirq-${name}-${Date.now()}.html`));
   writeFileSync(htmlPath, html);
   const pdf = resolve(OUT_DIR, name + ".pdf").replace(/\\/g, "/");
   const profile = join(tmp, `cirq-chrome-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -396,11 +382,11 @@ function render(name, html) {
     `--user-data-dir=${profile}`, "--no-pdf-header-footer",
     `--print-to-pdf=${pdf}`, "file:///" + htmlPath.replace(/\\/g, "/"),
   ], { stdio: "ignore" });
-  rmSync(htmlPath, { force: true });
+  if (!process.env.PLAYTEST_HTML_OUT) rmSync(htmlPath, { force: true });
+  else console.log("html", htmlPath);
   if (!existsSync(pdf)) throw new Error("Chrome did not write " + pdf);
   console.log("rendered", pdf);
 }
 
-render("CirqlCade-Playtest-Notes", worksheetHTML());
 render("CirqlCade-Feel-Tuning-Plan", planHTML());
-console.log("Done. PDFs in " + OUT_DIR);
+console.log("Done. PDF in " + OUT_DIR);
