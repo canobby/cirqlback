@@ -48,8 +48,11 @@ import AuthPage from "@/pages/auth";
 import UserGuide from "@/pages/user-guide";
 import PlatformOverview from "@/pages/platform-overview";
 
-// CIRQL game — code-split so customers who never play don't download the engine.
+// CirqlArcade — each game is code-split so customers who never play don't download
+// the engines. Bounce (=CirqlBreak) is /play; the arcade picker + other games below.
 const PlayPage = lazy(() => import("@/pages/play"));
+const ArcadePage = lazy(() => import("@/pages/arcade"));
+const DefenderPage = lazy(() => import("@/pages/defender"));
 
 function Router() {
   const [location] = useLocation();
@@ -68,6 +71,8 @@ function Router() {
           {/* Core Bento Pages - Streamlined for first deployment */}
           <Route path="/" component={HomeBento} />
           <Route path="/customer" component={CustomerBento} />
+          <Route path="/arcade">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ArcadePage /></Suspense>}</Route>
+          <Route path="/play/defender">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><DefenderPage /></Suspense>}</Route>
           <Route path="/play">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PlayPage /></Suspense>}</Route>
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />
