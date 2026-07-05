@@ -113,4 +113,7 @@ export const ARCADE_GAMES: ArcadeGame[] = [
   { id: "dodge", name: "Cirql Dodge", genre: "Bullet-hell", tagline: "Weave your spark through blooming storms of light.", route: "/play/dodge", accent: "#f472b6", glyph: "❖", status: "live" },
   { id: "gunner", name: "Cirql Gunner", genre: "Twin-stick", tagline: "Hold the centre, rotate, and mow down the swarm.", route: "/play/gunner", accent: "#67e8f9", glyph: "⌖", status: "live" },
   { id: "tap", name: "Cirql Tap", genre: "osu!", tagline: "Tap the dots the instant their ring closes in.", route: "/play/tap", accent: "#ec4899", glyph: "◎", status: "live" },
+  { id: "survivor", name: "Cirql Survivor", genre: "Roguelite", tagline: "Auto-fire, hoover the XP, level up, outlast the swarm.", route: "/play/survivor", accent: "#67e8f9", glyph: "✴", status: "live" },
+  { id: "sumo", name: "Cirql Sumo", genre: "Ring-out", tagline: "Dash to shove rivals off the ring; keep your footing.", route: "/play/sumo", accent: "#fbbf24", glyph: "●", status: "live" },
+  { id: "command", name: "Cirql Command", genre: "Galcon", tagline: "Fling troops between nodes and conquer the board.", route: "/play/command", accent: "#34d399", glyph: "⬡", status: "live" },
 ];

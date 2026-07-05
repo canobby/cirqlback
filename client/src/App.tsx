@@ -95,6 +95,9 @@ const TidePage = lazy(() => import("@/pages/tide"));
 const DodgePage = lazy(() => import("@/pages/dodge"));
 const GunnerPage = lazy(() => import("@/pages/gunner"));
 const CirqlTapPage = lazy(() => import("@/pages/cirqltap"));
+const SurvivorPage = lazy(() => import("@/pages/survivor"));
+const SumoPage = lazy(() => import("@/pages/sumo"));
+const CommandPage = lazy(() => import("@/pages/command"));
 
 function Router() {
   const [location] = useLocation();
@@ -157,6 +160,9 @@ function Router() {
           <Route path="/play/dodge">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><DodgePage /></Suspense>}</Route>
           <Route path="/play/gunner">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><GunnerPage /></Suspense>}</Route>
           <Route path="/play/tap">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CirqlTapPage /></Suspense>}</Route>
+          <Route path="/play/survivor">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SurvivorPage /></Suspense>}</Route>
+          <Route path="/play/sumo">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SumoPage /></Suspense>}</Route>
+          <Route path="/play/command">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CommandPage /></Suspense>}</Route>
           <Route path="/play">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PlayPage /></Suspense>}</Route>
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />
