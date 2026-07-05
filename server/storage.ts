@@ -1664,29 +1664,36 @@ export class DatabaseStorage implements IStorage {
 
   // CIRQL game progress (CHR-94). Creates a row with a random player seed on
   // first access so the player's infinite world stream is stable + unique.
-  async getOrCreateGameProgress(userId: string): Promise<GameProgress> {
-    const [existing] = await db.select().from(gameProgress).where(eq(gameProgress.userId, userId));
+  // CirqlArcade: progress is keyed by (userId, gameId). `gameId` defaults to
+  // 'cirqlbreak' so every existing caller and the flagship game are unchanged;
+  // new arcade games pass their own key for an isolated progress row.
+  async getOrCreateGameProgress(userId: string, gameId = "cirqlbreak"): Promise<GameProgress> {
+    const [existing] = await db.select().from(gameProgress)
+      .where(and(eq(gameProgress.userId, userId), eq(gameProgress.gameId, gameId)));
     if (existing) return existing;
     // Race-safe insert: the play page loads progress + daily-reward status
     // concurrently, so two requests can reach this point before either row
     // exists. ON CONFLICT DO NOTHING makes the loser a no-op; then we re-select.
     const seed = Math.floor(Math.random() * 1_000_000_000);
-    const [row] = await db.insert(gameProgress).values({ userId, playerSeed: seed }).onConflictDoNothing().returning();
+    const [row] = await db.insert(gameProgress).values({ userId, gameId, playerSeed: seed }).onConflictDoNothing().returning();
     if (row) return row;
-    const [created] = await db.select().from(gameProgress).where(eq(gameProgress.userId, userId));
+    const [created] = await db.select().from(gameProgress)
+      .where(and(eq(gameProgress.userId, userId), eq(gameProgress.gameId, gameId)));
     return created;
   }
 
   async saveGameProgress(
     userId: string,
     fields: { worldIndex?: number; worldsRestored?: number; state?: unknown },
+    gameId = "cirqlbreak",
   ): Promise<GameProgress> {
-    await this.getOrCreateGameProgress(userId); // ensure the row + seed exist
+    await this.getOrCreateGameProgress(userId, gameId); // ensure the row + seed exist
     const set: Record<string, any> = { updatedAt: new Date() };
     if (fields.worldIndex !== undefined) set.worldIndex = fields.worldIndex;
     if (fields.worldsRestored !== undefined) set.worldsRestored = fields.worldsRestored;
     if (fields.state !== undefined) set.state = fields.state;
-    const [row] = await db.update(gameProgress).set(set).where(eq(gameProgress.userId, userId)).returning();
+    const [row] = await db.update(gameProgress).set(set)
+      .where(and(eq(gameProgress.userId, userId), eq(gameProgress.gameId, gameId))).returning();
     return row;
   }
 
@@ -1820,30 +1827,33 @@ export class DatabaseStorage implements IStorage {
   // then computes their rank (1 + players with a strictly higher score today).
   async submitDailyScore(
     userId: string, day: string, dailyNum: number, score: number, bestCombo: number, restored: boolean,
+    gameId = "cirqlbreak",
   ): Promise<{ best: number; rank: number; total: number }> {
-    const [existing] = await db.select().from(dailyScores).where(and(eq(dailyScores.userId, userId), eq(dailyScores.day, day)));
+    const mine = and(eq(dailyScores.userId, userId), eq(dailyScores.day, day), eq(dailyScores.gameId, gameId));
+    const forDay = and(eq(dailyScores.day, day), eq(dailyScores.gameId, gameId));
+    const [existing] = await db.select().from(dailyScores).where(mine);
     let best = score;
     if (existing) {
       if (score > existing.score) {
-        await db.update(dailyScores).set({ score, bestCombo, restored, updatedAt: new Date() })
-          .where(and(eq(dailyScores.userId, userId), eq(dailyScores.day, day)));
+        await db.update(dailyScores).set({ score, bestCombo, restored, updatedAt: new Date() }).where(mine);
       } else {
         best = existing.score;
       }
     } else {
-      await db.insert(dailyScores).values({ userId, day, dailyNum, score, bestCombo, restored }).onConflictDoNothing();
-      const [row] = await db.select().from(dailyScores).where(and(eq(dailyScores.userId, userId), eq(dailyScores.day, day)));
+      await db.insert(dailyScores).values({ userId, gameId, day, dailyNum, score, bestCombo, restored }).onConflictDoNothing();
+      const [row] = await db.select().from(dailyScores).where(mine);
       best = row ? row.score : score;
     }
-    const [ahead] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(and(eq(dailyScores.day, day), sql`${dailyScores.score} > ${best}`));
-    const [tot] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(eq(dailyScores.day, day));
+    const [ahead] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(and(forDay, sql`${dailyScores.score} > ${best}`));
+    const [tot] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(forDay);
     return { best, rank: Number(ahead?.n || 0) + 1, total: Number(tot?.n || 0) };
   }
 
   // CHR-122: the Daily leaderboard for a given UTC day — top N by score plus the
-  // requesting player's own rank (even if outside the top N).
-  async getDailyLeaderboard(day: string, userId: string | null, limit = 20): Promise<{ top: any[]; you: { rank: number; score: number } | null; total: number }> {
-    const rows = await db.select().from(dailyScores).where(eq(dailyScores.day, day)).orderBy(desc(dailyScores.score)).limit(limit);
+  // requesting player's own rank (even if outside the top N). Scoped per game.
+  async getDailyLeaderboard(day: string, userId: string | null, limit = 20, gameId = "cirqlbreak"): Promise<{ top: any[]; you: { rank: number; score: number } | null; total: number }> {
+    const forDay = and(eq(dailyScores.day, day), eq(dailyScores.gameId, gameId));
+    const rows = await db.select().from(dailyScores).where(forDay).orderBy(desc(dailyScores.score)).limit(limit);
     const top: any[] = [];
     let rank = 1;
     for (const r of rows) {
@@ -1851,12 +1861,12 @@ export class DatabaseStorage implements IStorage {
       const name = [u?.firstName, u?.lastName].filter(Boolean).join(" ").trim() || (u?.email ? u.email.split("@")[0] : "Cirqler");
       top.push({ rank: rank++, name, score: r.score, bestCombo: r.bestCombo, restored: r.restored, you: userId === r.userId });
     }
-    const [tot] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(eq(dailyScores.day, day));
+    const [tot] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(forDay);
     let you: { rank: number; score: number } | null = null;
     if (userId) {
-      const [mine] = await db.select().from(dailyScores).where(and(eq(dailyScores.userId, userId), eq(dailyScores.day, day)));
+      const [mine] = await db.select().from(dailyScores).where(and(eq(dailyScores.userId, userId), forDay));
       if (mine) {
-        const [ahead] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(and(eq(dailyScores.day, day), sql`${dailyScores.score} > ${mine.score}`));
+        const [ahead] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(and(forDay, sql`${dailyScores.score} > ${mine.score}`));
         you = { rank: Number(ahead?.n || 0) + 1, score: mine.score };
       }
     }

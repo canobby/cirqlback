@@ -1737,15 +1737,18 @@ export const events = pgTable("events", {
 
 export type Event = typeof events.$inferSelect;
 
-// CIRQL game progress (CHR-94) — one row per user; guests don't persist.
+// CIRQL game progress (CHR-94) — one row per (user, game); guests don't persist.
+// `gameId` (CirqlArcade) defaults to 'cirqlbreak' so the flagship's existing rows and
+// endpoints are unchanged; each new arcade game gets its own isolated progress row.
 export const gameProgress = pgTable("game_progress", {
-  userId: varchar("user_id").primaryKey().references(() => users.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  gameId: varchar("game_id").notNull().default("cirqlbreak"), // CirqlArcade game key
   worldIndex: integer("world_index").notNull().default(0), // resume point (absolute world index)
   worldsRestored: integer("worlds_restored").notNull().default(0),
   playerSeed: integer("player_seed").notNull().default(0), // seeds the infinite procedural stream (unique per player)
-  state: jsonb("state"), // extensible blob (per-world stars, cosmetics, XP, …)
+  state: jsonb("state"), // extensible blob (per-world stars, cosmetics, XP, …) — per game
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (t) => [primaryKey({ columns: [t.userId, t.gameId] })]);
 
 export type GameProgress = typeof gameProgress.$inferSelect;
 
@@ -1754,6 +1757,7 @@ export type GameProgress = typeof gameProgress.$inferSelect;
 // per day; the row keeps the player's best score for that day.
 export const dailyScores = pgTable("daily_scores", {
   userId: varchar("user_id").notNull().references(() => users.id),
+  gameId: varchar("game_id").notNull().default("cirqlbreak"), // CirqlArcade game key (per-game daily board)
   day: varchar("day").notNull(), // UTC yyyy-mm-dd
   dailyNum: integer("daily_num").notNull().default(0),
   score: integer("score").notNull().default(0),
@@ -1761,6 +1765,6 @@ export const dailyScores = pgTable("daily_scores", {
   restored: boolean("restored").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-}, (t) => [primaryKey({ columns: [t.userId, t.day] })]);
+}, (t) => [primaryKey({ columns: [t.userId, t.day, t.gameId] })]);
 
 export type DailyScore = typeof dailyScores.$inferSelect;

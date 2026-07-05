@@ -9,10 +9,18 @@ import { isPerkId } from "@shared/cirql-perks";
 // CIRQL game progress (CHR-94). Guests play without saving; logged-in players
 // persist their resume point + a stable per-player seed for the infinite stream.
 export function registerGameRoutes(app: Express, _deps: RouteDeps) {
+  // CirqlArcade: which game a request is for. Defaults to the flagship so every
+  // pre-existing call keeps working; new games pass ?gameId=… or {gameId} in the
+  // body. Bounded slug (charset + length) so we never mint arbitrary rows.
+  const gameKey = (req: any): string => {
+    const raw = String(req.query?.gameId ?? req.body?.gameId ?? "cirqlbreak").toLowerCase();
+    return /^[a-z][a-z0-9-]{1,24}$/.test(raw) ? raw : "cirqlbreak";
+  };
+
   app.get("/api/game/progress", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as any).id;
-      const p = await storage.getOrCreateGameProgress(userId);
+      const p = await storage.getOrCreateGameProgress(userId, gameKey(req));
       res.json({ worldIndex: p.worldIndex, worldsRestored: p.worldsRestored, playerSeed: p.playerSeed, state: p.state ?? null });
     } catch (err) {
       console.error("game progress load error:", err);
@@ -31,7 +39,7 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
     if (!parsed.success) return res.status(400).json({ error: "Invalid progress" });
     try {
       const userId = (req.user as any).id;
-      const p = await storage.saveGameProgress(userId, parsed.data);
+      const p = await storage.saveGameProgress(userId, parsed.data, gameKey(req));
       res.json({ worldIndex: p.worldIndex, worldsRestored: p.worldsRestored, playerSeed: p.playerSeed });
     } catch (err) {
       console.error("game progress save error:", err);
@@ -169,7 +177,7 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
       if (!Number.isFinite(score) || score < 0 || score > 5_000_000) return res.status(400).json({ error: "Invalid score" });
       if (!Number.isFinite(bestCombo) || bestCombo < 0 || bestCombo > 100_000) return res.status(400).json({ error: "Invalid combo" });
       const day = utcDay(Date.now());
-      const result = await storage.submitDailyScore(userId, day, cbDailyNum(), score, bestCombo, restored);
+      const result = await storage.submitDailyScore(userId, day, cbDailyNum(), score, bestCombo, restored, gameKey(req));
       res.json({ ...result, dailyNum: cbDailyNum() });
     } catch (err) {
       console.error("daily score submit error:", err);
@@ -181,7 +189,7 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
     try {
       const userId = (req.user as any).id;
       const day = utcDay(Date.now());
-      const board = await storage.getDailyLeaderboard(day, userId, 20);
+      const board = await storage.getDailyLeaderboard(day, userId, 20, gameKey(req));
       res.json({ day, dailyNum: cbDailyNum(), ...board });
     } catch (err) {
       console.error("daily leaderboard error:", err);
