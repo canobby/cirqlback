@@ -14,7 +14,8 @@
     "manuals": "node scripts/gen-manuals.mjs",
     "collateral": "node scripts/gen-collateral.mjs",
     "legal": "node scripts/gen-legal.mjs",
-    "playtest": "node scripts/gen-playtest.mjs"
+    "playtest": "node scripts/gen-playtest.mjs",
+    "beta": "node scripts/gen-beta.mjs"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.16.0",
