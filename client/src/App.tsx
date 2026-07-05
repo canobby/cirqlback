@@ -86,6 +86,12 @@ const DropPage = lazy(() => import("@/pages/drop"));
 const AscentPage = lazy(() => import("@/pages/ascent"));
 const BalancePage = lazy(() => import("@/pages/balance"));
 const BreathePage = lazy(() => import("@/pages/breathe"));
+const LanderPage = lazy(() => import("@/pages/lander"));
+const SlicePage = lazy(() => import("@/pages/slice"));
+const OsmosPage = lazy(() => import("@/pages/osmos"));
+const CrawlerPage = lazy(() => import("@/pages/crawler"));
+const SpiroPage = lazy(() => import("@/pages/spiro"));
+const TidePage = lazy(() => import("@/pages/tide"));
 
 function Router() {
   const [location] = useLocation();
@@ -139,6 +145,12 @@ function Router() {
           <Route path="/play/ascent">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><AscentPage /></Suspense>}</Route>
           <Route path="/play/balance">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><BalancePage /></Suspense>}</Route>
           <Route path="/play/breathe">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><BreathePage /></Suspense>}</Route>
+          <Route path="/play/lander">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><LanderPage /></Suspense>}</Route>
+          <Route path="/play/slice">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SlicePage /></Suspense>}</Route>
+          <Route path="/play/osmos">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><OsmosPage /></Suspense>}</Route>
+          <Route path="/play/crawler">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CrawlerPage /></Suspense>}</Route>
+          <Route path="/play/spiro">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SpiroPage /></Suspense>}</Route>
+          <Route path="/play/tide">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><TidePage /></Suspense>}</Route>
           <Route path="/play">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PlayPage /></Suspense>}</Route>
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />

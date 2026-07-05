@@ -104,4 +104,10 @@ export const ARCADE_GAMES: ArcadeGame[] = [
   { id: "ascent", name: "Cirql Ascent", genre: "Doodle Jump", tagline: "Bounce outward, steer onto platforms, don't fall.", route: "/play/ascent", accent: "#34d399", glyph: "⇡", status: "live" },
   { id: "balance", name: "Cirql Balance", genre: "Balance", tagline: "Nudge the marble to hold it at the top of the ring.", route: "/play/balance", accent: "#fbbf24", glyph: "⊙", status: "live" },
   { id: "breathe", name: "Cirql Breathe", genre: "Calm", tagline: "Breathe with the ring. Nothing to lose. Just calm.", route: "/play/breathe", accent: "#f9a8d4", glyph: "❍", status: "live" },
+  { id: "lander", name: "Cirql Lander", genre: "Lunar Lander", tagline: "Thrust against gravity and set down soft on the pad.", route: "/play/lander", accent: "#67e8f9", glyph: "⏛", status: "live" },
+  { id: "slice", name: "Cirql Slice", genre: "Fruit Ninja", tagline: "Swipe to slash the orbs; never touch a spark.", route: "/play/slice", accent: "#f472b6", glyph: "✕", status: "live" },
+  { id: "osmos", name: "Cirql Osmos", genre: "Agar", tagline: "Absorb the smaller motes, flee the bigger ones, grow.", route: "/play/osmos", accent: "#67e8f9", glyph: "◯", status: "live" },
+  { id: "crawler", name: "Cirql Crawler", genre: "Centipede", tagline: "Split the winding crawler before it reaches the centre.", route: "/play/crawler", accent: "#34d399", glyph: "∿", status: "live" },
+  { id: "spiro", name: "Cirql Spiro", genre: "Zen draw", tagline: "A self-drawing spirograph. Reshape the gears. Relax.", route: "/play/spiro", accent: "#a78bfa", glyph: "✻", status: "live" },
+  { id: "tide", name: "Cirql Tide", genre: "Zen sandbox", tagline: "Sweep a sea of light into slow, glowing currents.", route: "/play/tide", accent: "#38bdf8", glyph: "≈", status: "live" },
 ];
