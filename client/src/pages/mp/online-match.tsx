@@ -12,6 +12,9 @@ import { MpClient } from "@/game/mp-client";
 
 export interface Dims { cx: number; cy: number; R: number; size: number; }
 export type Send = (msg: any) => void;
+// A control-band button. Sends `msg` on press; `up` (if set) on release; a `hold`
+// button with no `up` auto-repeats `msg` while held.
+export interface MpControl { testid: string; label: string; node?: React.ReactNode; color: string; hold?: boolean; msg: any; up?: any; }
 export interface OnlineMatchProps {
   game: string;                 // matchmaking key (must exist server-side)
   title: string;
@@ -21,14 +24,15 @@ export interface OnlineMatchProps {
   backHref: string;
   howto: string;                // one-line "how to play online"
   draw: (ctx: CanvasRenderingContext2D, d: Dims, state: any, side: 0 | 1, now: number) => void;
-  onPointer: (type: "down" | "move" | "up", p: { x: number; y: number }, d: Dims, state: any, side: 0 | 1, send: Send) => void;
+  onPointer?: (type: "down" | "move" | "up", p: { x: number; y: number }, d: Dims, state: any, side: 0 | 1, send: Send) => void;
+  controls?: MpControl[];       // optional bottom control band (for button-driven games)
   score?: (state: any, side: 0 | 1) => { you: number; them: number };
 }
 
 type Phase = "connecting" | "waiting" | "playing" | "over" | "left";
 
 export default function OnlineMatch(props: OnlineMatchProps) {
-  const { game, title, accent, accent2 = "#a78bfa", bg, backHref, howto, draw, onPointer, score } = props;
+  const { game, title, accent, accent2 = "#a78bfa", bg, backHref, howto, draw, onPointer, controls, score } = props;
   const grad = `linear-gradient(90deg, ${accent}, ${accent2})`;
   const { user } = useAuth();
   const name = String((user as any)?.firstName || (user as any)?.name || (user as any)?.email || "Guest").split("@")[0].slice(0, 16);
@@ -97,7 +101,7 @@ export default function OnlineMatch(props: OnlineMatchProps) {
   const toLocal = (e: React.PointerEvent) => { const cv = canvasRef.current!; const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   const send: Send = (msg) => clientRef.current?.input(msg);
   const pointer = (type: "down" | "move" | "up") => (e: React.PointerEvent) => {
-    if (phase !== "playing") return;
+    if (phase !== "playing" || !onPointer) return;
     if (type === "down") { try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ } }
     onPointer(type, toLocal(e), dimsRef.current, stateRef.current, sideRef.current, send);
   };
@@ -160,6 +164,32 @@ export default function OnlineMatch(props: OnlineMatchProps) {
           </div>
         )}
       </div>
+
+      {phase === "playing" && controls && controls.length > 0 && (
+        <div className="flex w-full max-w-[560px] items-center justify-center gap-4 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-2">
+          {controls.map((ct) => <MpControlButton key={ct.testid} spec={ct} send={send} />)}
+        </div>
+      )}
     </div>
+  );
+}
+
+function MpControlButton({ spec, send }: { spec: MpControl; send: Send }) {
+  const repeat = useRef<number | null>(null);
+  const stop = () => { if (repeat.current != null) { window.clearInterval(repeat.current); repeat.current = null; } };
+  useEffect(() => stop, []);
+  const down = (e: React.PointerEvent) => {
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    send(spec.msg);
+    if (spec.hold && spec.up === undefined) { stop(); repeat.current = window.setInterval(() => send(spec.msg), 90); }
+  };
+  const up = () => { stop(); if (spec.up !== undefined) send(spec.up); };
+  return (
+    <button onPointerDown={down} onPointerUp={up} onPointerCancel={up} data-testid={spec.testid}
+      className="flex h-[74px] w-[74px] flex-col items-center justify-center gap-0.5 rounded-full border-[1.5px] text-[10px] font-extrabold tracking-wide active:scale-90"
+      style={{ borderColor: spec.color, color: "#fff", background: "rgba(255,255,255,.03)", touchAction: "none" }}>
+      <span className="text-[20px] leading-none">{spec.node}</span>{spec.label}
+    </button>
   );
 }

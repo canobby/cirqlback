@@ -23,5 +23,6 @@ const config: GameConfig = {
     { testid: "button-boost", label: "BOOST", node: <Zap className="h-5 w-5" />, color: "#f472b6", onPress: () => eng.useBoost(), big: true, active: (h) => (h?.boost ?? 0) >= 0.25 },
     { testid: "button-out", label: "OUT", node: <ChevronsRight className="h-5 w-5" />, color: "#fbbf24", onPress: () => eng.nudge(1) },
   ],
+  online: { href: "/play/race/online", label: "Race online" },
 };
 export default function Race() { return <ArcadeGameShell config={config} />; }

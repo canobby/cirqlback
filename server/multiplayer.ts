@@ -295,12 +295,50 @@ class CommandSim implements Sim {
   reset() { this.nodes = START_NODES(); this.fleets = []; this.botT = 1.2; this.done = null; }
 }
 
+// ======================= Race (slot-car 1v1) =======================
+// Both cars auto-run around concentric lanes. The inner lane is a shorter lap (you
+// gain) but its boost regenerates slower (the catch); outer is longer but recharges
+// faster. Tap IN/OUT to change lane, hold BOOST to burn the meter. First to 3 laps.
+const RA = { LANES: 3, R: [0.5, 0.68, 0.86], BASE: 0.9, BOOST: 1.7, DRAIN: 0.5, REGEN: 0.16, LAPS: 3 };
+interface RCar { prog: number; lane: number; mtr: number; boost: boolean; laps: number; }
+class RaceSim implements Sim {
+  private cars: RCar[] = [
+    { prog: 0, lane: 1, mtr: 1, boost: false, laps: 0 },
+    { prog: 0, lane: 1, mtr: 1, boost: false, laps: 0 },
+  ];
+  private done: { winner: Side } | null = null;
+  private botT = 0.8;
+  private lapLen(lane: number) { return TAU * RA.R[lane]; }
+  input(side: Side, m: any) {
+    const c = this.cars[side];
+    if (typeof m.dlane === "number" && m.dlane !== 0) c.lane = clamp(c.lane + (m.dlane > 0 ? 1 : -1), 0, RA.LANES - 1);
+    if (typeof m.boost === "boolean") c.boost = m.boost;
+  }
+  botStep(side: Side, dt: number) { const c = this.cars[side]; this.botT -= dt; if (this.botT <= 0) { this.botT = 0.6 + Math.random(); c.lane = 1; } c.boost = c.mtr > 0.35; }
+  step(dt: number) {
+    if (this.done) return;
+    for (const c of this.cars) {
+      const boosting = c.boost && c.mtr > 0;
+      const sp = RA.BASE * (boosting ? RA.BOOST : 1);
+      c.prog += (sp / this.lapLen(c.lane)) * dt;
+      if (boosting) c.mtr = Math.max(0, c.mtr - RA.DRAIN * dt);
+      else c.mtr = Math.min(1, c.mtr + RA.REGEN * (1 + c.lane * 0.5) * dt);
+      while (c.prog >= 1) { c.prog -= 1; c.laps++; }
+    }
+    for (const side of [0, 1] as Side[]) { if (this.cars[side].laps >= RA.LAPS) { this.done = { winner: side }; break; } }
+  }
+  snapshot() { return { cars: this.cars.map((c) => ({ a: c.prog * TAU, r: RA.R[c.lane], lap: c.laps, mtr: c.mtr, boost: c.boost && c.mtr > 0 })), lanes: RA.R, laps: RA.LAPS }; }
+  over() { return this.done; }
+  reset() { this.cars = [{ prog: 0, lane: 1, mtr: 1, boost: false, laps: 0 }, { prog: 0, lane: 1, mtr: 1, boost: false, laps: 0 }]; this.done = null; this.botT = 0.8; }
+}
+
 const GAMES: Record<string, () => Sim> = {
   pong: () => new PongSim(),
   sumo: () => new SumoSim(),
   reflex: () => new ReflexSim(),
   tap: () => new TapSim(),
   command: () => new CommandSim(),
+  race: () => new RaceSim(),
 };
 
 // ---------- connections / rooms ----------

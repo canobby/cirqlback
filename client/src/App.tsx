@@ -106,6 +106,7 @@ const SumoOnlinePage = lazy(() => import("@/pages/sumo-online"));
 const ReflexOnlinePage = lazy(() => import("@/pages/reflex-online"));
 const TapOnlinePage = lazy(() => import("@/pages/tap-online"));
 const CommandOnlinePage = lazy(() => import("@/pages/command-online"));
+const RaceOnlinePage = lazy(() => import("@/pages/race-online"));
 
 function Router() {
   const [location] = useLocation();
@@ -141,6 +142,7 @@ function Router() {
           <Route path="/play/link">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><LinkPage /></Suspense>}</Route>
           <Route path="/play/orbit">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><OrbitPage /></Suspense>}</Route>
           <Route path="/play/pinball">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PinballPage /></Suspense>}</Route>
+          <Route path="/play/race/online">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><RaceOnlinePage /></Suspense>}</Route>
           <Route path="/play/race">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><RacePage /></Suspense>}</Route>
           <Route path="/play/miner">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><MinerPage /></Suspense>}</Route>
           <Route path="/play/claim">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ClaimPage /></Suspense>}</Route>
