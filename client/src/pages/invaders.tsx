@@ -18,6 +18,6 @@ const config: GameConfig = {
   bestFrom: (r) => r.best,
   toDaily: (r) => ({ score: r.score, bestCombo: r.wave }),
   dial: (eng) => (a) => eng.aimTo(a),
-  controls: (eng) => [{ testid: "button-fire", label: "FIRE", node: "◎", color: "#34d399", onPress: () => eng.fire() }],
+  controls: (eng) => [{ testid: "button-fire", label: "FIRE", node: "◎", color: "#34d399", onPress: () => eng.fire(), hold: true }],
 };
 export default function Invaders() { return <ArcadeGameShell config={config} />; }

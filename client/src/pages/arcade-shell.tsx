@@ -25,7 +25,7 @@ export interface EngineHooks {
   onRunEnd: (r: any) => void;
 }
 export interface Chip { label: string; value: string | number; color?: string; }
-export interface ControlSpec { testid: string; label: string; node: React.ReactNode; onPress: () => void; color: string; active?: (hud: any) => boolean; big?: boolean; }
+export interface ControlSpec { testid: string; label: string; node: React.ReactNode; onPress: () => void; color: string; active?: (hud: any) => boolean; big?: boolean; hold?: boolean; }
 export interface GameConfig {
   gameId: string;
   name: string;
@@ -222,13 +222,28 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
   );
 }
 
+// A control button that fires on POINTER-DOWN (instant + reliable under multi-touch,
+// unlike onClick) so you can hold the aim dial with one thumb and this with the
+// other. `hold` buttons auto-repeat while pressed — hold-to-fire — so sustained fire
+// and aiming happen at the same time.
 function ControlButton({ spec, hud }: { spec: ControlSpec; hud: any }) {
   const on = spec.active ? spec.active(hud) : true;
   const sz = spec.big ? 86 : 74;
+  const repeat = useRef<number | null>(null);
+  const stop = () => { if (repeat.current != null) { window.clearInterval(repeat.current); repeat.current = null; } };
+  useEffect(() => stop, []);
+  const press = (e: React.PointerEvent) => {
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    spec.onPress();
+    if (spec.hold) { stop(); repeat.current = window.setInterval(spec.onPress, 90); }
+  };
   return (
-    <button onClick={spec.onPress} data-testid={spec.testid}
+    <button
+      onPointerDown={press} onPointerUp={stop} onPointerCancel={stop}
+      data-testid={spec.testid}
       className="flex flex-col items-center justify-center gap-0.5 rounded-full border-[1.5px] text-[10px] font-extrabold tracking-wide transition active:scale-90"
-      style={{ width: sz, height: sz, borderColor: spec.color, color: "#fff", opacity: on ? 1 : 0.4, boxShadow: on ? `0 0 20px ${spec.color}55 inset` : "none", background: "rgba(255,255,255,.03)" }}>
+      style={{ width: sz, height: sz, borderColor: spec.color, color: "#fff", opacity: on ? 1 : 0.4, boxShadow: on ? `0 0 20px ${spec.color}55 inset` : "none", background: "rgba(255,255,255,.03)", touchAction: "none" }}>
       <span className="text-[20px] leading-none">{spec.node}</span>{spec.label}
     </button>
   );

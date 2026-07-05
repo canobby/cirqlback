@@ -109,6 +109,12 @@ export default function Defender() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // Hold-to-fire: keep firing while the FIRE button is held, so you can aim with the
+  // other thumb at the same time.
+  const fireRepeat = useRef<number | null>(null);
+  const stopFire = () => { if (fireRepeat.current != null) { window.clearInterval(fireRepeat.current); fireRepeat.current = null; } };
+  useEffect(() => stopFire, []);
+
   const startRun = () => { setResult(null); setDailyRank(null); setPhase("playing"); engineRef.current?.start(); };
   const toMenu = () => { setPhase("menu"); engineRef.current?.toMenu(); };
   const toggleSound = () => { const v = !sound; setSound(v); lsSet("cdef_sound", v ? "1" : "0"); engineRef.current?.setMuted(!v); };
@@ -186,10 +192,10 @@ export default function Defender() {
       {phase === "playing" && (
         <div className="flex w-full max-w-[560px] items-center justify-between gap-4 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-2">
           <button
-            onClick={() => engineRef.current?.pulse()}
+            onPointerDown={(e) => { e.preventDefault(); engineRef.current?.pulse(); }}
             data-testid="button-pulse"
             className="flex h-[74px] w-[74px] flex-col items-center justify-center gap-0.5 rounded-full border-[1.5px] text-[11px] font-extrabold tracking-wide transition active:scale-90"
-            style={{ borderColor: "#ec4899", color: "#f9a8d4", opacity: hud?.pulseReady ? 1 : 0.35, boxShadow: hud?.pulseReady ? "0 0 20px rgba(236,72,153,.45) inset" : "none", background: "rgba(255,255,255,.03)" }}
+            style={{ borderColor: "#ec4899", color: "#f9a8d4", opacity: hud?.pulseReady ? 1 : 0.35, boxShadow: hud?.pulseReady ? "0 0 20px rgba(236,72,153,.45) inset" : "none", background: "rgba(255,255,255,.03)", touchAction: "none" }}
           >
             <span className="text-[22px] leading-none">✷</span>PULSE
           </button>
@@ -197,10 +203,12 @@ export default function Defender() {
           <AimWheel onAim={(a) => engineRef.current?.aimTo(a)} />
 
           <button
-            onClick={() => engineRef.current?.fire()}
+            onPointerDown={(e) => { e.preventDefault(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ } engineRef.current?.fire(); stopFire(); fireRepeat.current = window.setInterval(() => engineRef.current?.fire(), 90); }}
+            onPointerUp={stopFire}
+            onPointerCancel={stopFire}
             data-testid="button-fire"
             className="flex h-[74px] w-[74px] flex-col items-center justify-center gap-0.5 rounded-full border-[1.5px] text-[11px] font-extrabold tracking-wide transition active:scale-90"
-            style={{ borderColor: "#67e8f9", color: "#a5f3fc", background: "rgba(255,255,255,.03)" }}
+            style={{ borderColor: "#67e8f9", color: "#a5f3fc", background: "rgba(255,255,255,.03)", touchAction: "none" }}
           >
             <span className="text-[22px] leading-none">◎</span>FIRE
           </button>

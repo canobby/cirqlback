@@ -18,6 +18,6 @@ const config: GameConfig = {
   bestFrom: (r) => r.best,
   toDaily: (r) => ({ score: r.score, bestCombo: r.score }),
   dial: (eng) => (a) => eng.laneFromAngle(a),
-  controls: (eng) => [{ testid: "button-fire", label: "FIRE", node: "▾", color: "#38bdf8", onPress: () => eng.fire() }],
+  controls: (eng) => [{ testid: "button-fire", label: "FIRE", node: "▾", color: "#38bdf8", onPress: () => eng.fire(), hold: true }],
 };
 export default function Tunnel() { return <ArcadeGameShell config={config} />; }
