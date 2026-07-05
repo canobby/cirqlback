@@ -66,6 +66,11 @@ const InvadersPage = lazy(() => import("@/pages/invaders"));
 const TunnelPage = lazy(() => import("@/pages/tunnel"));
 const MazePage = lazy(() => import("@/pages/maze"));
 const LinkPage = lazy(() => import("@/pages/link"));
+const OrbitPage = lazy(() => import("@/pages/orbit"));
+const PinballPage = lazy(() => import("@/pages/pinball"));
+const RacePage = lazy(() => import("@/pages/race"));
+const MinerPage = lazy(() => import("@/pages/miner"));
+const ClaimPage = lazy(() => import("@/pages/claim"));
 
 function Router() {
   const [location] = useLocation();
@@ -99,6 +104,11 @@ function Router() {
           <Route path="/play/tunnel">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><TunnelPage /></Suspense>}</Route>
           <Route path="/play/maze">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><MazePage /></Suspense>}</Route>
           <Route path="/play/link">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><LinkPage /></Suspense>}</Route>
+          <Route path="/play/orbit">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><OrbitPage /></Suspense>}</Route>
+          <Route path="/play/pinball">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PinballPage /></Suspense>}</Route>
+          <Route path="/play/race">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><RacePage /></Suspense>}</Route>
+          <Route path="/play/miner">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><MinerPage /></Suspense>}</Route>
+          <Route path="/play/claim">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ClaimPage /></Suspense>}</Route>
           <Route path="/play">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PlayPage /></Suspense>}</Route>
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />

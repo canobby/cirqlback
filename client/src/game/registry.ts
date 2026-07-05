@@ -84,4 +84,9 @@ export const ARCADE_GAMES: ArcadeGame[] = [
   { id: "tunnel", name: "Cirql Tunnel", genre: "Tempest", tagline: "Slide the rim and shoot down the lanes before they surface.", route: "/play/tunnel", accent: "#38bdf8", glyph: "◈", status: "live" },
   { id: "maze", name: "Cirql Maze", genre: "Brain game", tagline: "Rotate the rings to line up the gaps and drop the orb to the centre.", route: "/play/maze", accent: "#a78bfa", glyph: "◎", status: "live" },
   { id: "link", name: "Cirql Link", genre: "Flow", tagline: "Connect matching nodes with paths that never cross. Relaxing.", route: "/play/link", accent: "#38bdf8", glyph: "∞", status: "live" },
+  { id: "orbit", name: "Cirql Orbit", genre: "Asteroids", tagline: "Thrust between orbits, scoop energy, dodge the black holes.", route: "/play/orbit", accent: "#a78bfa", glyph: "☄", status: "live" },
+  { id: "pinball", name: "Cirql Pinball", genre: "Pinball", tagline: "One flipper, a round table. Keep the ball off the drain.", route: "/play/pinball", accent: "#fb7185", glyph: "⦿", status: "live" },
+  { id: "race", name: "Cirql Race", genre: "Slot-car", tagline: "Four racers, concentric lanes. Dive inside and boost to win.", route: "/play/race", accent: "#fbbf24", glyph: "⚑", status: "live" },
+  { id: "miner", name: "Cirql Miner", genre: "Dig Dug", tagline: "Gobble gems on the rings, dodge the cave monsters.", route: "/play/miner", accent: "#fbbf24", glyph: "◇", status: "live" },
+  { id: "claim", name: "Cirql Claim", genre: "Qix", tagline: "Claim wedges of the disc while a spark hunts the open ground.", route: "/play/claim", accent: "#38bdf8", glyph: "◔", status: "live" },
 ];
