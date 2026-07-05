@@ -167,6 +167,7 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
   // pragmatic plausibility, not DRM. Keeps each player's best for the day.
   const CB_EPOCH = Math.floor(Date.parse("2026-01-01T00:00:00Z") / 86400000);
   const cbDailyNum = () => Math.floor(Date.now() / 86400000) - CB_EPOCH + 1;
+  const DAILY_PLAY_POINTS = 10; // once-a-day reward for playing a game's Daily
 
   app.post("/api/game/daily/score", isAuthenticated, async (req, res) => {
     try {
@@ -178,7 +179,12 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
       if (!Number.isFinite(bestCombo) || bestCombo < 0 || bestCombo > 100_000) return res.status(400).json({ error: "Invalid combo" });
       const day = utcDay(Date.now());
       const result = await storage.submitDailyScore(userId, day, cbDailyNum(), score, bestCombo, restored, gameKey(req));
-      res.json({ ...result, dailyNum: cbDailyNum() });
+      // Once-a-day reward: the first Daily play of the day for this game earns points.
+      let reward: { points: number } | null = null;
+      if (result.firstToday) {
+        try { await storage.updateUserPoints(userId, DAILY_PLAY_POINTS); reward = { points: DAILY_PLAY_POINTS }; } catch { /* reward is best-effort */ }
+      }
+      res.json({ ...result, dailyNum: cbDailyNum(), reward });
     } catch (err) {
       console.error("daily score submit error:", err);
       res.status(500).json({ error: "Failed to submit score" });

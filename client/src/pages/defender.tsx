@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { HelpButton } from "@/components/how-to";
+import { DailyButton } from "@/components/daily-board";
 import { DefenderEngine, type DefenderHud, type DefenderResult } from "@/game/defender-engine";
 
 // Cirql Defender — the second CirqlArcade game (lazy-loaded at /play/defender,
@@ -163,7 +164,7 @@ export default function Defender() {
             <p className="max-w-[34ch] text-sm leading-relaxed text-violet-100/70">Rotate your shield to meet the swarm — a clean block <b className="text-white">hurls enemies back out</b>, and a bounced enemy shreds the ones behind it. Fire orbs to pick off stragglers.</p>
             <div className="text-sm text-amber-300/90">Best <b className="tabular-nums text-white">{best}</b></div>
             <button onClick={startRun} data-testid="button-defend" className="rounded-full px-10 py-3.5 text-[15px] font-extrabold tracking-wide active:scale-95" style={{ color: "#180a1e", background: "linear-gradient(90deg,#67e8f9,#a78bfa)", boxShadow: "0 8px 30px rgba(124,58,237,.5)" }}>Defend</button>
-            <HelpButton gameId="defender" name="Cirql Defender" accent="#67e8f9" />
+            <div className="flex items-center gap-2"><HelpButton gameId="defender" name="Cirql Defender" accent="#67e8f9" /><DailyButton gameId="defender" name="Cirql Defender" accent="#67e8f9" /></div>
             <div className="flex gap-4 text-[11px] text-violet-300/60">
               <button onClick={toggleSound} data-testid="toggle-sound">{sound ? "🔊 Sound" : "🔇 Muted"}</button>
               <button onClick={toggleHap} data-testid="toggle-haptics">{haptics ? "📳 Haptics" : "Haptics off"}</button>

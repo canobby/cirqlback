@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowLeft, Swords } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { HelpButton } from "@/components/how-to";
+import { DailyButton } from "@/components/daily-board";
 
 // ArcadeGameShell — the shared React host for CirqlArcade games. A game supplies a
 // GameConfig (id, look, how to build its engine, how to read its HUD/result) and
@@ -96,6 +97,7 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
   const [sound, setSound] = useState(() => lsGet(c.lsKey + "_snd") !== "0");
   const [haptics, setHaptics] = useState(() => lsGet(c.lsKey + "_hap") !== "0");
   const [dailyRank, setDailyRank] = useState<{ rank: number; total: number } | null>(null);
+  const [dailyReward, setDailyReward] = useState<{ points: number } | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -108,9 +110,9 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
         if (b > +(lsGet(c.lsKey) || 0)) lsSet(c.lsKey, String(b));
         const u = userRef.current; if (!u) return;
         fetch("/api/game/progress", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: c.gameId, state: { best: b, settings: { sound, haptics } } }) }).catch(() => {});
-        const d = c.toDaily(r); setDailyRank(null);
+        const d = c.toDaily(r); setDailyRank(null); setDailyReward(null);
         fetch("/api/game/daily/score", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: c.gameId, score: d.score, bestCombo: d.bestCombo, restored: false }) })
-          .then((res) => (res.ok ? res.json() : null)).then((j) => { if (j) setDailyRank({ rank: j.rank, total: j.total }); }).catch(() => {});
+          .then((res) => (res.ok ? res.json() : null)).then((j) => { if (j) { setDailyRank({ rank: j.rank, total: j.total }); if (j.reward) setDailyReward(j.reward); } }).catch(() => {});
       },
     });
     engineRef.current = eng;
@@ -134,7 +136,7 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const startRun = () => { setResult(null); setDailyRank(null); setPhase("playing"); engineRef.current?.start(); };
+  const startRun = () => { setResult(null); setDailyRank(null); setDailyReward(null); setPhase("playing"); engineRef.current?.start(); };
   const toMenu = () => { setPhase("menu"); engineRef.current?.toMenu(); };
   const toggleSound = () => { const v = !sound; setSound(v); lsSet(c.lsKey + "_snd", v ? "1" : "0"); engineRef.current?.setMuted(!v); };
   const toggleHap = () => { const v = !haptics; setHaptics(v); lsSet(c.lsKey + "_hap", v ? "1" : "0"); engineRef.current?.setHaptics(v); };
@@ -176,7 +178,10 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
                 <Swords className="h-4 w-4" /> {c.online.label || "Play online"}
               </Link>
             )}
-            <HelpButton gameId={c.gameId} name={c.name} accent={c.accent} />
+            <div className="flex items-center gap-2">
+              <HelpButton gameId={c.gameId} name={c.name} accent={c.accent} />
+              <DailyButton gameId={c.gameId} name={c.name} accent={c.accent} />
+            </div>
             <div className="flex gap-4 text-[11px] text-violet-300/60"><button onClick={toggleSound} data-testid="toggle-sound">{sound ? "🔊 Sound" : "🔇 Muted"}</button><button onClick={toggleHap} data-testid="toggle-haptics">{haptics ? "📳 Haptics" : "Haptics off"}</button></div>
           </div>
         )}
@@ -191,6 +196,7 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
               ))}
             </div>
             {dailyRank && <div className="text-xs text-cyan-300/80">Daily rank <b className="text-white">#{dailyRank.rank}</b> of {dailyRank.total}</div>}
+            {dailyReward && <div className="text-xs text-amber-300/90">🎁 Daily reward <b className="text-white">+{dailyReward.points}</b> points</div>}
             {!user && <div className="text-[11px] text-violet-300/50">Log in to save your best &amp; join the Daily board.</div>}
             <div className="flex gap-3">
               <button onClick={startRun} data-testid="button-again" className="rounded-full px-8 py-3 text-[15px] font-extrabold tracking-wide active:scale-95" style={{ color: "#0a0714", background: grad, boxShadow: `0 8px 30px ${c.accent}80` }}>Play again</button>

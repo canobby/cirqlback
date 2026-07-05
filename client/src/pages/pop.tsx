@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { HelpButton } from "@/components/how-to";
+import { DailyButton } from "@/components/daily-board";
 import { PopEngine, type PopHud, type PopResult } from "@/game/pop-engine";
 
 // Cirql Pop — the third CirqlArcade game (lazy-loaded at /play/pop, code-split).
@@ -141,7 +142,7 @@ export default function Pop() {
             <p className="max-w-[34ch] text-sm leading-relaxed text-violet-100/70">Shoot colours into the rings and <b className="text-white">match three</b> to pop them. Clusters cut off from the rim <b className="text-white">drop</b> for bonus. New rows creep inward — keep them off the centre.</p>
             <div className="text-sm text-amber-300/90">Best <b className="tabular-nums text-white">{best}</b></div>
             <button onClick={startRun} data-testid="button-pop-start" className="rounded-full px-10 py-3.5 text-[15px] font-extrabold tracking-wide active:scale-95" style={{ color: "#180a1e", background: "linear-gradient(90deg,#f472b6,#a78bfa)", boxShadow: "0 8px 30px rgba(167,139,250,.5)" }}>Play</button>
-            <HelpButton gameId="pop" name="Cirql Pop" accent="#a78bfa" />
+            <div className="flex items-center gap-2"><HelpButton gameId="pop" name="Cirql Pop" accent="#a78bfa" /><DailyButton gameId="pop" name="Cirql Pop" accent="#a78bfa" /></div>
             <div className="flex gap-4 text-[11px] text-violet-300/60">
               <button onClick={toggleSound} data-testid="toggle-sound">{sound ? "🔊 Sound" : "🔇 Muted"}</button>
               <button onClick={toggleHap} data-testid="toggle-haptics">{haptics ? "📳 Haptics" : "Haptics off"}</button>

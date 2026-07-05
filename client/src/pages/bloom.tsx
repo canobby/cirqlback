@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { HelpButton } from "@/components/how-to";
+import { DailyButton } from "@/components/daily-board";
 import { BloomEngine, type BloomHud, type BloomResult } from "@/game/bloom-engine";
 
 // Cirql Bloom — the zen garden (lazy at /play/bloom, code-split). Sweep to gather
@@ -89,7 +90,7 @@ export default function Bloom() {
             <p className="max-w-[34ch] text-sm leading-relaxed text-pink-100/70">Sweep your finger through the drifting motes to gather them. The seed answers — petals unfurl, ring by ring. No enemies, no clock. Leave whenever you like.</p>
             <div className="text-sm text-pink-200/90">Best <b className="tabular-nums text-white">{best}</b></div>
             <button onClick={startRun} data-testid="button-bloom-start" className="rounded-full px-10 py-3.5 text-[15px] font-extrabold tracking-wide active:scale-95" style={{ color: "#1a0f22", background: "linear-gradient(90deg,#f9a8d4,#c4b5fd)", boxShadow: "0 8px 30px rgba(249,168,212,.5)" }}>Begin</button>
-            <HelpButton gameId="bloom" name="Cirql Bloom" accent="#f9a8d4" />
+            <div className="flex items-center gap-2"><HelpButton gameId="bloom" name="Cirql Bloom" accent="#f9a8d4" /><DailyButton gameId="bloom" name="Cirql Bloom" accent="#f9a8d4" /></div>
             <div className="flex gap-4 text-[11px] text-pink-200/60"><button onClick={toggleSound} data-testid="toggle-sound">{sound ? "🔊 Sound" : "🔇 Muted"}</button><button onClick={toggleHap} data-testid="toggle-haptics">{haptics ? "📳 Haptics" : "Haptics off"}</button></div>
           </div>
         )}
