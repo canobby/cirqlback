@@ -96,4 +96,12 @@ export const ARCADE_GAMES: ArcadeGame[] = [
   { id: "pairs", name: "Cirql Pairs", genre: "Memory", tagline: "Flip the cards, find the matching pairs against the clock.", route: "/play/pairs", accent: "#a78bfa", glyph: "❒", status: "live" },
   { id: "flip", name: "Cirql Flip", genre: "Lights-Out", tagline: "Flip a segment and its neighbours; light the whole ring.", route: "/play/flip", accent: "#34d399", glyph: "◍", status: "live" },
   { id: "stack", name: "Cirql Stack", genre: "Stacker", tagline: "Lock the sweeping arc; keep the overlap; stack to the centre.", route: "/play/stack", accent: "#38bdf8", glyph: "▤", status: "live" },
+  { id: "gems", name: "Cirql Gems", genre: "Match-3", tagline: "Swap neighbours to line up three; chain the cascades.", route: "/play/gems", accent: "#f472b6", glyph: "◆", status: "live" },
+  { id: "sweep", name: "Cirql Sweep", genre: "Minesweeper", tagline: "Read the numbers, flag the sparks, clear the disc.", route: "/play/sweep", accent: "#38bdf8", glyph: "⚑", status: "live" },
+  { id: "sort", name: "Cirql Sort", genre: "Ball sort", tagline: "Pour the balls between tubes until each is one colour.", route: "/play/sort", accent: "#38bdf8", glyph: "⊚", status: "live" },
+  { id: "merge", name: "Cirql Merge", genre: "2048", tagline: "Slide to merge, spin to line up. How high can you climb?", route: "/play/merge", accent: "#fbbf24", glyph: "⊞", status: "live" },
+  { id: "drop", name: "Cirql Drop", genre: "Plinko", tagline: "Aim and drop; tumble through the pegs to the middle.", route: "/play/drop", accent: "#a78bfa", glyph: "⁙", status: "live" },
+  { id: "ascent", name: "Cirql Ascent", genre: "Doodle Jump", tagline: "Bounce outward, steer onto platforms, don't fall.", route: "/play/ascent", accent: "#34d399", glyph: "⇡", status: "live" },
+  { id: "balance", name: "Cirql Balance", genre: "Balance", tagline: "Nudge the marble to hold it at the top of the ring.", route: "/play/balance", accent: "#fbbf24", glyph: "⊙", status: "live" },
+  { id: "breathe", name: "Cirql Breathe", genre: "Calm", tagline: "Breathe with the ring. Nothing to lose. Just calm.", route: "/play/breathe", accent: "#f9a8d4", glyph: "❍", status: "live" },
 ];
