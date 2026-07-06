@@ -164,7 +164,7 @@ export default function Lobby() {
       {/* bottom nav */}
       <div className="fixed inset-x-0 bottom-0 z-[71] flex items-center justify-center gap-7 border-t px-4 py-2.5" style={{ borderColor: "#2e2158", background: "linear-gradient(180deg, rgba(13,10,32,.6), rgba(10,7,20,.92))", backdropFilter: "blur(4px)" }}>
         <NavItem to="/" icon={<Home className="h-4 w-4" />} label="Home" color="#3bb6ff" />
-        <NavItem icon={<Trophy className="h-4 w-4" />} label="Leaderboard" color="#ffd24a" />
+        <NavItem to="/leaderboard" icon={<Trophy className="h-4 w-4" />} label="Leaderboard" color="#ffd24a" />
         <NavItem to="/achievements" icon={<Star className="h-4 w-4" />} label="Achievements" color="#33e650" />
         <NavItem icon={<Heart className="h-4 w-4" />} label="Favorites" color="#ff8ab5" />
         <NavItem to="/avatar" icon={<User className="h-4 w-4" />} label="Avatar" color="#b79bff" />
