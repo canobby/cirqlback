@@ -4,7 +4,7 @@ import { Home, Trophy, Star, Heart, User, Play } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { loadAvatarLS, drawAvatarToCanvas } from "@/game/avatar";
 import { MAIN_STREET_CABINETS, FLAGSHIP_CABINET, paintCover, COVER_W, COVER_H, type Cabinet } from "@/game/cabinet-covers";
-import { CATEGORIES, metaFor } from "@/game/cabinet-meta";
+import { CATEGORIES, ERAS, metaFor, eraFor, type Era } from "@/game/cabinet-meta";
 import { InsertCoinCutscene } from "@/components/insert-coin";
 import { takePending, syncRewardsFromServer, type Achievement } from "@/game/rewards";
 import { getFavorites, toggleFavorite, syncFavoritesFromServer } from "@/game/favorites";
@@ -15,12 +15,13 @@ import { getFavorites, toggleFavorite, syncFavoritesFromServer } from "@/game/fa
 const S = 2;
 const stars = (d: number) => "★★★☆☆☆".slice(3 - d, 6 - d);
 
-interface Game { cab: Cabinet; cat: string; howto: string; flagship: boolean }
-const GAMES: Game[] = [FLAGSHIP_CABINET, ...MAIN_STREET_CABINETS].map((c) => ({ cab: c, cat: metaFor(c.id).cat, howto: metaFor(c.id).howto, flagship: c.id === "cirqlcity" }));
+interface Game { cab: Cabinet; cat: string; howto: string; era: Era; flagship: boolean }
+const GAMES: Game[] = [FLAGSHIP_CABINET, ...MAIN_STREET_CABINETS].map((c) => ({ cab: c, cat: metaFor(c.id).cat, howto: metaFor(c.id).howto, era: eraFor(c.id), flagship: c.id === "cirqlcity" }));
 
 export default function Lobby() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [era, setEra] = useState<string>("all");
   const [cat, setCat] = useState<string>("all");
   const [selId, setSelId] = useState<string>("cirqlcity");
   const [launch, setLaunch] = useState<Cabinet | null>(null);
@@ -48,12 +49,17 @@ export default function Lobby() {
 
   useEffect(() => { const c = avatarCanvas.current; if (!c) return; const ctx = c.getContext("2d"); if (ctx) drawAvatarToCanvas(ctx, loadAvatarLS(), 3, 10, 20); }, []);
 
-  const shown = cat === "favorites" ? GAMES.filter((g) => favs.includes(g.cab.id)) : cat === "all" ? GAMES : GAMES.filter((g) => g.cat === cat);
+  // two axes: ERA (top tabs — Classic / Modern / Favorites) then GENRE (left rail)
+  const byEra = era === "favorites" ? GAMES.filter((g) => favs.includes(g.cab.id)) : era === "all" ? GAMES : GAMES.filter((g) => g.era === era);
+  const shown = cat === "all" ? byEra : byEra.filter((g) => g.cat === cat);
   // paint the visible cards' covers
-  useEffect(() => { shown.forEach((g) => { const el = coverRefs.current[g.cab.id]; if (el) { const ctx = el.getContext("2d"); if (ctx) paintCover(ctx, g.cab); } }); /* eslint-disable-next-line */ }, [cat, favs]);
+  useEffect(() => { shown.forEach((g) => { const el = coverRefs.current[g.cab.id]; if (el) { const ctx = el.getContext("2d"); if (ctx) paintCover(ctx, g.cab); } }); /* eslint-disable-next-line */ }, [era, cat, favs]);
 
   const sel = GAMES.find((g) => g.cab.id === selId) || GAMES[0];
-  const rail = [{ id: "favorites", name: "Favorites", accent: "#ff8ab5", count: favs.length }, ...CATEGORIES.map((c) => ({ id: c.id, name: c.name, accent: c.accent, count: c.id === "all" ? GAMES.length : GAMES.filter((g) => g.cat === c.id).length }))];
+  const rail = CATEGORIES.map((c) => ({ id: c.id, name: c.name, accent: c.accent, count: c.id === "all" ? byEra.length : byEra.filter((g) => g.cat === c.id).length }));
+  const eraCount = (id: string) => id === "all" ? GAMES.length : id === "favorites" ? favs.length : GAMES.filter((g) => g.era === id).length;
+  const pickEra = (id: string) => { setEra(id); setCat("all"); const set = id === "favorites" ? GAMES.filter((g) => favs.includes(g.cab.id)) : id === "all" ? GAMES : GAMES.filter((g) => g.era === id); if (set.length && !set.some((g) => g.cab.id === selId)) setSelId(set[0].cab.id); };
+  const eraLabel = era === "favorites" ? "★ Favorites" : era === "classic" ? "Classic Arcade" : era === "modern" ? "Modern · Retro-Fitted" : "All Games";
 
   const doLaunch = (g: Game) => { if (g.flagship) setLocation(g.cab.route); else setLaunch(g.cab); };
   const onCard = (g: Game) => { if (selId === g.cab.id) doLaunch(g); else { setSelId(g.cab.id); if (window.innerWidth < 1024) window.scrollTo({ top: 0, behavior: "smooth" }); } };
@@ -83,6 +89,20 @@ export default function Lobby() {
           <div className="hidden rounded-xl border px-3.5 py-2.5 text-[11px] font-extrabold leading-[1.7] sm:block" style={{ borderColor: "#3a2a72", background: "linear-gradient(180deg, rgba(59,42,114,.28), rgba(20,13,40,.4))" }}>
             <div style={{ color: "#3bb6ff" }}>PLAY MORE.</div><div style={{ color: "#ff8ab5" }}>DISCOVER MORE.</div><div style={{ color: "#ffd24a" }}>EARN MORE.</div>
           </div>
+        </div>
+
+        {/* era shelf — top tabs: All · Classic · Modern · Favorites (orthogonal to genre) */}
+        <div className="mt-4 flex justify-center gap-1.5 sm:gap-2">
+          {ERAS.map((e) => {
+            const on = era === e.id;
+            return (
+              <button key={e.id} onClick={() => pickEra(e.id)} data-testid={`era-${e.id}`}
+                className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-extrabold uppercase tracking-[0.04em] active:scale-95 sm:px-5 sm:text-[13px]"
+                style={{ borderColor: on ? e.accent : "#2e2158", color: on ? "#0a0714" : "#c3b4de", background: on ? `linear-gradient(180deg, ${e.accent}, ${e.accent}cc)` : "rgba(255,255,255,.02)", boxShadow: on ? `0 6px 20px -6px ${e.accent}` : "none" }}>
+                {e.name}<span className="text-[9px] tabular-nums" style={{ opacity: 0.7 }}>{eraCount(e.id)}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* body: rail · grid · info panel (flex; info sits above grid on mobile, right on desktop) */}
@@ -134,13 +154,13 @@ export default function Lobby() {
           {/* grid */}
           <div className="lg:order-2 lg:flex-1">
             <div className="mb-3 flex items-center gap-3 text-[14px] font-extrabold uppercase tracking-[0.05em]" style={{ color: "#ffb020", textShadow: "0 0 10px rgba(255,176,32,.4)" }}>
-              ▸ {cat === "favorites" ? "★ Favorites" : CATEGORIES.find((c) => c.id === cat)?.name}
+              ▸ {eraLabel}{cat !== "all" ? ` · ${CATEGORIES.find((c) => c.id === cat)?.name}` : ""}
               <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, rgba(255,176,32,.5), transparent)" }} />
             </div>
             {shown.length === 0 ? (
               <div className="rounded-xl border py-10 text-center" style={{ borderColor: "#2e2158", background: "rgba(255,255,255,.02)" }} data-testid="empty">
-                <div className="text-[13px] font-extrabold text-white">Nothing here yet</div>
-                <div className="mt-1 text-[11px] text-violet-300/50">{cat === "favorites" ? "Tap the ★ on any game to pin it here." : "No games in this category yet."}</div>
+                <div className="text-[13px] font-extrabold text-white">{era === "modern" ? "🕹️ Coming soon" : "Nothing here yet"}</div>
+                <div className="mt-1 text-[11px] text-violet-300/50">{era === "favorites" ? "Tap the ★ on any game to pin it here." : era === "modern" ? "Modern hits are being retro-fitted to 16-bit — check back soon!" : "No games in this filter yet."}</div>
               </div>
             ) : (
               <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))" }}>
@@ -181,7 +201,7 @@ export default function Lobby() {
         <NavItem to="/" icon={<Home className="h-4 w-4" />} label="Home" color="#3bb6ff" />
         <NavItem to="/leaderboard" icon={<Trophy className="h-4 w-4" />} label="Ranks" color="#ffd24a" />
         <NavItem to="/achievements" icon={<Star className="h-4 w-4" />} label="Badges" color="#33e650" />
-        <NavItem onClick={() => { setCat("favorites"); window.scrollTo({ top: 0, behavior: "smooth" }); }} icon={<Heart className="h-4 w-4" />} label="Faves" color="#ff8ab5" />
+        <NavItem onClick={() => { pickEra("favorites"); window.scrollTo({ top: 0, behavior: "smooth" }); }} icon={<Heart className="h-4 w-4" />} label="Faves" color="#ff8ab5" />
         <NavItem to="/avatar" icon={<User className="h-4 w-4" />} label="Avatar" color="#b79bff" />
       </div>
 

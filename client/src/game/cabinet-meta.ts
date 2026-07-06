@@ -14,7 +14,21 @@ export const CATEGORIES: Category[] = [
   { id: "beat", name: "Beat", accent: "#7be0ff" },
 ];
 
-export interface Meta { cat: string; howto: string }
+// The top-level "shelf" — an ERA axis, orthogonal to the genre categories above.
+// Existing cabinets are homages to CLASSIC arcade games; the incoming wave are modern
+// hits retro-fitted to 16-bit. Favorites is the player's own pinned shelf.
+export type Era = "classic" | "modern";
+export interface EraTab { id: string; name: string; accent: string }
+export const ERAS: EraTab[] = [
+  { id: "all", name: "All", accent: "#b79bff" },
+  { id: "classic", name: "Classic", accent: "#ffd24a" },
+  { id: "modern", name: "Modern", accent: "#3bb6ff" },
+  { id: "favorites", name: "Favorites", accent: "#ff8ab5" },
+];
+
+export interface Meta { cat: string; howto: string; era?: Era }
+/** A cabinet's era; defaults to "classic" (every game built so far is a classic homage). */
+export function eraFor(id: string): Era { return CABINET_META[id]?.era || "classic"; }
 export const CABINET_META: Record<string, Meta> = {
   cirqlcity: { cat: "adventure", howto: "Run & jump through Main Street, light every shop by bonking its sign, then CLOSE THE CIRQL to blaze the whole street back to life. This is the flagship — your rewards and progress live here." },
   cuppa: { cat: "action", howto: "Serve coffee down the counters and catch the empties sliding back — clear each rush before a regular reaches the bar." },
