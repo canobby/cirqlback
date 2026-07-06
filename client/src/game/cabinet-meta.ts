@@ -77,6 +77,7 @@ export const CABINET_META: Record<string, Meta> = {
   spellbound: { cat: "puzzle", era: "modern", howto: "Guess the hidden five-letter word in six tries. Green = right letter in the right spot, amber = in the word but wrong spot, grey = not in it at all. Tap the on-screen keys or type on your keyboard — the fewer guesses, the bigger the score." },
   sortit: { cat: "puzzle", era: "modern", howto: "Tap a vial to lift its top colour, then tap another to pour it — but only onto empty space or a matching colour. Get every vial down to a single colour to clear the batch, then a messier one rolls in. Jam up and it auto-reshuffles. Sort as many as you can before the clock runs out." },
   smoothie: { cat: "puzzle", era: "modern", howto: "Move the spout and DROP fruit into the cup. Two of the same size that touch merge into the next size up — berries to melons — and each merge scores more. But the cup keeps filling: let the pile spill over the rim and it's last call." },
+  fowlplay: { cat: "action", era: "modern", howto: "Drag back on the slingshot to set your angle and power, then let go to fling the fowl. It arcs and ricochets off the crates — pop every pest before you run out of birds. Fewer birds spent = a bigger clear bonus. (Pad: ▲▼ angle, hold FIRE to charge.)" },
 };
 
 export function metaFor(id: string): Meta { return CABINET_META[id] || { cat: "action", howto: "" }; }
