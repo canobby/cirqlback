@@ -69,6 +69,7 @@ export const CABINET_META: Record<string, Meta> = {
   // ---- modern wave ----
   nightshift: { cat: "action", era: "modern", howto: "You don't aim — just MOVE and your spatula auto-slings at the nearest gremlin. Grab the tips they drop to LEVEL UP and pick an upgrade; dodge with DASH and survive the swarm till the 6 AM dawn." },
   flutter: { cat: "action", era: "modern", howto: "Tap FLAP to give the escaped parakeet a little lift; gravity does the rest. Thread the gaps between the shop awnings — clip one (or the pavement) and the run's over. How far can you get?" },
+  sugarswap: { cat: "puzzle", era: "modern", howto: "Swap two neighbouring candies to line up three or more of a colour — they pop, the rest tumble down, and fresh candies rain in, chaining any new matches into a COMBO. Longer lines pay more. Score big before your swaps run out. Pad + SWAP, or just tap two candies." },
 };
 
 export function metaFor(id: string): Meta { return CABINET_META[id] || { cat: "action", howto: "" }; }
