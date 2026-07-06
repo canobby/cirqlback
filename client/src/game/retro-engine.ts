@@ -110,6 +110,13 @@ export abstract class RetroEngine {
   protected hooks: RetroHooks;
   protected rnd = mulberry32(0x1a2b3c);
 
+  // ---- juice (shared by every cabinet): particles, shards, shockwaves, floating text, shake, hit-stop ----
+  protected shake = 0;
+  private hitstopT = 0;
+  private fxDots: { x: number; y: number; vx: number; vy: number; life: number; decay: number; color: string; size: number; grav: number; shard: boolean; rot: number; vr: number }[] = [];
+  private fxTexts: { x: number; y: number; vy: number; life: number; txt: string; color: string; sc: number }[] = [];
+  private fxRings: { x: number; y: number; r: number; maxR: number; life: number; color: string }[] = [];
+
   constructor(canvas: HTMLCanvasElement, hooks: RetroHooks = {}, lw = 240, lh = 180) {
     this.cv = canvas;
     const sctx = canvas.getContext("2d");
@@ -168,7 +175,8 @@ export abstract class RetroEngine {
       this.acc += clamp(dt, 0, 0.1) * this.timeScale;
       let guard = 0;
       while (this.acc >= this.STEP && guard++ < 5) {
-        if (this.running) this.update(this.STEP);
+        if (this.hitstopT > 0) { this.hitstopT -= this.STEP; } // freeze frame for punch
+        else { if (this.running) this.update(this.STEP); this.updateFx(this.STEP); }
         // clear edge-triggered taps after each simulated step
         this.pressed.up = this.pressed.down = this.pressed.left = this.pressed.right = this.pressed.a = this.pressed.b = false;
         this.acc -= this.STEP;
@@ -184,7 +192,9 @@ export abstract class RetroEngine {
     const { sctx } = this;
     sctx.imageSmoothingEnabled = false;
     sctx.clearRect(0, 0, this.dispW, this.dispH);
-    sctx.drawImage(this.buf, 0, 0, this.LW, this.LH, 0, 0, this.dispW, this.dispH);
+    let ox = 0, oy = 0;
+    if (this.shake > 0.2 && !this.reduce) { const s = this.shake * (this.dispW / this.LW); ox = (Math.random() - 0.5) * s; oy = (Math.random() - 0.5) * s; }
+    sctx.drawImage(this.buf, 0, 0, this.LW, this.LH, ox, oy, this.dispW, this.dispH);
     if (this.crt && !this.reduce) this.drawCRT();
   }
 
@@ -313,6 +323,50 @@ export abstract class RetroEngine {
       ball: (cx, cy, r, base) => this.ball(cx, cy, r, base),
       shade: (c, amt) => shade(c, amt),
     }, x, y, cfg);
+  }
+
+  // ---- juice API (call from a cabinet's update/render) ----
+  /** Kick the screen (additive, auto-decays). */
+  protected addShake(a: number) { this.shake = Math.min(7, this.shake + a); }
+  /** Freeze the sim for `t` seconds — a punchy hit-stop on impacts. */
+  protected hitstop(t: number) { this.hitstopT = Math.max(this.hitstopT, t); }
+  /** A radial spray of dots. */
+  protected fxBurst(x: number, y: number, color: string, n: number, spd: number, grav = 60) {
+    if (this.reduce) n = Math.min(n, 3);
+    for (let i = 0; i < n; i++) { const a = Math.random() * TAU, s = spd * (0.4 + Math.random()); this.fxDots.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, decay: 1.6 + Math.random(), color, size: 1, grav, shard: false, rot: 0, vr: 0 }); }
+  }
+  /** Tumbling shards (glass/ceramic break). */
+  protected fxShards(x: number, y: number, color: string, n = 6) {
+    if (this.reduce) return;
+    for (let i = 0; i < n; i++) { const a = Math.random() * TAU, s = 60 + Math.random() * 90; this.fxDots.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 30, life: 1, decay: 1.1, color, size: 2, grav: 200, shard: true, rot: Math.random() * TAU, vr: (Math.random() - 0.5) * 14 }); }
+  }
+  /** A rising, fading label (score pops, callouts). */
+  protected fxPop(x: number, y: number, txt: string, color: string, sc = 1) { this.fxTexts.push({ x, y, vy: -14, life: 1, txt, color, sc }); }
+  /** An expanding shockwave ring. */
+  protected fxRing(x: number, y: number, color: string, maxR: number) { if (!this.reduce) this.fxRings.push({ x, y, r: 2, maxR, life: 1, color }); }
+  protected clearFx() { this.fxDots = []; this.fxTexts = []; this.fxRings = []; this.shake = 0; }
+
+  protected updateFx(dt: number) {
+    this.shake = this.shake > 0.2 ? this.shake * Math.pow(0.0025, dt) : 0;
+    for (const p of this.fxDots) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.grav * dt; p.vx *= 0.92; p.life -= p.decay * dt; p.rot += p.vr * dt; }
+    this.fxDots = this.fxDots.filter((p) => p.life > 0);
+    for (const t of this.fxTexts) { t.y += t.vy * dt; t.life -= dt * 1.2; }
+    this.fxTexts = this.fxTexts.filter((t) => t.life > 0);
+    for (const r of this.fxRings) { r.life -= dt * 2.2; r.r += (r.maxR - r.r) * Math.min(1, dt * 6); }
+    this.fxRings = this.fxRings.filter((r) => r.life > 0);
+  }
+  /** Paint the juice layer onto the buffer — call in `render()` (usually before menu/over overlays). */
+  protected drawFx() {
+    for (const r of this.fxRings) { this.b.globalAlpha = Math.max(0, r.life) * 0.7; this.ring(r.x | 0, r.y | 0, r.r | 0, r.color, 1.6); }
+    this.b.globalAlpha = 1;
+    for (const p of this.fxDots) {
+      this.b.globalAlpha = Math.max(0, Math.min(1, p.life));
+      if (p.shard) { const c = Math.cos(p.rot) * 2, s = Math.sin(p.rot) * 2; this.line((p.x - c) | 0, (p.y - s) | 0, (p.x + c) | 0, (p.y + s) | 0, p.color); }
+      else this.rect(p.x | 0, p.y | 0, p.size, p.size, p.color);
+    }
+    this.b.globalAlpha = 1;
+    for (const t of this.fxTexts) { const c = t.life < 0.35 ? "#8a8276" : t.color; this.b.globalAlpha = Math.max(0, Math.min(1, t.life * 1.4)); this.text(Math.round(t.x - this.textWidth(t.txt, t.sc) / 2), Math.round(t.y), t.txt, c, t.sc, false); }
+    this.b.globalAlpha = 1;
   }
 
   // ---------- audio (chiptune primitives; MusicKit will build on these) ----------
