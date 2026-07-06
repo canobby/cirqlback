@@ -73,6 +73,9 @@ const GumballPage = lazy(() => import("@/pages/gumball"));
 const HarvestMoonlightPage = lazy(() => import("@/pages/harvest-moonlight"));
 const GreenThumbPage = lazy(() => import("@/pages/green-thumb"));
 const BloomBoomPage = lazy(() => import("@/pages/bloom-boom"));
+const BarkParkPage = lazy(() => import("@/pages/bark-park"));
+const SproutPage = lazy(() => import("@/pages/sprout"));
+const BrickMortarPage = lazy(() => import("@/pages/brick-mortar"));
 const CoinDemoPage = lazy(() => import("@/pages/coin-demo"));
 const LobbyPage = lazy(() => import("@/pages/lobby"));
 const CuppaRushPage = lazy(() => import("@/pages/cuppa-rush"));
@@ -189,6 +192,9 @@ function Router() {
           <Route path="/play/harvest-moonlight">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><HarvestMoonlightPage /></Suspense>}</Route>
           <Route path="/play/green-thumb">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><GreenThumbPage /></Suspense>}</Route>
           <Route path="/play/bloom-boom">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><BloomBoomPage /></Suspense>}</Route>
+          <Route path="/play/bark-park">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><BarkParkPage /></Suspense>}</Route>
+          <Route path="/play/sprout">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SproutPage /></Suspense>}</Route>
+          <Route path="/play/brick-mortar">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><BrickMortarPage /></Suspense>}</Route>
           <Route path="/coin-demo">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CoinDemoPage /></Suspense>}</Route>
           <Route path="/lobby">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><LobbyPage /></Suspense>}</Route>
           <Route path="/play/cuppa">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CuppaRushPage /></Suspense>}</Route>
