@@ -104,7 +104,7 @@ Every cabinet ships only when all of this is true:
 ## Phase 0 · Foundation
 Build once; everything depends on it. The avatar rig is a hard dependency for cabinets (the hero *is* your avatar), so it lands before cabinet #1.
 
-- [ ] **RetroEngine (16-bit kit + CRT)** — pixel buffer, shaded draw kit, pixel font, fixed-timestep, input.
+- [x] **RetroEngine (16-bit kit + CRT)** — pixel buffer + nearest-neighbor upscale, shaded draw kit (`shade`/`mix`/`vgrad`/`shelf`/`ball`), bundled pixel font, CRT (scanlines + vignette), fixed-timestep loop, d-pad/tap/two-thumb input, chiptune primitives. *Shipped: `client/src/game/retro-engine.ts` + `retro-font.ts`; proven live at `/retro-demo`.*
 - [ ] **MusicKit** — layered chiptune, dynamic layering, Main Street leitmotif.
 - [ ] **Avatar system + customizer** — toy figure, customization axes, per-shop outfit rig + unlock hooks.
 - [ ] **Insert-Coin cutscene** — reusable, skippable, attract/demo mode.
