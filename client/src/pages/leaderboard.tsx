@@ -3,19 +3,16 @@ import { Link, useSearch } from "wouter";
 import { ArrowLeft, Trophy, Crown } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { MAIN_STREET_CABINETS } from "@/game/cabinet-covers";
-import { ARCADE_GAMES } from "@/game/registry";
 
-// The unified Daily Leaderboards page — one board per game (Main Street cabinet or
-// circular Game Circle game), read from /api/game/daily/leaderboard?gameId=<id>.
-// A game's registry/cabinet `id` IS its backend gameId, so the picker maps 1:1.
+// The Daily Leaderboards page — one board per Main Street cabinet, read from
+// /api/game/daily/leaderboard?gameId=<id>. A cabinet's id IS its backend gameId.
 
-interface LbGame { id: string; name: string; accent: string; line: "main" | "circle" }
+interface LbGame { id: string; name: string; accent: string }
 interface Row { rank: number; name: string; score: number; restored: boolean; you: boolean }
 interface Board { day: string; dailyNum: number; top: Row[]; you: { rank: number; score: number } | null; total: number }
 
-const MAIN: LbGame[] = MAIN_STREET_CABINETS.filter((c) => c.built).map((c) => ({ id: c.id, name: c.name, accent: c.accent, line: "main" }));
-const CIRCLE: LbGame[] = ARCADE_GAMES.filter((g) => g.status === "live").map((g) => ({ id: g.id, name: g.name, accent: g.accent, line: "circle" }));
-const ALL: LbGame[] = [...MAIN, ...CIRCLE];
+const MAIN: LbGame[] = MAIN_STREET_CABINETS.filter((c) => c.built).map((c) => ({ id: c.id, name: c.name, accent: c.accent }));
+const ALL: LbGame[] = MAIN;
 
 const medal = ["#ffd24a", "#c8d0dc", "#e08a4a"]; // gold / silver / bronze
 
@@ -57,9 +54,8 @@ export default function Leaderboard() {
           {board && <div className="ml-auto text-[11px] font-bold tabular-nums text-cyan-300/80">Daily #{board.dailyNum}</div>}
         </div>
 
-        {/* game picker — two rails */}
+        {/* cabinet picker */}
         <Rail label="Main Street" games={MAIN} sel={sel} onPick={setSel} />
-        <Rail label="Game Circles" games={CIRCLE} sel={sel} onPick={setSel} />
 
         {/* board header */}
         <div className="mb-2 mt-4 flex items-center gap-3 text-[15px] font-extrabold uppercase tracking-[0.05em]" style={{ color: selGame?.accent || "#ffb020", textShadow: `0 0 10px ${(selGame?.accent || "#ffb020")}66` }}>
@@ -80,7 +76,7 @@ export default function Leaderboard() {
             <div className="rounded-xl border py-10 text-center" style={{ borderColor: "#2e2158", background: "rgba(255,255,255,.02)" }}>
               <div className="text-[13px] font-extrabold text-white">No scores yet today</div>
               <div className="mt-1 text-[11px] text-violet-300/50">Be the first — play a run and you'll top the board.</div>
-              {selGame && <Link href={mainRoute(selGame.id) || circleRoute(selGame.id) || "/arcade"} data-testid="link-play" className="mt-3 inline-block rounded-full border px-4 py-1.5 text-[12px] font-extrabold" style={{ borderColor: selGame.accent, color: selGame.accent }}>Play {selGame.name} →</Link>}
+              {selGame && <Link href={mainRoute(selGame.id) || "/arcade"} data-testid="link-play" className="mt-3 inline-block rounded-full border px-4 py-1.5 text-[12px] font-extrabold" style={{ borderColor: selGame.accent, color: selGame.accent }}>Play {selGame.name} →</Link>}
             </div>
           ) : (
             <div className="flex flex-col gap-1.5" data-testid="board">
@@ -104,7 +100,6 @@ export default function Leaderboard() {
 }
 
 const mainRoute = (id: string) => MAIN_STREET_CABINETS.find((c) => c.id === id)?.route;
-const circleRoute = (id: string) => ARCADE_GAMES.find((g) => g.id === id)?.route;
 
 function Rail({ label, games, sel, onPick }: { label: string; games: LbGame[]; sel: string; onPick: (id: string) => void }) {
   if (!games.length) return null;

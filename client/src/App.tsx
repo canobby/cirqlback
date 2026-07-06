@@ -51,7 +51,6 @@ import PlatformOverview from "@/pages/platform-overview";
 // CirqlArcade — each game is code-split so customers who never play don't download
 // the engines. Bounce (=CirqlBreak) is /play; the arcade picker + other games below.
 const PlayPage = lazy(() => import("@/pages/play"));
-const ArcadePage = lazy(() => import("@/pages/arcade"));
 const RetroDemoPage = lazy(() => import("@/pages/retro-demo"));
 const AvatarPage = lazy(() => import("@/pages/avatar"));
 const AchievementsPage = lazy(() => import("@/pages/achievements"));
@@ -148,9 +147,7 @@ function Router() {
           {/* Core Bento Pages - Streamlined for first deployment */}
           <Route path="/" component={HomeBento} />
           <Route path="/customer" component={CustomerBento} />
-          {/* /arcade is now the unified pixel lobby front door (both game lines). The
-              original neon spin-wheel picker lives on at /arcade/classic. */}
-          <Route path="/arcade/classic">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ArcadePage /></Suspense>}</Route>
+          {/* /arcade is the Main Street Arcade pixel lobby front door. */}
           <Route path="/arcade">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><LobbyPage /></Suspense>}</Route>
           <Route path="/retro-demo">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><RetroDemoPage /></Suspense>}</Route>
           <Route path="/avatar">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><AvatarPage /></Suspense>}</Route>

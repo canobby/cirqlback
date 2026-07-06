@@ -4,25 +4,21 @@ import { Home, Trophy, Star, Heart, User } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { loadAvatarLS, drawAvatarToCanvas } from "@/game/avatar";
 import { MAIN_STREET_CABINETS, paintCover, COVER_W, COVER_H, type Cabinet } from "@/game/cabinet-covers";
-import { ARCADE_GAMES, ARCADE_CIRCLES, gamesInCircle } from "@/game/registry";
 import { InsertCoinCutscene } from "@/components/insert-coin";
 import { takePending, syncRewardsFromServer, type Achievement } from "@/game/rewards";
 import { getFavorites, toggleFavorite, syncFavoritesFromServer } from "@/game/favorites";
 
-// The unified CIRQLBACK · MAIN STREET ARCADE lobby — one pixel/CRT front door for
-// both game lines. Player card (your avatar), a category rail, cover-art game cards,
-// and the Insert-Coin cutscene on cabinet launch.
+// The CIRQLBACK · MAIN STREET ARCADE lobby — the pixel/CRT front door for the 10
+// 16-bit cabinets. Player card (your avatar), a category rail, cover-art cards, and
+// the Insert-Coin cutscene on cabinet launch.
 const S = 2;
 const stars = (d: number) => "★★★☆☆☆".slice(3 - d, 6 - d);
 
-type CatId = "favorites" | "main" | (typeof ARCADE_CIRCLES)[number]["id"];
+type CatId = "favorites" | "main";
 
-// unified metadata for a favoritable game across both lines
-type FavGame = { id: string; name: string; sub: string; accent: string; line: "main" | "circle"; route: string; glyph?: string; cab?: Cabinet };
-const ALL_FAV: FavGame[] = [
-  ...MAIN_STREET_CABINETS.map((c) => ({ id: c.id, name: c.name, sub: c.shop, accent: c.accent, line: "main" as const, route: c.route, cab: c })),
-  ...ARCADE_GAMES.filter((g) => g.status === "live").map((g) => ({ id: g.id, name: g.name, sub: g.genre, accent: g.accent, line: "circle" as const, route: g.route, glyph: g.glyph })),
-];
+// metadata for a favoritable cabinet
+type FavGame = { id: string; name: string; sub: string; accent: string; route: string; cab: Cabinet };
+const ALL_FAV: FavGame[] = MAIN_STREET_CABINETS.map((c) => ({ id: c.id, name: c.name, sub: c.shop, accent: c.accent, route: c.route, cab: c }));
 
 export default function Lobby() {
   const { user } = useAuth();
@@ -64,9 +60,7 @@ export default function Lobby() {
   const rail: { id: CatId; name: string; count: number; accent: string }[] = [
     { id: "favorites", name: "Favorites", count: favs.length, accent: "#ff8ab5" },
     { id: "main", name: "Main Street", count: MAIN_STREET_CABINETS.length, accent: "#b79bff" },
-    ...ARCADE_CIRCLES.map((c) => ({ id: c.id as CatId, name: c.name, count: gamesInCircle(c.id).length, accent: c.accent })),
   ];
-  const circleGames = cat !== "main" && cat !== "favorites" ? ARCADE_GAMES.filter((g) => g.category === cat) : [];
   const favGames = ALL_FAV.filter((g) => favs.includes(g.id));
 
   const onLaunch = (cab: Cabinet) => setLaunch(cab);
@@ -127,36 +121,33 @@ export default function Lobby() {
 
           <div>
             <div className="mb-3 flex items-center gap-3 text-[15px] font-extrabold uppercase tracking-[0.05em]" style={{ color: "#ffb020", textShadow: "0 0 10px rgba(255,176,32,.4)" }}>
-              ▸ {cat === "main" ? "Main Street · 16-bit cabinets" : cat === "favorites" ? "★ Favorites" : rail.find((r) => r.id === cat)?.name}
+              ▸ {cat === "favorites" ? "★ Favorites" : "Main Street · 16-bit cabinets"}
               <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, rgba(255,176,32,.5), transparent)" }} />
             </div>
 
             {cat === "favorites" ? (
               favGames.length ? (
                 <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))" }}>
-                  {favGames.map((g) => {
-                    const inner = (
+                  {favGames.map((g) => (
+                    <div key={g.id} onClick={() => onLaunch(g.cab)} role="button" tabIndex={0} data-testid={`fav-card-${g.id}`} className="cursor-pointer active:scale-[0.98]">
                       <div className="relative flex h-full items-center gap-2.5 rounded-xl border p-2.5" style={{ borderColor: g.accent + "88", background: "linear-gradient(180deg,#180f34,#130d28)", boxShadow: "0 6px 18px rgba(0,0,0,.4)" }}>
-                        <div className="flex h-10 w-10 flex-none items-center justify-center rounded-lg text-[20px]" style={{ background: `${g.accent}1f`, border: `1px solid ${g.accent}55`, filter: `drop-shadow(0 0 6px ${g.accent}88)` }}>{g.glyph || "🕹️"}</div>
+                        <div className="flex h-10 w-10 flex-none items-center justify-center rounded-lg text-[20px]" style={{ background: `${g.accent}1f`, border: `1px solid ${g.accent}55`, filter: `drop-shadow(0 0 6px ${g.accent}88)` }}>🕹️</div>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-[13px] font-extrabold text-white">{g.name}</div>
-                          <div className="truncate text-[10px] uppercase tracking-wide text-violet-200/50">{g.line === "main" ? "Main Street" : "Circle"} · {g.sub}</div>
+                          <div className="truncate text-[10px] uppercase tracking-wide text-violet-200/50">Main Street · {g.sub}</div>
                         </div>
                         <FavStar id={g.id} on={true} onToggle={onToggleFav} />
                       </div>
-                    );
-                    return g.line === "main"
-                      ? <div key={g.id} onClick={() => g.cab && onLaunch(g.cab)} role="button" tabIndex={0} data-testid={`fav-card-${g.id}`} className="cursor-pointer active:scale-[0.98]">{inner}</div>
-                      : <Link key={g.id} href={g.route} data-testid={`fav-card-${g.id}`} className="active:scale-[0.98]">{inner}</Link>;
-                  })}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="rounded-xl border py-10 text-center" style={{ borderColor: "#2e2158", background: "rgba(255,255,255,.02)" }} data-testid="fav-empty">
                   <div className="text-[13px] font-extrabold text-white">No favorites yet</div>
-                  <div className="mt-1 text-[11px] text-violet-300/50">Tap the ★ on any game to pin it here for quick access.</div>
+                  <div className="mt-1 text-[11px] text-violet-300/50">Tap the ★ on any cabinet to pin it here for quick access.</div>
                 </div>
               )
-            ) : cat === "main" ? (
+            ) : (
               <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(158px,1fr))" }}>
                 {MAIN_STREET_CABINETS.map((cab, i) => (
                   <div key={cab.id} onClick={() => onLaunch(cab)} role="button" tabIndex={0} data-testid={`cabinet-${cab.id}`}
@@ -180,23 +171,6 @@ export default function Lobby() {
                     </div>
                   </div>
                 ))}
-              </div>
-            ) : (
-              <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))" }}>
-                {circleGames.map((g) => {
-                  const card = (
-                    <div className="flex h-full flex-col rounded-xl border p-3" style={{ borderColor: g.accent + "88", background: "linear-gradient(180deg,#180f34,#130d28)", boxShadow: `0 6px 18px rgba(0,0,0,.4)` }}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[26px]" style={{ filter: `drop-shadow(0 0 8px ${g.accent})` }}>{g.glyph}</span>
-                        {g.status === "soon" ? <span className="rounded bg-[#5f574f] px-1.5 py-0.5 text-[8px] font-extrabold text-[#0a0714]">SOON</span> : <FavStar id={g.id} on={favs.includes(g.id)} onToggle={onToggleFav} />}
-                      </div>
-                      <div className="mt-2 text-[13px] font-extrabold text-white">{g.name}</div>
-                      <div className="text-[10px] text-violet-200/50">{g.genre}</div>
-                      <div className="mt-1 line-clamp-2 text-[10.5px] leading-snug text-violet-100/50">{g.tagline}</div>
-                    </div>
-                  );
-                  return g.status === "live" ? <Link key={g.id} href={g.route} data-testid={`game-${g.id}`} className="active:scale-[0.98]">{card}</Link> : <div key={g.id} className="opacity-70">{card}</div>;
-                })}
               </div>
             )}
           </div>
