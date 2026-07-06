@@ -57,6 +57,7 @@ const AvatarPage = lazy(() => import("@/pages/avatar"));
 const CoinDemoPage = lazy(() => import("@/pages/coin-demo"));
 const LobbyPage = lazy(() => import("@/pages/lobby"));
 const CuppaRushPage = lazy(() => import("@/pages/cuppa-rush"));
+const SliceRoutePage = lazy(() => import("@/pages/slice-route"));
 const DefenderPage = lazy(() => import("@/pages/defender"));
 const PopPage = lazy(() => import("@/pages/pop"));
 const SpinPage = lazy(() => import("@/pages/spin"));
@@ -143,6 +144,7 @@ function Router() {
           <Route path="/coin-demo">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CoinDemoPage /></Suspense>}</Route>
           <Route path="/lobby">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><LobbyPage /></Suspense>}</Route>
           <Route path="/play/cuppa">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CuppaRushPage /></Suspense>}</Route>
+          <Route path="/play/slice-route">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SliceRoutePage /></Suspense>}</Route>
           <Route path="/play/defender">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><DefenderPage /></Suspense>}</Route>
           <Route path="/play/pop">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PopPage /></Suspense>}</Route>
           <Route path="/play/spin">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SpinPage /></Suspense>}</Route>
