@@ -71,6 +71,7 @@ export const CABINET_META: Record<string, Meta> = {
   flutter: { cat: "action", era: "modern", howto: "Tap FLAP to give the escaped parakeet a little lift; gravity does the rest. Thread the gaps between the shop awnings — clip one (or the pavement) and the run's over. How far can you get?" },
   sugarswap: { cat: "puzzle", era: "modern", howto: "Swap two neighbouring candies to line up three or more of a colour — they pop, the rest tumble down, and fresh candies rain in, chaining any new matches into a COMBO. Longer lines pay more. Score big before your swaps run out. Pad + SWAP, or just tap two candies." },
   piggybank: { cat: "puzzle", era: "modern", howto: "Slide the whole board with the pad (or swipe); coins of the same value that bump together merge into the next one up. Keep merging toward the 2048 vault — but every move drops a new coin, and if the board jams with no merges left, the bank's closed." },
+  chopshop: { cat: "action", era: "modern", howto: "Ingredients arc up off the counter — swipe across the screen to slice them, and string several in one swipe for a combo. Let a fruit hit the floor and you lose a life; slice a stink-bomb and it's over." },
 };
 
 export function metaFor(id: string): Meta { return CABINET_META[id] || { cat: "action", howto: "" }; }
