@@ -15,7 +15,8 @@
     "collateral": "node scripts/gen-collateral.mjs",
     "legal": "node scripts/gen-legal.mjs",
     "playtest": "node scripts/gen-playtest.mjs",
-    "beta": "node scripts/gen-beta.mjs"
+    "beta": "node scripts/gen-beta.mjs",
+    "mainstreet": "node scripts/gen-doc.mjs docs/cirql/Main-Street-Arcade.md Main-Street-Arcade"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.16.0",
