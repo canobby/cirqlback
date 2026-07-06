@@ -66,6 +66,8 @@ export const CABINET_META: Record<string, Meta> = {
   plink: { cat: "carnival", howto: "Aim the chute and DROP a token; it pinballs down the pegs into a slot — the centre and the lit JACKPOT pay big." },
   pinpals: { cat: "carnival", howto: "Work the two flippers to keep the ball alive off the bumpers; light every bumper for MULTIBALL and the jackpot." },
   punch: { cat: "beat", howto: "Read the tell and DODGE the way the arrow points, then JAB the opening; string clean dodges to charge a STAR punch." },
+  // ---- modern wave ----
+  nightshift: { cat: "action", era: "modern", howto: "You don't aim — just MOVE and your spatula auto-slings at the nearest gremlin. Grab the tips they drop to LEVEL UP and pick an upgrade; dodge with DASH and survive the swarm till the 6 AM dawn." },
 };
 
 export function metaFor(id: string): Meta { return CABINET_META[id] || { cat: "action", howto: "" }; }
