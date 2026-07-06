@@ -15,6 +15,7 @@
 import { clamp, mulberry32, hexToRgb, LS, TAU } from "./arcade-core";
 import { FONT, FONT_W, FONT_H, GLYPH_ADVANCE } from "./retro-font";
 import { paintAvatar, type AvatarConfig } from "./avatar";
+import type { MusicKit } from "./musickit";
 
 export { LS, TAU };
 
@@ -102,6 +103,10 @@ export abstract class RetroEngine {
   protected reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   private vignette: CanvasGradient | null = null;
 
+  // optional background music (a cabinet attaches a MusicKit); mute + teardown forward to it
+  protected music: MusicKit | null = null;
+  private gestured = false;
+
   protected hooks: RetroHooks;
   protected rnd = mulberry32(0x1a2b3c);
 
@@ -150,6 +155,9 @@ export abstract class RetroEngine {
   /** Optional: react to a fresh run starting / returning to menu. */
   protected onStart(): void { /* override */ }
   protected onMenu(): void { /* override */ }
+  /** Fired once, on the first user gesture (audio is unlocked here — a good place to start music). */
+  protected onGesture(): void { /* override */ }
+  private fireGesture() { if (this.gestured) return; this.gestured = true; this.onGesture(); }
 
   // ---------- the loop ----------
   private frame = (now: number) => {
@@ -231,7 +239,7 @@ export abstract class RetroEngine {
     const bt = this.keyToBtn(e.code);
     if (!bt) return;
     e.preventDefault();
-    this.resumeAudio();
+    this.resumeAudio(); this.fireGesture();
     if (!this.btn[bt]) this.pressed[bt] = true;
     this.btn[bt] = true;
   };
@@ -240,14 +248,14 @@ export abstract class RetroEngine {
     if (bt) this.btn[bt] = false;
   };
   /** On-screen control press (two-thumb d-pad + action buttons drive these). */
-  press(bt: Btn) { this.resumeAudio(); if (!this.btn[bt]) this.pressed[bt] = true; this.btn[bt] = true; }
+  press(bt: Btn) { this.resumeAudio(); this.fireGesture(); if (!this.btn[bt]) this.pressed[bt] = true; this.btn[bt] = true; }
   release(bt: Btn) { this.btn[bt] = false; }
 
   private onPointer = (e: PointerEvent) => {
     const r = this.cv.getBoundingClientRect();
     this.pointer.x = ((e.clientX - r.left) / r.width) * this.LW;
     this.pointer.y = ((e.clientY - r.top) / r.height) * this.LH;
-    if (e.type === "pointerdown") { this.pointer.down = true; this.resumeAudio(); }
+    if (e.type === "pointerdown") { this.pointer.down = true; this.resumeAudio(); this.fireGesture(); }
   };
   private onPointerUp = () => { this.pointer.down = false; };
   private onVisibility = () => { if (!document.hidden) this.last = performance.now(); };
@@ -342,7 +350,7 @@ export abstract class RetroEngine {
   // ---------- host-facing controls (shell-compatible) ----------
   start() { this.running = true; this.acc = 0; this.last = performance.now(); this.onStart(); }
   toMenu() { this.running = false; this.onMenu(); }
-  setMuted(m: boolean) { this.muted = m; }
+  setMuted(m: boolean) { this.muted = m; this.music?.setMuted(m); }
   setHaptics(h: boolean) { this.haptics = h; }
   setTimeScale(s: number) { this.timeScale = clamp(s, 0.25, 3); }
   setCRT(on: boolean) { this.crt = on; }
@@ -360,6 +368,7 @@ export abstract class RetroEngine {
     window.removeEventListener("keyup", this.onKeyUp);
     document.removeEventListener("visibilitychange", this.onVisibility);
     this.onDestroy();
+    this.music?.dispose();
     try { this.ac?.close(); } catch { /* ignore */ }
     this.ac = null;
   }

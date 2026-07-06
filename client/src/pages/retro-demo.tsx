@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { RetroEngine, mix } from "@/game/retro-engine";
+import { MusicKit, MAIN_STREET_THEME } from "@/game/musickit";
 
 // A tiny RetroEngine subclass that exercises the whole 16-bit stack — pixel buffer,
 // nearest-neighbor upscale, CRT, gradient backdrop, the bundled pixel font, and a
@@ -16,11 +17,17 @@ class BootDemo extends RetroEngine {
 
   constructor(canvas: HTMLCanvasElement) {
     super(canvas, {}, 240, 180);
+    this.music = new MusicKit({ volume: 0.5 });
     this.start();
   }
 
+  // audio unlocks on the first tap/key — kick off the Main Street theme, then let
+  // it thicken (dynamic layering) as the attract loop plays.
+  protected onGesture() { this.music?.play(MAIN_STREET_THEME); }
+
   protected update(dt: number) {
     this.t += dt;
+    this.music?.setIntensity(Math.min(1, this.t / 6));
     this.bx += this.bvx * dt;
     this.by += this.bvy * dt;
     const r = 12;
@@ -55,6 +62,7 @@ class BootDemo extends RetroEngine {
 
     // blinking prompt + phase label
     if (Math.floor(this.t * 2) % 2 === 0) this.textCenter(this.LH - 16, "PRESS START", "#ffec27", 1);
+    if (!this.music?.playing) this.textCenter(this.LH - 8, "TAP FOR SOUND", "#83769c", 1);
     this.text(4, 4, "PHASE 0", mix("#83769c", "#29adff", 0.5), 1, false);
     this.text(this.LW - this.textWidth("RETROENGINE", 1) - 4, 4, "RETROENGINE", "#5f574f", 1, false);
   }
@@ -67,7 +75,7 @@ export default function RetroDemo() {
   useEffect(() => {
     if (!canvas.current) return;
     const eng = new BootDemo(canvas.current);
-    if (import.meta.env.DEV) (window as any).__retro = eng;
+    if (import.meta.env.DEV) { (window as any).__retro = eng; (window as any).__music = (eng as any).music; }
     return () => eng.destroy();
   }, []);
 
