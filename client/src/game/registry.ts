@@ -156,6 +156,9 @@ export const ARCADE_GAMES: ArcadeGame[] = [
   { id: "kaleido", name: "Cirql Kaleido", genre: "Kaleidoscope", category: "zen", tagline: "Tune a living kaleidoscope into ever-shifting symmetry.", route: "/play/kaleido", accent: "#f472b6", glyph: "❈", status: "live" },
   { id: "ember", name: "Cirql Ember", genre: "Zen sandbox", category: "zen", tagline: "Tend a campfire, feed it sparks, watch the embers drift up.", route: "/play/ember", accent: "#fb7185", glyph: "✶", status: "live" },
   { id: "mancala", name: "Cirql Mancala", genre: "Mancala", category: "strategy", tagline: "Sow stones around the pits and capture the rim.", route: "/play/mancala", accent: "#fbbf24", glyph: "⦾", status: "live" },
+  { id: "koi", name: "Cirql Koi", genre: "Zen sandbox", category: "zen", tagline: "Trail your finger to guide koi through a rippling pond.", route: "/play/koi", accent: "#fb923c", glyph: "⌇", status: "live" },
+  { id: "market", name: "Cirql Market", genre: "Trading", category: "strategy", tagline: "Buy low, sell high, and out-trade the rival before the bell.", route: "/play/market", accent: "#34d399", glyph: "$", status: "live" },
+  { id: "fortress", name: "Cirql Fortress", genre: "Maze defense", category: "strategy", tagline: "Wall the horde into a maze and hold the core.", route: "/play/fortress", accent: "#a78bfa", glyph: "⌗", status: "live" },
 ];
 
 // Games in a Circle (live only), in registry order.

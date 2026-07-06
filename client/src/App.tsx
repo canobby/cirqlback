@@ -111,6 +111,9 @@ const AuroraPage = lazy(() => import("@/pages/aurora"));
 const KaleidoPage = lazy(() => import("@/pages/kaleido"));
 const EmberPage = lazy(() => import("@/pages/ember"));
 const MancalaPage = lazy(() => import("@/pages/mancala"));
+const KoiPage = lazy(() => import("@/pages/koi"));
+const MarketPage = lazy(() => import("@/pages/market"));
+const FortressPage = lazy(() => import("@/pages/fortress"));
 
 function Router() {
   const [location] = useLocation();
@@ -189,6 +192,9 @@ function Router() {
           <Route path="/play/kaleido">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><KaleidoPage /></Suspense>}</Route>
           <Route path="/play/ember">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><EmberPage /></Suspense>}</Route>
           <Route path="/play/mancala">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><MancalaPage /></Suspense>}</Route>
+          <Route path="/play/koi">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><KoiPage /></Suspense>}</Route>
+          <Route path="/play/market">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><MarketPage /></Suspense>}</Route>
+          <Route path="/play/fortress">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><FortressPage /></Suspense>}</Route>
           <Route path="/play">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PlayPage /></Suspense>}</Route>
           <Route path="/merchant" component={MerchantBento} />
           <Route path="/analytics" component={AnalyticsBento} />
