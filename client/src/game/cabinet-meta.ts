@@ -79,6 +79,7 @@ export const CABINET_META: Record<string, Meta> = {
   smoothie: { cat: "puzzle", era: "modern", howto: "Move the spout and DROP fruit into the cup. Two of the same size that touch merge into the next size up — berries to melons — and each merge scores more. But the cup keeps filling: let the pile spill over the rim and it's last call." },
   fowlplay: { cat: "action", era: "modern", howto: "Drag back on the slingshot to set your angle and power, then let go to fling the fowl. It arcs and ricochets off the crates — pop every pest before you run out of birds. Fewer birds spent = a bigger clear bonus. (Pad: ▲▼ angle, hold FIRE to charge.)" },
   wireup: { cat: "puzzle", era: "modern", howto: "Drag a wire from each colour terminal to its matching twin — no crossing, and fill every empty cell to complete the junction box. Cross another wire and it snips it back. Wire up as many boxes as you can before the shift clock runs out." },
+  huehop: { cat: "action", era: "modern", howto: "Tap to hop the paint blob up the spinning colour wheels — you can only pass through the slice that matches your own colour, so time each hop. Grab a paint splat to switch colour for the next wheel. Miss the match or fall and it's splat. Climb as high as you can." },
 };
 
 export function metaFor(id: string): Meta { return CABINET_META[id] || { cat: "action", howto: "" }; }
