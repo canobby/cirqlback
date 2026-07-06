@@ -147,7 +147,10 @@ function Router() {
           {/* Core Bento Pages - Streamlined for first deployment */}
           <Route path="/" component={HomeBento} />
           <Route path="/customer" component={CustomerBento} />
-          <Route path="/arcade">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ArcadePage /></Suspense>}</Route>
+          {/* /arcade is now the unified pixel lobby front door (both game lines). The
+              original neon spin-wheel picker lives on at /arcade/classic. */}
+          <Route path="/arcade/classic">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ArcadePage /></Suspense>}</Route>
+          <Route path="/arcade">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><LobbyPage /></Suspense>}</Route>
           <Route path="/retro-demo">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><RetroDemoPage /></Suspense>}</Route>
           <Route path="/avatar">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><AvatarPage /></Suspense>}</Route>
           <Route path="/achievements">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><AchievementsPage /></Suspense>}</Route>
