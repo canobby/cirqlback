@@ -81,6 +81,7 @@ const SpellboundPage = lazy(() => import("@/pages/spellbound"));
 const SortItPage = lazy(() => import("@/pages/sort-it"));
 const SmoothiePage = lazy(() => import("@/pages/smoothie"));
 const FowlPlayPage = lazy(() => import("@/pages/fowl-play"));
+const WireUpPage = lazy(() => import("@/pages/wire-up"));
 const HarvestMoonlightPage = lazy(() => import("@/pages/harvest-moonlight"));
 const GreenThumbPage = lazy(() => import("@/pages/green-thumb"));
 const BloomBoomPage = lazy(() => import("@/pages/bloom-boom"));
@@ -216,6 +217,7 @@ function Router() {
           <Route path="/play/sort-it">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SortItPage /></Suspense>}</Route>
           <Route path="/play/smoothie">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SmoothiePage /></Suspense>}</Route>
           <Route path="/play/fowl-play">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><FowlPlayPage /></Suspense>}</Route>
+          <Route path="/play/wire-up">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><WireUpPage /></Suspense>}</Route>
           <Route path="/play/harvest-moonlight">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><HarvestMoonlightPage /></Suspense>}</Route>
           <Route path="/play/green-thumb">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><GreenThumbPage /></Suspense>}</Route>
           <Route path="/play/bloom-boom">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><BloomBoomPage /></Suspense>}</Route>
