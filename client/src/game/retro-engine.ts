@@ -49,6 +49,8 @@ export interface RetroHooks {
   crt?: boolean;
   onHud?: (h: any) => void;
   onRunEnd?: (r: any) => void;
+  /** CIRQL CITY town hub: fired when the player enters a shop front — host navigates to that cabinet. */
+  onEnterShop?: (route: string) => void;
 }
 
 /**

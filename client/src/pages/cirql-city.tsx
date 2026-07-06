@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "wouter";
-import { ArrowLeft, ChevronLeft, ChevronRight, Zap } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlCityEngine } from "@/game/cirql-city-engine";
 import type { Btn } from "@/game/retro-engine";
 import { recordRun, recordPoints } from "@/game/rewards";
+import { syncProgressFromServer } from "@/game/cirql-city-save";
 
 const GAME_ID = "cirqlcity";
-const lsGet = (k: string) => { try { return window.localStorage.getItem(k); } catch { return null; } };
 
 export default function CirqlCity() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<CirqlCityEngine | null>(null);
   const userRef = useRef(user); userRef.current = user;
@@ -20,20 +21,21 @@ export default function CirqlCity() {
   useEffect(() => {
     if (!canvasRef.current) return;
     const eng = new CirqlCityEngine(canvasRef.current, {
-      onHud: (h: any) => { if (h.state !== "over") { setOver(false); setDaily(null); } else setOver(true); },
+      onHud: (h: any) => { if (h.state !== "over" && h.state !== "clear") { setOver(false); setDaily(null); } else setOver(true); },
+      onEnterShop: (route: string) => setLocation(route),   // walk into a shop → play that cabinet
       onRunEnd: (r: { score: number; shift: number }) => {
-        const best = +(lsGet("cirqlcity_best") || 0);
         recordRun(GAME_ID, r as any, { points: (userRef.current as any)?.totalPoints ?? (userRef.current as any)?.points ?? 0 });
         const u = userRef.current; if (!u) return;
-        fetch("/api/game/progress", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: GAME_ID, state: { best: Math.max(best, r.score) } }) }).catch(() => {});
         fetch("/api/game/daily/score", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: GAME_ID, score: r.score, bestCombo: 0, restored: false }) })
           .then((res) => (res.ok ? res.json() : null)).then((j) => { if (j) { setDaily({ rank: j.rank, total: j.total, reward: j.reward?.points }); if (j.reward?.total != null) recordPoints(j.reward.total); } }).catch(() => {});
       },
     });
     engineRef.current = eng;
+    // resume: adopt server-saved district/unlock progress once it arrives
+    syncProgressFromServer().then((p) => engineRef.current?.applyProgress(p)).catch(() => {});
     if (import.meta.env.DEV) (window as any).__game = eng;
     return () => { eng.destroy(); engineRef.current = null; };
-  }, []);
+  }, [setLocation]);
 
   const hold = (b: Btn) => ({
     onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ } engineRef.current?.press(b); },
@@ -41,6 +43,9 @@ export default function CirqlCity() {
     onPointerCancel: () => engineRef.current?.release(b),
     style: { touchAction: "none" as const },
   });
+
+  const padBtn = "flex h-11 w-11 items-center justify-center rounded-xl border-[1.5px] active:scale-90";
+  const padStyle = { borderColor: "#b79bff", background: "rgba(255,255,255,.03)", boxShadow: "0 0 14px rgba(183,155,255,.2) inset", touchAction: "none" as const };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center" style={{ background: "#0a0714", color: "#fff4ea", touchAction: "none", userSelect: "none" }}>
@@ -59,11 +64,15 @@ export default function CirqlCity() {
         )}
       </div>
 
-      {/* two-thumb controls: move (left) · run + jump (right) */}
-      <div className="flex w-full max-w-[620px] items-center justify-between gap-4 px-6 pb-[calc(18px+env(safe-area-inset-bottom))] pt-2">
-        <div className="flex gap-2.5">
-          <button {...hold("left")} data-testid="btn-left" className="flex h-16 w-16 items-center justify-center rounded-2xl border-[1.5px] active:scale-90" style={{ borderColor: "#b79bff", background: "rgba(255,255,255,.03)", boxShadow: "0 0 18px rgba(183,155,255,.22) inset", touchAction: "none" }}><ChevronLeft className="h-8 w-8 text-violet-200" /></button>
-          <button {...hold("right")} data-testid="btn-right" className="flex h-16 w-16 items-center justify-center rounded-2xl border-[1.5px] active:scale-90" style={{ borderColor: "#b79bff", background: "rgba(255,255,255,.03)", boxShadow: "0 0 18px rgba(183,155,255,.22) inset", touchAction: "none" }}><ChevronRight className="h-8 w-8 text-violet-200" /></button>
+      {/* controls: 4-way d-pad (town + platforming) · RUN + JUMP/ENTER */}
+      <div className="flex w-full max-w-[620px] items-end justify-between gap-4 px-6 pb-[calc(18px+env(safe-area-inset-bottom))] pt-2">
+        <div className="grid grid-cols-3 grid-rows-2 gap-1.5" style={{ width: 148 }}>
+          <div />
+          <button {...hold("up")} data-testid="btn-up" className={padBtn} style={padStyle}><ChevronUp className="h-6 w-6 text-violet-200" /></button>
+          <div />
+          <button {...hold("left")} data-testid="btn-left" className={padBtn} style={padStyle}><ChevronLeft className="h-6 w-6 text-violet-200" /></button>
+          <button {...hold("down")} data-testid="btn-down" className={padBtn} style={padStyle}><ChevronDown className="h-6 w-6 text-violet-200" /></button>
+          <button {...hold("right")} data-testid="btn-right" className={padBtn} style={padStyle}><ChevronRight className="h-6 w-6 text-violet-200" /></button>
         </div>
         <div className="flex items-center gap-3">
           <button {...hold("b")} data-testid="btn-run" className="flex h-14 w-14 flex-col items-center justify-center rounded-full border-[1.5px] text-[10px] font-extrabold active:scale-90" style={{ borderColor: "#3bb6ff", color: "#7be0ff", background: "rgba(255,255,255,.03)", boxShadow: "0 0 18px rgba(59,182,255,.25) inset", touchAction: "none" }}><Zap className="h-5 w-5" /> RUN</button>
