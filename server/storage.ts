@@ -152,7 +152,10 @@ export interface IStorage {
   // Tap operations
   processTap(tap: InsertTap, opts?: { latitude?: number; longitude?: number }): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[]; donations?: any[]; progress?: { count: number; goal: number; rewardEarned: boolean } }>;
   getTaps(businessId?: string, customerEmail?: string): Promise<Tap[]>;
-  
+  // Distinct businesses a customer has tapped, most-recent first — powers the
+  // CIRQL City hub personalizing shop signs with the player's real visited places.
+  getCustomerVisitedBusinesses(email: string, limit?: number): Promise<{ id: string; name: string; establishmentType: string[] | null }[]>;
+
   // Reward operations
   getReward(id: string): Promise<Reward | undefined>;
   getRewardsByUser(userId: string): Promise<Reward[]>;
@@ -3148,6 +3151,20 @@ export class DatabaseStorage implements IStorage {
       .from(taps)
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(taps.createdAt));
+  }
+
+  async getCustomerVisitedBusinesses(email: string, limit = 20): Promise<{ id: string; name: string; establishmentType: string[] | null }[]> {
+    if (!email) return [];
+    // most-recent tap per business, then that business's name — distinct businesses
+    const rows = await db
+      .select({ id: businesses.id, name: businesses.name, establishmentType: businesses.establishmentType, last: sql<string>`MAX(${taps.createdAt})` })
+      .from(taps)
+      .innerJoin(businesses, eq(taps.businessId, businesses.id))
+      .where(and(eq(taps.customerEmail, email), eq(businesses.isActive, true)))
+      .groupBy(businesses.id, businesses.name, businesses.establishmentType)
+      .orderBy(sql`MAX(${taps.createdAt}) DESC`)
+      .limit(limit);
+    return rows.map((r) => ({ id: r.id, name: r.name, establishmentType: (r.establishmentType as string[] | null) ?? null }));
   }
 
   // Reward operations

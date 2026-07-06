@@ -58,6 +58,7 @@ export class CirqlCityEngine extends RetroEngine {
   private nearDoor: TownDoor | null = null;
   private townT = 0;
   private readonly tpw = 10; private readonly tph = 8;   // top-down footprint
+  private townShopBiz: (string | undefined)[] = [];      // real visited-business name per town shop
 
   // progress / place in the game
   private progress: CityProgress;
@@ -122,6 +123,22 @@ export class CirqlCityEngine extends RetroEngine {
     this.progress = { ...p };
     this.best = Math.max(this.best, p.best);
     this.emit();
+  }
+
+  /** Personalize the town: name shop fronts after the real businesses this player
+   * has actually tapped (café sign becomes "Maria's Taqueria", etc). Display-only. */
+  applyBusinesses(names: string[]) {
+    const clean = Array.from(new Set((names || []).map((n) => n.trim()).filter(Boolean))).slice(0, this.town.shops.length);
+    this.townShopBiz = this.town.shops.map((_, i) => clean[i]);
+    this.emit();
+  }
+  private shopIndexForDoor(d: TownDoor): number {
+    return this.town.shops.findIndex((s) => s.cx === d.tx && ((d.ty === TOP_B && s.side === "top") || (d.ty === BOT_B - 1 && s.side === "bottom")));
+  }
+  private townLabel(i: number, fallback: string): string {
+    const n = i >= 0 ? this.townShopBiz[i] : undefined;
+    if (!n) return fallback;
+    return n.length > 12 ? n.slice(0, 11) + "." : n;
   }
 
   // ---------- level building ----------
@@ -564,7 +581,8 @@ export class CirqlCityEngine extends RetroEngine {
     this.ring(10, 8, 3, "#ffd24a", 1.3); this.text(16, 4, `${this.progress.coins}`, "#fff1e8", 1, false);
     this.text(this.LW - 60, 4, `REVIVED ${this.districtsCleared()}/${DISTRICTS.length}`, "#c2c3c7", 1, false);
     if (this.nearDoor) {
-      const label = this.nearDoor.kind === "gate" && !this.isUnlocked(this.nearDoor.index!) ? "LOCKED" : this.nearDoor.label;
+      const shopName = this.nearDoor.kind === "shop" ? this.townLabel(this.shopIndexForDoor(this.nearDoor), this.nearDoor.label) : this.nearDoor.label;
+      const label = this.nearDoor.kind === "gate" && !this.isUnlocked(this.nearDoor.index!) ? "LOCKED" : shopName;
       const col = this.nearDoor.kind === "gate" && !this.isUnlocked(this.nearDoor.index!) ? "#ff8a6a" : this.nearDoor.accent;
       const px = Math.round(this.hx + this.tpw / 2 - camX), py = Math.round(this.hy - camY) - 14 + Math.round(Math.sin(this.townT * 6) * 1.5);
       this.textCenterAt(px, py, (this.nearDoor.kind === "gate" ? "> " : "* ") + label, col);
@@ -576,7 +594,9 @@ export class CirqlCityEngine extends RetroEngine {
   private districtsCleared() { let n = 0; for (let i = 0; i < DISTRICTS.length; i++) if (this.clearedCount(i) >= DISTRICTS[i].levels.length) n++; return n; }
 
   private drawTownBuildings(camX: number, camY: number, rev: number) {
-    for (const s of this.town.shops) {
+    for (let si = 0; si < this.town.shops.length; si++) {
+      const s = this.town.shops[si];
+      const label = this.townLabel(si, s.label);
       const bx = (s.cx - 2) * TT - camX, bw = TT * 5;
       const top = s.side === "top";
       const by = top ? 0 - camY : BOT_B * TT - camY;
@@ -594,10 +614,10 @@ export class CirqlCityEngine extends RetroEngine {
       const doorY = top ? by + bh - 8 : by + 2;
       this.rect(bx + bw / 2 - 4, doorY, 8, 8, shade(s.accent, -0.35));
       this.rectLine(bx + bw / 2 - 4, doorY, 8, 8, s.accent);
-      // hanging sign label
+      // hanging sign label — the real business name when the player has visited one
       const sy = top ? by + bh + 1 : by - 8;
-      this.rect(bx + bw / 2 - this.textWidth(s.label, 1) / 2 - 2, sy - 1, this.textWidth(s.label, 1) + 4, 8, "#0a0714c0");
-      this.textCenterAt(bx + bw / 2, sy, s.label, mix("#8a8598", s.accent, 0.4 + rev * 0.6));
+      this.rect(bx + bw / 2 - this.textWidth(label, 1) / 2 - 2, sy - 1, this.textWidth(label, 1) + 4, 8, "#0a0714c0");
+      this.textCenterAt(bx + bw / 2, sy, label, mix("#8a8598", s.accent, 0.4 + rev * 0.6));
     }
   }
   private drawTownGates(camX: number, camY: number) {

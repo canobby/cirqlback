@@ -33,6 +33,11 @@ export default function CirqlCity() {
     engineRef.current = eng;
     // resume: adopt server-saved district/unlock progress once it arrives
     syncProgressFromServer().then((p) => engineRef.current?.applyProgress(p)).catch(() => {});
+    // personalize the town: name shop fronts after the real places this player has tapped
+    fetch("/api/game/my-businesses", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (j?.businesses?.length) engineRef.current?.applyBusinesses(j.businesses.map((b: any) => b.name)); })
+      .catch(() => {});
     if (import.meta.env.DEV) (window as any).__game = eng;
     return () => { eng.destroy(); engineRef.current = null; };
   }, [setLocation]);

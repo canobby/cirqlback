@@ -334,4 +334,20 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
       res.status(500).json({ error: "Failed to load badges" });
     }
   });
+
+  // The real businesses this player has tapped — CIRQL City personalizes its shop
+  // signs with these, so the town fills with the actual local places they've visited.
+  // Read-only, private to the caller (their own visit history); no gameplay effect.
+  app.get("/api/game/my-businesses", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const email = (req.user as any).email || (await storage.getUser(userId))?.email;
+      if (!email) return res.json({ businesses: [] });
+      const list = await storage.getCustomerVisitedBusinesses(email, 24);
+      res.json({ businesses: list.map((b) => ({ name: b.name, types: b.establishmentType || [] })) });
+    } catch (err) {
+      console.error("my-businesses error:", err);
+      res.status(500).json({ error: "Failed to load your businesses" });
+    }
+  });
 }
