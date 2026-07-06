@@ -6,19 +6,31 @@
 // localStorage for instant boot, best-effort sync to the profile via game_progress
 // gameId "cirqlcity" (no migration; same JSON `state` column the other games use).
 
+export interface QuestState { p: number; done: boolean; claimed: boolean }
+
 export interface CityProgress {
   cleared: string[];                    // level keys completed
   unlocked: string[];                   // district keys reachable ("oldtown" always)
   coins: number;                        // running Cirql-coin total (currency)
   best: number;                         // best single-level score
   bestByLevel: Record<string, number>;
+  quests: Record<string, QuestState>;   // townsfolk quest progress
 }
 
 const LS_KEY = "cirqlcity_progress";
 const GAME_ID = "cirqlcity";
 
 export function emptyProgress(): CityProgress {
-  return { cleared: [], unlocked: ["oldtown"], coins: 0, best: 0, bestByLevel: {} };
+  return { cleared: [], unlocked: ["oldtown"], coins: 0, best: 0, bestByLevel: {}, quests: {} };
+}
+
+function mergeQuests(a: Record<string, QuestState> = {}, b: Record<string, QuestState> = {}): Record<string, QuestState> {
+  const out: Record<string, QuestState> = { ...a };
+  for (const k of Object.keys(b)) {
+    const x = out[k] || { p: 0, done: false, claimed: false }, y = b[k];
+    out[k] = { p: Math.max(x.p, y.p || 0), done: x.done || !!y.done, claimed: x.claimed || !!y.claimed };
+  }
+  return out;
 }
 
 export function loadProgress(): CityProgress {
@@ -46,6 +58,7 @@ export async function syncProgressFromServer(): Promise<CityProgress> {
           coins: Math.max(cur.coins, srv.coins || 0),
           best: Math.max(cur.best, srv.best || 0),
           bestByLevel: { ...(srv.bestByLevel || {}), ...cur.bestByLevel },
+          quests: mergeQuests(cur.quests, srv.quests),
         };
         try { window.localStorage.setItem(LS_KEY, JSON.stringify(merged)); } catch { /* ignore */ }
         return merged;

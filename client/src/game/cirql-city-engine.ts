@@ -19,6 +19,7 @@ import { MusicKit, MAIN_STREET_THEME } from "./musickit";
 import { DISTRICTS, buildLevel, TILE, GROUND_ROW, LEVEL_H, type BuiltLevel, type DistrictDef, type LevelDef } from "./cirql-city-levels";
 import { loadProgress, saveProgress, type CityProgress } from "./cirql-city-save";
 import { buildTown, TT, TOWN_W, TOWN_H, TOP_B, BOT_B, type BuiltTown, type TownDoor } from "./cirql-city-town";
+import { NPCS, questById, type QuestKind, type NpcDef } from "./cirql-city-quests";
 
 const SHOP_ACCENTS = ["#ff8a3d", "#ff5d7d", "#3bb6ff", "#ffd24a", "#33e650", "#b79bff"];
 const SHOP_NAMES = ["CAFE", "SLCE", "WASH", "SWTS", "MKT", "RECS", "DELI", "BOOK"];
@@ -56,6 +57,8 @@ export class CirqlCityEngine extends RetroEngine {
   private tface = 1;                                // -1/1 facing for the avatar
   private tWalk = 0;                                // walk-cycle phase
   private nearDoor: TownDoor | null = null;
+  private nearNpc: NpcDef | null = null;
+  private talking: NpcDef | null = null;
   private townT = 0;
   private readonly tpw = 10; private readonly tph = 8;   // top-down footprint
   private townShopBiz: (string | undefined)[] = [];      // real visited-business name per town shop
@@ -130,6 +133,35 @@ export class CirqlCityEngine extends RetroEngine {
   applyBusinesses(names: string[]) {
     const clean = Array.from(new Set((names || []).map((n) => n.trim()).filter(Boolean))).slice(0, this.town.shops.length);
     this.townShopBiz = this.town.shops.map((_, i) => clean[i]);
+    this.bumpQuest("visitReal", clean.length, true);
+    this.emit();
+  }
+
+  // ---------- townsfolk quests ----------
+  private qs(id: string) { this.progress.quests = this.progress.quests || {}; return (this.progress.quests[id] ||= { p: 0, done: false, claimed: false }); }
+  /** Advance every active quest of a kind from real gameplay. `set` = latch to a max (visit count), else add. */
+  private bumpQuest(kind: QuestKind, amt: number, set = false) {
+    let changed = false;
+    for (const q of NPCS.map((n) => questById(n.questId)).filter(Boolean)) {
+      if (!q || q.kind !== kind) continue;
+      const s = this.qs(q.id); if (s.done) continue;
+      s.p = set ? Math.max(s.p, amt) : s.p + amt;
+      if (s.p >= q.goal) { s.done = true; this.fxPop(this.hx + this.pw / 2, this.hy - 8, "QUEST DONE!", "#ffd24a", 1); this.tone(660, 0.08, "square", 0.05); this.tone(990, 0.12, "square", 0.05); }
+      changed = true;
+    }
+    if (changed) saveProgress(this.progress);
+  }
+  private talkTo(npc: NpcDef) { this.talking = npc; this.tvx = this.tvy = 0; this.tone(520, 0.05, "square", 0.05); this.emit(); }
+  private closeTalk() {
+    const npc = this.talking; this.talking = null;
+    if (!npc) return;
+    const q = questById(npc.questId); if (!q) { this.emit(); return; }
+    const s = this.qs(q.id);
+    if (s.done && !s.claimed) {
+      s.claimed = true; this.progress.coins += q.reward; saveProgress(this.progress);
+      this.fxBurst(this.hx + this.pw / 2, this.hy, "#ffd24a", 18, 120); this.fxPop(this.hx + this.pw / 2, this.hy - 10, `+${q.reward}`, "#ffd24a", 1);
+      this.addShake(0.8); this.tone(523, 0.06, "square", 0.05); this.tone(784, 0.08, "square", 0.05); this.tone(1046, 0.14, "square", 0.05); this.buzz(14);
+    } else { this.tone(400, 0.05, "square", 0.05); }
     this.emit();
   }
   private shopIndexForDoor(d: TownDoor): number {
@@ -292,6 +324,8 @@ export class CirqlCityEngine extends RetroEngine {
 
   private updateTown(dt: number) {
     this.townT += dt;
+    // in a conversation: movement frozen, JUMP closes / claims
+    if (this.talking) { if (this.pressed.a) this.closeTalk(); return; }
     const dx = (this.btn.right ? 1 : 0) - (this.btn.left ? 1 : 0);
     const dy = (this.btn.down ? 1 : 0) - (this.btn.up ? 1 : 0);
     const spd = this.btn.b ? 118 : 74;
@@ -318,10 +352,16 @@ export class CirqlCityEngine extends RetroEngine {
     }
     this.nearDoor = best;
 
+    // nearest townsperson to chat with
+    let bn: NpcDef | null = null, bnd = 1e9;
+    for (const n of NPCS) { const ndx = (n.cx + 0.5) * TT - cx, ndy = (n.ty + 0.5) * TT - cy, d = ndx * ndx + ndy * ndy; if (d < 20 * 20 && d < bnd) { bnd = d; bn = n; } }
+    this.nearNpc = bn;
+
     // gate auto-enter: walking north into an unlocked channel
     if (cy < TOP_B * TT) { const g = this.town.gates.find((gg) => Math.abs((gg.cx + 0.5) * TT - cx) < TT); if (g) { if (this.isUnlocked(g.index)) this.enterDistrict(g.index); else { this.placeInTown(g.cx, TOP_B + 1); this.tone(140, 0.1, "square", 0.05); } return; } }
 
-    if (this.pressed.a && this.nearDoor) this.triggerDoor(this.nearDoor);
+    // JUMP: talk to a townsperson if next to one, else use a shop/gate door
+    if (this.pressed.a) { if (this.nearNpc) this.talkTo(this.nearNpc); else if (this.nearDoor) this.triggerDoor(this.nearDoor); }
 
     // camera follows, clamped to town bounds
     const tw = this.town.W * TT, th = this.town.H * TT;
@@ -332,7 +372,7 @@ export class CirqlCityEngine extends RetroEngine {
   }
 
   private triggerDoor(d: TownDoor) {
-    if (d.kind === "shop" && d.route) { this.tone(660, 0.06, "square", 0.05); this.tone(990, 0.1, "square", 0.05); this.hooks.onEnterShop?.(d.route); }
+    if (d.kind === "shop" && d.route) { this.bumpQuest("playShops", 1); this.tone(660, 0.06, "square", 0.05); this.tone(990, 0.1, "square", 0.05); this.hooks.onEnterShop?.(d.route); }
     else if (d.kind === "gate" && d.index != null) { if (this.isUnlocked(d.index)) this.enterDistrict(d.index); else this.tone(140, 0.1, "square", 0.05); }
   }
 
@@ -429,11 +469,12 @@ export class CirqlCityEngine extends RetroEngine {
     this.progress.bestByLevel[lv.key] = Math.max(this.progress.bestByLevel[lv.key] || 0, this.score);
     if (this.score > this.progress.best) this.progress.best = this.score;
     if (this.score > this.best) this.best = this.score;
-    // clearing the boss (last level) unlocks the next district
-    if (this.li === this.district().levels.length - 1 && this.di < DISTRICTS.length - 1) {
-      const nk = DISTRICTS[this.di + 1].key;
-      if (!this.progress.unlocked.includes(nk)) this.progress.unlocked.push(nk);
+    // clearing the boss (last level) unlocks the next district + advances the revive quest
+    if (this.li === this.district().levels.length - 1) {
+      this.bumpQuest("reviveDistrict", 1);
+      if (this.di < DISTRICTS.length - 1) { const nk = DISTRICTS[this.di + 1].key; if (!this.progress.unlocked.includes(nk)) this.progress.unlocked.push(nk); }
     }
+    this.bumpQuest("collectCoins", this.gotCoins);
     saveProgress(this.progress);
     this.finishRun();
     this.emit();
@@ -583,6 +624,7 @@ export class CirqlCityEngine extends RetroEngine {
 
     this.drawTownBuildings(camX, camY, revived);
     this.drawTownGates(camX, camY);
+    this.drawTownNpcs(camX, camY);
     this.drawTownAvatar(camX, camY);
 
     // HUD + prompt
@@ -590,7 +632,14 @@ export class CirqlCityEngine extends RetroEngine {
     this.textCenter(3, "CIRQL CITY - MAIN STREET", "#ffd24a", 1);
     this.ring(10, 8, 3, "#ffd24a", 1.3); this.text(16, 4, `${this.progress.coins}`, "#fff1e8", 1, false);
     this.text(this.LW - 60, 4, `REVIVED ${this.districtsCleared()}/${DISTRICTS.length}`, "#c2c3c7", 1, false);
-    if (this.nearDoor) {
+    if (this.talking) { this.drawDialog(); return; }
+    if (this.nearNpc) {
+      const q = questById(this.nearNpc.questId); const s = q ? this.qs(q.id) : null;
+      const tag = s?.claimed ? "DONE" : s?.done ? "REWARD!" : "TALK";
+      const px = Math.round(this.hx + this.tpw / 2 - camX), py = Math.round(this.hy - camY) - 14 + Math.round(Math.sin(this.townT * 6) * 1.5);
+      this.textCenterAt(px, py, "! " + this.nearNpc.name, this.nearNpc.color);
+      this.textCenter(this.LH - 12, `PRESS JUMP TO ${tag === "TALK" ? "TALK" : tag === "REWARD!" ? "COLLECT REWARD" : "CHAT"}`, "#7be0ff", 1);
+    } else if (this.nearDoor) {
       const shopName = this.nearDoor.kind === "shop" ? this.townLabel(this.shopIndexForDoor(this.nearDoor), this.nearDoor.label) : this.nearDoor.label;
       const label = this.nearDoor.kind === "gate" && !this.isUnlocked(this.nearDoor.index!) ? "LOCKED" : shopName;
       const col = this.nearDoor.kind === "gate" && !this.isUnlocked(this.nearDoor.index!) ? "#ff8a6a" : this.nearDoor.accent;
@@ -598,8 +647,44 @@ export class CirqlCityEngine extends RetroEngine {
       this.textCenterAt(px, py, (this.nearDoor.kind === "gate" ? "> " : "* ") + label, col);
       this.textCenter(this.LH - 12, this.nearDoor.kind === "gate" ? "WALK IN OR PRESS JUMP" : "PRESS JUMP TO PLAY", "#7be0ff", 1);
     } else {
-      this.textCenter(this.LH - 12, "MOVE: PAD   ENTER SHOPS + GATES", "#5f574f", 1);
+      this.textCenter(this.LH - 12, "MOVE: PAD   TALK TO FOLKS - ENTER SHOPS + GATES", "#5f574f", 1);
     }
+  }
+
+  private drawTownNpcs(camX: number, camY: number) {
+    for (const n of NPCS) {
+      const sx = Math.round((n.cx + 0.5) * TT - camX), sy = Math.round((n.ty + 1) * TT - camY);
+      if (sx < -8 || sx > this.LW + 8) continue;
+      const q = questById(n.questId); const s = q ? this.qs(q.id) : null;
+      const bob = Math.round(Math.sin(this.townT * 3 + n.cx) * 1);
+      this.disc(sx, sy, 4, "#0a071460");
+      // body + head
+      this.rect(sx - 2, sy - 9 + bob, 5, 6, n.color); this.rect(sx - 2, sy - 3 + bob, 2, 3, shade(n.color, -0.3)); this.rect(sx + 1, sy - 3 + bob, 2, 3, shade(n.color, -0.3));
+      this.disc(sx, sy - 11 + bob, 2, "#f4c79a"); this.px(sx, sy - 11 + bob, shade("#f4c79a", 0.3));
+      // quest bubble
+      const iy = sy - 19 + Math.round(Math.sin(this.townT * 4 + n.cx) * 1.5);
+      const icon = s?.claimed ? "✓" : s?.done ? "!" : "?";
+      const ic = s?.claimed ? "#33e650" : s?.done ? "#ffd24a" : "#fff1e8";
+      this.rect(sx - 3, iy - 1, 7, 8, "#0a0714cc"); this.rectLine(sx - 3, iy - 1, 7, 8, s?.done && !s?.claimed ? "#ffd24a" : "#3a3550");
+      this.textCenterAt(sx, iy, icon === "✓" ? "V" : icon === "!" ? "!" : "?", ic);
+    }
+  }
+  private drawDialog() {
+    const npc = this.talking!; const q = questById(npc.questId); if (!q) return;
+    const s = this.qs(q.id);
+    this.rect(0, this.LH - 66, this.LW, 66, "#0a0714e0");
+    this.rect(0, this.LH - 66, this.LW, 2, npc.color);
+    // portrait chip
+    this.rect(6, this.LH - 60, 20, 20, "#141026"); this.rectLine(6, this.LH - 60, 20, 20, npc.color);
+    this.rect(12, this.LH - 52, 8, 8, npc.color); this.disc(16, this.LH - 54, 3, "#f4c79a");
+    this.text(32, this.LH - 60, npc.name, npc.color, 1, false);
+    this.text(32, this.LH - 50, q.title, "#c2c3c7", 1, false);
+    const lines = s.done ? q.done : q.ask;
+    this.text(8, this.LH - 34, lines[0] || "", "#fff1e8", 1, false);
+    this.text(8, this.LH - 24, lines[1] || "", "#fff1e8", 1, false);
+    if (s.done && !s.claimed) this.text(8, this.LH - 12, `REWARD ${q.reward} COINS - JUMP TO COLLECT`, "#ffd24a", 1, false);
+    else if (s.claimed) this.text(8, this.LH - 12, "COMPLETE - THANKS! (JUMP)", "#33e650", 1, false);
+    else this.text(8, this.LH - 12, `${Math.min(s.p, q.goal)}/${q.goal}   (JUMP TO CLOSE)`, "#7be0ff", 1, false);
   }
   private districtsCleared() { let n = 0; for (let i = 0; i < DISTRICTS.length; i++) if (this.clearedCount(i) >= DISTRICTS[i].levels.length) n++; return n; }
 
