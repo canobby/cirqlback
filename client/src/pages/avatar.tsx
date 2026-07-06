@@ -10,6 +10,10 @@ import { syncRewardsFromServer, getRewards } from "@/game/rewards";
 
 const AVATAR_GAME_ID = "avatar"; // stored in game_progress.state (no migration needed)
 
+// Owner (2026-07-06): don't lock any avatar options for now — everything selectable.
+// Flip to false to restore achievement-gated cosmetics (locks live in avatar.ts catalogs).
+const UNLOCK_ALL = true;
+
 // The three shop looks previewed under the editor (proves the per-shop re-skin).
 const SHOP_PREVIEWS: { key: string; label: string }[] = [
   { key: "cuppa", label: "Barista" },
@@ -93,7 +97,7 @@ export default function AvatarPage() {
             <Row label="Sidekick">
               <div className="flex flex-wrap gap-2">
                 {SIDEKICKS.map((s) => {
-                  const on = cfg.sidekick === s.k; const locked = !!s.lock && !unlocked.includes(s.k);
+                  const on = cfg.sidekick === s.k; const locked = !UNLOCK_ALL && !!s.lock && !unlocked.includes(s.k);
                   return (
                     <button key={s.k} disabled={locked} onClick={() => set({ sidekick: s.k })} data-testid={`sidekick-${s.k}`} title={s.lock || s.label}
                       className="relative rounded-lg border px-3 py-1.5 text-[12px] font-bold active:scale-95"
@@ -104,7 +108,7 @@ export default function AvatarPage() {
                 })}
               </div>
             </Row>
-            <Link href="/achievements" data-testid="link-achievements" className="text-[11px] font-bold text-cyan-300/70 underline-offset-2 hover:underline">🔒 Locked cosmetics unlock from Achievements →</Link>
+            {!UNLOCK_ALL && <Link href="/achievements" data-testid="link-achievements" className="text-[11px] font-bold text-cyan-300/70 underline-offset-2 hover:underline">🔒 Locked cosmetics unlock from Achievements →</Link>}
           </div>
         </div>
 
@@ -114,7 +118,7 @@ export default function AvatarPage() {
             One hero, every cabinet
             <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, rgba(255,176,32,.5), transparent)" }} />
           </div>
-          <p className="mb-3 text-[13px] leading-relaxed text-violet-100/60">You star in every game — re-skinned for the shop. Play a cabinet to unlock its outfit.</p>
+          <p className="mb-3 text-[13px] leading-relaxed text-violet-100/60">You star in every game — automatically re-skinned as each shop's hero.</p>
           <div className="flex flex-wrap gap-3">
             {SHOP_PREVIEWS.map((s, i) => (
               <div key={s.key} className="rounded-xl border p-2 text-center" style={{ borderColor: "#2e2158", background: "linear-gradient(180deg,#180f34,#130d28)" }}>
@@ -144,7 +148,7 @@ function Swatches({ items, value, onPick, testid, unlocked = [] }: { items: { c:
   return (
     <div className="flex flex-wrap gap-2">
       {items.map((it) => {
-        const on = value.toLowerCase() === it.c.toLowerCase(); const locked = !!it.lock && !unlocked.includes(it.c);
+        const on = value.toLowerCase() === it.c.toLowerCase(); const locked = !UNLOCK_ALL && !!it.lock && !unlocked.includes(it.c);
         return (
           <button key={it.c} disabled={locked} onClick={() => onPick(it.c)} data-testid={`swatch-${testid}-${it.c.replace("#", "")}`} title={it.lock || undefined}
             className="relative h-7 w-7 rounded-md active:scale-90"
