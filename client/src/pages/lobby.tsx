@@ -6,6 +6,7 @@ import { loadAvatarLS, drawAvatarToCanvas } from "@/game/avatar";
 import { MAIN_STREET_CABINETS, paintCover, COVER_W, COVER_H, type Cabinet } from "@/game/cabinet-covers";
 import { ARCADE_GAMES, ARCADE_CIRCLES, gamesInCircle } from "@/game/registry";
 import { InsertCoinCutscene } from "@/components/insert-coin";
+import { takePending, syncRewardsFromServer, type Achievement } from "@/game/rewards";
 
 // The unified CIRQLBACK · MAIN STREET ARCADE lobby — one pixel/CRT front door for
 // both game lines. Player card (your avatar), a category rail, cover-art game cards,
@@ -23,6 +24,17 @@ export default function Lobby() {
   const [toast, setToast] = useState<string | null>(null);
   const avatarCanvas = useRef<HTMLCanvasElement>(null);
   const coverRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
+  const [rewardQ, setRewardQ] = useState<Achievement[]>([]);
+
+  // sync rewards + surface any achievements earned since the last visit
+  useEffect(() => {
+    syncRewardsFromServer().then(() => { const p = takePending(); if (p.length) setRewardQ(p); });
+  }, []);
+  useEffect(() => {
+    if (!rewardQ.length) return;
+    const t = window.setTimeout(() => setRewardQ((q) => q.slice(1)), 3200);
+    return () => window.clearTimeout(t);
+  }, [rewardQ]);
 
   const pts = (user as any)?.totalPoints ?? (user as any)?.points ?? 0;
   const level = Math.floor(pts / 500) + 1;
@@ -153,12 +165,25 @@ export default function Lobby() {
       <div className="fixed inset-x-0 bottom-0 z-[71] flex items-center justify-center gap-7 border-t px-4 py-2.5" style={{ borderColor: "#2e2158", background: "linear-gradient(180deg, rgba(13,10,32,.6), rgba(10,7,20,.92))", backdropFilter: "blur(4px)" }}>
         <NavItem to="/" icon={<Home className="h-4 w-4" />} label="Home" color="#3bb6ff" />
         <NavItem icon={<Trophy className="h-4 w-4" />} label="Leaderboard" color="#ffd24a" />
-        <NavItem icon={<Star className="h-4 w-4" />} label="Achievements" color="#33e650" />
+        <NavItem to="/achievements" icon={<Star className="h-4 w-4" />} label="Achievements" color="#33e650" />
         <NavItem icon={<Heart className="h-4 w-4" />} label="Favorites" color="#ff8ab5" />
         <NavItem to="/avatar" icon={<User className="h-4 w-4" />} label="Avatar" color="#b79bff" />
       </div>
 
       {toast && <div className="fixed bottom-16 left-1/2 z-[75] -translate-x-1/2 rounded-full border px-5 py-2.5 text-[13px] font-bold" style={{ borderColor: "#ffb020", background: "rgba(20,13,40,.96)", color: "#ffd24a", boxShadow: "0 8px 30px rgba(0,0,0,.5)" }} data-testid="lobby-toast">🔧 {toast}</div>}
+
+      {rewardQ[0] && (
+        <Link href="/achievements" data-testid="reward-toast" className="fixed left-1/2 top-16 z-[76] -translate-x-1/2">
+          <div className="flex items-center gap-3 rounded-2xl border px-4 py-2.5" style={{ borderColor: "#ffd24a", background: "rgba(20,13,40,.97)", boxShadow: "0 12px 40px rgba(0,0,0,.6), 0 0 30px -6px #ffd24a" }}>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full text-[15px] font-extrabold" style={{ background: "linear-gradient(180deg,#ffd24a,#ff9e2c)", color: "#0a0714" }}>{rewardQ[0].icon}</div>
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.2em] text-amber-300">🏆 Achievement</div>
+              <div className="text-[14px] font-extrabold leading-tight text-white">{rewardQ[0].name}</div>
+              {rewardQ[0].unlocks?.length ? <div className="text-[10px] text-cyan-300/80">New cosmetic unlocked!</div> : <div className="text-[10px] text-violet-200/50">{rewardQ[0].desc}</div>}
+            </div>
+          </div>
+        </Link>
+      )}
 
       {launch && <InsertCoinCutscene title={launch.name} accent={launch.accent} onDone={onCutsceneDone} />}
     </div>

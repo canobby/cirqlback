@@ -6,6 +6,7 @@ import {
   AvatarConfig, DEFAULT_AVATAR, SKINS, EYES, HAT_COLORS, BODY_COLORS, SIDEKICKS,
   SHOP_OUTFITS, avatarForShop, drawAvatarToCanvas, loadAvatarLS, saveAvatarLS,
 } from "@/game/avatar";
+import { syncRewardsFromServer, getRewards } from "@/game/rewards";
 
 const AVATAR_GAME_ID = "avatar"; // stored in game_progress.state (no migration needed)
 
@@ -20,8 +21,11 @@ export default function AvatarPage() {
   const { user } = useAuth();
   const [cfg, setCfg] = useState<AvatarConfig>(() => loadAvatarLS());
   const [saved, setSaved] = useState(false);
+  const [unlocked, setUnlocked] = useState<string[]>(() => getRewards().unlocked);
   const preview = useRef<HTMLCanvasElement>(null);
   const shopRefs = useRef<(HTMLCanvasElement | null)[]>([]);
+
+  useEffect(() => { let ok = true; syncRewardsFromServer().then((s) => { if (ok) setUnlocked(s.unlocked); }); return () => { ok = false; }; }, []);
 
   // pull any saved avatar from the profile
   useEffect(() => {
@@ -84,12 +88,12 @@ export default function AvatarPage() {
           <div className="flex flex-col gap-3">
             <Row label="Skin"><Swatches items={SKINS.map((c) => ({ c }))} value={cfg.skin} onPick={(c) => set({ skin: c })} testid="skin" /></Row>
             <Row label="Eyes"><Swatches items={EYES.map((c) => ({ c }))} value={cfg.eye} onPick={(c) => set({ eye: c })} testid="eyes" /></Row>
-            <Row label="Cap"><Swatches items={HAT_COLORS} value={cfg.hat} onPick={(c) => set({ hat: c })} testid="hat" /></Row>
-            <Row label="Outfit"><Swatches items={BODY_COLORS} value={cfg.body} onPick={(c) => set({ body: c })} testid="body" /></Row>
+            <Row label="Cap"><Swatches items={HAT_COLORS} value={cfg.hat} onPick={(c) => set({ hat: c })} testid="hat" unlocked={unlocked} /></Row>
+            <Row label="Outfit"><Swatches items={BODY_COLORS} value={cfg.body} onPick={(c) => set({ body: c })} testid="body" unlocked={unlocked} /></Row>
             <Row label="Sidekick">
               <div className="flex flex-wrap gap-2">
                 {SIDEKICKS.map((s) => {
-                  const on = cfg.sidekick === s.k; const locked = !!s.lock;
+                  const on = cfg.sidekick === s.k; const locked = !!s.lock && !unlocked.includes(s.k);
                   return (
                     <button key={s.k} disabled={locked} onClick={() => set({ sidekick: s.k })} data-testid={`sidekick-${s.k}`} title={s.lock || s.label}
                       className="relative rounded-lg border px-3 py-1.5 text-[12px] font-bold active:scale-95"
@@ -100,6 +104,7 @@ export default function AvatarPage() {
                 })}
               </div>
             </Row>
+            <Link href="/achievements" data-testid="link-achievements" className="text-[11px] font-bold text-cyan-300/70 underline-offset-2 hover:underline">🔒 Locked cosmetics unlock from Achievements →</Link>
           </div>
         </div>
 
@@ -135,11 +140,11 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function Swatches({ items, value, onPick, testid }: { items: { c: string; lock?: string }[]; value: string; onPick: (c: string) => void; testid: string }) {
+function Swatches({ items, value, onPick, testid, unlocked = [] }: { items: { c: string; lock?: string }[]; value: string; onPick: (c: string) => void; testid: string; unlocked?: string[] }) {
   return (
     <div className="flex flex-wrap gap-2">
       {items.map((it) => {
-        const on = value.toLowerCase() === it.c.toLowerCase(); const locked = !!it.lock;
+        const on = value.toLowerCase() === it.c.toLowerCase(); const locked = !!it.lock && !unlocked.includes(it.c);
         return (
           <button key={it.c} disabled={locked} onClick={() => onPick(it.c)} data-testid={`swatch-${testid}-${it.c.replace("#", "")}`} title={it.lock || undefined}
             className="relative h-7 w-7 rounded-md active:scale-90"

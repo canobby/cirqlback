@@ -11,7 +11,7 @@ export interface AvatarConfig {
   body: string;   // shirt/outfit hex
   bib?: string;   // overalls/apron hex (optional)
   tool?: "none" | "mug" | "pizza" | "wrench" | "broom" | "spatula";
-  sidekick?: "none" | "star" | "cat" | "bot";
+  sidekick?: "none" | "star" | "cat" | "bot" | "donut" | "vinyl" | "taco";
 }
 
 export const DEFAULT_AVATAR: AvatarConfig = {
@@ -26,14 +26,16 @@ export interface Opt<T> { k: T; label: string; lock?: string }
 export const SKINS: string[] = ["#f4c79a", "#e0a878", "#c68a5a", "#8a5a3a", "#5a3a28"];
 export const EYES: string[] = ["#1a1226", "#2c2350", "#5a2f2f"];
 export const HAT_COLORS: Swatch[] = [
-  { c: "#33b0e0" }, { c: "#ff5d7d" }, { c: "#ffd24a" }, { c: "#33e650" }, { c: "#b79bff", lock: "Reach Level 5" },
+  { c: "#33b0e0" }, { c: "#ff5d7d" }, { c: "#ffd24a" }, { c: "#33e650" },
+  { c: "#b79bff", lock: "Reach Level 5" }, { c: "#ffcf4a", lock: "Play all 10 cabinets" },
 ];
 export const BODY_COLORS: Swatch[] = [
   { c: "#e2544f" }, { c: "#3a6ad0" }, { c: "#33a06a" }, { c: "#ff77a8" },
-  { c: "#7a4fd0", lock: "Play 5 cabinets" }, { c: "#ffb020", lock: "Reach 1,000 ★" },
+  { c: "#7a4fd0", lock: "Play 5 cabinets" }, { c: "#ffb020", lock: "Reach 1,000 ★" }, { c: "#33e650", lock: "Play 40 runs" },
 ];
 export const SIDEKICKS: Opt<NonNullable<AvatarConfig["sidekick"]>>[] = [
   { k: "none", label: "None" }, { k: "star", label: "Star" }, { k: "cat", label: "Cat" }, { k: "bot", label: "Bot", lock: "Beat a boss" },
+  { k: "donut", label: "Donut", lock: "Score 300 in Dozen" }, { k: "vinyl", label: "Vinyl", lock: "Reach side 3 in Spin City" }, { k: "taco", label: "Taco", lock: "Score 300 in Taco Stack" },
 ];
 
 // Per-shop outfit overrides — the same figure, re-skinned as the cabinet's hero.
@@ -121,6 +123,9 @@ function drawSidekick(p: AvatarPainter, x: number, y: number, s: AvatarConfig["s
     case "star": p.ball(sx + 1, y - 3, 2, "#ffd24a"); break;
     case "cat": p.disc(sx, y - 2, 3, "#5f574f"); p.px(sx - 2, y - 5, "#5f574f"); p.px(sx + 2, y - 5, "#5f574f"); p.px(sx - 1, y - 2, "#33e650"); p.px(sx + 1, y - 2, "#33e650"); break;
     case "bot": p.rect(sx - 2, y - 5, 5, 5, "#83769c"); p.rect(sx - 2, y - 5, 5, 1, "#a89cc0"); p.px(sx, y - 3, "#29adff"); p.px(sx, y - 7, "#ff5d7d"); break;
+    case "donut": p.disc(sx, y - 3, 3, "#ff9ec2"); p.px(sx, y - 3, "#0c0820"); p.px(sx - 1, y - 5, "#33e650"); p.px(sx + 1, y - 4, "#3bb6ff"); break;
+    case "vinyl": p.disc(sx, y - 3, 3, "#181818"); p.px(sx, y - 3, "#e23b4e"); p.px(sx - 2, y - 3, "#3a3a3a"); break;
+    case "taco": p.rect(sx - 3, y - 4, 6, 3, "#e2b06a"); p.rect(sx - 3, y - 2, 6, 1, "#c0392b"); p.px(sx - 2, y - 3, "#33e650"); p.px(sx + 1, y - 3, "#33e650"); break;
     default: break;
   }
 }
