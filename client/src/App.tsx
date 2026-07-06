@@ -61,6 +61,7 @@ const PillPopPage = lazy(() => import("@/pages/pill-pop"));
 const SwatchPage = lazy(() => import("@/pages/swatch"));
 const DeliDashPage = lazy(() => import("@/pages/deli-dash"));
 const StackEmPage = lazy(() => import("@/pages/stack-em"));
+const FrostBitePage = lazy(() => import("@/pages/frost-bite"));
 const CoinDemoPage = lazy(() => import("@/pages/coin-demo"));
 const LobbyPage = lazy(() => import("@/pages/lobby"));
 const CuppaRushPage = lazy(() => import("@/pages/cuppa-rush"));
@@ -165,6 +166,7 @@ function Router() {
           <Route path="/play/swatch">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SwatchPage /></Suspense>}</Route>
           <Route path="/play/deli-dash">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><DeliDashPage /></Suspense>}</Route>
           <Route path="/play/stack-em">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><StackEmPage /></Suspense>}</Route>
+          <Route path="/play/frost-bite">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><FrostBitePage /></Suspense>}</Route>
           <Route path="/coin-demo">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CoinDemoPage /></Suspense>}</Route>
           <Route path="/lobby">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><LobbyPage /></Suspense>}</Route>
           <Route path="/play/cuppa">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CuppaRushPage /></Suspense>}</Route>
