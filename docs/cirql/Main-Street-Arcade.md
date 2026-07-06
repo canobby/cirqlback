@@ -127,8 +127,8 @@ Built in batches, each meeting the full Definition of Done. **After every cabine
 
 ## Milestones
 - [x] **M0 ✅** — Foundation done + Cuppa Rush playable end-to-end (engine, music, cutscene, avatar-hero, Daily, lobby entry). *Reached 2026-07-06.*
-- [ ] **M1** — First 3 cabinets live (Cuppa Rush, Slice Route, Spin Cycle) + lobby unified.
-- [ ] **M2** — All 10 cabinets live.
+- [x] **M1 ✅** — First 3 cabinets live (Cuppa Rush, Slice Route, Spin Cycle) + lobby unified.
+- [x] **M2 ✅** — All 10 cabinets live (Cuppa Rush · Slice Route · Spin Cycle · Rummage · Dozen · Fresh Batch · Sundae Stack · Spin City · Taco Stack · Fix-It). *Phase 1 complete 2026-07-06.*
 - [ ] **M3** — Meta &amp; polish complete (achievements, sponsorship, social, seasonal, a11y).
 
 ---
