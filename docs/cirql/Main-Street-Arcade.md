@@ -110,7 +110,7 @@ Build once; everything depends on it. The avatar rig is a hard dependency for ca
 - [x] **Insert-Coin cutscene** — reusable quarter-drop → CLINK → CRT boot → marquee + avatar hops in → Press Start; tap-to-skip, fast on repeat. *Shipped: `client/src/game/coin-scene.ts` + `<InsertCoinCutscene>`; proven live at `/coin-demo`.*
 - [x] **Unified pixel lobby** — brand lockup, player-profile card (your avatar), category rail spanning both lines, 16-bit cabinet cover cards + Insert-Coin launch, circular games as cards, bottom nav. *Shipped: `client/src/pages/lobby.tsx` + `cabinet-covers.ts` at `/lobby`. (Circular-line pixel reskin + making `/lobby` the default `/arcade` entry are follow-ups.)*
 - [ ] **Leaderboards &amp; rewards wiring** — Daily/all-time, reward events, server-side score validation.
-- [ ] **Cuppa Rush POC** — the first cabinet, proving the entire stack end-to-end (**M0**).
+- [x] **Cuppa Rush POC** — the first cabinet, proving the entire stack end-to-end (**M0 ✅**). Barista = your avatar, serve/catch mugs, tip combos, "regular" customers, shift progression, own chiptune track, two-thumb controls, Daily submit. *Shipped: `cuppa-rush-engine.ts` + `/play/cuppa`, live in the lobby.*
 
 ## Phase 1 · The 10 cabinets
 Built in batches, each meeting the full Definition of Done. **After every cabinet: update the plan + Linear and push to Render.** Suggested order (recommended-first three prove the range early):
@@ -126,7 +126,7 @@ Built in batches, each meeting the full Definition of Done. **After every cabine
 - [ ] Full accessibility &amp; performance pass across all cabinets.
 
 ## Milestones
-- [ ] **M0** — Foundation done + Cuppa Rush playable end-to-end (engine, music, cutscene, avatar-hero, Daily, lobby entry).
+- [x] **M0 ✅** — Foundation done + Cuppa Rush playable end-to-end (engine, music, cutscene, avatar-hero, Daily, lobby entry). *Reached 2026-07-06.*
 - [ ] **M1** — First 3 cabinets live (Cuppa Rush, Slice Route, Spin Cycle) + lobby unified.
 - [ ] **M2** — All 10 cabinets live.
 - [ ] **M3** — Meta &amp; polish complete (achievements, sponsorship, social, seasonal, a11y).
