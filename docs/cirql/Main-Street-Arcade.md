@@ -106,7 +106,7 @@ Build once; everything depends on it. The avatar rig is a hard dependency for ca
 
 - [x] **RetroEngine (16-bit kit + CRT)** — pixel buffer + nearest-neighbor upscale, shaded draw kit (`shade`/`mix`/`vgrad`/`shelf`/`ball`), bundled pixel font, CRT (scanlines + vignette), fixed-timestep loop, d-pad/tap/two-thumb input, chiptune primitives. *Shipped: `client/src/game/retro-engine.ts` + `retro-font.ts`; proven live at `/retro-demo`.*
 - [ ] **MusicKit** — layered chiptune, dynamic layering, Main Street leitmotif.
-- [ ] **Avatar system + customizer** — toy figure, customization axes, per-shop outfit rig + unlock hooks.
+- [x] **Avatar system + customizer** — toy figure, customization axes, per-shop outfit rig, localStorage + profile persistence. *Shipped: `client/src/game/avatar.ts` + `/avatar` customizer; `RetroEngine.avatar()` draws the in-game hero. (Reward-driven unlock economy + lobby/leaderboard placement land with those pieces.)*
 - [ ] **Insert-Coin cutscene** — reusable, skippable, attract/demo mode.
 - [ ] **Unified pixel lobby** — category rail, player-profile card, game cards, bottom nav; circular-line pixel reskin.
 - [ ] **Leaderboards &amp; rewards wiring** — Daily/all-time, reward events, server-side score validation.

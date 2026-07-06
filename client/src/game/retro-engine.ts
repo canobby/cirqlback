@@ -14,6 +14,7 @@
 
 import { clamp, mulberry32, hexToRgb, LS, TAU } from "./arcade-core";
 import { FONT, FONT_W, FONT_H, GLYPH_ADVANCE } from "./retro-font";
+import { paintAvatar, type AvatarConfig } from "./avatar";
 
 export { LS, TAU };
 
@@ -294,6 +295,17 @@ export abstract class RetroEngine {
   /** Width in buffer pixels a string will occupy at scale `sc`. */
   protected textWidth(str: string, sc = 1) { return str.length * GLYPH_ADVANCE * sc - sc; }
   protected textCenter(y: number, str: string, c: string | number, sc = 1, shadow = true) { this.text(Math.round((this.LW - this.textWidth(str, sc)) / 2), y, str, c, sc, shadow); }
+
+  /** Draw the player's toy avatar (the cabinet hero) with feet centred at (x, y). */
+  protected avatar(x: number, y: number, cfg: AvatarConfig) {
+    paintAvatar({
+      px: (a, b, c) => this.px(a, b, c),
+      rect: (a, b, w, h, c) => this.rect(a, b, w, h, c),
+      disc: (cx, cy, r, c) => this.disc(cx, cy, r, c),
+      ball: (cx, cy, r, base) => this.ball(cx, cy, r, base),
+      shade: (c, amt) => shade(c, amt),
+    }, x, y, cfg);
+  }
 
   // ---------- audio (chiptune primitives; MusicKit will build on these) ----------
   private resumeAudio() { try { if (this.ac?.state === "suspended") this.ac.resume(); } catch { /* ignore */ } }
