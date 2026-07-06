@@ -63,6 +63,7 @@ const RummagePage = lazy(() => import("@/pages/rummage"));
 const DozenPage = lazy(() => import("@/pages/dozen"));
 const FreshBatchPage = lazy(() => import("@/pages/fresh-batch"));
 const SundaeStackPage = lazy(() => import("@/pages/sundae-stack"));
+const SpinCityPage = lazy(() => import("@/pages/spin-city"));
 const DefenderPage = lazy(() => import("@/pages/defender"));
 const PopPage = lazy(() => import("@/pages/pop"));
 const SpinPage = lazy(() => import("@/pages/spin"));
@@ -155,6 +156,7 @@ function Router() {
           <Route path="/play/dozen">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><DozenPage /></Suspense>}</Route>
           <Route path="/play/fresh-batch">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><FreshBatchPage /></Suspense>}</Route>
           <Route path="/play/sundae-stack">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SundaeStackPage /></Suspense>}</Route>
+          <Route path="/play/spin-city">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SpinCityPage /></Suspense>}</Route>
           <Route path="/play/defender">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><DefenderPage /></Suspense>}</Route>
           <Route path="/play/pop">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><PopPage /></Suspense>}</Route>
           <Route path="/play/spin">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><SpinPage /></Suspense>}</Route>
