@@ -1,116 +1,146 @@
-# Main Street Arcade — Vision & Project Plan
+# Cirqlback Arcade — v2 Master Plan &amp; Guide
 
-A second, distinct line of CirqlCade games: **truly retro 8-bit pixel/CRT cabinets**, each an original homage to an arcade classic, themed to a **local shop** (coffee, pizza, thrift…). Unlike the 57 neon *circular* snacks, these use the **whole screen** so they can go long — levels, progression, bosses, a high-score chase — while keeping a **round object as the mascot** of every game (a mug, a pizza, a vinyl, a donut, a bubble).
+The plan for **one unified pixel arcade** that houses everything Cirqlback plays: the 57 quick *circular* games and a new premium line of **ten truly-retro 16-bit cabinets** themed to local shops. One front door, one player identity, one look. This document is both the **vision/guide** and the **project plan**; a companion *Linear Plan* mirrors it as issues.
+
+> **Decisions locked (2026-07-06).** 16-bit is the house art tier · one unified "Cirqlback Arcade" front door · your custom avatar **stars as the playable hero in every cabinet** · the quarter is **free-play cinema** (never a paywall) · **all 10 cabinets open from day one** · the circular line gets a **light pixel reskin** so it sits natively in the pixel lobby.
 
 ---
 
 # Part 1 — The Vision
 
-## Why this exists
+## What we're building
+A single **Cirqlback Arcade**: a pixel/CRT lobby (the look from the reference mockup) with a category rail, a player-profile card, and cards for every game. Inside live **two complementary lines**:
 
-- **It ties the games to the platform's heart.** Cirqlback is about local shops; a little arcade of *cabinets themed to local shops* makes the games part of the story instead of a side attraction.
-- **It's sponsor- and pack-ready.** A real coffee shop could hand out "Cuppa Rush" as a reward, or skin its own cabinet. This is exactly the game-pack / reward-bridge direction — themed cabinets are *made* to be sponsored.
-- **It fixes the "too short" problem.** Confining every game to a circle caps depth — everything becomes a 30–60-second loop. Real arcade games go long because they use the whole rectangular screen. These will.
-- **Two complementary lines.** The 57 circular games stay as quick one-thumb snacks; these 10 are the premium, longer, sponsor-ready cabinets.
+- **Circles** — the 57 existing one-thumb snacks (30–60s loops), lightly pixel-reskinned to match the lobby.
+- **Main Street** — 10 new 16-bit cabinets: original homages to arcade classics, themed to local shops, using the **whole screen** so they go long (many levels, bosses, a high-score chase).
 
-## The retro look — how hard?
+Both share one backend, one Daily system, one leaderboard/rewards spine, and **one customizable avatar**.
 
-Moderate, and **mostly a one-time cost** — a `RetroEngine` foundation the 10 games share:
+## Two principles that never bend
+- **Round is the mascot, not the cage.** Full rectangular arcade playfields — but every cabinet has a signature round hero tied to its shop (a mug, a pizza, a vinyl, a donut, a bubble), shaded like a lit sphere. The circle is the star, not the boundary.
+- **Original always — homage, not clone.** Our own names, art, audio and themes throughout. We homage the *genre and mechanics* of the classics (fair game); we never reproduce trademarked names, characters, art, or sound.
 
-- **Chunky pixels** — render to a small internal buffer, scale up nearest-neighbor so everything is crisp blocky pixels.
-- **Fixed palette** — a ~16-colour retro palette per cabinet (like a real console).
-- **CRT feel** — scanlines + a subtle screen curve + vignette overlay. Cheap, and it *sells* the whole thing.
-- **Pixel font + chiptune** — a bundled bitmap font for arcade text, and chiptune audio (square/triangle waves + a noise "drum" channel), extending the synth we already have.
-
-Once that foundation exists, the aesthetic is automatic; the *games* are the bigger lift because they're proper level-based arcade games, not one-screen loops.
-
-## Two principles
-
-- **Round is the mascot, not the cage.** Full rectangular arcade playfields; every game has a signature round hero object tied to its theme. Round everywhere, circular nowhere.
-- **Original, always — homage not clone.** Our own names, art, audio and themes. We pay homage to the *genre and mechanics* of the classics (which is fair game); we never copy their trademarked names, characters, art, or audio.
-
-## The 10 cabinets — "Main Street Arcade"
-
-| # | Game | Shop | Homage to | Round hero |
-|---|---|---|---|---|
-| 1 | **Cuppa Rush** | Coffee shop | Tapper | mugs / beans |
-| 2 | **Slice Route** | Pizza shop | Paperboy | pizzas / wheels |
-| 3 | **Rummage** | Thrift shop | Pac-Man | buttons / vinyl |
-| 4 | **Dozen** | Donut shop | Q*bert | the donut |
-| 5 | **Fresh Batch** | Bakery | Donkey Kong | pies / bagels |
-| 6 | **Sundae Stack** | Ice-cream parlor | **Tetris** | the scoops |
-| 7 | **Spin City** | Record shop | Marble Madness | the record |
-| 8 | **Taco Stack** | Taqueria | BurgerTime | tomatoes / lime |
-| 9 | **Fix-It** | Hardware store | Fix-It Felix Jr. | bolts / wrecking ball |
-| 10 | **Spin Cycle** | Laundromat | Puzzle Bobble | soap bubbles |
-
-*(Slot 6 swaps the earlier Kaboom idea for a Tetris cabinet, per direction.)*
-
-## Branding decisions (recommended)
-
-- **A separate "Main Street Arcade" section**, not mixed into the neon circular wheel — different look (pixel/CRT), different depth (long games). It reads as its own little arcade.
-- **Adds to, doesn't replace,** the 57 circular games.
-- **Sponsor hook (later):** a real business can sponsor/skin the cabinet matching its shop type, and hand it out as a reward.
+## Every cabinet must clear this bar
+- [ ] **Visually exciting** — 16-bit shading, gradient skies, parallax, palette flashes.
+- [ ] **Many progressive, interesting levels** — themed worlds, a new mechanic per world, a boss cadence, a real difficulty ramp.
+- [ ] **Lots of juice & action** — screen shake, particles, hitstop, combo popups, satisfying SFX.
+- [ ] **Very playable** — tight controls, two-thumb where two actions overlap, instant restart.
+- [ ] **Funner / more interesting than the original** — one signature twist the classic never had.
+- [ ] **Great original music** — a unique 16-bit theme (+ boss variant + game-over jingle).
+- [ ] **A daily challenge** — a fixed daily seed everyone competes on (Freestyle is retired for this line).
+- [ ] **Your avatar stars** — the playable hero is your customized toy-person, re-skinned for the shop.
 
 ---
 
-# Part 2 — The Project Plan
+# Part 2 — The Foundation (the platform layer)
 
-## Phases
+Built once in Phase 0, shared by all 10 cabinets and the lobby.
 
-**Phase 0 · Foundation** — build once, reuse for all 10.
-- [ ] `RetroEngine` base — internal pixel buffer + nearest-neighbor upscale, fixed-palette drawing helpers, sprite/tile blitter.
-- [ ] CRT overlay — scanlines + subtle curvature + vignette (toggleable; must stay smooth on a mid-range phone).
-- [ ] Bundled pixel bitmap font (drawn on canvas — no external font, CSP-safe).
-- [ ] Chiptune audio kit — square/triangle lead, arpeggios, a noise "drum" channel (extends the existing synth).
-- [ ] A "Main Street Arcade" section/shell — a pixel cabinet-select screen (separate from the circular wheel), with per-cabinet high-score + Daily wiring reused from the existing backend.
-- [ ] **Proof-of-concept cabinet** to prove the whole stack (recommend **Cuppa Rush**).
+## RetroEngine (16-bit tier)
+The shared engine every cabinet extends: an internal **pixel buffer + nearest-neighbor upscale**, a **full-color draw kit** with `shade()` / `mix()` / `vgrad()` gradients, `shelf()` 3-tone surfaces, and `ball()` spherically-lit round heroes (all prototyped in the lookbooks). Bundled **3×5 pixel font** (CSP-safe, no external font). A toggleable, cheap **CRT** post-process (scanlines + vignette). Fixed-timestep update, **d-pad + tap + two-thumb** input, pause/menu/game-over chrome. Reuses the existing `gameId`-keyed backend for best score + Daily.
 
-**Phase 1 · Build the 10 cabinets** — in batches, each a real level-based game (win/lose, progression, high score, per-cabinet Daily). Suggested order:
-1. **Cuppa Rush** (also the POC) · 2. **Slice Route** · 3. **Spin Cycle** (reuses bubble-match mechanics we've proven) · 4. **Rummage** · 5. **Dozen** · 6. **Sundae Stack** · 7. **Fresh Batch** · 8. **Taco Stack** · 9. **Spin City** · 10. **Fix-It**.
+## MusicKit
+A layered chiptune/16-bit kit extending the current synth: square lead + harmony, triangle bass, a noise-drum channel. Each cabinet gets a **theme + boss/intense variant + game-over jingle**, with **dynamic layering** (music thickens as combo/level rises). A shared **Main Street leitmotif** each cabinet riffs on for sonic cohesion. Respects the existing mute toggle.
 
-**Phase 2 · Polish & wire-up** — feel-tuning pass, per-cabinet Daily boards + best scores, and the **sponsorship/skin hooks** (a business can adopt its cabinet). Optional: a "Main Street Pack" as a reward.
+## Insert-Coin cutscene
+On launch, a reusable 16-bit sequence: your toy hand drops a quarter → the coin-slot lights → the CRT boots → the cabinet marquee → **PRESS START**. **Skippable after first view.** Pure flavor — always free. Bonus: **attract/demo mode** on the lobby (cabinets auto-play a short demo like a real arcade).
 
-## Foundation spec (what `RetroEngine` gives every cabinet)
+## Avatar system + customizer
+A **"little people &amp; toys"** avatar — chunky, rounded, collectible. Customization axes: body/base color, head (skin, eyes, expression), hair/hat, outfit, accessory, and an optional sidekick toy. The avatar appears in the **lobby**, the **cutscene** (your hand, your figure climbing in), **leaderboards**, and — the key move — as the **playable hero in every cabinet**, re-skinned per shop (barista apron, delivery helmet, tool belt). **Shop outfits unlock by playing that cabinet**, pulling players across the arcade. Unlocks flow from the platform reward economy (points/streaks/badges) — **cosmetic only, never power**.
 
-- A logical pixel resolution (e.g. 240×216) that scales to fit; all drawing in pixel space.
-- Palette + `px(x,y,color)`, `rect`, `sprite`, `text` (pixel font) helpers.
-- Fixed-timestep update + input (d-pad-style + tap), so games feel arcade-tight.
-- CRT post-process, chiptune SFX/music hooks, pause/menu/game-over chrome.
-- Backend reuse: same `gameId`-keyed progress + Daily board as the circular games.
+## Unified pixel lobby
+Rebuild the front door as the pixel chooser: a **category rail** (Action / Puzzle / Arcade / Classic / Reflex / Strategy / Zen) spanning **both** lines, a **player-profile card** (avatar · level · ★ · badges), game cards with cover art + difficulty + Daily flag, and a **bottom nav** (Home / Leaderboard / Achievements / Favorites). Circular games get a light pixel reskin to sit natively.
 
-## The 10 cabinet specs (one per Linear issue)
+## Leaderboards &amp; rewards spine
+- **Leaderboards:** Daily + all-time per game, keyed to avatar + name; friends/territory later.
+- **Reward events:** first play, daily streak, level/world clears, boss kills, personal bests → **platform points** buying **avatar cosmetics + real-shop perks** (the moat). Assisted/perked runs stay **off** the ranked board (consistent with what's already live).
+- **Achievements/badges** per cabinet (this is the long-deferred Badge Phase 2 finally landing).
+- **Anti-cheat:** the client engine is untrusted; the server validates submitted scores.
 
-1. **Cuppa Rush** (Coffee · Tapper) — Four counters run from your espresso bar to the door. Slide a coffee down the right counter to meet each incoming customer, and catch the empty mug it slides back or it shatters. Serve a whole rush to clear the shift; a customer reaching the bar (or a dropped mug) costs a life. Speeds up each shift; tip combos for back-to-back serves; a "regular" boss customer.
-2. **Slice Route** (Pizza · Paperboy) — Ride the delivery scooter down a scrolling street; lob pizzas onto the porches that ordered (and NOT the ones that didn't) while dodging cars, dogs, hydrants and open manholes. A street = a day; end-of-street bonus obstacle course. Crash = a life; score by deliveries + streak.
-3. **Rummage** (Thrift · Pac-Man) — A maze of clothing racks. Grab every vintage find to clear the floor while four snooty shoppers hunt you; grab a "50% OFF" tag to turn the tables and chase them. A designer handbag is the bonus. New floors get faster.
-4. **Dozen** (Donut · Q*bert) — Hop your donut across a pyramid of crates, flipping each to "SOLD"; flip them all to clear the batch. The health inspector and a rolling coffee-cup chase you; a sprinkle-pad slides you to safety; falling off costs a life. Later batches need two hops per crate.
-5. **Fresh Batch** (Bakery · Donkey Kong) — Climb ladders and oven racks to the top shelf while the grumpy baker hurls rolling pie-tins and bouncing bagels; grab a rolling-pin to smash them. Four rising stages per loaf.
-6. **Sundae Stack** (Ice-cream · **Tetris**) — Tetromino trays of ice-cream scoops fall into the freezer; rotate and slot them to fill a shelf with no gaps — a full row ships and clears. Same-flavour rows score a combo; over when the freezer overflows. Speeds up.
-7. **Spin City** (Record · Marble Madness) — Roll a vinyl through a tilting top-down course of grooves, gaps and speed-strips to the turntable before the needle drops; nudge it with tilt/drag, but too much speed and it flies off the edge. Courses get twistier.
-8. **Taco Stack** (Taqueria · BurgerTime) — Walk platforms and ladders over stacked ingredients, dropping each layer onto the plate below to build every taco, while chili-peppers and onions chase you — stun them with a squeeze of lime.
-9. **Fix-It** (Hardware · Fix-It Felix Jr.) — Climb a scaffold of apartment windows patching each broken pane with your hammer, while a wrecker up top hurls bricks and loose bolts to dodge or nudge off ledges; fix every window before the timer.
-10. **Spin Cycle** (Laundromat · Puzzle Bobble) — Fire round soap-bubbles up into a descending grid of coloured laundry; match three to pop the load before it reaches the machine door. A "bleach" bubble clears a whole colour.
+## Mobile &amp; accessibility
+16-bit is landscape; phones are portrait — so a **rotate prompt / portrait-fit + on-screen controls** per cabinet, honoring the **two-thumb** rule (move *and* act at once). Colorblind-safe palettes, **reduced-motion** (CRT/shake off — engine already reads the setting), assist difficulty, and a CRT toggle for low-end devices.
+
+---
+
+# Part 3 — The 10 Cabinets
+
+| # | Cabinet | Shop | Homage | Round hero | Signature twist |
+|---|---|---|---|---|---|
+| 1 | **Cuppa Rush** | Coffee | Tapper | Mugs / beans | Mugs are physics objects — bank-shots off the bumper; boss "regulars" order combos |
+| 2 | **Slice Route** | Pizza | Paperboy | Pizzas / wheels | Branching streets — pick your route at forks for risk/reward; weather worlds |
+| 3 | **Rummage** | Thrift | Pac-Man | A vintage button | The rack-maze reshuffles as you clear it; outfit power-ups (speed, disguise, magnet) |
+| 4 | **Dozen** | Donut | Q*bert | The donut | Color-mix glazes — multi-hop to a target flavor; moving/conveyor crates |
+| 5 | **Fresh Batch** | Bakery | Donkey Kong | Pie-tins / bagels | Grab-and-throw rolling pins; destructible obstacles; risky top-shelf bonuses |
+| 6 | **Sundae Stack** | Ice-cream | Tetris | The scoops | Flavor-match combos on top of line-clears; per-level "build this sundae" goals |
+| 7 | **Spin City** | Record | Marble Madness | The vinyl | The record *plays the level's track* — tempo is your time pressure; groove rails |
+| 8 | **Taco Stack** | Taqueria | BurgerTime | Tomatoes / lime | Lime is weapon **and** combo builder; a spicy meter; order tickets set build priority |
+| 9 | **Fix-It** | Hardware | Fix-It Felix Jr. | Bolts / wrecking ball | The wrecker adapts to your patterns; power-tool upgrades; renovation bonus rounds |
+| 10 | **Spin Cycle** | Laundromat | Puzzle Bobble | Soap bubbles | The drum **rotates** the bubble grid; suds hazards; a bleach color-bomb |
+
+Each cabinet targets **~20–40 stages across 3 themed worlds**, a **boss every ~6–8 levels**, and a **new mechanic introduced per world**. Endless not required; the **Daily** is a fixed daily seed.
+
+---
+
+# Part 4 — Definition of Done (per cabinet)
+
+Every cabinet ships only when all of this is true:
+
+- [ ] Engine extends **RetroEngine (16-bit)**; round hero rendered with `ball()` shading.
+- [ ] **3 worlds, ~20–40 progressive levels**, a boss cadence, new-mechanic-per-world.
+- [ ] The **signature twist** is in and fun.
+- [ ] **Juice pass** — shake, particles, hitstop, combo popups, transitions.
+- [ ] **Your avatar** is the playable hero, with the shop outfit + its unlock wired.
+- [ ] **Original music** — theme + boss variant + game-over jingle, dynamic layering.
+- [ ] **Insert-Coin cutscene** wired on launch (skippable after first view).
+- [ ] **Daily** challenge live (fixed seed) + leaderboard submit + reward events.
+- [ ] **Two-thumb mobile controls** + portrait handling + reduced-motion respected.
+- [ ] `tsc` clean, verified in-browser (0 console errors), lazy-routed in the lobby.
+- [ ] **Plan + Linear updated, and pushed to Render** (auto-deploy) — done every cabinet.
+
+---
+
+# Part 5 — Project Plan
+
+## Phase 0 · Foundation
+Build once; everything depends on it. The avatar rig is a hard dependency for cabinets (the hero *is* your avatar), so it lands before cabinet #1.
+
+- [ ] **RetroEngine (16-bit kit + CRT)** — pixel buffer, shaded draw kit, pixel font, fixed-timestep, input.
+- [ ] **MusicKit** — layered chiptune, dynamic layering, Main Street leitmotif.
+- [ ] **Avatar system + customizer** — toy figure, customization axes, per-shop outfit rig + unlock hooks.
+- [ ] **Insert-Coin cutscene** — reusable, skippable, attract/demo mode.
+- [ ] **Unified pixel lobby** — category rail, player-profile card, game cards, bottom nav; circular-line pixel reskin.
+- [ ] **Leaderboards &amp; rewards wiring** — Daily/all-time, reward events, server-side score validation.
+- [ ] **Cuppa Rush POC** — the first cabinet, proving the entire stack end-to-end (**M0**).
+
+## Phase 1 · The 10 cabinets
+Built in batches, each meeting the full Definition of Done. **After every cabinet: update the plan + Linear and push to Render.** Suggested order (recommended-first three prove the range early):
+
+1. **Cuppa Rush** (POC) · 2. **Slice Route** · 3. **Spin Cycle** · 4. **Rummage** · 5. **Dozen** · 6. **Sundae Stack** · 7. **Fresh Batch** · 8. **Taco Stack** · 9. **Spin City** · 10. **Fix-It**.
+
+## Phase 2 · Meta &amp; polish
+- [ ] Achievements/badges catalog (auto thresholds) per cabinet.
+- [ ] Avatar cosmetic-unlock catalog + **reward "skin packs"** a business can hand out.
+- [ ] Sponsorship/skin hooks — a real shop adopts its matching cabinet + attaches a perk.
+- [ ] Social — share your score/avatar card; race the Daily #1 "ghost."
+- [ ] Seasonal / limited-time skins + a rotating "cabinet of the week."
+- [ ] Full accessibility &amp; performance pass across all cabinets.
 
 ## Milestones
-
-- [ ] **M0** — Foundation done + Cuppa Rush playable end-to-end (proves pixel/CRT/chiptune/section/backend).
-- [ ] **M1** — First 3 cabinets live (Cuppa Rush, Slice Route, Spin Cycle).
+- [ ] **M0** — Foundation done + Cuppa Rush playable end-to-end (engine, music, cutscene, avatar-hero, Daily, lobby entry).
+- [ ] **M1** — First 3 cabinets live (Cuppa Rush, Slice Route, Spin Cycle) + lobby unified.
 - [ ] **M2** — All 10 cabinets live.
-- [ ] **M3** — Polish pass + per-cabinet Daily/best + sponsorship/skin hooks.
+- [ ] **M3** — Meta &amp; polish complete (achievements, sponsorship, social, seasonal, a11y).
 
-## Open decisions for you
+---
 
-- **Separate "Main Street Arcade" section vs. the same wheel?** → recommend **separate** (own pixel look + longer games).
-- **Add vs. replace?** → **add** (keep the 57 circular snacks).
-- **Which 3 to prototype first?** → recommend **Cuppa Rush · Slice Route · Spin Cycle**.
+# Part 6 — Risks &amp; Notes
 
-## Risks & notes
-
-- **Bigger builds than the circular games** — each is a real level-based arcade game, so a few per batch, not a full sweep.
-- **CRT on mobile** — keep the post-process cheap; make it toggleable.
+- **Scope is real** — each cabinet is a full level-based arcade game with music and avatar art; batches of a few, not a sweep. Procedural generation + hand-tuned seeds keep level content scalable.
+- **Foundation-heavy Phase 0** — the avatar rig, MusicKit, cutscene, and unified lobby all precede cabinet #1. This is deliberate: it makes every later cabinet cheap and consistent.
+- **CRT + juice on mobile** — keep the post-process cheap; everything toggleable.
+- **Fairness** — rewards are cosmetic/perk only; assisted runs stay off ranked boards; the server validates scores.
 - **Stay original** — original names/art/audio/themes throughout; homage the mechanics, never the trademarked assets.
 
 ---
 
-*Ready to roll: Phase 0 (the RetroEngine foundation + Cuppa Rush proof-of-concept) is the first build step.*
+*Ready to build: Phase 0 (RetroEngine 16-bit + MusicKit + Avatar system + Insert-Coin cutscene + unified lobby + Cuppa Rush POC) is milestone M0.*
