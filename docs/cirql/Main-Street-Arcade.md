@@ -108,7 +108,7 @@ Build once; everything depends on it. The avatar rig is a hard dependency for ca
 - [x] **MusicKit** — layered chiptune (lead/harmony/bass/noise-drums), lookahead scheduler, dynamic layering by intensity, one-shot jingles, shared Main Street leitmotif. *Shipped: `client/src/game/musickit.ts`; proven live in `/retro-demo` (theme plays on first tap, thickens over time).*
 - [x] **Avatar system + customizer** — toy figure, customization axes, per-shop outfit rig, localStorage + profile persistence. *Shipped: `client/src/game/avatar.ts` + `/avatar` customizer; `RetroEngine.avatar()` draws the in-game hero. (Reward-driven unlock economy + lobby/leaderboard placement land with those pieces.)*
 - [x] **Insert-Coin cutscene** — reusable quarter-drop → CLINK → CRT boot → marquee + avatar hops in → Press Start; tap-to-skip, fast on repeat. *Shipped: `client/src/game/coin-scene.ts` + `<InsertCoinCutscene>`; proven live at `/coin-demo`.*
-- [ ] **Unified pixel lobby** — category rail, player-profile card, game cards, bottom nav; circular-line pixel reskin.
+- [x] **Unified pixel lobby** — brand lockup, player-profile card (your avatar), category rail spanning both lines, 16-bit cabinet cover cards + Insert-Coin launch, circular games as cards, bottom nav. *Shipped: `client/src/pages/lobby.tsx` + `cabinet-covers.ts` at `/lobby`. (Circular-line pixel reskin + making `/lobby` the default `/arcade` entry are follow-ups.)*
 - [ ] **Leaderboards &amp; rewards wiring** — Daily/all-time, reward events, server-side score validation.
 - [ ] **Cuppa Rush POC** — the first cabinet, proving the entire stack end-to-end (**M0**).
 
