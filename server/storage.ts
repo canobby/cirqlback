@@ -1863,11 +1863,12 @@ export class DatabaseStorage implements IStorage {
   async submitDailyScore(
     userId: string, day: string, dailyNum: number, score: number, bestCombo: number, restored: boolean,
     gameId = "cirqlbreak",
-  ): Promise<{ best: number; rank: number; total: number; firstToday: boolean }> {
+  ): Promise<{ best: number; rank: number; total: number; firstToday: boolean; improvedBy: number }> {
     const mine = and(eq(dailyScores.userId, userId), eq(dailyScores.day, day), eq(dailyScores.gameId, gameId));
     const forDay = and(eq(dailyScores.day, day), eq(dailyScores.gameId, gameId));
     const [existing] = await db.select().from(dailyScores).where(mine);
     const firstToday = !existing; // first daily play of the day for this game → eligible for the reward
+    const prevBest = existing ? existing.score : 0; // for the "points on play" performance reward
     let best = score;
     if (existing) {
       if (score > existing.score) {
@@ -1882,7 +1883,10 @@ export class DatabaseStorage implements IStorage {
     }
     const [ahead] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(and(forDay, sql`${dailyScores.score} > ${best}`));
     const [tot] = await db.select({ n: sql<number>`COUNT(*)` }).from(dailyScores).where(forDay);
-    return { best, rank: Number(ahead?.n || 0) + 1, total: Number(tot?.n || 0), firstToday };
+    // improvedBy = how much today's best rose on this submission (full score on the
+    // first play, the delta on a later personal best, 0 otherwise). Drives the
+    // capped performance reward — you can't farm points by losing on repeat.
+    return { best, rank: Number(ahead?.n || 0) + 1, total: Number(tot?.n || 0), firstToday, improvedBy: Math.max(0, best - prevBest) };
   }
 
   // CHR-122: the Daily leaderboard for a given UTC day — top N by score plus the

@@ -191,7 +191,9 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
   // pragmatic plausibility, not DRM. Keeps each player's best for the day.
   const CB_EPOCH = Math.floor(Date.parse("2026-01-01T00:00:00Z") / 86400000);
   const cbDailyNum = () => Math.floor(Date.now() / 86400000) - CB_EPOCH + 1;
-  const DAILY_PLAY_POINTS = 10; // once-a-day reward for playing a game's Daily
+  const DAILY_PLAY_POINTS = 10;   // once-a-day reward for playing a game's Daily
+  const PLAY_POINT_SCALE = 25;    // score-per-★ for the performance reward
+  const PLAY_POINT_CAP = 50;      // max performance ★ awarded per submission (anti-farm)
 
   app.post("/api/game/daily/score", isAuthenticated, async (req, res) => {
     try {
@@ -203,10 +205,19 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
       if (!Number.isFinite(bestCombo) || bestCombo < 0 || bestCombo > 100_000) return res.status(400).json({ error: "Invalid combo" });
       const day = utcDay(Date.now());
       const result = await storage.submitDailyScore(userId, day, cbDailyNum(), score, bestCombo, restored, gameKey(req));
-      // Once-a-day reward: the first Daily play of the day for this game earns points.
-      let reward: { points: number } | null = null;
-      if (result.firstToday) {
-        try { await storage.updateUserPoints(userId, DAILY_PLAY_POINTS); reward = { points: DAILY_PLAY_POINTS }; } catch { /* reward is best-effort */ }
+      // Points on play: a once-a-day flat reward for showing up (first Daily play)
+      // plus a performance reward scaled to how much you beat your own best by —
+      // capped per submission so it rewards real improvement, not loss-farming.
+      let earned = 0;
+      if (result.firstToday) earned += DAILY_PLAY_POINTS;
+      earned += Math.min(PLAY_POINT_CAP, Math.floor((result.improvedBy || 0) / PLAY_POINT_SCALE));
+      let reward: { points: number; total?: number } | null = null;
+      if (earned > 0) {
+        try {
+          await storage.updateUserPoints(userId, earned);
+          const u = await storage.getUser(userId);
+          reward = { points: earned, total: (u as any)?.totalPoints };
+        } catch { /* reward is best-effort */ }
       }
       res.json({ ...result, dailyNum: cbDailyNum(), reward });
     } catch (err) {

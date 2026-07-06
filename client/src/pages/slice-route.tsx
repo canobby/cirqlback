@@ -4,7 +4,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Pizza } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { SliceRouteEngine } from "@/game/slice-route-engine";
 import type { Btn } from "@/game/retro-engine";
-import { recordRun } from "@/game/rewards";
+import { recordRun, recordPoints } from "@/game/rewards";
 
 const GAME_ID = "slice";
 const lsGet = (k: string) => { try { return window.localStorage.getItem(k); } catch { return null; } };
@@ -26,7 +26,7 @@ export default function SliceRoute() {
         recordRun(GAME_ID, r as any, { points: (userRef.current as any)?.totalPoints ?? (userRef.current as any)?.points ?? 0 }); const u = userRef.current; if (!u) return;
         fetch("/api/game/progress", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: GAME_ID, state: { best: Math.max(best, r.score) } }) }).catch(() => {});
         fetch("/api/game/daily/score", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: GAME_ID, score: r.score, bestCombo: 0, restored: false }) })
-          .then((res) => (res.ok ? res.json() : null)).then((j) => { if (j) setDaily({ rank: j.rank, total: j.total, reward: j.reward?.points }); }).catch(() => {});
+          .then((res) => (res.ok ? res.json() : null)).then((j) => { if (j) { setDaily({ rank: j.rank, total: j.total, reward: j.reward?.points }); if (j.reward?.total != null) recordPoints(j.reward.total); } }).catch(() => {});
       },
     });
     engineRef.current = eng;

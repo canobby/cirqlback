@@ -88,6 +88,24 @@ export function recordRun(gameId: string, result: RunResult, ctx: { points?: num
   return { newAchievements, newUnlocks };
 }
 
+/** Re-evaluate point-gated achievements against a fresh ★ total (e.g. after a run
+ * awards points server-side). Does NOT touch run stats — safe to call any time the
+ * point total changes. Returns anything newly earned/unlocked. */
+export function recordPoints(points: number): { newAchievements: Achievement[]; newUnlocks: string[] } {
+  const st = getRewards();
+  const newAchievements: Achievement[] = [];
+  const newUnlocks: string[] = [];
+  for (const a of ACHIEVEMENTS) {
+    if (st.earned.includes(a.id)) continue;
+    if (a.check(st.stats, points)) {
+      st.earned.push(a.id); newAchievements.push(a);
+      for (const u of a.unlocks || []) if (!st.unlocked.includes(u)) { st.unlocked.push(u); newUnlocks.push(u); }
+    }
+  }
+  if (newAchievements.length) { st.pending.push(...newAchievements.map((a) => a.id)); save(st); }
+  return { newAchievements, newUnlocks };
+}
+
 /** Pop (and clear) the queued freshly-earned achievements — the lobby shows these. */
 export function takePending(): Achievement[] {
   const st = getRewards(); if (!st.pending.length) return [];
