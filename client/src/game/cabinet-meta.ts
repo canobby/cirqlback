@@ -73,6 +73,7 @@ export const CABINET_META: Record<string, Meta> = {
   piggybank: { cat: "puzzle", era: "modern", howto: "Slide the whole board with the pad (or swipe); coins of the same value that bump together merge into the next one up. Keep merging toward the 2048 vault — but every move drops a new coin, and if the board jams with no merges left, the bank's closed." },
   chopshop: { cat: "action", era: "modern", howto: "Ingredients arc up off the counter — swipe across the screen to slice them, and string several in one swipe for a combo. Let a fruit hit the floor and you lose a life; slice a stink-bomb and it's over." },
   deliverydash: { cat: "speed", era: "modern", howto: "HOLD the thruster to fly up, release to drop. Thread the courier through the gaps in the stacked crates and grab the coins strung through each opening. Clip a crate and it's a crash landing — go the distance." },
+  sparkle: { cat: "carnival", era: "modern", howto: "Aim the pressure sprayer and blast the grime off each car — the clean meter climbs as you go. Get one spotless for a fat time bonus, then the next rolls in. Detail as many as you can before the shift clock runs out. Touch to aim + spray, or pad + SPRAY." },
 };
 
 export function metaFor(id: string): Meta { return CABINET_META[id] || { cat: "action", howto: "" }; }
