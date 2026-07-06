@@ -22,7 +22,10 @@ export default function CirqlCity() {
     if (!canvasRef.current) return;
     const eng = new CirqlCityEngine(canvasRef.current, {
       onHud: (h: any) => { if (h.state !== "over" && h.state !== "clear") { setOver(false); setDaily(null); } else setOver(true); },
-      onEnterShop: (route: string) => setLocation(route),   // walk into a shop → play that cabinet
+      onEnterShop: (route: string) => {                     // walk into a shop → play that cabinet, breadcrumb home
+        try { sessionStorage.setItem("cc_return", String(Date.now())); sessionStorage.setItem("cc_shop", route); } catch { /* ignore */ }
+        setLocation(route);
+      },
       onRunEnd: (r: { score: number; shift: number }) => {
         recordRun(GAME_ID, r as any, { points: (userRef.current as any)?.totalPoints ?? (userRef.current as any)?.points ?? 0 });
         const u = userRef.current; if (!u) return;
@@ -31,6 +34,8 @@ export default function CirqlCity() {
       },
     });
     engineRef.current = eng;
+    // returning from a shop mini-game? step back out in front of that shop
+    try { const back = sessionStorage.getItem("cc_shop"); if (back) { sessionStorage.removeItem("cc_shop"); eng.returnToShop(back); } } catch { /* ignore */ }
     // resume: adopt server-saved district/unlock progress once it arrives
     syncProgressFromServer().then((p) => engineRef.current?.applyProgress(p)).catch(() => {});
     // personalize the town: name shop fronts after the real places this player has tapped

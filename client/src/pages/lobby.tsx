@@ -30,6 +30,12 @@ export default function Lobby() {
   const [rewardQ, setRewardQ] = useState<Achievement[]>([]);
   const [favs, setFavs] = useState<string[]>(() => getFavorites());
 
+  // Returning from a CIRQL City shop mini-game? The cabinet's back button lands here
+  // (every cabinet points at the lobby); honor the breadcrumb and bounce to the town.
+  useEffect(() => {
+    try { const ts = Number(sessionStorage.getItem("cc_return") || 0); if (ts && Date.now() - ts < 3_600_000) { sessionStorage.removeItem("cc_return"); setLocation("/play/cirql-city"); } } catch { /* ignore */ }
+  }, [setLocation]);
+
   useEffect(() => {
     syncRewardsFromServer().then(() => { const p = takePending(); if (p.length) setRewardQ(p); });
     syncFavoritesFromServer().then(setFavs);

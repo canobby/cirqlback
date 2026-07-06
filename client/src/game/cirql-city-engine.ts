@@ -190,6 +190,16 @@ export class CirqlCityEngine extends RetroEngine {
   }
   private placeInTown(tx: number, ty: number) { this.hx = tx * TT + (TT - this.tpw) / 2; this.hy = ty * TT + (TT - this.tph) / 2; this.tvx = this.tvy = 0; }
 
+  /** Come back to the town standing in front of the shop just played (closes the loop). */
+  returnToShop(route: string) {
+    const s = this.town.shops.find((x) => x.route === route);
+    if (!s) return;
+    this.mode = "town"; this.clearFx();
+    this.placeInTown(s.cx, s.side === "top" ? TOP_B : BOT_B - 1); this.tface = 1;
+    this.music?.setIntensity(0.4);
+    this.emit();
+  }
+
   protected onStart() { if (this.mode === "town") { if (this.nearDoor) this.triggerDoor(this.nearDoor); } else this.startLevel(); }
   protected onMenu() { this.returnToTown(this.di); }
 
