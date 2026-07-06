@@ -7,6 +7,7 @@ import { MAIN_STREET_CABINETS, paintCover, COVER_W, COVER_H, type Cabinet } from
 import { ARCADE_GAMES, ARCADE_CIRCLES, gamesInCircle } from "@/game/registry";
 import { InsertCoinCutscene } from "@/components/insert-coin";
 import { takePending, syncRewardsFromServer, type Achievement } from "@/game/rewards";
+import { getFavorites, toggleFavorite, syncFavoritesFromServer } from "@/game/favorites";
 
 // The unified CIRQLBACK · MAIN STREET ARCADE lobby — one pixel/CRT front door for
 // both game lines. Player card (your avatar), a category rail, cover-art game cards,
@@ -14,7 +15,14 @@ import { takePending, syncRewardsFromServer, type Achievement } from "@/game/rew
 const S = 2;
 const stars = (d: number) => "★★★☆☆☆".slice(3 - d, 6 - d);
 
-type CatId = "main" | (typeof ARCADE_CIRCLES)[number]["id"];
+type CatId = "favorites" | "main" | (typeof ARCADE_CIRCLES)[number]["id"];
+
+// unified metadata for a favoritable game across both lines
+type FavGame = { id: string; name: string; sub: string; accent: string; line: "main" | "circle"; route: string; glyph?: string; cab?: Cabinet };
+const ALL_FAV: FavGame[] = [
+  ...MAIN_STREET_CABINETS.map((c) => ({ id: c.id, name: c.name, sub: c.shop, accent: c.accent, line: "main" as const, route: c.route, cab: c })),
+  ...ARCADE_GAMES.filter((g) => g.status === "live").map((g) => ({ id: g.id, name: g.name, sub: g.genre, accent: g.accent, line: "circle" as const, route: g.route, glyph: g.glyph })),
+];
 
 export default function Lobby() {
   const { user } = useAuth();
@@ -25,11 +33,15 @@ export default function Lobby() {
   const avatarCanvas = useRef<HTMLCanvasElement>(null);
   const coverRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
   const [rewardQ, setRewardQ] = useState<Achievement[]>([]);
+  const [favs, setFavs] = useState<string[]>(() => getFavorites());
 
   // sync rewards + surface any achievements earned since the last visit
   useEffect(() => {
     syncRewardsFromServer().then(() => { const p = takePending(); if (p.length) setRewardQ(p); });
+    syncFavoritesFromServer().then(setFavs);
   }, []);
+
+  const onToggleFav = (id: string) => setFavs(toggleFavorite(id));
   useEffect(() => {
     if (!rewardQ.length) return;
     const t = window.setTimeout(() => setRewardQ((q) => q.slice(1)), 3200);
@@ -50,10 +62,12 @@ export default function Lobby() {
   }, [cat]);
 
   const rail: { id: CatId; name: string; count: number; accent: string }[] = [
+    { id: "favorites", name: "Favorites", count: favs.length, accent: "#ff8ab5" },
     { id: "main", name: "Main Street", count: MAIN_STREET_CABINETS.length, accent: "#b79bff" },
     ...ARCADE_CIRCLES.map((c) => ({ id: c.id as CatId, name: c.name, count: gamesInCircle(c.id).length, accent: c.accent })),
   ];
-  const circleGames = cat !== "main" ? ARCADE_GAMES.filter((g) => g.category === cat) : [];
+  const circleGames = cat !== "main" && cat !== "favorites" ? ARCADE_GAMES.filter((g) => g.category === cat) : [];
+  const favGames = ALL_FAV.filter((g) => favs.includes(g.id));
 
   const onLaunch = (cab: Cabinet) => setLaunch(cab);
   const onCutsceneDone = () => {
@@ -113,15 +127,40 @@ export default function Lobby() {
 
           <div>
             <div className="mb-3 flex items-center gap-3 text-[15px] font-extrabold uppercase tracking-[0.05em]" style={{ color: "#ffb020", textShadow: "0 0 10px rgba(255,176,32,.4)" }}>
-              ▸ {cat === "main" ? "Main Street · 16-bit cabinets" : rail.find((r) => r.id === cat)?.name}
+              ▸ {cat === "main" ? "Main Street · 16-bit cabinets" : cat === "favorites" ? "★ Favorites" : rail.find((r) => r.id === cat)?.name}
               <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, rgba(255,176,32,.5), transparent)" }} />
             </div>
 
-            {cat === "main" ? (
+            {cat === "favorites" ? (
+              favGames.length ? (
+                <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))" }}>
+                  {favGames.map((g) => {
+                    const inner = (
+                      <div className="relative flex h-full items-center gap-2.5 rounded-xl border p-2.5" style={{ borderColor: g.accent + "88", background: "linear-gradient(180deg,#180f34,#130d28)", boxShadow: "0 6px 18px rgba(0,0,0,.4)" }}>
+                        <div className="flex h-10 w-10 flex-none items-center justify-center rounded-lg text-[20px]" style={{ background: `${g.accent}1f`, border: `1px solid ${g.accent}55`, filter: `drop-shadow(0 0 6px ${g.accent}88)` }}>{g.glyph || "🕹️"}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[13px] font-extrabold text-white">{g.name}</div>
+                          <div className="truncate text-[10px] uppercase tracking-wide text-violet-200/50">{g.line === "main" ? "Main Street" : "Circle"} · {g.sub}</div>
+                        </div>
+                        <FavStar id={g.id} on={true} onToggle={onToggleFav} />
+                      </div>
+                    );
+                    return g.line === "main"
+                      ? <div key={g.id} onClick={() => g.cab && onLaunch(g.cab)} role="button" tabIndex={0} data-testid={`fav-card-${g.id}`} className="cursor-pointer active:scale-[0.98]">{inner}</div>
+                      : <Link key={g.id} href={g.route} data-testid={`fav-card-${g.id}`} className="active:scale-[0.98]">{inner}</Link>;
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border py-10 text-center" style={{ borderColor: "#2e2158", background: "rgba(255,255,255,.02)" }} data-testid="fav-empty">
+                  <div className="text-[13px] font-extrabold text-white">No favorites yet</div>
+                  <div className="mt-1 text-[11px] text-violet-300/50">Tap the ★ on any game to pin it here for quick access.</div>
+                </div>
+              )
+            ) : cat === "main" ? (
               <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(158px,1fr))" }}>
                 {MAIN_STREET_CABINETS.map((cab, i) => (
-                  <button key={cab.id} onClick={() => onLaunch(cab)} data-testid={`cabinet-${cab.id}`}
-                    className="overflow-hidden rounded-xl border text-left active:scale-[0.98]"
+                  <div key={cab.id} onClick={() => onLaunch(cab)} role="button" tabIndex={0} data-testid={`cabinet-${cab.id}`}
+                    className="cursor-pointer overflow-hidden rounded-xl border text-left active:scale-[0.98]"
                     style={{ borderColor: cab.accent, background: "linear-gradient(180deg,#180f34,#130d28)", boxShadow: `0 8px 24px rgba(0,0,0,.5), 0 0 18px -6px ${cab.accent}` }}>
                     <div className="relative" style={{ background: "#000", borderBottom: "1px solid #2e2158" }}>
                       <canvas ref={(el) => (coverRefs.current[cab.id] = el)} width={COVER_W * S} height={COVER_H * S} style={{ display: "block", width: "100%", height: "auto", imageRendering: "pixelated" }} />
@@ -130,13 +169,16 @@ export default function Lobby() {
                       <div className="pointer-events-none absolute inset-0" style={{ background: "repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.16) 2px 4px), radial-gradient(130% 120% at 50% 45%, transparent 66%, rgba(0,0,0,.4) 100%)" }} />
                     </div>
                     <div className="px-2.5 py-2">
-                      <div className="text-[13px] font-extrabold uppercase leading-none text-white" style={{ textShadow: `0 0 7px ${cab.accent}` }}>{cab.name}</div>
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="min-w-0 truncate text-[13px] font-extrabold uppercase leading-none text-white" style={{ textShadow: `0 0 7px ${cab.accent}` }}>{cab.name}</div>
+                        <FavStar id={cab.id} on={favs.includes(cab.id)} onToggle={onToggleFav} />
+                      </div>
                       <div className="mt-1.5 flex items-center justify-between">
                         <span className="text-[9.5px] uppercase tracking-[0.05em] text-violet-200/60">{cab.shop}</span>
                         <span className="text-[11px] tracking-[1px] text-amber-300">{stars(cab.difficulty)}</span>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -146,7 +188,7 @@ export default function Lobby() {
                     <div className="flex h-full flex-col rounded-xl border p-3" style={{ borderColor: g.accent + "88", background: "linear-gradient(180deg,#180f34,#130d28)", boxShadow: `0 6px 18px rgba(0,0,0,.4)` }}>
                       <div className="flex items-center justify-between">
                         <span className="text-[26px]" style={{ filter: `drop-shadow(0 0 8px ${g.accent})` }}>{g.glyph}</span>
-                        {g.status === "soon" && <span className="rounded bg-[#5f574f] px-1.5 py-0.5 text-[8px] font-extrabold text-[#0a0714]">SOON</span>}
+                        {g.status === "soon" ? <span className="rounded bg-[#5f574f] px-1.5 py-0.5 text-[8px] font-extrabold text-[#0a0714]">SOON</span> : <FavStar id={g.id} on={favs.includes(g.id)} onToggle={onToggleFav} />}
                       </div>
                       <div className="mt-2 text-[13px] font-extrabold text-white">{g.name}</div>
                       <div className="text-[10px] text-violet-200/50">{g.genre}</div>
@@ -166,7 +208,7 @@ export default function Lobby() {
         <NavItem to="/" icon={<Home className="h-4 w-4" />} label="Home" color="#3bb6ff" />
         <NavItem to="/leaderboard" icon={<Trophy className="h-4 w-4" />} label="Leaderboard" color="#ffd24a" />
         <NavItem to="/achievements" icon={<Star className="h-4 w-4" />} label="Achievements" color="#33e650" />
-        <NavItem icon={<Heart className="h-4 w-4" />} label="Favorites" color="#ff8ab5" />
+        <NavItem onClick={() => { setCat("favorites"); window.scrollTo({ top: 0, behavior: "smooth" }); }} icon={<Heart className="h-4 w-4" />} label="Favorites" color="#ff8ab5" />
         <NavItem to="/avatar" icon={<User className="h-4 w-4" />} label="Avatar" color="#b79bff" />
       </div>
 
@@ -190,11 +232,24 @@ export default function Lobby() {
   );
 }
 
-function NavItem({ to, icon, label, color }: { to?: string; icon: React.ReactNode; label: string; color: string }) {
+function NavItem({ to, icon, label, color, onClick }: { to?: string; icon: React.ReactNode; label: string; color: string; onClick?: () => void }) {
   const inner = (
     <div className="flex flex-col items-center gap-0.5 text-[10px] font-extrabold uppercase tracking-[0.06em]" style={{ color }}>
       <span style={{ filter: `drop-shadow(0 0 6px ${color})` }}>{icon}</span>{label}
     </div>
   );
-  return to ? <Link href={to} data-testid={`nav-${label.toLowerCase()}`}>{inner}</Link> : <button data-testid={`nav-${label.toLowerCase()}`} className="opacity-80">{inner}</button>;
+  if (to) return <Link href={to} data-testid={`nav-${label.toLowerCase()}`}>{inner}</Link>;
+  return <button onClick={onClick} data-testid={`nav-${label.toLowerCase()}`} className={onClick ? "active:scale-90" : "opacity-80"}>{inner}</button>;
+}
+
+// star toggle used on both card lines — a filled gold star means favorited.
+function FavStar({ id, on, onToggle }: { id: string; on: boolean; onToggle: (id: string) => void }) {
+  return (
+    <button data-testid={`fav-${id}`} aria-label={on ? "Remove from favorites" : "Add to favorites"} aria-pressed={on}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(id); }}
+      className="flex h-6 w-6 flex-none items-center justify-center rounded-full active:scale-90"
+      style={{ background: on ? "rgba(255,210,74,.16)" : "rgba(255,255,255,.05)", border: `1px solid ${on ? "#ffd24a" : "#3a2a72"}` }}>
+      <Star className="h-3.5 w-3.5" style={{ color: on ? "#ffd24a" : "#8a7fb0", fill: on ? "#ffd24a" : "none" }} />
+    </button>
+  );
 }
