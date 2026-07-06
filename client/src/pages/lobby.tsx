@@ -99,6 +99,25 @@ export default function Lobby() {
           </div>
         </div>
 
+        {/* flagship spotlight — CIRQL CITY */}
+        <Link href="/play/cirql-city" data-testid="spotlight-cirqlcity" className="mt-5 block active:scale-[0.99]">
+          <div className="relative overflow-hidden rounded-2xl border p-4 sm:p-5" style={{ borderColor: "#ffd24a", background: "linear-gradient(110deg, #1a1038 0%, #241848 45%, #3a1f4a 100%)", boxShadow: "0 12px 40px rgba(0,0,0,.5), 0 0 30px -8px #ffd24a" }}>
+            <div className="pointer-events-none absolute inset-0" style={{ background: "repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.14) 2px 4px)" }} />
+            <div className="pointer-events-none absolute -right-6 -top-8 h-40 w-40 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,210,74,.28), transparent 68%)" }} />
+            <div className="relative flex items-center gap-4">
+              <div className="flex-1">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="rounded px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.14em] text-[#0a0714]" style={{ background: "#ffd24a", boxShadow: "0 0 12px rgba(255,210,74,.6)" }}>★ Flagship</span>
+                  <span className="text-[9px] uppercase tracking-[0.2em] text-cyan-300/70">New</span>
+                </div>
+                <div className="text-[26px] font-extrabold uppercase leading-none text-white sm:text-[32px]" style={{ letterSpacing: "0.03em", textShadow: "0 0 4px #fff, 0 0 16px #ffd24a, 0 2px 0 #7a5410" }}>CIRQL CITY</div>
+                <div className="mt-1.5 text-[12px] font-bold text-violet-100/70">Main Street has gone dark. Run, jump &amp; light every shop — then <span className="text-amber-300">close the cirql</span> and watch the whole street blaze back to life.</div>
+              </div>
+              <div className="flex-none rounded-full px-6 py-3 text-[14px] font-extrabold uppercase tracking-wide" style={{ color: "#0a0714", background: "linear-gradient(180deg,#ffe27a,#ffb020)", boxShadow: "0 8px 24px rgba(255,176,32,.4)" }}>Play ▸</div>
+            </div>
+          </div>
+        </Link>
+
         {/* body: rail + grid */}
         <div className="mt-5 grid gap-5" style={{ gridTemplateColumns: "minmax(0,196px) 1fr" }}>
           <div>
