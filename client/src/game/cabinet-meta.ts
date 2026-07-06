@@ -75,6 +75,7 @@ export const CABINET_META: Record<string, Meta> = {
   deliverydash: { cat: "speed", era: "modern", howto: "HOLD the thruster to fly up, release to drop. Thread the courier through the gaps in the stacked crates and grab the coins strung through each opening. Clip a crate and it's a crash landing — go the distance." },
   sparkle: { cat: "carnival", era: "modern", howto: "Aim the pressure sprayer and blast the grime off each car — the clean meter climbs as you go. Get one spotless for a fat time bonus, then the next rolls in. Detail as many as you can before the shift clock runs out. Touch to aim + spray, or pad + SPRAY." },
   spellbound: { cat: "puzzle", era: "modern", howto: "Guess the hidden five-letter word in six tries. Green = right letter in the right spot, amber = in the word but wrong spot, grey = not in it at all. Tap the on-screen keys or type on your keyboard — the fewer guesses, the bigger the score." },
+  sortit: { cat: "puzzle", era: "modern", howto: "Tap a vial to lift its top colour, then tap another to pour it — but only onto empty space or a matching colour. Get every vial down to a single colour to clear the batch, then a messier one rolls in. Jam up and it auto-reshuffles. Sort as many as you can before the clock runs out." },
 };
 
 export function metaFor(id: string): Meta { return CABINET_META[id] || { cat: "action", howto: "" }; }
