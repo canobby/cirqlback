@@ -44,6 +44,7 @@ export class CirqlWorldEngine extends RetroEngine {
 
   private stats: CirqlStats = { sparks: 0, cirqlLit: 3, cirqlTotal: 12, online: 1 };
   private quests: QuestProgress = {};
+  private lit = new Set<string>();   // quest lanterns the player has lit
 
   // Smooth-text overlay queue: UI/labels are enqueued in logical coords during
   // render() and painted crisply (system sans) in onOverlay(), so words stay
@@ -93,12 +94,13 @@ export class CirqlWorldEngine extends RetroEngine {
   setHudInsets(topCss: number, botCss: number) { this.insetTopCss = Math.max(0, topCss); this.insetBotCss = Math.max(0, botCss); }
   /** The on-screen action button + the quest system call this to interact. */
   interact() { this.doInteract(); }
-  getState() { return { ring: this.ringIdx, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests }; }
+  getState() { return { ring: this.ringIdx, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit) }; }
   applyState(s: any) {
     if (!s) return;
     if (typeof s.ring === "number" && RINGS[s.ring]?.explorable) { this.ringIdx = s.ring; this.curRing = RINGS[s.ring]; }
     if (typeof s.x === "number" && typeof s.y === "number") { this.posX = s.x; this.posY = s.y; }
     if (s.quests && typeof s.quests === "object") this.quests = s.quests;
+    if (Array.isArray(s.lit)) this.lit = new Set(s.lit);
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
   }
   toast(text: string) { this.msg = text; this.msgT = 4.6; }
@@ -156,9 +158,17 @@ export class CirqlWorldEngine extends RetroEngine {
   private objTargetProp(): Prop | null {
     const q = this.activeQuest(); if (!q) return null;
     const oi = this.currentObjIndex(q); if (oi < 0) return null;
-    const tgt = q.objectives[oi].target; if (!tgt) return null;
-    return this.curRing.props.find((p) => p.id === tgt) ?? null;
+    const o = q.objectives[oi];
+    if (o.kind === "lightLanterns") {   // point to the nearest unlit quest lantern
+      let best: Prop | null = null, bd = 1e9;
+      for (const p of this.curRing.props) if (p.t === "lantern" && p.id && !this.lit.has(p.id)) { const d = Math.hypot(this.posX - p.x, this.posY - p.y); if (d < bd) { bd = d; best = p; } }
+      return best;
+    }
+    if (o.kind === "enterWonders") return this.curRing.props.find((p) => p.t === "wonders") ?? null;
+    if (!o.target) return null;
+    return this.curRing.props.find((p) => p.id === o.target) ?? null;
   }
+  private isQuestLantern(p: Prop) { return p.t === "lantern" && !!p.id && this.activeQuest()?.id === "lantern-path" && !this.lit.has(p.id); }
 
   // ---------- interaction ----------
   private solids(): { x: number; y: number; r: number }[] {
@@ -177,7 +187,8 @@ export class CirqlWorldEngine extends RetroEngine {
       return;
     }
     const p = this.near; if (!p) return;
-    if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.onInteract?.("wonders", p); }
+    if (p.t === "lantern" && p.id) { if (!this.lit.has(p.id)) { this.lit.add(p.id); this.advanceObjective("lightLanterns"); this.onQuestChange?.(); } }
+    else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.onInteract?.("wonders", p); }
     else if (p.t === "npc") { this.openNpcDialog(p); this.onInteract?.("npc", p); }
     else if (p.t === "dock") {
       const dest = RINGS[p.to ?? -1];
@@ -255,12 +266,13 @@ export class CirqlWorldEngine extends RetroEngine {
 
       this.walk = Math.hypot(this.vx, this.vy) > 8 ? this.walk + dt * 10 : 0;
 
-      // nearest interactable in range
+      // nearest interactable in range (incl. unlit quest lanterns during The Lantern Path)
       this.near = null; let best = 1e9;
       for (const p of this.curRing.props) {
-        if (p.t !== "wonders" && p.t !== "npc" && p.t !== "dock") continue;
+        const isQL = this.isQuestLantern(p);
+        if (p.t !== "wonders" && p.t !== "npc" && p.t !== "dock" && !isQL) continue;
         const d = Math.hypot(this.posX - p.x, this.posY - p.y);
-        const range = p.r ?? 40;
+        const range = p.r ?? (isQL ? 30 : 40);
         if (d < range && d < best) { best = d; this.near = p; }
       }
 
@@ -350,7 +362,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "wonders": draws.push({ y: p.y + 30, f: () => this.drawWonders(sxp, syp, p) }); break;
         case "npc": draws.push({ y: p.y, f: () => this.drawNpc(sxp, syp, p) }); break;
         case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big) }); break;
-        case "lantern": draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, true) }); break;
+        case "lantern": { const isQ = !!p.id && this.activeQuest()?.id === "lantern-path"; const litState = isQ ? this.lit.has(p.id!) : true; draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, litState) }); break; }
         case "dock": draws.push({ y: p.y - 40, f: () => this.drawDock(sxp, syp, p) }); break;
         case "marker": { const isTarget = this.objTargetProp() === p; if (isTarget) draws.push({ y: p.y - 1, f: () => this.drawMarker(sxp, syp) }); break; }
         default: break;
@@ -495,7 +507,8 @@ export class CirqlWorldEngine extends RetroEngine {
     if (this.near && !this.dialog) {
       const label = this.near.t === "wonders" ? "Enter the Wonders"
         : this.near.t === "npc" ? `Talk to ${this.near.label || ""}`
-          : "Set sail";
+          : this.near.t === "lantern" ? "Light the lantern"
+            : "Set sail";
       const txt = `E · ${label}`;
       const w = Math.max(this.textWidth(txt, 1), txt.length * 3.6);
       const x = Math.round((this.LW - w) / 2), y = this.LH - ib - 24;

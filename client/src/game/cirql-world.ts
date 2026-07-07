@@ -84,10 +84,10 @@ const HEARTH: Ring = {
     { t: "tree", x: 120, y: 250 },
     { t: "tree", x: -150, y: 280, big: true },
     { t: "tree", x: 300, y: 220 },
-    // a few plain path lanterns lighting the way to the Wonders
-    { t: "lantern", x: 90, y: 60 },
-    { t: "lantern", x: 160, y: 40 },
-    { t: "lantern", x: 210, y: 20 },
+    // the path lanterns to the Wonders — quest targets for "The Lantern Path"
+    { t: "lantern", x: 95, y: 75, id: "ql1" },
+    { t: "lantern", x: 165, y: 55, id: "ql2" },
+    { t: "lantern", x: 215, y: 35, id: "ql3" },
     // the south dock — sail outward (fogged for now)
     { t: "dock", x: 0, y: 400, to: 1, label: "the fog", id: "dock-s" },
     // quest waypoint target (Quest 1 "Find Your Feet")

@@ -26,8 +26,9 @@ export interface QuestDef {
   next?: string;         // quest auto-offered on completion (the chain)
 }
 
-// M3 ships ONE reference quest that proves the backbone end-to-end; M4 adds the
-// rest of the onboarding chain (lantern path → the Wonders door).
+// The onboarding chain (M4): Find Your Feet → The Lantern Path → The Wonders Door.
+// Quest 1 is offered by Ferra (or auto-accepted on first run); the rest auto-chain
+// via `next` as each completes. Each teaches one verb: walk → interact → enter.
 export const QUESTS: QuestDef[] = [
   {
     id: "find-your-feet",
@@ -40,7 +41,24 @@ export const QUESTS: QuestDef[] = [
     ],
     objectives: [{ kind: "reach", target: "marker-shore", count: 1, label: "Walk to the glimmer" }],
     reward: { sparks: 3 },
-    // next: "lantern-path"  // wired in M4
+    next: "lantern-path",
+  },
+  {
+    id: "lantern-path",
+    name: "The Lantern Path",
+    giver: "",   // auto-chained from Find Your Feet
+    intro: ["The path east is dark. Light the lanterns as you go — press E by each."],
+    objectives: [{ kind: "lightLanterns", count: 3, label: "Light the path lanterns" }],
+    reward: { sparks: 4 },
+    next: "wonders-door",
+  },
+  {
+    id: "wonders-door",
+    name: "The Wonders Door",
+    giver: "",   // auto-chained from The Lantern Path
+    intro: ["The lit path leads to the Wonders. Step inside — press E at the door."],
+    objectives: [{ kind: "enterWonders", count: 1, label: "Enter the Wonders" }],
+    reward: { sparks: 5 },
   },
 ];
 

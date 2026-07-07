@@ -111,8 +111,11 @@ export default function Cirql() {
   }, []);
 
   const onConfirm = (cfg: AvatarConfig, name: string) => {
+    const firstRun = !seenIntroRef.current;
     avatarRef.current = cfg; nameRef.current = name || nameRef.current || "Traveller"; seenIntroRef.current = true;
     engineRef.current?.setAvatar(cfg); engineRef.current?.setLocal(nameRef.current, cfg);
+    // first-run onboarding: auto-start the quest chain so a waypoint guides them (CHR-231)
+    if (firstRun) engineRef.current?.acceptQuest("find-your-feet");
     setShowCreator(false); persist();
   };
 
