@@ -57,6 +57,7 @@ export class CirqlWorldEngine extends RetroEngine {
   } | null = null;
   private posX = 0; private posY = 0;         // player world position
   private vx = 0; private vy = 0; private facing: "up" | "down" | "left" | "right" = "down"; private walk = 0;
+  private jumpZ = 0; private jumpVel = 0;      // fake-Z hop (CHR-263): raised height + vertical velocity
   private camX = 0; private camY = 0;
   private t = 0;
   private hero: AvatarConfig;
@@ -151,6 +152,8 @@ export class CirqlWorldEngine extends RetroEngine {
   setHudInsets(topCss: number, botCss: number) { this.insetTopCss = Math.max(0, topCss); this.insetBotCss = Math.max(0, botCss); }
   /** The on-screen action button + the quest system call this to interact. */
   interact() { if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
+  /** A little fake-Z hop (CHR-263) — raise the sprite; the shadow stays grounded. */
+  jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; if (this.jumpZ <= 0.01 && this.jumpVel <= 0) this.jumpVel = 66; }
   getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce) }; }
   applyState(s: any) {
     if (!s) return;
@@ -487,6 +490,8 @@ export class CirqlWorldEngine extends RetroEngine {
     this.t += dt;
     this.msgT = Math.max(0, this.msgT - dt);
     this.arriveT = Math.max(0, this.arriveT - dt);
+    // fake-Z hop physics (CHR-263) — always settles, independent of movement
+    if (this.jumpZ > 0 || this.jumpVel !== 0) { this.jumpVel -= 260 * dt; this.jumpZ += this.jumpVel * dt; if (this.jumpZ <= 0) { this.jumpZ = 0; this.jumpVel = 0; } }
 
     // live remotes ease toward their last-known position + decay chat bubbles (runs
     // unconditionally so other travellers keep moving during your dialog / chart)
@@ -887,12 +892,13 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- props ----------
   private drawHero(cx: number, cy: number) {
     const walkBob = this.walk > 0 ? Math.round(Math.sin(this.walk)) : 0;
-    const bob = walkBob + this.emoteBob(this.myEmoteT > 0 ? this.myEmote : "");
+    const z = Math.round(this.jumpZ);
+    const bob = walkBob + this.emoteBob(this.myEmoteT > 0 ? this.myEmote : "") - z;
     // aura glow (cosmetic) behind the figure
     const aura = this.hero.aura && AURA_COLORS[this.hero.aura];
-    if (aura) this.glow(cx, cy - 12, 20, aura, this.reduce ? 0.4 : 0.32 + 0.1 * Math.sin(this.t * 2.5));
-    this.disc(cx, cy + 2, 4, "#0a071460");
-    this.ring(cx, cy + 2, 6, "#35e0d0", 1.1);       // gentle "you" ring
+    if (aura) this.glow(cx, cy - 12 - z, 20, aura, this.reduce ? 0.4 : 0.32 + 0.1 * Math.sin(this.t * 2.5));
+    this.disc(cx, cy + 2, Math.max(2, 4 - this.jumpZ * 0.16), "#0a071460");   // grounded shadow shrinks as you rise
+    this.ring(cx, cy + 2, 6, "#35e0d0", 1.1);       // gentle "you" ring (grounded)
     this.avatar(cx, cy + bob, this.hero, this.facing);
     this.nameTag(cx, cy, this.myName, "#ffd24a");
     if (this.myEmoteT > 0 && this.myEmote) this.drawEmote(cx, cy, this.myEmote, this.myEmoteT);

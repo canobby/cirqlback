@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile } from "lucide-react";
+import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile, ChevronsUp } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlWorldEngine, type QuestLogRow } from "@/game/cirql-world-engine";
 import type { Btn } from "@/game/retro-engine";
@@ -373,6 +373,14 @@ export default function Cirql() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn]);
 
+  // Desktop hop key (CHR-263). Base engine keys are all taken (E/Space=interact,
+  // X=run), so bind a free key here on the CIRQL page only.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if ((e.code === "KeyC" || e.code === "KeyH") && !e.repeat) engineRef.current?.jump(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Full-screen: keep the in-engine HUD clear of the floating header + controls.
   useEffect(() => {
     const update = () => {
@@ -647,6 +655,11 @@ export default function Cirql() {
           </button>
           <button {...hold("b")} data-testid="btn-run" className="flex h-14 w-14 flex-col items-center justify-center rounded-full border-[1.5px] text-[9px] font-extrabold active:scale-90" style={{ borderColor: "#3bb6ff", color: "#7be0ff", background: "rgba(10,18,38,.4)", boxShadow: "0 0 16px rgba(59,182,255,.2) inset", touchAction: "none" }}>
             <Zap className="h-5 w-5" /> RUN
+          </button>
+          <button onPointerDown={(e) => { e.preventDefault(); engineRef.current?.jump(); }} data-testid="btn-jump" title="Hop"
+            className="flex h-12 w-12 flex-col items-center justify-center rounded-full border-[1.5px] text-[8px] font-extrabold active:scale-90"
+            style={{ borderColor: "#7ee787", color: "#a6f0ac", background: "rgba(126,231,135,.1)", boxShadow: "0 0 14px rgba(126,231,135,.15) inset", touchAction: "none" }}>
+            <ChevronsUp className="h-5 w-5" /> HOP
           </button>
         </div>
       </div>
