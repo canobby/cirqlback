@@ -268,6 +268,23 @@ export class CirqlWorldEngine extends RetroEngine {
   toggleSit() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.seated = !this.seated; this.poseDirty = true; this.dozing = false; this.idleT = 0; if (this.seated) { this.vx = 0; this.vy = 0; this.moveTarget = null; } this.onSeatChange?.(this.seated); }
   private standUp() { this.dozing = false; this.idleT = 0; if (this.seated) { this.seated = false; this.poseDirty = true; this.onSeatChange?.(false); } }
   isSeated() { return this.seated; }
+  /** Jump straight to a start location (no sailing voyage) — used by the startup picker.
+   *  "last" keeps the already-applied saved spot; "home" = CIRQLSPACE spawn; "arcade" =
+   *  standing at the CirqlCade entrance on the Town ring (one tap from the games hall). */
+  startAt(dest: "home" | "last" | "arcade") {
+    if (dest === "last") return;
+    if (dest === "home") {
+      this.ringIdx = 0; this.curRing = getRing(0);
+      this.posX = this.curRing.spawn.x; this.posY = this.curRing.spawn.y; this.facing = "down";
+    } else {   // arcade — stand facing the CirqlCade building on the Town ring
+      this.ringIdx = 1; this.curRing = getRing(1); this.maxRing = Math.max(this.maxRing, 1); this.ensureRingQuest();
+      const cade = this.curRing.props.find((p) => p.t === "wonders");
+      if (cade) { this.posX = cade.x; this.posY = cade.y + 42; } else { this.posX = this.curRing.spawn.x; this.posY = this.curRing.spawn.y; }
+      this.facing = "up";
+    }
+    this.vx = this.vy = 0; this.moveTarget = null; this.seated = false;
+    this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
+  }
   // ---- live zoom (Phase H2) — 0.25 (whole ocean) … 1.5 (close). Building happens at 1:1. ----
   onZoomChange?: (z: number) => void;
   setZoomTarget(z: number) { if (this.editDecor || this.editPaint) z = 1; this.zoomTarget = Math.max(0.25, Math.min(1.5, z)); this.onZoomChange?.(this.zoomTarget); }

@@ -34,7 +34,8 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 // get a character-creation step first; everyone can re-edit their look.
 const INTRO_LS = "cirql_intro_v1";
 
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; }
+type StartDest = "home" | "last" | "arcade";
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; }
 const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export default function Cirql() {
@@ -62,6 +63,10 @@ export default function Cirql() {
   const [questRows, setQuestRows] = useState<QuestLogRow[]>([]);
   const [hallOpen, setHallOpen] = useState(false);         // CirqlCade hall (the in-world arcade)
   const [playRoute, setPlayRoute] = useState<string | null>(null); // a cabinet embedded over the world
+  const [startPick, setStartPick] = useState<{ canArcade: boolean } | null>(null);   // startup location picker
+  const [startRemember, setStartRemember] = useState(true);
+  const arcadeVisitedRef = useRef(false);                  // has the player reached CirqlCade before? (gates the arcade shortcut)
+  const startPrefRef = useRef<StartDest | "ask">("ask");   // remembered startup default
   const [showCirql, setShowCirql] = useState(false);       // your Cirql / invite panel
   const [showInventory, setShowInventory] = useState(false);  // Inventory: stock + SPARQS + how-to (CHR-270)
   const [showDecor, setShowDecor] = useState(false);       // CIRQLSPACE build palette (CHR-259)
@@ -261,8 +266,27 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current };
   };
+  // Apply a startup destination (from the picker) + sync the ring-dependent UI.
+  const applyStart = (dest: StartDest) => {
+    const eng = engineRef.current; if (!eng) return;
+    eng.startAt(dest);
+    const s = eng.getState();
+    setCurRingUi(s.ring); maxRingRef.current = Math.max(maxRingRef.current, (s as any).maxRing ?? 0);
+    posRef.current = { ring: s.ring, x: s.x, y: s.y }; setQuestRows(eng.getQuestLog());
+  };
+  // The player chose a start location. Relocate, optionally remember it, and (re)join presence there.
+  const pickStart = (dest: StartDest) => {
+    if (startRemember) startPrefRef.current = dest; else startPrefRef.current = "ask";
+    applyStart(dest); setStartPick(null);
+    presenceReadyRef.current = true;
+    if (joinedRef.current) { const st = engineRef.current!.getState(); wsSend({ t: "move", ring: st.ring, x: st.x, y: st.y, dir: "down", pose: "stand" }); }
+    else tryJoin();
+    persist();
+  };
+  // Open the CirqlCade hall + record the first visit (unlocks the arcade startup shortcut).
+  const openHall = () => { setHallOpen(true); if (!arcadeVisitedRef.current) { arcadeVisitedRef.current = true; persist(); } };
   const persist = () => {
     const st = buildState();
     saveAvatarLS(st.avatar);
@@ -282,7 +306,7 @@ export default function Cirql() {
     const eng = new CirqlWorldEngine(canvasRef.current);
     engineRef.current = eng;
     if (import.meta.env.DEV) (window as any).__cirql = eng;
-    eng.onInteract = (kind) => { if (kind === "wonders") setHallOpen(true); };   // step into CirqlCade
+    eng.onInteract = (kind) => { if (kind === "wonders") openHall(); };   // step into CirqlCade
     eng.onLocalMove = (ring, x, y) => { posRef.current = { ring, x, y }; scheduleSave(); };
     eng.onSail = (ring, maxRing) => { const st = eng.getState(); posRef.current = { ring, x: st.x, y: st.y }; setCurRingUi(ring); if (maxRing > maxRingRef.current) { maxRingRef.current = maxRing; progressDaily("voyage"); } persist(); };   // reaching a new ring is a big save point
     // quests: grant the sparks reward on completion, persist progress on any change
@@ -394,6 +418,7 @@ export default function Cirql() {
       avatarRef.current = avatar; nameRef.current = name; seenIntroRef.current = !!seen; sparksRef.current = st?.sparks ?? 0;
       energyRef.current = st?.worldEnergy ?? 0; membersRef.current = st?.cirqlMembers ?? 0; setMembers(membersRef.current);
       playsRef.current = { day: st?.playDay ?? "", n: st?.playsToday ?? 0 };
+      arcadeVisitedRef.current = !!st?.arcadeVisited; startPrefRef.current = st?.startPref ?? "ask";
       ownedRef.current = Array.isArray(st?.owned) ? st!.owned! : []; setOwned(ownedRef.current); setSparksUi(sparksRef.current);
       maxRingRef.current = st?.maxRing ?? 0; setCurRingUi(st?.ring ?? 0);
       doneCampaignsRef.current = new Set(Array.isArray(st?.doneCampaigns) ? st!.doneCampaigns! : []);
@@ -405,10 +430,24 @@ export default function Cirql() {
       setDecorCount(eng.getDecor().length);
       if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
       setQuestRows(eng.getQuestLog());
-      if (!seen) { setCreatorMode("create"); setShowCreator(true); }
-      // returning players can appear to others immediately; first-run players wait
-      // until they've finished the creator (see onConfirm) so their avatar is real.
-      presenceReadyRef.current = !!seen; tryJoin();
+      if (!seen) {
+        // first run → creator + onboarding; presence waits until they finish (onConfirm)
+        setCreatorMode("create"); setShowCreator(true); presenceReadyRef.current = false; tryJoin();
+      } else {
+        // returning player → the startup location picker (unless they've saved a default).
+        // The arcade shortcut needs onboarding done + a prior CirqlCade visit.
+        const canArcade = arcadeVisitedRef.current && (st?.maxRing ?? 0) >= 1;
+        const hasSave = !!st && typeof st.x === "number";
+        const pref = startPrefRef.current;
+        if (pref !== "ask" && (pref !== "arcade" || canArcade)) {
+          presenceReadyRef.current = true; applyStart(pref); tryJoin();     // saved default → jump straight in
+        } else if (hasSave || canArcade) {
+          presenceReadyRef.current = false;                                 // hold presence until they pick
+          setStartRemember(true); setStartPick({ canArcade });
+        } else {
+          presenceReadyRef.current = true; tryJoin();                       // nothing to choose → just start
+        }
+      }
     };
     if (loggedIn) {
       loadedRef.current = true;
@@ -630,6 +669,10 @@ export default function Cirql() {
         <button onClick={() => setShowInventory((v) => !v)} data-testid="btn-inventory" title="Inventory"
           className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-amber-200/90" style={{ borderColor: showInventory ? "rgba(255,196,107,.65)" : "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
           <Backpack className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={() => { setStartRemember(startPrefRef.current !== "ask"); setStartPick({ canArcade: arcadeVisitedRef.current && maxRingRef.current >= 1 }); }} data-testid="btn-startloc" title="Start location"
+          className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-cyan-200/90" style={{ borderColor: "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
+          <MapPin className="h-3.5 w-3.5" />
         </button>
         <button onClick={() => { setCreatorMode("edit"); setShowCreator(true); }} data-testid="btn-edit-look" title="Edit look"
           className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-cyan-200/90" style={{ borderColor: "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
@@ -1258,6 +1301,34 @@ export default function Cirql() {
           </div>
         );
       })()}
+
+      {/* startup location picker — Home / Last spot / Arcade (Phase-I polish) */}
+      {startPick && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(5,6,15,.86)" }} data-testid="start-picker">
+          <div className="w-full max-w-[380px] rounded-2xl border p-4" style={{ borderColor: "rgba(53,224,208,.35)", background: "rgba(10,14,30,.98)", boxShadow: "0 18px 52px rgba(0,0,0,.6)" }}>
+            <div className="text-center text-[15px] font-black tracking-wide text-cyan-100">Where to?</div>
+            <div className="mb-3 mt-0.5 text-center text-[11px] text-slate-400">Pick where to begin{nameRef.current && nameRef.current !== "Traveller" ? `, ${nameRef.current}` : ""}.</div>
+            <div className="flex flex-col gap-2">
+              {[
+                { d: "home" as StartDest, glyph: "🏠", title: "CIRQLSPACE", sub: "Your home island", show: true, ac: "rgba(255,196,107,.4)" },
+                { d: "last" as StartDest, glyph: "📍", title: "Last spot", sub: "Pick up where you left off", show: true, ac: "rgba(53,224,208,.4)" },
+                { d: "arcade" as StartDest, glyph: "🕹️", title: "CirqlCade", sub: "Straight to the arcade doors", show: startPick.canArcade, ac: "rgba(178,108,255,.45)" },
+              ].filter((o) => o.show).map((o) => (
+                <button key={o.d} onClick={() => pickStart(o.d)} data-testid={`start-${o.d}`}
+                  className="flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition active:scale-[.98]"
+                  style={{ borderColor: o.ac, background: "rgba(255,255,255,.03)" }}>
+                  <span className="text-[24px] leading-none">{o.glyph}</span>
+                  <span className="flex flex-col"><span className="text-[13px] font-bold text-slate-100">{o.title}</span><span className="text-[10.5px] text-slate-400">{o.sub}</span></span>
+                </button>
+              ))}
+            </div>
+            <label className="mt-3 flex items-center gap-2 text-[11px] text-slate-300">
+              <input type="checkbox" checked={startRemember} onChange={(e) => setStartRemember(e.target.checked)} data-testid="start-remember" className="h-3.5 w-3.5 accent-cyan-400" />
+              Start here every time <span className="text-slate-500">(change from the <MapPin className="inline h-3 w-3" /> button)</span>
+            </label>
+          </div>
+        </div>
+      )}
 
       {showCreator && (
         <CharacterCreator
