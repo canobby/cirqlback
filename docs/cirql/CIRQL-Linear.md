@@ -1,6 +1,6 @@
 # CIRQL — Flagship World · Linear Register
 
-Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of every milestone + issue with its status. Live board: linear.app → CIRQL — Flagship World. Generated 2026-07-07. **M0–M10 complete + M11 started.**
+Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of every milestone + issue with its status. Live board: linear.app → CIRQL — Flagship World. Generated 2026-07-07 (rev 2). **M0–M10 complete; M8 social now complete; M11 in progress.**
 
 **Legend:** ☑ = Done · ◑ = Partial · ☐ = Todo.
 
@@ -13,14 +13,14 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 | M3 · Quest System (backbone) | 4 | 4 |
 | M4 · First Quest Chain (onboarding) | 4 | 4 |
 | M5 · CirqlCade (in-world arcade) | 4 | 4 |
-| M6 · Sparks Economy & Your Cirql | 6 | 5 |
+| M6 · Sparks Economy & Your Cirql | 6 | 6 |
 | M7 · Playable Slice Hardening | 3 | 3 |
-| M8 · Social — presence & chat channels | 3 | 1 (+ core of 2 more) |
+| M8 · Social — presence & chat channels | 3 | 3 |
 | M9 · Campaigns & Party Finder | 4 | 4 |
 | M10 · Endless content engines | 4 | 4 |
-| M11 · Depth & Delight (wishlist) | 7 | 1 |
+| M11 · Depth & Delight (wishlist) | 7 | 3 |
 
-**Overall:** 46 of the 55 issues done. Remaining: **CHR-245** (retire platform-wide arcade rewards, deferred), the **M8 chat remainder** (CHR-248 DM / CHR-249 switcher+moderation — cores shipped), and the **M11 wishlist** (CHR-259/260/261/262/263/264).
+**Overall:** 51 of the 55 issues done. Remaining: the **M11 wishlist** — CHR-259 (Hearth décor + visiting), CHR-261 (tapped businesses → landmarks), CHR-262 (sailing-as-journey), CHR-263 (jump/hop).
 
 ## M0 · Foundations (reused) — DONE
 - [x] **CHR-211** — Reuse: /town websocket presence prototype
@@ -68,17 +68,17 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 - [x] **CHR-238** — Invite-a-friend hook + "share a light" beacon stub
 - [x] **CHR-244** — Earn sparks from play (spark-a-play + daily-capped)
 - [x] **CHR-246** — Spend sparks: in-CIRQL cosmetics (buy-in-place in the creator)
-- [ ] **CHR-245** — Unify rewards → sparks (retire arcade reward system) — deferred (platform-wide; own pass)
+- [x] **CHR-245** — De-mix currencies (commit 8e3d166, live): arcade made **free** (perk costs→0) + arcade **Dailies earn sparqs** (3/game/day, cap 15/day) via a server 'sparqbank' wallet CIRQL claims. Platform points stay the real-world loyalty economy.
 
 ## M7 · Playable Slice Hardening — DONE (commit 6b52ba9, live)
 - [x] **CHR-239** — Full-loop smoke test (enter → quests → CirqlCade → play → sparks → resume)
 - [x] **CHR-240** — tsc clean + mobile pass + perf
 - [x] **CHR-241** — Beta-test checklist + deploy + `/cirql` surfaced on the arcade lobby
 
-## M8 · Social — presence & chat channels — CORE DONE (commit d23d975, live)
+## M8 · Social — presence & chat channels — DONE (commits d23d975 → c982bba, live)
 - [x] **CHR-247** — Live presence in-world (/ws/cirql, room per ring)
-- [ ] **CHR-248** — Chat channel model: Global / Party / DM — **◑ global + party done; DM deferred**
-- [ ] **CHR-249** — Channel switcher UI + safety/moderation — **◑ Global/Party toggle + structured tags + rate limits + minimal block shipped; full switcher/DM/profanity-filter/persistent report-block deferred**
+- [x] **CHR-248** — Chat channel model: Global / Party / DM (commit c982bba) — 1:1 DMs with a **request/accept** gate, session-scoped, masked + rate-limited; DM directory + threads
+- [x] **CHR-249** — Channel switcher UI + safety/moderation (commit cca07e8) — Global/Party/DM switcher + per-channel unread; **server-side profanity mask** + 700ms rate limit; block/report. Safety decision: freeform + server moderation (not preset)
 
 ## M9 · Campaigns & Party Finder — DONE (commit a5ee3b3, live)
 - [x] **CHR-251** — Campaign model: co-op multi-step quests (party-scoped)
@@ -95,9 +95,9 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 ## M11 · Depth & Delight (wishlist — owner-approved) — STARTED
 Positioning: **Balanced** (family-friendly / chat-free-first defaults + cosmetic-only + kindness mechanics, with fuller chat + competitive edges for older players).
 - [x] **CHR-265** — Interactive voyages: tunnels/underground, treetops & clouds (commit be24ce3, live)
+- [x] **CHR-260** — Emotes + chat-free expression (commit 4749427, live) — 12-emote wheel → timed glyph over local/remote avatars + `/ws/cirql` relay
+- [x] **CHR-264** — More mini-journeys & cutscenes (commit ff50176, live) — reusable skippable letterboxed cutscene player; wired to arrival / onboarding / campaign-complete / world-energy
 - [ ] **CHR-259** — Hearth décor + visiting friends' Hearths
-- [ ] **CHR-260** — Emotes + chat-free expression *(full roster drafted)*
 - [ ] **CHR-261** — Tapped businesses become in-world landmarks (loyalty ↔ world)
 - [ ] **CHR-262** — Sailing as a mini-journey (interactive voyages)
 - [ ] **CHR-263** — Jump / hop movement (traversal + expression)
-- [ ] **CHR-264** — More mini-journeys & cutscenes (expand) *(brainstorm captured)*
