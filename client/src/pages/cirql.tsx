@@ -61,7 +61,7 @@ export default function Cirql() {
     const eng = new CirqlWorldEngine(canvasRef.current);
     engineRef.current = eng;
     if (import.meta.env.DEV) (window as any).__cirql = eng;
-    eng.onInteract = (kind) => { if (kind === "wonders") eng.toast("The Wonders open here soon — 50 games, in-world."); };
+    eng.onInteract = (kind) => { if (kind === "wonders") eng.toast("CirqlCade opens here soon — 50 games, in-world."); };
     eng.onLocalMove = (ring, x, y) => { posRef.current = { ring, x, y }; scheduleSave(); };
     // quests: grant the sparks reward on completion, persist progress on any change
     eng.onQuestComplete = (q) => { sparksRef.current += q.reward.sparks; eng.setStats({ sparks: sparksRef.current }); persist(); };

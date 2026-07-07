@@ -208,7 +208,7 @@ export class CirqlWorldEngine extends RetroEngine {
     const active = this.activeQuest();
     const lines = active
       ? [`Off you go — ${active.name.toLowerCase()} awaits.`, "The glimmer marks your way."]
-      : ["Well met again, traveller.", "The Wonders wait east, past the lanterns."];
+      : ["Well met again, traveller.", "CirqlCade waits east, past the lanterns."];
     this.dialog = { name: p.label || "Ferra", accent, i: 0, lines };
   }
 
@@ -417,17 +417,36 @@ export class CirqlWorldEngine extends RetroEngine {
   }
   private drawWonders(cx: number, cy: number, p: Prop) {
     const ac = p.accent || "#b26cff";
-    this.glow(cx, cy - 6, 60, ac, 0.28 + (this.near === p ? 0.12 : 0));
-    this.rect(cx - 28, cy + 16, 56, 6, "#0a071450");
-    this.rect(cx - 28, cy - 20, 56, 36, "#151033");
-    this.rectLine(cx - 28, cy - 20, 56, 36, ac);
-    // enchanted "screen" face
-    this.rect(cx - 12, cy - 14, 24, 22, ac);
-    this.rect(cx - 9, cy - 11, 18, 16, "#0b0a1e");
-    this.ring(cx, cy - 3, 6, ac, 1.4);
-    // door
-    this.rect(cx - 7, cy + 4, 14, 12, ac);
-    this.labelPill(cx, cy - 34, p.label || "The Wonders", ac);
+    const near = this.near === p;
+    // mysterious aura
+    this.glow(cx, cy - 10, 66, ac, 0.24 + (near ? 0.14 : 0) + (this.reduce ? 0 : 0.05 * Math.sin(this.t * 1.5)));
+    this.rect(cx - 30, cy + 16, 60, 6, "#0a071455"); // ground shadow
+
+    // ---- cosmic dome roof (drawn first; the walls cover its lower half) ----
+    const domeY = cy - 14, domeR = 30;
+    this.disc(cx, domeY, domeR, "#0a0a24");            // deep-space base
+    this.glow(cx - 9, domeY - 8, 16, "#b26cff", 0.5);  // nebula
+    this.glow(cx + 10, domeY - 4, 14, "#ff7ea8", 0.4);
+    this.glow(cx + 2, domeY - 12, 12, "#35e0d0", 0.35);
+    for (let i = 0; i < 18; i++) {                     // twinkling stars, kept inside the dome cap
+      const sx = cx - (domeR - 6) + ((i * 13) % (2 * (domeR - 6)));
+      const sy = domeY - 3 - ((i * 11) % (domeR - 6));
+      if ((sx - cx) * (sx - cx) + (sy - domeY) * (sy - domeY) > (domeR - 3) * (domeR - 3)) continue;
+      const tw = this.reduce ? true : Math.sin(this.t * 4 + i * 1.7) > -0.25;
+      if (tw) this.px(Math.round(sx), Math.round(sy), i % 5 === 0 ? "#ffd24a" : "#ffffff");
+    }
+    this.disc(cx - 14, domeY - 2, 3, "#7fbfff"); this.ring(cx - 14, domeY - 2, 5, "#cfe6ff", 1); // ringed planet
+    this.ring(cx, domeY, domeR, ac, 1.4);              // dome rim
+
+    // ---- walls (cover the dome's lower half) ----
+    this.rect(cx - 26, cy - 14, 52, 30, "#1a1433");
+    this.rect(cx - 26, cy - 14, 52, 2, "#2a2150");     // eave
+    this.rectLine(cx - 26, cy - 14, 52, 30, ac);
+    this.disc(cx - 16, cy - 2, 3, "#ffd98a"); this.disc(cx + 16, cy - 2, 3, "#ffd98a"); // windows
+    // arched glowing entrance
+    this.disc(cx, cy + 6, 8, ac); this.rect(cx - 8, cy + 6, 16, 10, ac);
+    this.rect(cx - 5, cy + 9, 10, 7, "#0b0a1e");
+    this.labelPill(cx, cy - 46, p.label || "CirqlCade", ac);
   }
   private drawNpc(cx: number, cy: number, p: Prop) {
     const ac = p.accent || "#7fffe6";
@@ -505,7 +524,7 @@ export class CirqlWorldEngine extends RetroEngine {
 
     // interact prompt — bottom-centre, above the controls
     if (this.near && !this.dialog) {
-      const label = this.near.t === "wonders" ? "Enter the Wonders"
+      const label = this.near.t === "wonders" ? "Enter CirqlCade"
         : this.near.t === "npc" ? `Talk to ${this.near.label || ""}`
           : this.near.t === "lantern" ? "Light the lantern"
             : "Set sail";

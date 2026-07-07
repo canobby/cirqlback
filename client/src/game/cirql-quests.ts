@@ -54,10 +54,10 @@ export const QUESTS: QuestDef[] = [
   },
   {
     id: "wonders-door",
-    name: "The Wonders Door",
+    name: "The CirqlCade Door",
     giver: "",   // auto-chained from The Lantern Path
-    intro: ["The lit path leads to the Wonders. Step inside — press E at the door."],
-    objectives: [{ kind: "enterWonders", count: 1, label: "Enter the Wonders" }],
+    intro: ["The lit path leads to CirqlCade. Step inside — press E at the door."],
+    objectives: [{ kind: "enterWonders", count: 1, label: "Enter CirqlCade" }],
     reward: { sparks: 5 },
   },
 ];
