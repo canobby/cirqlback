@@ -79,6 +79,7 @@ function ringNameFor(rng: () => number): string {
   return a + b;
 }
 const KEEPERS = ["Sable", "Wren", "Cass", "Orin", "Vale", "Pip", "Rook", "Ilse", "Bram", "Nyx", "Fen", "Lune"];
+const WANDERERS = ["Tamsin", "Corin", "Mabel", "Dov", "Perrin", "Isolde", "Hale", "Wynn", "Odile", "Bexley", "Ash", "Rue"];
 const SUBS = ["a quiet shore", "beyond the fog", "a windswept land", "where lanterns drift", "an uncharted ring", "far from home", "a shore of echoes"];
 
 function pick<T>(rng: () => number, arr: T[]): T { return arr[Math.floor(rng() * arr.length)]; }
@@ -131,6 +132,8 @@ export function generateRing(index: number): Ring {
   // a keeper NPC to greet arrivals (templated quests hang off this later — CHR-256)
   const keeper = pick(rng, KEEPERS);
   props.push({ t: "npc", x: (rng() - 0.5) * radius * 0.5, y: (rng() - 0.4) * radius * 0.4, id: `keeper-${index}`, label: keeper, accent: biome.palette.accent });
+  // a second wandering townsfolk — more life + the target for errand/delivery quests (K3)
+  props.push({ t: "npc", x: (rng() - 0.5) * radius * 0.7, y: radius * (0.12 + rng() * 0.28), id: `wanderer-${index}`, label: pick(rng, WANDERERS), accent: biome.palette.mote });
 
   // scattered scenery, deterministic + kept off the north/south dock lanes
   const place = (t: Prop["t"], extra?: Partial<Prop>) => {

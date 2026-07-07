@@ -7,7 +7,7 @@
 // lanterns). Quests are chained via `next`, so completing one can auto-offer the
 // following one — the M4 onboarding chain is just data in QUESTS below.
 
-export type ObjectiveKind = "reach" | "interact" | "enterWonders" | "lightLanterns" | "solvePuzzle" | "gather";
+export type ObjectiveKind = "reach" | "interact" | "enterWonders" | "lightLanterns" | "solvePuzzle" | "gather" | "deliver";
 
 export interface Objective {
   kind: ObjectiveKind;

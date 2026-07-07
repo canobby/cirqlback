@@ -967,9 +967,9 @@ export class CirqlWorldEngine extends RetroEngine {
       // tell the page when the nearby traveller changes → it shows/hides the "Together" panel (I4)
       if ((this.nearPlayer?.id ?? null) !== this.lastNearId) { this.lastNearId = this.nearPlayer?.id ?? null; this.onNearPlayer?.(this.nearPlayer); }
 
-      // "reach" quest objectives complete automatically by walking onto the target
+      // "reach"/"deliver" objectives complete automatically by walking onto the target
       const tgt = this.objTargetProp();
-      if (tgt && Math.hypot(this.posX - tgt.x, this.posY - tgt.y) < (tgt.r ?? 26)) this.advanceObjective("reach", tgt.id);
+      if (tgt && Math.hypot(this.posX - tgt.x, this.posY - tgt.y) < (tgt.r ?? 26)) { this.advanceObjective("reach", tgt.id); this.advanceObjective("deliver", tgt.id); }
       // "gather" quest: walk over a wisp to collect it (Phase K3)
       if (this.currentObjKind() === "gather") {
         for (const p of this.curRing.props) {
@@ -1371,6 +1371,8 @@ export class CirqlWorldEngine extends RetroEngine {
     if (this.dozing) this.drawZzz(cx + 7, cy - 30 + bob);
     if (this.myEmoteT > 0 && this.myEmote) { this.drawEmoteHands(cx, cy + bob, this.hero, this.myEmote, this.myEmoteT); this.drawEmote(cx, cy, this.myEmote, this.myEmoteT); }
     if (this.presentPose) this.drawPresent(cx, cy + bob, this.presentPose);
+    // a carried parcel during a delivery quest (K3) — held in front, over the hands
+    if (this.currentObjKind() === "deliver") { const py = cy + bob - 9; this.rect(cx - 3, py, 6, 5, "#b5834a"); this.rect(cx - 3, py, 6, 1, "#cf9c5e"); this.rect(cx - 1, py, 2, 5, "#7a5a30"); this.rect(cx - 3, py + 2, 6, 1, "#7a5a30"); }
     if (this.myChatT > 0 && this.myChat) this.drawBubble(cx, cy, this.myChat, this.myChatT);
   }
   // Item-get "present" pose (I6): both arms raised holding the item overhead, with sparkles.

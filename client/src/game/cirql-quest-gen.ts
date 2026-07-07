@@ -47,12 +47,15 @@ export function generateRingQuest(index: number): QuestDef | null {
   const crystals = ring.props.filter((p) => p.t === "crystal" && p.id);
   const wisps = ring.props.filter((p) => p.t === "wisp" && p.id);
   const landmark = ring.props.find((p) => p.t === "landmark");
+  const wanderer = ring.props.find((p) => p.t === "npc" && p.id === `wanderer-${index}`);
+  const wandererName = wanderer?.label ?? "the wanderer";
 
   // which templates can this ring support?
   const options: string[] = [];
   if (lanterns.length >= 2) options.push("kindle");
   if (crystals.length >= 1) options.push("discover");
   if (wisps.length >= 3) options.push("gather");
+  if (wanderer) { options.push("errand"); options.push("delivery"); }
   options.push("wayfind");                            // always possible (every ring has an onward dock)
   const shape = options[Math.floor(rng() * options.length)];
 
@@ -67,6 +70,15 @@ export function generateRingQuest(index: number): QuestDef | null {
     title = `Gather the ${name} Wisps`;
     intro = [`Well met on ${name}.`, `Wisps of light have scattered across the shore.`, `Walk over ${n} of them to gather them back — follow the glimmer.`];
     objectives.push({ kind: "gather", count: n, label: `Gather ${n} wisps of ${name}` });
+  } else if (shape === "errand") {
+    title = `Word for ${wandererName}`;
+    intro = [`A moment, traveller?`, `${wandererName} wanders the far side of ${name} and hasn't checked in.`, `Hear what news they carry, then bring it back to me.`];
+    objectives.push({ kind: "interact", target: `wanderer-${index}`, label: `Hear ${wandererName}'s news` });
+    objectives.push({ kind: "interact", target: giver, label: `Bring word back to the keeper` });
+  } else if (shape === "delivery") {
+    title = `A Parcel for ${wandererName}`;
+    intro = [`Well timed — I've a parcel to send.`, `Carry it to ${wandererName}, out across ${name}.`, `Mind you don't dawdle; follow the glimmer to them.`];
+    objectives.push({ kind: "deliver", target: `wanderer-${index}`, label: `Deliver the parcel to ${wandererName}` });
   } else if (shape === "discover") {
     const c = crystals[Math.floor(rng() * crystals.length)];
     title = `The ${name} Shard`;
