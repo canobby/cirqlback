@@ -6,7 +6,7 @@ A major new chapter for the CIRQL flagship. **CIRQLSPACE (ring 0) is reinvented 
 
 > **ring 0 = you · ring 1 = the community (Town) · ring 2+ = the endless wilds.**
 
-Status (2026-07-07): **BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H complete; F (Town stores) + G (Music) still queued.** Phase H shipped free-sit (broadcast pose), continuous live zoom (pinch/scroll/buttons + tap-to-travel), the tilted-3/4 diorama beauty shot, and postcard capture/share (commits 8e8d5ce, 5ea4896, 716a434). Owner approved the vision + the phase plan below; build proceeds phase by phase. Phase E shipped CIRQLSPACE live parties (personal space rooms, host-build streaming to visitors, open↔invite toggle + cap 8 + host-only edit; commit 395dc6a). This plan mirrors the Linear project **"CIRQLSPACE — Your Sandbox"** (team CHR). Regenerate the PDF whenever this plan or the Linear register changes (owner standing request).
+Status (2026-07-07): **BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H complete.** Phase H shipped free-sit, live zoom, the tilted-3/4 diorama + postcard (commits 8e8d5ce, 5ea4896, 716a434). **The project grew past the personal sandbox into the whole world → Chapter 2 added (I · Character Movement & Life · J · Living Circles/World Population · K · Quests, NPCs & Campaigns), informed by a fresh Mana World re-read.** Still queued: F (Town stores), G (Music), + the new I/J/K. **Recommended order: I → J → K → F → G** (see Sequence). *3 decisions pending owner: sequence, progression currency, real-tap moat.* Owner approved the vision + the phase plan below; build proceeds phase by phase. Phase E shipped CIRQLSPACE live parties (personal space rooms, host-build streaming to visitors, open↔invite toggle + cap 8 + host-only edit; commit 395dc6a). This plan mirrors the Linear project **"CIRQLSPACE — Your Sandbox"** (team CHR). Regenerate the PDF whenever this plan or the Linear register changes (owner standing request).
 
 ---
 
@@ -92,8 +92,44 @@ A distinct theme from F/G — it touches the engine camera, presence (a new `pos
 
 ---
 
+# Chapter 2 — The Living World  *(owner-approved 2026-07-07; the project grew past the personal sandbox into the whole CIRQLVERSE)*
+
+The sandbox (A–H) made *your* island great. Chapter 2 makes the **whole world around it** feel alive, authored, and endless — informed by a fresh re-read of The Mana World (quests, world-population/mapping, character animation). Guiding idea: **population, quests, and movement are one system** — a landmark is simultaneously a quest anchor, a diorama/postcard subject, and a place to gather; biome flavor makes the world *and* the character come alive together. **Design pillar: fully cozy — no combat/monster-grinding; "boss" beats are cooperative set-pieces (relight a beacon, rebuild after a storm), not fights.**
+
+### I · Character Movement & Life  *(cheap, engine-side, elevates everything — recommended FIRST of Chapter 2)*
+TMW's own move set is thin (stand/walk/sit/dead/attack) — its useful gift is the **pattern**: one-shot action → auto-return-to-stand, directional with a "default" fallback. We're already ahead (walk/run/hop/sit/emotes/sail); this layers on the flourishes that make movement *feel* amazing.
+- **I1 — Idle life.** Breathing sway + blink + occasional random idle fidgets (look around / stretch / foot-tap / yawn) when standing still; an **AFK doze** (auto-sit + "Zzz") after a long idle. *The single biggest "alive" upgrade.*
+- **I2 — Movement juice.** Turn-in-place (re-face without stepping); footstep FX (dust on run, ripples/splash in water, footprints in sand/snow); squash-on-land after a hop; a small recoil-bump on solid collision.
+- **I3 — Body-gesture emotes.** Extend the emote wheel from head-icons to **the body doing it**: wave, bow, clap, cheer, point, shrug, nod, twirl, dance, blow-a-kiss (heart particle), facepalm. Reuses the emote motion system.
+- **I4 — Paired social gestures.** Two nearby players → synced **high-five / hug / dance-together** (reuse the "share a light" pairing handshake); **sit-together** facing each other at a bench/campfire.
+- **I5 — Biome movement flavor.** Movement that reacts to the world: wade + splash in shallow water, slide on tundra ice, footprints in snow/sand, shiver + breath-puff in cold, brow-wipe in desert, aura/cape flutter in wind. *(Double-win with J.)*
+- **I6 — World interactions.** Crouch to **pet a critter** (heart pops); hold/present an item (carry a lantern, hold up a caught fish); a knock/wave entering a shop or sub-map.
+  - *(Deferred/bigger: dodge-roll, real swim in deep water, glide/float-down in cloud sub-maps, rideable companion.)*
+
+### J · Living Circles — World Population  *(the substrate + landmarks that quests hang on)*
+Encode TMW's hand-authored "taste" as **generator rules** so every ring 2→∞ comes out lush. All client-side (generator + art); no server. TMW mapping rules adopted: never leave the base bald · break monotony with scatter · organic never-grid clusters · design focal points · frame the edges · depth via fore/over layers.
+- **J1 — Biome Kit.** A reusable per-biome palette — **signature plant + critter + structure + ground/light** — with placement rules (cluster/jitter/frame/focal). Biomes: Meadow · Woodland · Dunes · Tundra · Marsh · Coast · Highland · Starfall (magical). The engine of everything below.
+- **J2 — Liveliness checklist in the generator.** Every ring must pass: full ground treatment (no bald patches) · 1–2 focal landmarks · its signature trio present · organic clusters + a winding path · a framed shoreline · one open gathering clearing · depth (foreground overlap + horizon silhouettes) · ambient motion · day/night variation.
+- **J3 — Richer prop + groundcover palette.** Groundcover (tufts/clover/pebbles/moss/leaves/ripples/drifts) so nothing is one flat colour; expanded flora/water/rock/structure sets; fore/over depth layers; day↔night dressing.
+- **J4 — Focal landmarks (hand-authored set-pieces).** Great Tree, stone circle, waterfall grotto, sunken ruin, lighthouse, festival ground, giant crystal — memorable anchors that **double as quest homes + postcard subjects + meeting spots**.
+- **J5 — Ambient-life expansion.** More critters + little behaviours (graze/flit/scurry/perch/splash) + night swaps (glowmoths/fireflies); interactive with I6.
+- *(Pairs with the pending [Cirql City glow-up](cirql-city) lighting/particle/post kit: population + light = "modern but 16-bit, and alive.")*
+
+### K · Quests, NPCs & Campaigns  *(the endless heart — depends on J's landmarks; shares NPC work with F)*
+Layer authored content on the procedural base, using TMW's proven taxonomy + endless-by-structure loops (daily + seasonal refresh, prerequisite ladders, geographic gating). Our differentiator: the gating currency ties to the **real-world tap moat**.
+- **K1 — NPC + dialog framework.** Reusable NPC actor + branching dialog + quest-state; **F (Town stores) consumes this** (a shopkeeper is an NPC + a shop panel).
+- **K2 — NPC cast + onboarding-as-quest-chain.** A recurring, characterful cast (Cirqla, Ferra, a Cartographer, a Lighthouse Keeper, a Festival-Master, Town artisans, a wandering Bard, a far-ring Hermit). Onboarding = a Candor-style chain where each NPC teaches one system (build → sail → arcade → sit/emote → party), ending in a "First Circle" graduation.
+- **K3 — Quest taxonomy engine.** Enrich `generateRingQuest` + author Town quests across all types: gather · deliver · talk-chain/mystery · puzzle (reuse Myst runes) · build/craft · explore · **photo (diorama camera as a quest verb)** · social/co-op.
+- **K4 — Daily board + Renown ladder.** A Town daily board (3 rotating dailies, character-bound, resets daily → sparqs + streak); a **Renown** progression currency (TMW Boss-Points analogue) that gates advanced campaigns + exclusive stores + rare décor. *Renown/World-Energy also fed by real taps — the moat.*
+- **K5 — Flagship multi-day / endless campaigns.** 5–10-stage, prerequisite-gated, cross-ring: **The Widening Sea** (spine; opens rings for everyone, advanced by real taps — endless), **The Lantern Line** (relight beacons ring by ring → co-op beacon finale), **The Cartographer's Circles** (chart + photograph every biome — endless), **Founding a Homestead** (builder ladder cozy→estate), **The Storm Season** (repeatable party rebuild). Co-op ones ride the existing party board.
+- **K6 — Seasonal festivals.** Four time-boxed, yearly-recurring events with exclusive cosmetics: **Lantern Festival** (winter) · **Bloom** (spring seed-hunt) · **Starfall** (summer) · **Hollow Night** (autumn hidden-object).
+
+**Open decisions for Chapter 2 (to lock with owner):** (1) build **sequence** across I/J/K/F/G; (2) **progression currency** — a new "Renown" vs reuse existing Cirql-lanterns / World Energy; (3) **real-tap moat** — wire "The Widening Sea" to real taps *now* vs stub/defer it (the tap→sparqs bridge was previously deferred).
+
+---
+
 ## Sequence & shippability
-**A** is the foundation everything sits on and ships first. Then **B** (objects) → **C** (terrain) → **D** (growth) → **E** (parties) → ✨**H** (sit/zoom/diorama — owner pulled ahead) → **F** (stores) → **G** (music). Each phase ships on its own and is verified in-browser. Build begins per phase on the owner's "go".
+**A** is the foundation everything sits on and ships first. Then **B** (objects) → **C** (terrain) → **D** (growth) → **E** (parties) → ✨**H** (sit/zoom/diorama) — **all DONE.** **Recommended Chapter-2 order: I (movement — cheap, independent, elevates everything) → J (population — builds the landmarks) → K (NPCs + quests; K1 builds the NPC framework) → F (Town stores — cheap once K1's NPCs exist, so it moves after K) → G (music — LAST, so it scores all the new content).** Each phase ships on its own and is verified in-browser. Build begins per phase on the owner's "go".
 
 ## Open threads (to settle as we reach each phase)
 - Terrain **grid resolution** vs save/stream size; **object cap** number.

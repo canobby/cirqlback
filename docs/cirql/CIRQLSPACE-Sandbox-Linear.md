@@ -1,6 +1,6 @@
 # CIRQLSPACE — Your Sandbox · Linear Register
 
-Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 9). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H COMPLETE; F (Town stores) + G (Music) still queued.**
+Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 10). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H COMPLETE. Chapter 2 added (I/J/K — the living world); recommended order I → J → K → F → G. 3 decisions pending owner.**
 
 **Legend:** ☑ Done · ◐ In progress · ☐ Todo · ⧗ *not yet a Linear issue (free-tier issue cap) — tracked in the plan.*
 
@@ -13,10 +13,16 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 | D · Land growth (cozy → estate) | 3 ⧗ | ✅ **DONE (3/3)** |
 | E · Live parties | 4 ⧗ | ✅ **DONE (4/4)** |
 | ✨ H · Sit, Zoom & Diorama | 4 ⧗ | ✅ **DONE (4/4)** |
-| F · Town stores (NPC shops) | 4 ⧗ | Todo |
-| G · Music & SFX | 3 ⧗ | Todo |
+| — *Chapter 2 · The Living World* — | | |
+| I · Character Movement & Life | 6 ⧗ | Todo *(rec. next)* |
+| J · Living Circles — World Population | 5 ⧗ | Todo |
+| K · Quests, NPCs & Campaigns | 6 ⧗ | Todo |
+| F · Town stores (NPC shops) | 4 ⧗ | Todo *(after K1)* |
+| G · Music & SFX | 3 ⧗ | Todo *(last)* |
 
-**Note:** Linear's free-tier **issue limit** was reached while seeding — milestones **A & B** have real issues (**CHR-266–275**); **C–G** exist as **milestones** in Linear with their scope, but their granular issues (⧗) live in the plan doc until the workspace is upgraded.
+**Note:** Linear's free-tier **issue limit** was reached while seeding — milestones **A & B** have real issues (**CHR-266–275**); the rest exist as **milestones** in Linear with their scope, but their granular issues (⧗) live in the plan doc until the workspace is upgraded.
+
+**Recommended sequence (pending owner confirm):** **I → J → K → F → G.** I (movement) is cheap, engine-side, independent, and elevates everything → do it first. J (population) builds the landmarks that K's quests anchor to. K1 builds the NPC framework that **F consumes** → F moves after K. G (music/SFX) is last so it scores all the new content.
 
 ## A · Restructure — blank CIRQLSPACE + Town
 - [x] **CHR-266** — Strip CIRQLSPACE to a blank buildable canvas *(commit 4c08acf)*
@@ -58,6 +64,34 @@ Gather + show off your CIRQLSPACE. Locked: **free-sit** (social only) · **both*
 - [x] **H3** — Diorama beauty shot: one-tap sweep to **tilted 3/4** — ground-plane squash + billboarded props/avatars + island thickness band + slow orbit + vignette/float-shadow/clouds/golden light + postcard label *(commit 716a434)*
 - [x] **H4** — Postcard share: capture the diorama frame → PNG; Web Share sheet on mobile, download on desktop (label baked in) *(commit 716a434)*
   - *(deferred: SPARQS-bought postcard frames/filters — a later cosmetic sink)*
+
+# Chapter 2 — The Living World  *(owner-approved 2026-07-07; from a fresh Mana World re-read of quests + world-population + character animation)*
+Guiding idea: **population, quests, and movement are one system.** Fully cozy — no combat; "boss" beats are cooperative set-pieces.
+
+## I · Character Movement & Life  *(recommended FIRST of Chapter 2 · cheap, engine-side · ⧗ issues pending — cap)*
+- [ ] **I1** — Idle life: breathing sway + blink + random idle fidgets (look/stretch/tap/yawn) + AFK doze (auto-sit + Zzz)
+- [ ] **I2** — Movement juice: turn-in-place · footstep FX (dust/ripple/splash/footprints) · squash-on-land · collision recoil-bump
+- [ ] **I3** — Body-gesture emotes: wave/bow/clap/cheer/point/shrug/nod/twirl/dance/blow-a-kiss/facepalm (extend the emote wheel)
+- [ ] **I4** — Paired social gestures: synced high-five / hug / dance-together (reuse the share-a-light pairing) + sit-together
+- [ ] **I5** — Biome movement flavor: wade+splash · ice-slide · snow/sand footprints · shiver+breath-puff · aura/cape wind flutter
+- [ ] **I6** — World interactions: pet a critter (heart) · hold/present an item · knock/wave entering a shop or sub-map
+  - *(Deferred/bigger: dodge-roll · real swim · glide in cloud sub-maps · rideable companion.)*
+
+## J · Living Circles — World Population  *(the substrate + landmarks quests hang on · client-side generator/art · ⧗ issues pending — cap)*
+TMW mapping rules encoded as generator rules: never bald · break monotony · organic never-grid · design focal points · frame the edges · depth via layers.
+- [ ] **J1** — Biome Kit: per-biome signature plant + critter + structure + ground/light + placement rules (Meadow/Woodland/Dunes/Tundra/Marsh/Coast/Highland/Starfall)
+- [ ] **J2** — Liveliness checklist in the generator (full ground · 1–2 landmarks · signature trio · organic clusters+path · framed shore · gathering clearing · depth · ambient motion · day/night)
+- [ ] **J3** — Richer prop + groundcover palette + fore/over depth layers + day↔night dressing
+- [ ] **J4** — Focal landmarks (hand-authored set-pieces = quest homes + postcard subjects + meeting spots)
+- [ ] **J5** — Ambient-life expansion: more critters + behaviours + night swaps; interactive with I6
+
+## K · Quests, NPCs & Campaigns  *(the endless heart · depends on J's landmarks · shares NPC work with F · ⧗ issues pending — cap)*
+- [ ] **K1** — NPC + dialog framework (reusable actor + branching dialog + quest-state; **F consumes this**)
+- [ ] **K2** — NPC cast + onboarding-as-quest-chain (Cirqla/Ferra/Cartographer/Lighthouse Keeper/Festival-Master/artisans/Bard/Hermit; each teaches one system → "First Circle" graduation)
+- [ ] **K3** — Quest taxonomy engine: gather · deliver · talk-chain/mystery · puzzle · build/craft · explore · **photo (diorama camera)** · social/co-op; enrich `generateRingQuest`
+- [ ] **K4** — Daily board + **Renown** ladder (character-bound dailies → sparqs+streak; Renown gates advanced campaigns/stores/rare décor; Renown also fed by real taps — the moat)
+- [ ] **K5** — Flagship multi-day/endless campaigns: Widening Sea · Lantern Line · Cartographer's Circles · Founding a Homestead · Storm Season (co-op ones ride the party board)
+- [ ] **K6** — Seasonal festivals: Lantern (winter) · Bloom (spring) · Starfall (summer) · Hollow Night (autumn) — time-boxed, yearly, exclusive cosmetics
 
 ## F · Town stores (NPC shops)  *(⧗ issues pending — Linear cap)*
 - [ ] **F1** — Shop buildings → interiors + shopkeeper NPCs
