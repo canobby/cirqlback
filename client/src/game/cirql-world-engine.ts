@@ -47,6 +47,14 @@ export class CirqlWorldEngine extends RetroEngine {
   private cs: Cutscene | null = null;
   private csBeat = 0; private csT = 0; private csAge = 0; private csClosing = 0;
   private csOnDone: (() => void) | undefined;
+  // sailing voyage (CHR-262): a short interactive crossing between surface rings
+  private voyage: {
+    dest: number; t: number; progress: number;   // 0..1 distance to the far shore
+    bx: number; wob: number;                       // boat lateral pos (-1..1) + bob phase
+    outward: boolean; accent: string; destName: string;
+    motes: { x: number; y: number; vy: number; got: boolean }[];   // drifting light to gather
+    gathered: number; wake: number;
+  } | null = null;
   private posX = 0; private posY = 0;         // player world position
   private vx = 0; private vy = 0; private facing: "up" | "down" | "left" | "right" = "down"; private walk = 0;
   private camX = 0; private camY = 0;
@@ -108,6 +116,8 @@ export class CirqlWorldEngine extends RetroEngine {
   onShareLight?: (id: string) => void;
   /** Fired when the local player plays an emote (broadcast over the presence socket). */
   onEmote?: (emote: string) => void;
+  /** Fired at the end of a sailing voyage with the light gathered (host grants sparqs). */
+  onVoyageReward?: (sparqs: number) => void;
 
   // ---- M9 party (host wires these to the campaign/party state) ----
   private partyWp: { x: number; y: number } | null = null;   // shared campaign waypoint
@@ -140,7 +150,7 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Full-screen safe-area: keep the HUD below the floating header + above the controls (CSS px). */
   setHudInsets(topCss: number, botCss: number) { this.insetTopCss = Math.max(0, topCss); this.insetBotCss = Math.max(0, botCss); }
   /** The on-screen action button + the quest system call this to interact. */
-  interact() { if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
+  interact() { if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
   getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce) }; }
   applyState(s: any) {
     if (!s) return;
@@ -155,8 +165,17 @@ export class CirqlWorldEngine extends RetroEngine {
   }
   /** How many concentric rings are "known" (lit on the chart) — grows as you explore. */
   private knownRings() { return Math.max(1, this.maxRing + 1); }
-  /** Travel to another ring/sub-map: swap the world, arrive at the connector back. */
+  /** Travel to another ring/sub-map. Crossing the open sea between surface rings plays
+   *  the interactive sailing voyage (CHR-262); entering a sub-map via a portal (cave/
+   *  tree/cloud) swaps instantly. */
   private sailTo(dest: number) {
+    if (dest < 0 || dest === this.ringIdx) return;
+    const overSea = !isSubMap(dest) && !isSubMap(this.ringIdx);   // surface↔surface = a real voyage
+    if (overSea && !this.reduce) this.startVoyage(dest);
+    else this.doSail(dest);
+  }
+  /** Swap the world + arrive at the connector back (the actual ring change). */
+  private doSail(dest: number) {
     if (dest < 0 || dest === this.ringIdx) return;
     const from = this.ringIdx;
     // a brand-new outer shore (not a sub-map, never reached before) earns a full arrival cutscene
@@ -177,6 +196,28 @@ export class CirqlWorldEngine extends RetroEngine {
     if (firstShore) this.playCutscene(arrivalCutscene(this.curRing.name, this.curRing.sub, this.curRing.palette.accent));
     else { this.arriveT = 3.0; this.arriveName = this.curRing.name; this.arriveSub = this.curRing.sub; }   // quick card on revisits
     this.onSail?.(this.ringIdx, this.maxRing);
+  }
+  // ---------- sailing voyage (CHR-262) ----------
+  /** Begin the interactive crossing to `dest`: steer the boat up-screen toward the far
+   *  shore, gathering drifting light, then land (doSail runs the real ring change). */
+  private startVoyage(dest: number) {
+    const destRing = getRing(dest);
+    const motes = Array.from({ length: 7 }, (_, i) => ({
+      x: 0.12 + (((i * 97) % 76) / 100),          // spread across the lane, deterministic (no Math.random)
+      y: 0.15 + ((i * 137) % 70) / 100,
+      vy: 0.045 + ((i * 53) % 40) / 1000,
+      got: false,
+    }));
+    this.voyage = { dest, t: 0, progress: 0, bx: 0, wob: 0, outward: dest > this.ringIdx, accent: destRing.palette.accent, destName: destRing.name, motes, gathered: 0, wake: 0 };
+    this.vx = this.vy = 0; this.moveTarget = null; this.dialog = null; this.near = null; this.mapOpen = false;
+  }
+  /** Is the sailing voyage running (the world is suspended)? */
+  voyageActive() { return !!this.voyage; }
+  private endVoyage() {
+    const v = this.voyage; this.voyage = null;
+    if (!v) return;
+    if (v.gathered > 0) this.onVoyageReward?.(v.gathered);   // light gathered → sparqs (host caps)
+    this.doSail(v.dest);                                     // now actually land
   }
   toast(text: string) { this.msg = text; this.msgT = 4.6; }
   /** Play a skippable, letterboxed cutscene (CHR-264). `onDone` fires when it finishes/skips. */
@@ -483,6 +524,28 @@ export class CirqlWorldEngine extends RetroEngine {
       return;
     }
 
+    // sailing voyage (CHR-262): steer up-screen toward the far shore, gather light, land
+    if (this.voyage) {
+      const v = this.voyage; v.t += dt; v.wob += dt; v.wake += dt;
+      if (justDown || this.pressed.a) { this.endVoyage(); return; }   // tap / E skips to the shore
+      // steer laterally (joystick / arrows / drag)
+      let steer = (this.btn.right ? 1 : 0) - (this.btn.left ? 1 : 0);
+      if (this.pointer.down) steer += Math.max(-1, Math.min(1, ((this.pointer.x - this.LW / 2) / (this.LW * 0.36)) - v.bx)) * 1.2;
+      v.bx = Math.max(-1, Math.min(1, v.bx + steer * dt * 1.9));
+      const boost = (this.btn.up || this.btn.b) ? 1.75 : (this.btn.down ? 0.5 : 1);
+      const fwd = 0.16 * boost;
+      v.progress = Math.min(1, v.progress + dt * fwd);
+      // drift the light down past the boat; gather what you steer through
+      const boatN = 0.5 + v.bx * 0.36;
+      for (const m of v.motes) {
+        m.y += (fwd * 1.25 + m.vy) * dt;
+        if (!m.got && Math.abs(m.y - 0.8) < 0.05 && Math.abs(m.x - boatN) < 0.06) { m.got = true; if (v.gathered < 6) { v.gathered++; this.fxRing(boatN * this.LW, 0.8 * this.LH, v.accent, 12); this.fxPop(boatN * this.LW, 0.74 * this.LH, "+✦", v.accent, 0.9); } }
+        if (m.y > 1.08) { m.y = -0.08; m.x = ((m.x * 7.13 + v.t * 0.37) % 0.86) + 0.07; m.got = false; }   // recycle from the top
+      }
+      if (v.progress >= 1) { this.endVoyage(); return; }
+      return;
+    }
+
     // full-screen sea chart: a fresh tap (or E) closes it; nothing else runs
     if (this.mapOpen) {
       if (justDown || this.pressed.a) this.mapOpen = false;
@@ -591,6 +654,7 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- render ----------
   protected render() {
     this.ui.length = 0;   // reset the smooth-text queue for this frame
+    if (this.voyage) { this.drawVoyage(); this.drawFx(); return; }   // the sailing crossing owns the screen
     const b = this.b, s = this.SS, W = this.LW * s, H = this.LH * s, pal = this.curRing.palette;
     // sky/sea backdrop
     const g = b.createLinearGradient(0, 0, 0, H);
@@ -765,6 +829,59 @@ export class CirqlWorldEngine extends RetroEngine {
         this.b.globalAlpha = a * 0.3; this.glow(cx, H * 0.62, 70, "#ffb765", a * 0.28); this.rect(0, H * 0.6, W, 1, hexA("#ffd98a", a * 0.4)); this.b.globalAlpha = 1; break;
       }
     }
+  }
+
+  // ---------- sailing voyage render (CHR-262) ----------
+  private drawVoyage() {
+    const v = this.voyage!; const W = this.LW, H = this.LH, s = this.SS, b = this.b, ac = v.accent, grow = v.progress;
+    // open-sea backdrop
+    const g = b.createLinearGradient(0, 0, 0, H * s);
+    g.addColorStop(0, "#0a1836"); g.addColorStop(0.55, "#0e2b52"); g.addColorStop(1, "#123a63");
+    b.fillStyle = g; b.fillRect(0, 0, W * s, H * s);
+    // scrolling swell lines (forward motion)
+    if (!this.reduce) {
+      b.strokeStyle = "rgba(150,210,255,0.13)"; b.lineWidth = 1 * s;
+      for (let i = 0; i < 9; i++) {
+        const y = ((i / 9 + v.t * 0.4) % 1) * H, amp = 2 + i * 0.4;
+        b.beginPath();
+        for (let x = 0; x <= W; x += 8) { const yy = (y + Math.sin(x * 0.08 + v.t * 2 + i) * amp) * s; if (x === 0) b.moveTo(0, yy); else b.lineTo(x * s, yy); }
+        b.stroke();
+      }
+    }
+    // destination land growing at the top
+    const landY = H * (0.30 - grow * 0.05), landR = 14 + grow * 46;
+    this.glow(W / 2, landY, landR * 1.6, ac, 0.14 + grow * 0.18);
+    this.disc(W / 2, landY + landR * 0.15, landR, "#123a2f");
+    this.disc(W / 2, landY - landR * 0.15, landR * 0.82, "#1c5540");
+    for (let i = 0; i < 3; i++) { const lx = W / 2 + (i - 1) * landR * 0.5; this.disc(lx, landY - landR * 0.1, 1.6, ac); }   // shore lanterns
+    // fog veil over the far water, thinning as you approach
+    b.fillStyle = hexA("#dfeaff", (1 - grow) * 0.5); b.fillRect(0, 0, W * s, H * 0.44 * s);
+    // drifting light to gather
+    for (const m of v.motes) if (!m.got) { const mx = m.x * W, my = m.y * H; this.glow(mx, my, 6, ac, 0.5); this.disc(mx, my, 1.6, "#fff7d8"); }
+    // your boat + wake
+    const boatX = W / 2 + v.bx * (W * 0.36), boatY = H * 0.8 + (this.reduce ? 0 : Math.sin(v.wob * 3) * 1.5);
+    if (!this.reduce) for (let i = 1; i <= 5; i++) { const wy = boatY + i * 4, sp = i * 1.6; b.fillStyle = hexA("#bfe6ff", 0.16 * (1 - i / 6)); b.fillRect((boatX - sp) * s, wy * s, 1 * s, 1 * s); b.fillRect((boatX + sp) * s, wy * s, 1 * s, 1 * s); }
+    this.drawBoat(boatX, boatY, ac);
+    // HUD (crisp overlay text)
+    this.q(W / 2, this.itop() + 6, `Sailing to ${v.destName}`, "#eaf6ff", 1.2, "c", true);
+    const pw = W * 0.5, px = (W - pw) / 2, py = this.itop() + 18;
+    this.rect(px, py, pw, 2, "#0a0714aa"); this.rect(px, py, pw * grow, 2, ac);
+    if (v.gathered > 0) this.q(W / 2, py + 5, `✦ ${v.gathered} light gathered`, ac, 0.92, "c");
+    this.q(W / 2, H - this.ibot() - 12, "steer with the stick · tap to skip", "#9fb0d0", 0.82, "c", false, 0.72);
+  }
+  private drawBoat(cx: number, cy: number, accent: string) {
+    // hull (little wooden dinghy, viewed from behind)
+    this.disc(cx, cy, 5, "#0a071450");
+    this.rect(cx - 6, cy - 1, 12, 4, "#7a4a2a"); this.rect(cx - 5, cy - 2, 10, 1, "#9a6238");
+    this.rect(cx - 4, cy + 3, 8, 1, "#5a3620");
+    // mast + sail (accent, catching the wind)
+    this.rect(cx - 0.5, cy - 12, 1, 11, "#e8dcc4");
+    const b = this.b, s = this.SS;
+    b.fillStyle = accent; b.beginPath();
+    b.moveTo(cx * s, (cy - 12) * s); b.lineTo((cx + 7) * s, (cy - 3) * s); b.lineTo(cx * s, (cy - 2) * s); b.closePath(); b.fill();
+    b.fillStyle = hexA("#ffffff", 0.25); b.beginPath();
+    b.moveTo(cx * s, (cy - 12) * s); b.lineTo((cx + 3) * s, (cy - 6) * s); b.lineTo(cx * s, (cy - 5) * s); b.closePath(); b.fill();
+    this.glow(cx, cy - 6, 12, accent, this.reduce ? 0.25 : 0.2 + 0.08 * Math.sin(this.t * 3));
   }
 
   // ---------- props ----------

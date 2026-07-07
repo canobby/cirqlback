@@ -271,6 +271,15 @@ export default function Cirql() {
     eng.onPresence = (ring, x, y, facing) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: "move", ring, x, y, dir: facing })); };
     eng.onShareLight = (id) => shareLight(id);
     eng.onEmote = (emote) => wsSend({ t: "emote", emote });
+    // light gathered while sailing → sparqs (CHR-262), capped small so it can't be farmed
+    eng.onVoyageReward = (light) => {
+      const gain = Math.max(0, Math.min(6, Math.round(light)));
+      if (gain <= 0) return;
+      sparksRef.current += gain; energyRef.current = Math.min(1, energyRef.current + gain * 0.01);
+      eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current);
+      eng.toast(`✦ +${gain} sparq${gain > 1 ? "s" : ""} — light gathered at sea`);
+      persist();
+    };
     eng.onPartyArrive = () => { const p = partyRef.current; if (p) wsSend({ t: "party:advance", step: p.step }); };
     const refreshCount = () => { const n = eng.remoteCount() + 1; setOnline(n); eng.setStats({ online: n }); };
     ws.onopen = () => { setConnected(true); tryJoin(); };
