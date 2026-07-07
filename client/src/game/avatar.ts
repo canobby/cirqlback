@@ -110,8 +110,9 @@ export interface AvatarPainter {
  * Paint the toy figure with feet centred at (x, y); it stands ~27px tall and ~12px
  * wide. Draw shadow/scene first — this only paints the figure + tool + sidekick.
  */
-export function paintAvatar(p: AvatarPainter, x: number, y: number, cfg: AvatarConfig, dir: AvatarDir = "down") {
+export function paintAvatar(p: AvatarPainter, x: number, y: number, cfg: AvatarConfig, dir: AvatarDir = "down", blink = false) {
   const { skin, eye, hat, body } = cfg;
+  const lid = p.shade(skin, -0.32);   // closed-eye colour for the blink frame (I1)
   const bib = cfg.bib;
   const legs = "#2f4a8a";
   // legs + shoes
@@ -130,16 +131,16 @@ export function paintAvatar(p: AvatarPainter, x: number, y: number, cfg: AvatarC
   if (dir === "up") {
     p.rect(x - 3, y - 17, 6, 2, p.shade(skin, -0.38));          // back of head: no face, hint of hair
   } else if (dir === "left") {
-    p.px(x - 2, y - 19, eye); p.px(x - 2, y - 20, "#fff");
+    if (blink) p.px(x - 2, y - 19, lid); else { p.px(x - 2, y - 19, eye); p.px(x - 2, y - 20, "#fff"); }
     p.rect(x - 2, y - 17, 2, 1, "#c65a4a");
     p.px(x - 4, y - 18, skin); p.px(x - 3, y - 17, p.shade(skin, -0.15)); // nose + cheek
   } else if (dir === "right") {
-    p.px(x + 2, y - 19, eye); p.px(x + 2, y - 20, "#fff");
+    if (blink) p.px(x + 2, y - 19, lid); else { p.px(x + 2, y - 19, eye); p.px(x + 2, y - 20, "#fff"); }
     p.rect(x, y - 17, 2, 1, "#c65a4a");
     p.px(x + 4, y - 18, skin); p.px(x + 3, y - 17, p.shade(skin, -0.15));
   } else { // down / front
-    p.px(x - 2, y - 19, eye); p.px(x + 2, y - 19, eye);
-    p.px(x - 2, y - 20, "#fff"); p.px(x + 2, y - 20, "#fff");
+    if (blink) { p.px(x - 2, y - 19, lid); p.px(x + 2, y - 19, lid); }
+    else { p.px(x - 2, y - 19, eye); p.px(x + 2, y - 19, eye); p.px(x - 2, y - 20, "#fff"); p.px(x + 2, y - 20, "#fff"); }
     p.rect(x - 1, y - 17, 3, 1, "#c65a4a"); p.px(x, y - 17, "#e07a68");
     p.px(x - 3, y - 17, p.shade(skin, -0.15)); p.px(x + 3, y - 17, p.shade(skin, -0.15)); // cheeks
   }

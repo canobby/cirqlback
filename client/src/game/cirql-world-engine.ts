@@ -44,7 +44,7 @@ interface Dialog { name: string; accent: string; lines: string[]; i: number; acc
 // M8 — a live remote traveller on your ring (presence + chat). Position eases from
 // x/y toward the last-received tx/ty for smooth movement between throttled updates.
 type Facing = "up" | "down" | "left" | "right";
-interface RemotePlayer { x: number; y: number; tx: number; ty: number; facing: Facing; name: string; avatar: AvatarConfig; chat: string; chatT: number; walk: number; emote: string; emoteT: number; seated: boolean; }
+interface RemotePlayer { x: number; y: number; tx: number; ty: number; facing: Facing; name: string; avatar: AvatarConfig; chat: string; chatT: number; walk: number; emote: string; emoteT: number; seated: boolean; blinkT: number; blinking: number; }
 export interface RemoteState { id: string; x: number; y: number; dir: string; name: string; avatar: AvatarConfig; ring?: number; pose?: string; }
 
 export class CirqlWorldEngine extends RetroEngine {
@@ -70,6 +70,9 @@ export class CirqlWorldEngine extends RetroEngine {
   private seated = false; private poseDirty = false;   // free-sit pose (Phase H1) — broadcast even when standing still
   private zoom = 1; private zoomTarget = 1;            // live camera zoom (Phase H2): 1 = normal, <1 sees more
   private diorama = false; private dioramaAng = 0; private dioramaT = 0;   // tilted 3/4 beauty shot (Phase H3)
+  // idle life (Phase I1): breathing, blink, occasional fidgets, and an AFK doze
+  private idleT = 0; private blinkT = 1.5; private blinking = 0; private dozing = false;
+  private fidget: { kind: "lookL" | "lookR" | "lookU" | "stretch"; t: number } | null = null; private nextFidget = 4;
   // Hearth décor (CHR-259): your placed decorations, an edit mode, and a "visiting" overlay
   private decor: { item: string; x: number; y: number }[] = [];
   private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
@@ -250,8 +253,8 @@ export class CirqlWorldEngine extends RetroEngine {
   jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.standUp(); if (this.jumpZ <= 0.01 && this.jumpVel <= 0) this.jumpVel = 66; }
   /** Free-sit (Phase H1) — plop down where you stand; any movement stands you back up. */
   onSeatChange?: (seated: boolean) => void;
-  toggleSit() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.seated = !this.seated; this.poseDirty = true; if (this.seated) { this.vx = 0; this.vy = 0; this.moveTarget = null; } this.onSeatChange?.(this.seated); }
-  private standUp() { if (this.seated) { this.seated = false; this.poseDirty = true; this.onSeatChange?.(false); } }
+  toggleSit() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.seated = !this.seated; this.poseDirty = true; this.dozing = false; this.idleT = 0; if (this.seated) { this.vx = 0; this.vy = 0; this.moveTarget = null; } this.onSeatChange?.(this.seated); }
+  private standUp() { this.dozing = false; this.idleT = 0; if (this.seated) { this.seated = false; this.poseDirty = true; this.onSeatChange?.(false); } }
   isSeated() { return this.seated; }
   // ---- live zoom (Phase H2) — 0.42 (whole island) … 1.3 (close). Building happens at 1:1. ----
   onZoomChange?: (z: number) => void;
@@ -356,7 +359,7 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- M8 live presence host API ----------
   private facingOf(d: string): Facing { return d === "up" || d === "left" || d === "right" ? d : "down"; }
   addRemote(s: RemoteState) {
-    this.remotes.set(s.id, { x: s.x, y: s.y, tx: s.x, ty: s.y, facing: this.facingOf(s.dir), name: (s.name || "Traveller").slice(0, 16), avatar: s.avatar || DEFAULT_AVATAR, chat: "", chatT: 0, walk: 0, emote: "", emoteT: 0, seated: s.pose === "sit" });
+    this.remotes.set(s.id, { x: s.x, y: s.y, tx: s.x, ty: s.y, facing: this.facingOf(s.dir), name: (s.name || "Traveller").slice(0, 16), avatar: s.avatar || DEFAULT_AVATAR, chat: "", chatT: 0, walk: 0, emote: "", emoteT: 0, seated: s.pose === "sit", blinkT: 1 + Math.random() * 4, blinking: 0 });
   }
   moveRemote(id: string, x: number, y: number, dir: string, pose?: string) { const r = this.remotes.get(id); if (r) { r.tx = x; r.ty = y; r.facing = this.facingOf(dir); if (pose !== undefined) r.seated = pose === "sit"; } }
   removeRemote(id: string) { this.remotes.delete(id); }
@@ -636,6 +639,26 @@ export class CirqlWorldEngine extends RetroEngine {
       r.chatT = Math.max(0, r.chatT - dt);
       r.emoteT = Math.max(0, r.emoteT - dt);
       r.walk = (Math.abs(r.x - px) + Math.abs(r.y - py)) > 0.15 ? r.walk + dt * 10 : 0;
+      // idle blink (I1) — each remote blinks on its own cadence
+      if (r.blinking > 0) r.blinking -= dt; else if ((r.blinkT -= dt) <= 0) { r.blinking = 0.11; r.blinkT = 2.4 + Math.random() * 3.4; }
+    }
+
+    // ---- idle life for the hero (Phase I1): breathe, blink, fidget, doze ----
+    if (this.blinking > 0) this.blinking -= dt; else if ((this.blinkT -= dt) <= 0) { this.blinking = 0.11; this.blinkT = 2.4 + Math.random() * 3.2; }
+    const busy = !!this.dialog || !!this.cs || this.voyage || this.editDecor || this.editPaint || this.mapOpen;
+    const still = this.walk <= 0 && !busy && this.jumpZ <= 0;   // standing OR sitting still (not actively doing anything)
+    if (still) {
+      this.idleT += dt;
+      if (this.fidget) { this.fidget.t -= dt; if (this.fidget.t <= 0) this.fidget = null; }
+      else if (this.idleT > 3.5 && !this.reduce && !this.seated && (this.nextFidget -= dt) <= 0) {   // fidgets only while standing
+        const k = (["lookL", "lookR", "lookU", "stretch"] as const)[Math.floor(Math.random() * 4)];
+        this.fidget = { kind: k, t: k === "stretch" ? 0.55 : 0.95 }; this.nextFidget = 3.5 + Math.random() * 4.5;
+      }
+      // AFK doze after 30s idle → drift off to sleep (auto-sit if still standing)
+      if (this.idleT > 30 && !this.dozing) { this.dozing = true; if (!this.seated) { this.seated = true; this.poseDirty = true; this.onSeatChange?.(true); } }
+    } else {
+      this.idleT = 0; this.fidget = null; this.nextFidget = 3.5;
+      if (this.dozing) { this.dozing = false; this.standUp(); }   // wake from the doze on any activity
     }
 
     // pointer-down edge (tap detection, for the minimap → chart)
@@ -1106,21 +1129,33 @@ export class CirqlWorldEngine extends RetroEngine {
     const walkBob = (!this.seated && this.walk > 0) ? Math.round(Math.sin(this.walk)) : 0;
     const z = Math.round(this.jumpZ);
     const sit = this.seated ? 3 : 0;   // settle the sprite down when seated (Phase H1)
-    const bob = walkBob + this.emoteBob(this.myEmoteT > 0 ? this.myEmote : "") - z + sit;
+    // idle life (I1): a gentle breath, a look-around/stretch fidget, a blink
+    const idle = this.idleT > 0.5 && !this.seated && this.walk <= 0;
+    const breath = (idle && !this.reduce) ? Math.round(Math.sin(this.t * 1.7) * 0.8) : 0;
+    const stretch = this.fidget?.kind === "stretch" ? -Math.round(Math.sin((1 - Math.max(0, this.fidget.t) / 0.55) * Math.PI) * 2) : 0;
+    const face: Facing = this.fidget?.kind === "lookL" ? "left" : this.fidget?.kind === "lookR" ? "right" : this.fidget?.kind === "lookU" ? "up" : this.facing;
+    const bob = walkBob + this.emoteBob(this.myEmoteT > 0 ? this.myEmote : "") - z + sit + breath + stretch;
     // aura glow (cosmetic) behind the figure
     const aura = this.hero.aura && AURA_COLORS[this.hero.aura];
     if (aura) this.glow(cx, cy - 12 - z, 20, aura, this.reduce ? 0.4 : 0.32 + 0.1 * Math.sin(this.t * 2.5));
     this.disc(cx, cy + 2, this.seated ? 6 : Math.max(2, 4 - this.jumpZ * 0.16), "#0a071460");   // wider contact seated; shrinks as you rise
     this.ring(cx, cy + 2, 6, "#35e0d0", 1.1);       // gentle "you" ring (grounded)
     if (this.seated) this.seatLegs(cx, cy);
-    this.avatar(cx, cy + bob, this.hero, this.facing);
+    this.avatar(cx, cy + bob, this.hero, face, this.blinking > 0);
     this.nameTag(cx, cy, this.myName, "#ffd24a");
+    if (this.dozing) this.drawZzz(cx + 7, cy - 30 + bob);
     if (this.myEmoteT > 0 && this.myEmote) this.drawEmote(cx, cy, this.myEmote, this.myEmoteT);
     if (this.myChatT > 0 && this.myChat) this.drawBubble(cx, cy, this.myChat, this.myChatT);
   }
+  // Rising "z"s over a dozing avatar (I1 AFK doze).
+  private drawZzz(cx: number, top: number) {
+    const a = (this.t * 0.5) % 1;
+    for (let i = 0; i < 3; i++) { const p = (a + i / 3) % 1; this.q(cx + p * 7, top - p * 14, "z", "#cfe6ff", 0.8 + p * 0.7, "c", true, (1 - p) * 0.9); }
+  }
   private drawRemote(cx: number, cy: number, r: RemotePlayer, inParty = false) {
     const sit = r.seated ? 3 : 0;
-    const bob = (!r.seated && r.walk > 0 ? Math.round(Math.sin(r.walk)) : 0) + this.emoteBob(r.emoteT > 0 ? r.emote : "") + sit;
+    const breath = (!r.seated && r.walk <= 0 && !this.reduce) ? Math.round(Math.sin(this.t * 1.7 + cx * 0.05) * 0.8) : 0;   // idle breath (I1)
+    const bob = (!r.seated && r.walk > 0 ? Math.round(Math.sin(r.walk)) : 0) + this.emoteBob(r.emoteT > 0 ? r.emote : "") + sit + breath;
     const aura = r.avatar.aura && AURA_COLORS[r.avatar.aura];
     if (aura) this.glow(cx, cy - 12, 18, aura, this.reduce ? 0.34 : 0.26);
     this.disc(cx, cy + 2, r.seated ? 6 : 4, "#0a071460");
@@ -1128,7 +1163,7 @@ export class CirqlWorldEngine extends RetroEngine {
     const share = this.nearPlayer?.id && this.remotes.get(this.nearPlayer.id) === r;
     if (share) this.ring(cx, cy + 2, 6, "#ffc46b", 1.1);          // highlight the "share a light" target
     if (r.seated) this.seatLegs(cx, cy);
-    this.avatar(cx, cy + bob, r.avatar, r.facing);
+    this.avatar(cx, cy + bob, r.avatar, r.facing, r.blinking > 0);
     this.nameTag(cx, cy, r.name, inParty ? "#a8f5ea" : "#dfe6ff");
     if (r.emoteT > 0 && r.emote) this.drawEmote(cx, cy, r.emote, r.emoteT);
     if (r.chatT > 0 && r.chat) this.drawBubble(cx, cy, r.chat, r.chatT);
