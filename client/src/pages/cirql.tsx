@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile, ChevronsUp, Backpack, Hammer } from "lucide-react";
+import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile, ChevronsUp, Backpack, Hammer, Armchair } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlWorldEngine, LAND_TIERS, type QuestLogRow } from "@/game/cirql-world-engine";
 import type { Btn } from "@/game/retro-engine";
@@ -75,6 +75,7 @@ export default function Cirql() {
   const landTierRef = useRef(0);                           // CIRQLSPACE land tier (Phase D)
   const [landTierUi, setLandTierUi] = useState(0);
   const [visiting, setVisiting] = useState<string | null>(null);   // name of the CIRQLSPACE you're visiting (Phase E)
+  const [seated, setSeated] = useState(false);                     // free-sit pose (Phase H1) — mirrors engine for the button
   const [spaceOpen, setSpaceOpen] = useState(true);                // your space: open to anyone (true) or invite-only
   const [spaceInvites, setSpaceInvites] = useState<{ fromId: string; fromName: string }[]>([]);   // pending invites to visit
   const [members, setMembers] = useState(0);               // mirror of membersRef for the panel
@@ -296,7 +297,7 @@ export default function Cirql() {
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${proto}://${location.host}/ws/cirql`);
     wsRef.current = ws;
-    eng.onPresence = (ring, x, y, facing) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: "move", ring, x, y, dir: facing })); };
+    eng.onPresence = (ring, x, y, facing, pose) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: "move", ring, x, y, dir: facing, pose })); };
     eng.onShareLight = (id) => shareLight(id);
     eng.onEmote = (emote) => wsSend({ t: "emote", emote });
     // light gathered while sailing → sparqs (CHR-262), capped small so it can't be farmed
@@ -309,6 +310,7 @@ export default function Cirql() {
       persist();
     };
     eng.onPartyArrive = () => { const p = partyRef.current; if (p) wsSend({ t: "party:advance", step: p.step }); };
+    eng.onSeatChange = (s) => setSeated(s);   // keep the Sit button in sync (auto-stand on walk) — Phase H1
     const refreshCount = () => { const n = eng.remoteCount() + 1; setOnline(n); eng.setStats({ online: n }); };
     ws.onopen = () => { setConnected(true); tryJoin(); };
     ws.onclose = () => { setConnected(false); joinedRef.current = false; };
@@ -316,7 +318,7 @@ export default function Cirql() {
       let m: any; try { m = JSON.parse(e.data); } catch { return; }
       if (m.t === "welcome") { myIdRef.current = m.id; eng.clearRemotes(); (m.players || []).forEach((p: any) => eng.addRemote(p)); setPeers((m.players || []).map((p: any) => ({ id: p.id, name: p.name })).filter((p: any) => !blockedRef.current.has(p.id))); refreshCount(); }
       else if (m.t === "join") { eng.addRemote(m); refreshCount(); if (!blockedRef.current.has(m.id)) { setPeers((ps) => ps.some((x) => x.id === m.id) ? ps : [...ps, { id: m.id, name: m.name }]); pushFeed("", `${m.name} arrived`); } }
-      else if (m.t === "move") { eng.moveRemote(m.id, m.x, m.y, m.dir); }
+      else if (m.t === "move") { eng.moveRemote(m.id, m.x, m.y, m.dir, m.pose); }
       else if (m.t === "leave") { eng.removeRemote(m.id); setPeers((ps) => ps.filter((x) => x.id !== m.id)); refreshCount(); }
       else if (m.t === "chat") {
         if (blockedRef.current.has(m.id) && m.id !== myIdRef.current) return;
@@ -415,7 +417,10 @@ export default function Cirql() {
   // Desktop hop key (CHR-263). Base engine keys are all taken (E/Space=interact,
   // X=run), so bind a free key here on the CIRQL page only.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if ((e.code === "KeyC" || e.code === "KeyH") && !e.repeat) engineRef.current?.jump(); };
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.code === "KeyC" || e.code === "KeyH") && !e.repeat) engineRef.current?.jump();
+      if (e.code === "KeyG" && !e.repeat) { engineRef.current?.toggleSit(); }   // G = sit/stand (Phase H1)
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
@@ -883,6 +888,11 @@ export default function Cirql() {
             className="flex h-12 w-12 flex-col items-center justify-center rounded-full border-[1.5px] text-[8px] font-extrabold active:scale-90"
             style={{ borderColor: "#7ee787", color: "#a6f0ac", background: "rgba(126,231,135,.1)", boxShadow: "0 0 14px rgba(126,231,135,.15) inset", touchAction: "none" }}>
             <ChevronsUp className="h-5 w-5" /> HOP
+          </button>
+          <button onPointerDown={(e) => { e.preventDefault(); engineRef.current?.toggleSit(); setSeated(!!engineRef.current?.isSeated()); }} data-testid="btn-sit" title="Sit"
+            className="flex h-12 w-12 flex-col items-center justify-center rounded-full border-[1.5px] text-[8px] font-extrabold active:scale-90"
+            style={{ borderColor: seated ? "#ffd24a" : "rgba(255,210,74,.5)", color: "#ffe08a", background: seated ? "rgba(255,210,74,.2)" : "rgba(255,210,74,.08)", boxShadow: "0 0 14px rgba(255,210,74,.15) inset", touchAction: "none" }}>
+            <Armchair className="h-5 w-5" /> {seated ? "STAND" : "SIT"}
           </button>
         </div>
       </div>

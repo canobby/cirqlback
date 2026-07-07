@@ -18,7 +18,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { maskProfanity } from "./chat-filter";
 
-interface Traveller { ws: WebSocket; id: string; name: string; avatar: unknown; ring: number; x: number; y: number; dir: string; partyId?: string; lastAsk?: number; lastPost?: number; lastEmote?: number; lastChat?: number; lastDmReq?: number; lastDm?: number;
+interface Traveller { ws: WebSocket; id: string; name: string; avatar: unknown; ring: number; x: number; y: number; dir: string; pose?: string; partyId?: string; lastAsk?: number; lastPost?: number; lastEmote?: number; lastChat?: number; lastDmReq?: number; lastDm?: number;
   // CIRQLSPACE live-party state (Phase E): your build cache + where you are + who can visit
   decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number;
   spaceHost?: string;              // if set, you're visiting this host's CIRQLSPACE (else your own)
@@ -39,7 +39,7 @@ export function setupCirqlPresence() {
   const dmKey = (a: string, b: string) => (a < b ? a + "|" + b : b + "|" + a);
   let nextId = 1, nextParty = 1, nextPost = 1;
 
-  const serialize = (p: Traveller) => ({ id: p.id, name: p.name, avatar: p.avatar, ring: p.ring, x: p.x, y: p.y, dir: p.dir });
+  const serialize = (p: Traveller) => ({ id: p.id, name: p.name, avatar: p.avatar, ring: p.ring, x: p.x, y: p.y, dir: p.dir, pose: p.pose ?? "stand" });
   const send = (ws: WebSocket, msg: unknown) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg)); };
   // ---- Rooms (Phase E) ----
   // Ring 0 is personal: each traveller sits in their OWN space room ("s:"+id) — you're alone on your
@@ -111,8 +111,8 @@ export function setupCirqlPresence() {
         const nr = +m.ring || 0;
         // Changing ring leaves any space you were visiting (you can only visit from your own ring 0).
         if (nr !== me.ring) enterRoom(me, nr, nr === 0 ? me.spaceHost : undefined);
-        me.x = +m.x; me.y = +m.y; me.dir = dir(m.dir);
-        toRoom(roomKey(me), { t: "move", id, x: me.x, y: me.y, dir: me.dir }, id);
+        me.x = +m.x; me.y = +m.y; me.dir = dir(m.dir); me.pose = m.pose === "sit" ? "sit" : "stand";
+        toRoom(roomKey(me), { t: "move", id, x: me.x, y: me.y, dir: me.dir, pose: me.pose }, id);
       }
       else if (m.t === "chat") {
         const now = Date.now(); if (me.lastChat && now - me.lastChat < 700) return; me.lastChat = now;   // anti-spam rate limit

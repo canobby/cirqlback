@@ -44,8 +44,8 @@ interface Dialog { name: string; accent: string; lines: string[]; i: number; acc
 // M8 — a live remote traveller on your ring (presence + chat). Position eases from
 // x/y toward the last-received tx/ty for smooth movement between throttled updates.
 type Facing = "up" | "down" | "left" | "right";
-interface RemotePlayer { x: number; y: number; tx: number; ty: number; facing: Facing; name: string; avatar: AvatarConfig; chat: string; chatT: number; walk: number; emote: string; emoteT: number; }
-export interface RemoteState { id: string; x: number; y: number; dir: string; name: string; avatar: AvatarConfig; ring?: number; }
+interface RemotePlayer { x: number; y: number; tx: number; ty: number; facing: Facing; name: string; avatar: AvatarConfig; chat: string; chatT: number; walk: number; emote: string; emoteT: number; seated: boolean; }
+export interface RemoteState { id: string; x: number; y: number; dir: string; name: string; avatar: AvatarConfig; ring?: number; pose?: string; }
 
 export class CirqlWorldEngine extends RetroEngine {
   private ringIdx = 0;
@@ -67,6 +67,7 @@ export class CirqlWorldEngine extends RetroEngine {
   private posX = 0; private posY = 0;         // player world position
   private vx = 0; private vy = 0; private facing: "up" | "down" | "left" | "right" = "down"; private walk = 0;
   private jumpZ = 0; private jumpVel = 0;      // fake-Z hop (CHR-263): raised height + vertical velocity
+  private seated = false; private poseDirty = false;   // free-sit pose (Phase H1) — broadcast even when standing still
   // Hearth décor (CHR-259): your placed decorations, an edit mode, and a "visiting" overlay
   private decor: { item: string; x: number; y: number }[] = [];
   private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
@@ -132,7 +133,7 @@ export class CirqlWorldEngine extends RetroEngine {
   private nearPlayer: { id: string; name: string } | null = null;  // remote in "share a light" range
   private lastPresence = 0; private lastPx = 1e9; private lastPy = 1e9;
   /** Fired often (throttled) with the live position, for the presence socket. */
-  onPresence?: (ring: number, x: number, y: number, facing: Facing) => void;
+  onPresence?: (ring: number, x: number, y: number, facing: Facing, pose: string) => void;
   /** Fired when the player presses E next to another traveller (share a light). */
   onShareLight?: (id: string) => void;
   /** Fired when the local player plays an emote (broadcast over the presence socket). */
@@ -244,7 +245,12 @@ export class CirqlWorldEngine extends RetroEngine {
   /** The on-screen action button + the quest system call this to interact. */
   interact() { if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
   /** A little fake-Z hop (CHR-263) — raise the sprite; the shadow stays grounded. */
-  jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; if (this.jumpZ <= 0.01 && this.jumpVel <= 0) this.jumpVel = 66; }
+  jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.standUp(); if (this.jumpZ <= 0.01 && this.jumpVel <= 0) this.jumpVel = 66; }
+  /** Free-sit (Phase H1) — plop down where you stand; any movement stands you back up. */
+  onSeatChange?: (seated: boolean) => void;
+  toggleSit() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.seated = !this.seated; this.poseDirty = true; if (this.seated) { this.vx = 0; this.vy = 0; this.moveTarget = null; } this.onSeatChange?.(this.seated); }
+  private standUp() { if (this.seated) { this.seated = false; this.poseDirty = true; this.onSeatChange?.(false); } }
+  isSeated() { return this.seated; }
   getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), terrain: this.getTerrain(), landTier: this.landTier }; }
   applyState(s: any) {
     if (!s) return;
@@ -333,9 +339,9 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- M8 live presence host API ----------
   private facingOf(d: string): Facing { return d === "up" || d === "left" || d === "right" ? d : "down"; }
   addRemote(s: RemoteState) {
-    this.remotes.set(s.id, { x: s.x, y: s.y, tx: s.x, ty: s.y, facing: this.facingOf(s.dir), name: (s.name || "Traveller").slice(0, 16), avatar: s.avatar || DEFAULT_AVATAR, chat: "", chatT: 0, walk: 0, emote: "", emoteT: 0 });
+    this.remotes.set(s.id, { x: s.x, y: s.y, tx: s.x, ty: s.y, facing: this.facingOf(s.dir), name: (s.name || "Traveller").slice(0, 16), avatar: s.avatar || DEFAULT_AVATAR, chat: "", chatT: 0, walk: 0, emote: "", emoteT: 0, seated: s.pose === "sit" });
   }
-  moveRemote(id: string, x: number, y: number, dir: string) { const r = this.remotes.get(id); if (r) { r.tx = x; r.ty = y; r.facing = this.facingOf(dir); } }
+  moveRemote(id: string, x: number, y: number, dir: string, pose?: string) { const r = this.remotes.get(id); if (r) { r.tx = x; r.ty = y; r.facing = this.facingOf(dir); if (pose !== undefined) r.seated = pose === "sit"; } }
   removeRemote(id: string) { this.remotes.delete(id); }
   chatRemote(id: string, text: string) { const r = this.remotes.get(id); if (r) { r.chat = text; r.chatT = 5.5; } }
   /** A remote traveller played an emote — show its glyph (+ motion) over them (CHR-260). */
@@ -707,6 +713,7 @@ export class CirqlWorldEngine extends RetroEngine {
       }
       const mag = Math.hypot(dx, dy) || 1; dx /= mag; dy /= mag;
       const moving = (this.btn.right || this.btn.left || this.btn.up || this.btn.down || !!this.moveTarget);
+      if (moving && this.seated) this.standUp();   // any movement input stands you up (Phase H1)
       const spd = this.btn.b ? 118 : 80;
       const tvx = moving ? dx * spd : 0, tvy = moving ? dy * spd : 0;
       this.vx += (tvx - this.vx) * Math.min(1, dt * 16);
@@ -767,11 +774,11 @@ export class CirqlWorldEngine extends RetroEngine {
       this.lastX = this.posX; this.lastY = this.posY; this.lastSent = this.t;
     }
 
-    // fast presence broadcast — only when the position actually moved
+    // fast presence broadcast — when the position moved, or the sit pose changed (Phase H1)
     if (this.t - this.lastPresence > 0.09) {
-      if (Math.abs(this.posX - this.lastPx) > 0.6 || Math.abs(this.posY - this.lastPy) > 0.6) {
-        this.onPresence?.(this.ringIdx, Math.round(this.posX), Math.round(this.posY), this.facing);
-        this.lastPx = this.posX; this.lastPy = this.posY;
+      if (Math.abs(this.posX - this.lastPx) > 0.6 || Math.abs(this.posY - this.lastPy) > 0.6 || this.poseDirty) {
+        this.onPresence?.(this.ringIdx, Math.round(this.posX), Math.round(this.posY), this.facing, this.seated ? "sit" : "stand");
+        this.lastPx = this.posX; this.lastPy = this.posY; this.poseDirty = false;
       }
       this.lastPresence = this.t;
     }
@@ -1060,28 +1067,38 @@ export class CirqlWorldEngine extends RetroEngine {
   }
 
   // ---------- props ----------
+  // A small folded-legs cushion drawn under a seated avatar so a lowered sprite clearly
+  // reads as sitting (Phase H1). Kept neutral so it flatters any avatar's palette.
+  private seatLegs(cx: number, feet: number) {
+    this.rect(cx - 5, feet, 10, 2, "#241d38");     // crossed legs
+    this.rect(cx - 4, feet + 2, 8, 1, "#1a1530");
+  }
   private drawHero(cx: number, cy: number) {
-    const walkBob = this.walk > 0 ? Math.round(Math.sin(this.walk)) : 0;
+    const walkBob = (!this.seated && this.walk > 0) ? Math.round(Math.sin(this.walk)) : 0;
     const z = Math.round(this.jumpZ);
-    const bob = walkBob + this.emoteBob(this.myEmoteT > 0 ? this.myEmote : "") - z;
+    const sit = this.seated ? 3 : 0;   // settle the sprite down when seated (Phase H1)
+    const bob = walkBob + this.emoteBob(this.myEmoteT > 0 ? this.myEmote : "") - z + sit;
     // aura glow (cosmetic) behind the figure
     const aura = this.hero.aura && AURA_COLORS[this.hero.aura];
     if (aura) this.glow(cx, cy - 12 - z, 20, aura, this.reduce ? 0.4 : 0.32 + 0.1 * Math.sin(this.t * 2.5));
-    this.disc(cx, cy + 2, Math.max(2, 4 - this.jumpZ * 0.16), "#0a071460");   // grounded shadow shrinks as you rise
+    this.disc(cx, cy + 2, this.seated ? 6 : Math.max(2, 4 - this.jumpZ * 0.16), "#0a071460");   // wider contact seated; shrinks as you rise
     this.ring(cx, cy + 2, 6, "#35e0d0", 1.1);       // gentle "you" ring (grounded)
+    if (this.seated) this.seatLegs(cx, cy);
     this.avatar(cx, cy + bob, this.hero, this.facing);
     this.nameTag(cx, cy, this.myName, "#ffd24a");
     if (this.myEmoteT > 0 && this.myEmote) this.drawEmote(cx, cy, this.myEmote, this.myEmoteT);
     if (this.myChatT > 0 && this.myChat) this.drawBubble(cx, cy, this.myChat, this.myChatT);
   }
   private drawRemote(cx: number, cy: number, r: RemotePlayer, inParty = false) {
-    const bob = (r.walk > 0 ? Math.round(Math.sin(r.walk)) : 0) + this.emoteBob(r.emoteT > 0 ? r.emote : "");
+    const sit = r.seated ? 3 : 0;
+    const bob = (!r.seated && r.walk > 0 ? Math.round(Math.sin(r.walk)) : 0) + this.emoteBob(r.emoteT > 0 ? r.emote : "") + sit;
     const aura = r.avatar.aura && AURA_COLORS[r.avatar.aura];
     if (aura) this.glow(cx, cy - 12, 18, aura, this.reduce ? 0.34 : 0.26);
-    this.disc(cx, cy + 2, 4, "#0a071460");
+    this.disc(cx, cy + 2, r.seated ? 6 : 4, "#0a071460");
     if (inParty) { this.glow(cx, cy + 2, 12, "#35e0d0", 0.3); this.ring(cx, cy + 2, 7, "#35e0d0", 1.2); }  // party-mate
     const share = this.nearPlayer?.id && this.remotes.get(this.nearPlayer.id) === r;
     if (share) this.ring(cx, cy + 2, 6, "#ffc46b", 1.1);          // highlight the "share a light" target
+    if (r.seated) this.seatLegs(cx, cy);
     this.avatar(cx, cy + bob, r.avatar, r.facing);
     this.nameTag(cx, cy, r.name, inParty ? "#a8f5ea" : "#dfe6ff");
     if (r.emoteT > 0 && r.emote) this.drawEmote(cx, cy, r.emote, r.emoteT);
