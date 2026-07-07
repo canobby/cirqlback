@@ -74,7 +74,9 @@ export default function Cirql() {
   const [decorCount, setDecorCount] = useState(0);         // placed-piece count (reactive)
   const landTierRef = useRef(0);                           // CIRQLSPACE land tier (Phase D)
   const [landTierUi, setLandTierUi] = useState(0);
-  const [visiting, setVisiting] = useState<string | null>(null);   // name of the Hearth you're visiting (CHR-259)
+  const [visiting, setVisiting] = useState<string | null>(null);   // name of the CIRQLSPACE you're visiting (Phase E)
+  const [spaceOpen, setSpaceOpen] = useState(true);                // your space: open to anyone (true) or invite-only
+  const [spaceInvites, setSpaceInvites] = useState<{ fromId: string; fromName: string }[]>([]);   // pending invites to visit
   const [members, setMembers] = useState(0);               // mirror of membersRef for the panel
   const [sparksUi, setSparksUi] = useState(0);             // reactive spark balance (for the shop)
   const [owned, setOwned] = useState<string[]>([]);        // purchased cosmetics
@@ -192,7 +194,7 @@ export default function Cirql() {
     const st = eng.getState();
     ws.send(JSON.stringify({ t: "join", name: nameRef.current, avatar: avatarRef.current, ring: st.ring, x: st.x, y: st.y, dir: "down" }));
     joinedRef.current = true;
-    broadcastDecor();   // share your Hearth décor so travellers can visit (CHR-259)
+    broadcastBuild();   // share your CIRQLSPACE build so travellers can drop in (Phase E)
   };
   // send routes to the active channel (Global / Party / a DM thread)
   const sendMsg = () => {
@@ -287,7 +289,7 @@ export default function Cirql() {
       persist();
     };
     eng.onQuestChange = () => { setQuestRows(eng.getQuestLog()); scheduleSave(); };
-    eng.onDecorChange = () => { setDecorCount(eng.getDecor().length); broadcastDecor(); persist(); };   // place/remove décor (CHR-259)
+    eng.onDecorChange = () => { setDecorCount(eng.getDecor().length); broadcastBuild(); persist(); };   // place/paint/expand → live to visitors (Phase E)
 
     // M8 — live presence socket: broadcast our position + share-a-light, and render
     // every other traveller sharing the ring (adapted from the /ws/town prototype).
@@ -327,7 +329,15 @@ export default function Cirql() {
       }
       else if (m.t === "lit") { receiveLight(m.id, m.name); }
       else if (m.t === "emote") { if (!blockedRef.current.has(m.id)) eng.emoteRemote(m.id, m.emote); }
-      else if (m.t === "visit:data") { if (!blockedRef.current.has(m.withId)) { eng.startVisit(m.withName, m.decor || []); setVisiting(m.withName || "Traveller"); setShowDecor(false); setShowChat(false); setShowCirql(false); } }
+      // ---- CIRQLSPACE live parties (Phase E) ----
+      else if (m.t === "visit:data") { if (!blockedRef.current.has(m.withId)) { eng.startVisit(m.withName, m); setVisiting(m.withName || "Traveller"); setShowDecor(false); setShowChat(false); setShowCirql(false); setShowInventory(false); } }
+      else if (m.t === "visit:build") { eng.updateVisit(m); }   // host edited while you watch
+      else if (m.t === "visit:denied") { eng.toast(`${m.name || "That traveller"}'s space is invite-only`); }
+      else if (m.t === "visit:full") { eng.toast(`${m.name || "That"} space is full (8 max)`); }
+      else if (m.t === "space:closed") { eng.endVisit(); setVisiting(null); eng.toast(`${m.name || "The host"} closed the space`); }
+      else if (m.t === "space:invited") { if (!blockedRef.current.has(m.fromId)) { setSpaceInvites((v) => v.some((x) => x.fromId === m.fromId) ? v : [...v, { fromId: m.fromId, fromName: m.fromName }]); eng.toast(`${m.fromName} invited you to their CIRQLSPACE`); } }
+      else if (m.t === "space:invite:ok") { eng.toast(`Invited ${m.toName}`); }
+      else if (m.t === "space:mode") { setSpaceOpen(!!m.open); }
       // ---- Direct Messages (CHR-248) ----
       else if (m.t === "dm:request") { if (!blockedRef.current.has(m.fromId)) { setDmReqs((r) => r.some((x) => x.fromId === m.fromId) ? r : [...r, { fromId: m.fromId, fromName: m.fromName }]); if (!(showChatRef.current && chatScopeRef.current === "dm")) setUnread((u) => ({ ...u, dm: u.dm + 1 })); eng.toast(`${m.fromName} wants to message you`); } }
       else if (m.t === "dm:open") { setDmThreads((th) => th[m.withId] ? th : { ...th, [m.withId]: { name: m.withName, msgs: [] } }); openDm(m.withId); }
@@ -476,7 +486,8 @@ export default function Cirql() {
 
   // ---- Hearth décor (CHR-259) ----
   const decorOwned = (id: string) => { const def = decorById[id]; return !!def && (def.price === 0 || ownedRef.current.includes(decorPriceKey(id))); };
-  const broadcastDecor = () => wsSend({ t: "decor", decor: engineRef.current?.getDecor() ?? [] });
+  // Share your whole CIRQLSPACE build (décor + terrain + land tier) so friends can drop in live (Phase E).
+  const broadcastBuild = () => { const e = engineRef.current; if (e) wsSend({ t: "build", decor: e.getDecor(), terrain: e.getTerrain(), landTier: e.getLandTier() }); };
   const openDecorate = () => {
     if (curRingUi !== 0) { engineRef.current?.toast("Sail home to CIRQLSPACE to decorate"); return; }
     setShowDecor(true); setDecorTool(""); engineRef.current?.beginDecorEdit("");
@@ -509,7 +520,10 @@ export default function Cirql() {
     persist();
   };
   const requestVisit = (id: string) => { wsSend({ t: "visit", toId: id }); engineRef.current?.toast("Knocking…"); };
-  const leaveVisit = () => { engineRef.current?.endVisit(); setVisiting(null); };
+  const leaveVisit = () => { wsSend({ t: "space:home" }); engineRef.current?.endVisit(); setVisiting(null); };
+  const toggleSpaceOpen = () => wsSend({ t: "space:mode", open: !spaceOpen });
+  const inviteToSpace = (id: string) => wsSend({ t: "space:invite", toId: id });
+  const acceptSpaceInvite = (hostId: string) => { setSpaceInvites((v) => v.filter((x) => x.fromId !== hostId)); requestVisit(hostId); };
 
   // Invite a friend to your Cirql (reuses the platform referral idea; lantern lights on real join, later).
   const invite = async () => {
@@ -640,13 +654,30 @@ export default function Cirql() {
                     </button>
                   ))}
                 </>}
+                {/* Your CIRQLSPACE: who may drop in (Phase E) */}
+                <div className="mb-1 mt-1.5 flex items-center gap-2 rounded-lg border px-2.5 py-1.5" style={{ borderColor: "#233152", background: "rgba(10,18,38,.5)" }}>
+                  <span className="min-w-0 flex-1 truncate text-[11px] text-slate-300">Your CIRQLSPACE is <b className={spaceOpen ? "text-emerald-300" : "text-amber-200"}>{spaceOpen ? "open to all" : "invite-only"}</b></span>
+                  <button onClick={toggleSpaceOpen} data-testid="space-toggle" className="rounded-lg border px-2 py-1 text-[11px] font-bold text-teal-200" style={{ borderColor: "rgba(53,224,208,.5)" }}>{spaceOpen ? "Make invite-only" : "Open it up"}</button>
+                </div>
+                {spaceInvites.length > 0 && (
+                  <div className="mb-1">
+                    {spaceInvites.map((v) => (
+                      <div key={v.fromId} className="mb-1 flex items-center gap-2 rounded-lg border px-2.5 py-1.5" style={{ borderColor: "rgba(255,196,107,.4)", background: "rgba(40,28,8,.4)" }}>
+                        <span className="min-w-0 flex-1 truncate text-[11.5px] text-amber-100"><b>{v.fromName}</b> invited you over</span>
+                        <button onClick={() => { acceptSpaceInvite(v.fromId); setShowChat(false); }} data-testid={`space-invite-accept-${v.fromId}`} className="rounded-lg px-2.5 py-1 text-[11px] font-bold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>Visit</button>
+                        <button onClick={() => setSpaceInvites((s) => s.filter((x) => x.fromId !== v.fromId))} className="text-[10px] text-slate-500 hover:text-rose-300">Dismiss</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="mb-1 mt-1.5 px-1 text-[10px] font-black uppercase tracking-widest text-slate-400/70">Travellers here</div>
                 {peers.filter((p) => !dmThreads[p.id]).length === 0 && <p className="px-1 py-2 text-[11.5px] text-slate-500">No one else is on this island right now.</p>}
                 {peers.filter((p) => !dmThreads[p.id]).map((p) => (
                   <div key={p.id} data-testid={`dm-peer-${p.id}`} className="mb-1 flex items-center gap-2 rounded-lg px-2.5 py-1.5" style={{ background: "rgba(255,255,255,.03)" }}>
                     <span className="min-w-0 flex-1 truncate text-[12.5px] text-slate-200">{p.name}</span>
                     <button onClick={() => { requestVisit(p.id); setShowChat(false); }} data-testid={`dm-visit-${p.id}`} className="rounded-lg border px-2 py-1 text-[11px] font-bold text-amber-200" style={{ borderColor: "rgba(255,196,107,.5)" }}>Visit</button>
-                    <button onClick={() => requestDm(p.id)} data-testid={`dm-ask-${p.id}`} className="rounded-lg border px-2.5 py-1 text-[11px] font-bold text-violet-200" style={{ borderColor: "rgba(178,108,255,.5)" }}>Message</button>
+                    <button onClick={() => inviteToSpace(p.id)} data-testid={`dm-invite-${p.id}`} className="rounded-lg border px-2 py-1 text-[11px] font-bold text-emerald-200" style={{ borderColor: "rgba(52,211,153,.5)" }}>Invite</button>
+                    <button onClick={() => requestDm(p.id)} data-testid={`dm-ask-${p.id}`} className="rounded-lg border px-2 py-1 text-[11px] font-bold text-violet-200" style={{ borderColor: "rgba(178,108,255,.5)" }}>DM</button>
                     <button onClick={() => blockPlayer(p.id)} className="text-[10px] text-slate-500 hover:text-rose-300">Hide</button>
                   </div>
                 ))}

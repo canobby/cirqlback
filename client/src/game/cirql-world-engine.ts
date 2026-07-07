@@ -75,7 +75,9 @@ export class CirqlWorldEngine extends RetroEngine {
   private terrain = new Map<number, string>();
   private editPaint = false; private paintTile = "s"; private brush = 1; private paintStroke = false;
   private landTier = 0;                                 // CIRQLSPACE buildable-land tier (Phase D)
-  private visiting: { name: string; decor: { item: string; x: number; y: number }[] } | null = null;
+  // Live-party visiting (Phase E): the host's full build (décor + terrain + land tier) you're standing in.
+  private visiting: { name: string; decor: { item: string; x: number; y: number }[]; terrain: Map<number, string>; landTier: number } | null = null;
+  private curTerrain() { return this.visiting ? this.visiting.terrain : this.terrain; }
   private camX = 0; private camY = 0;
   private t = 0;
   private hero: AvatarConfig;
@@ -187,10 +189,21 @@ export class CirqlWorldEngine extends RetroEngine {
   clearTerrain() { if (this.terrain.size) { this.terrain.clear(); this.onDecorChange?.(); } }
   // ---- land growth (Phase D) ----
   /** Effective buildable/walkable radius — the land tier on CIRQLSPACE, else the full ring. */
-  private effR() { return this.ringIdx === 0 ? LAND_TIERS[Math.max(0, Math.min(LAND_TIERS.length - 1, this.landTier))] : this.curRing.radius; }
+  private effR() { const tier = this.visiting ? this.visiting.landTier : this.landTier; return this.ringIdx === 0 ? LAND_TIERS[Math.max(0, Math.min(LAND_TIERS.length - 1, tier))] : this.curRing.radius; }
   getLandTier() { return this.landTier; }
   setLandTier(n: number) { this.landTier = Math.max(0, Math.min(LAND_TIERS.length - 1, n | 0)); this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2; }
-  private tileAtWorld(wx: number, wy: number) { return this.terrain.get(CK(Math.round(wx / TILE), Math.round(wy / TILE))) ?? "g"; }
+  private tileAtWorld(wx: number, wy: number) { return this.curTerrain().get(CK(Math.round(wx / TILE), Math.round(wy / TILE))) ?? "g"; }
+  /** Parse a { numericKey | "gx,gy": tile } terrain blob into the engine's numeric-CK map. */
+  private parseTerrain(obj: any): Map<number, string> {
+    const m = new Map<number, string>();
+    if (obj && typeof obj === "object") for (const k in obj) {
+      const v = String(obj[k]); let key: number;
+      if (k.indexOf(",") >= 0) { const [gx, gy] = k.split(",").map(Number); if (!Number.isFinite(gx) || !Number.isFinite(gy)) continue; key = CK(gx, gy); }
+      else { key = +k; if (!Number.isFinite(key)) continue; }
+      m.set(key, v);
+    }
+    return m;
+  }
   private paintAt(wx: number, wy: number) {
     const cx = Math.round(wx / TILE), cy = Math.round(wy / TILE), rad = this.brush - 1, lim = this.effR() * 0.86;
     for (let gy = cy - rad; gy <= cy + rad; gy++) for (let gx = cx - rad; gx <= cx + rad; gx++) {
@@ -203,13 +216,25 @@ export class CirqlWorldEngine extends RetroEngine {
   }
   decorEditing() { return this.editDecor; }
   clearDecor() { if (this.decor.length) { this.decor = []; this.onDecorChange?.(); } }
-  /** Visit another traveller's CIRQLSPACE (render their décor read-only over it). */
-  startVisit(name: string, decor: { item: string; x: number; y: number }[]) {
-    this.editDecor = false;
-    this.visiting = { name: (name || "Traveller").slice(0, 16), decor: (decor || []).filter((d) => d && decorById[d.item]) };
+  /** Visit another traveller's CIRQLSPACE — render their whole build (décor + terrain + land) read-only. */
+  startVisit(name: string, build: { decor?: { item: string; x: number; y: number }[]; terrain?: any; landTier?: number }) {
+    this.editDecor = false; this.editPaint = false;
+    this.visiting = {
+      name: (name || "Traveller").slice(0, 16),
+      decor: (build?.decor || []).filter((d) => d && decorById[d.item]),
+      terrain: this.parseTerrain(build?.terrain),
+      landTier: Math.max(0, Math.min(LAND_TIERS.length - 1, +(build?.landTier ?? 0) | 0)),
+    };
     if (this.ringIdx !== 0) { this.ringIdx = 0; this.curRing = getRing(0); }
     this.posX = 0; this.posY = 150; this.camX = -this.LW / 2; this.camY = 150 - this.LH / 2;
     this.near = null; this.dialog = null;
+  }
+  /** The host edited while you're watching — swap in their new build without moving you. */
+  updateVisit(build: { decor?: { item: string; x: number; y: number }[]; terrain?: any; landTier?: number }) {
+    if (!this.visiting) return;
+    this.visiting.decor = (build?.decor || []).filter((d) => d && decorById[d.item]);
+    this.visiting.terrain = this.parseTerrain(build?.terrain);
+    this.visiting.landTier = Math.max(0, Math.min(LAND_TIERS.length - 1, +(build?.landTier ?? 0) | 0));
   }
   endVisit() { this.visiting = null; }
   isVisiting() { return !!this.visiting; }
@@ -474,8 +499,8 @@ export class CirqlWorldEngine extends RetroEngine {
       else if (p.t === "theater") out.push({ x: p.x, y: p.y - 4, r: 20 });
       else if (p.t === "gathering") out.push({ x: p.x, y: p.y - 2, r: 11 });
     }
-    // solid décor you've placed on CIRQLSPACE — trees/rocks/bushes/fences/ponds (Phase B)
-    if (this.ringIdx === 0 && !this.visiting) for (const d of this.decor) {
+    // solid décor on CIRQLSPACE — yours, or the host's while you visit (Phase B / E)
+    if (this.ringIdx === 0) for (const d of (this.visiting ? this.visiting.decor : this.decor)) {
       const def = decorById[d.item]; const r = def?.render;
       if (!r || !DECOR_SOLID[r]) continue;
       const rad = r === "tree" ? (def!.big ? 13 : 10) : r === "stone" ? (def!.big ? 12 : 7) : r === "pond" ? 20 : r === "bush" ? 7 : 9;
@@ -691,7 +716,7 @@ export class CirqlWorldEngine extends RetroEngine {
       this.posX += this.vx * dt; this.posY += this.vy * dt;
 
       // painted water tiles are non-walkable (Phase C) — slide back out (per axis for a smooth edge)
-      if (this.ringIdx === 0 && !this.editPaint && this.terrain.size && this.tileAtWorld(this.posX, this.posY) === "w") {
+      if (this.ringIdx === 0 && !this.editPaint && this.curTerrain().size && this.tileAtWorld(this.posX, this.posY) === "w") {
         if (this.tileAtWorld(this.posX, preY) !== "w") this.posY = preY;
         else if (this.tileAtWorld(preX, this.posY) !== "w") this.posX = preX;
         else { this.posX = preX; this.posY = preY; }
@@ -811,7 +836,7 @@ export class CirqlWorldEngine extends RetroEngine {
     b.beginPath(); b.arc(scx * s, scy * s, R * 0.42 * s, 0, TAU); b.stroke();
 
     // painted terrain — the base ground layer under everything (Phase C, CIRQLSPACE only)
-    if (this.ringIdx === 0 && this.terrain.size) this.drawTerrain(camX, camY);
+    if (this.ringIdx === 0 && this.curTerrain().size) this.drawTerrain(camX, camY);
     // ground decoration — paths + ponds, under the depth-sorted props
     for (const p of this.curRing.props) if (p.t === "path") this.drawPath(p.x - camX, p.y - camY);
     for (const p of this.curRing.props) if (p.t === "pond") this.drawPond(p.x - camX, p.y - camY, p.r ?? 22);
@@ -1076,7 +1101,7 @@ export class CirqlWorldEngine extends RetroEngine {
   // a faint shimmer line. Grass is the default and never painted.
   private drawTerrain(camX: number, camY: number) {
     const half = TILE / 2;
-    for (const [key, t] of Array.from(this.terrain)) {
+    for (const [key, t] of Array.from(this.curTerrain())) {
       const gx = (key % 1000) - 500, gy = ((key / 1000) | 0) - 500;
       const sx = gx * TILE - camX, sy = gy * TILE - camY;
       if (sx < -TILE || sx > this.LW + TILE || sy < -TILE || sy > this.LH + TILE) continue;   // cull

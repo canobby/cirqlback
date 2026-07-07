@@ -18,7 +18,13 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { maskProfanity } from "./chat-filter";
 
-interface Traveller { ws: WebSocket; id: string; name: string; avatar: unknown; ring: number; x: number; y: number; dir: string; partyId?: string; lastAsk?: number; lastPost?: number; lastEmote?: number; lastChat?: number; lastDmReq?: number; lastDm?: number; decor?: { item: string; x: number; y: number }[]; }
+interface Traveller { ws: WebSocket; id: string; name: string; avatar: unknown; ring: number; x: number; y: number; dir: string; partyId?: string; lastAsk?: number; lastPost?: number; lastEmote?: number; lastChat?: number; lastDmReq?: number; lastDm?: number;
+  // CIRQLSPACE live-party state (Phase E): your build cache + where you are + who can visit
+  decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number;
+  spaceHost?: string;              // if set, you're visiting this host's CIRQLSPACE (else your own)
+  spaceOpen?: boolean;             // your space: open to anyone (true) or invite-only (false)
+  invited?: Set<string>;           // ids you've invited to your space
+}
 interface Party { id: string; campaignId: string; steps: number; max: number; hostId: string; members: string[]; step: number; }
 interface Post { id: string; dir: "host" | "seeker"; byId: string; byName: string; campaignId: string; steps: number; max: number; tags: string[]; newbie: boolean; partyId: string | null; }
 
@@ -35,9 +41,27 @@ export function setupCirqlPresence() {
 
   const serialize = (p: Traveller) => ({ id: p.id, name: p.name, avatar: p.avatar, ring: p.ring, x: p.x, y: p.y, dir: p.dir });
   const send = (ws: WebSocket, msg: unknown) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg)); };
-  const toRing = (ring: number, msg: unknown, exceptId?: string) => { for (const p of Array.from(players.values())) if (p.ring === ring && p.id !== exceptId) send(p.ws, msg); };
+  // ---- Rooms (Phase E) ----
+  // Ring 0 is personal: each traveller sits in their OWN space room ("s:"+id) — you're alone on your
+  // CIRQLSPACE unless friends visit. Visiting sets spaceHost, moving you into that host's room. Rings
+  // ≥1 (Town, wilds) stay shared ("r:"+ring). One helper decides the room; every broadcast keys off it.
+  const roomKey = (p: Traveller) => (p.spaceHost ? "s:" + p.spaceHost : p.ring === 0 ? "s:" + p.id : "r:" + p.ring);
+  const toRoom = (room: string, msg: unknown, exceptId?: string) => { for (const p of Array.from(players.values())) if (roomKey(p) === room && p.id !== exceptId) send(p.ws, msg); };
   const toAll = (msg: unknown) => { for (const p of Array.from(players.values())) send(p.ws, msg); };
-  const peersOn = (ring: number, selfId: string) => Array.from(players.values()).filter((p) => p.ring === ring && p.id !== selfId).map(serialize);
+  const peersInRoom = (room: string, selfId: string) => Array.from(players.values()).filter((p) => roomKey(p) === room && p.id !== selfId).map(serialize);
+  const roomCount = (room: string) => Array.from(players.values()).filter((p) => roomKey(p) === room).length;
+  // Move a traveller to a new ring/space, announcing leave→welcome→join across the room boundary.
+  const enterRoom = (t: Traveller, ring: number, spaceHost: string | undefined) => {
+    const oldRoom = roomKey(t);
+    t.ring = ring; t.spaceHost = spaceHost;
+    const newRoom = roomKey(t);
+    if (newRoom === oldRoom) return;
+    toRoom(oldRoom, { t: "leave", id: t.id }, t.id);
+    send(t.ws, { t: "welcome", id: t.id, players: peersInRoom(newRoom, t.id) });
+    toRoom(newRoom, { t: "join", ...serialize(t) }, t.id);
+  };
+  // Build cache → the snapshot a visitor gets (and live updates while they watch).
+  const buildOf = (p: Traveller) => ({ decor: p.decor ?? [], terrain: p.terrain ?? {}, landTier: p.landTier ?? 0 });
   const clip = (s: unknown, n: number) => String(s ?? "").replace(/\s+/g, " ").slice(0, n).trim();
   const dir = (d: unknown) => (typeof d === "string" && DIRS.has(d) ? d : "down");
   const clipTags = (arr: unknown) => Array.isArray(arr) ? arr.filter((x) => typeof x === "string").slice(0, 4).map((x) => clip(x, 20)).filter(Boolean) : [];
@@ -77,22 +101,18 @@ export function setupCirqlPresence() {
       let m: any; try { m = JSON.parse(data.toString()); } catch { return; }
       if (m.t === "join") {
         if (me) return;
-        me = { ws, id, name: clip(m.name, 16) || "Traveller", avatar: m.avatar ?? null, ring: +m.ring || 0, x: +m.x || 0, y: +m.y || 0, dir: dir(m.dir) };
+        me = { ws, id, name: clip(m.name, 16) || "Traveller", avatar: m.avatar ?? null, ring: +m.ring || 0, x: +m.x || 0, y: +m.y || 0, dir: dir(m.dir), spaceOpen: true };
         players.set(id, me);
-        send(ws, { t: "welcome", id, players: peersOn(me.ring, id) });
+        send(ws, { t: "welcome", id, players: peersInRoom(roomKey(me), id) });
         send(ws, { t: "board:list", posts: boardList() });     // hand the newcomer the current board
-        toRing(me.ring, { t: "join", ...serialize(me) }, id);
+        toRoom(roomKey(me), { t: "join", ...serialize(me) }, id);
       } else if (!me) { return; }
       else if (m.t === "move") {
         const nr = +m.ring || 0;
-        if (nr !== me.ring) {
-          toRing(me.ring, { t: "leave", id }, id);
-          me.ring = nr;
-          send(ws, { t: "welcome", id, players: peersOn(me.ring, id) });
-          toRing(me.ring, { t: "join", ...serialize(me) }, id);
-        }
+        // Changing ring leaves any space you were visiting (you can only visit from your own ring 0).
+        if (nr !== me.ring) enterRoom(me, nr, nr === 0 ? me.spaceHost : undefined);
         me.x = +m.x; me.y = +m.y; me.dir = dir(m.dir);
-        toRing(me.ring, { t: "move", id, x: me.x, y: me.y, dir: me.dir }, id);
+        toRoom(roomKey(me), { t: "move", id, x: me.x, y: me.y, dir: me.dir }, id);
       }
       else if (m.t === "chat") {
         const now = Date.now(); if (me.lastChat && now - me.lastChat < 700) return; me.lastChat = now;   // anti-spam rate limit
@@ -101,27 +121,44 @@ export function setupCirqlPresence() {
           const p = parties.get(me.partyId);
           if (p) for (const mid of p.members) { const pl = players.get(mid); if (pl) send(pl.ws, { t: "chat", id: me.id, name: me.name, text, channel: "party" }); }
         } else {
-          toRing(me.ring, { t: "chat", id: me.id, name: me.name, text, channel: "global" });   // to the ring incl. sender
+          toRoom(roomKey(me), { t: "chat", id: me.id, name: me.name, text, channel: "global" });   // to everyone in the room incl. sender
         }
       }
-      // ---- Hearth décor: cache each traveller's placements so friends can visit (CHR-259) ----
-      else if (m.t === "decor") {
+      // ---- CIRQLSPACE build cache: your décor + terrain + land tier, so friends can visit (Phase E) ----
+      else if (m.t === "build") {
         me.decor = Array.isArray(m.decor)
-          ? m.decor.filter((d: any) => d && typeof d.item === "string").slice(0, 80).map((d: any) => ({ item: clip(d.item, 24), x: Math.round(+d.x) || 0, y: Math.round(+d.y) || 0 }))
+          ? m.decor.filter((d: any) => d && typeof d.item === "string").slice(0, 130).map((d: any) => ({ item: clip(d.item, 24), x: Math.round(+d.x) || 0, y: Math.round(+d.y) || 0 }))
           : [];
+        // terrain is a compact { "gx,gy": "s|t|w|p" } map; clip to a sane size
+        const terr: Record<string, string> = {};
+        if (m.terrain && typeof m.terrain === "object") { let n = 0; for (const k in m.terrain) { if (n++ > 4000) break; const v = m.terrain[k]; if (typeof v === "string" && v.length <= 2 && /^-?\d+(,-?\d+)?$/.test(k)) terr[k] = v; } }
+        me.terrain = terr;
+        me.landTier = Math.max(0, Math.min(6, +m.landTier || 0));
+        // If friends are watching your space right now, push the live update.
+        toRoom("s:" + me.id, { t: "visit:build", ...buildOf(me) }, me.id);
       }
-      else if (m.t === "visit") {   // ask for a traveller's Hearth décor to visit it
-        const other = players.get(String(m.toId));
-        if (other && other.id !== me.id) send(me.ws, { t: "visit:data", withId: other.id, withName: other.name, decor: other.decor ?? [] });
+      else if (m.t === "visit") {   // drop into a traveller's CIRQLSPACE (join their live space room)
+        const host = players.get(String(m.toId));
+        if (!host || host.id === me.id) return;
+        if (!host.spaceOpen && !(host.invited && host.invited.has(me.id))) { send(me.ws, { t: "visit:denied", name: host.name }); return; }
+        if (roomCount("s:" + host.id) >= 8) { send(me.ws, { t: "visit:full", name: host.name }); return; }   // cap 8
+        enterRoom(me, 0, host.id);   // join the host's live space room (leaves your own)
+        send(me.ws, { t: "visit:data", withId: host.id, withName: host.name, ...buildOf(host) });
       }
-      else if (m.t === "emote") {   // chat-free expression relayed to the ring (CHR-260)
+      else if (m.t === "space:home") { enterRoom(me, 0, undefined); }   // leave a space, back to your own
+      else if (m.t === "space:mode") { me.spaceOpen = !!m.open; send(me.ws, { t: "space:mode", open: me.spaceOpen }); }
+      else if (m.t === "space:invite") {
+        const g = players.get(String(m.toId));
+        if (g && g.id !== me.id) { (me.invited ||= new Set()).add(g.id); send(g.ws, { t: "space:invited", fromId: me.id, fromName: me.name }); send(me.ws, { t: "space:invite:ok", toName: g.name }); }
+      }
+      else if (m.t === "emote") {   // chat-free expression relayed to the room (CHR-260)
         const now = Date.now(); if (me.lastEmote && now - me.lastEmote < 450) return; me.lastEmote = now;
         const emote = clip(m.emote, 24); if (!emote) return;
-        toRing(me.ring, { t: "emote", id: me.id, emote }, me.id);   // to others on the ring (sender shows it locally)
+        toRoom(roomKey(me), { t: "emote", id: me.id, emote }, me.id);   // to others in the room (sender shows it locally)
       }
       else if (m.t === "light") {
         const other = players.get(String(m.to));
-        if (other && other.id !== me.id && other.ring === me.ring) {
+        if (other && other.id !== me.id && roomKey(other) === roomKey(me)) {
           send(me.ws, { t: "lit", id: other.id, name: other.name });
           send(other.ws, { t: "lit", id: me.id, name: me.name });
         }
@@ -225,8 +262,12 @@ export function setupCirqlPresence() {
       leaveParty(me, "A traveller left the party.");
       dropPost(me.id);
       for (const k of Array.from(dmPairs)) if (k.split("|").includes(me.id)) dmPairs.delete(k);   // end their DM threads
+      // If a host vanishes, evict anyone visiting their CIRQLSPACE back to their own.
+      const hostRoom = "s:" + me.id;
+      for (const p of Array.from(players.values())) if (p.id !== me.id && p.spaceHost === me.id) { send(p.ws, { t: "space:closed", name: me.name }); enterRoom(p, 0, undefined); }
+      const room = roomKey(me);
       players.delete(me.id);
-      toRing(me.ring, { t: "leave", id: me.id });
+      toRoom(room, { t: "leave", id: me.id });
       broadcastBoard();
       me = null;
     };
