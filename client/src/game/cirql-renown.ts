@@ -39,3 +39,6 @@ export function renownStanding(renown: number): RenownStanding {
 
 /** Renown a quest awards — scales with its difficulty tier (0 for untiered onboarding). */
 export const questRenown = (tier?: number) => (tier && tier > 0 ? 2 + tier : 0);
+
+/** The title of a rank by its index (for "Requires <rank>" gates). */
+export const rankTitle = (index: number) => (RENOWN_RANKS[Math.max(0, Math.min(RENOWN_RANKS.length - 1, index))]?.title ?? "Wayfarer");

@@ -26,6 +26,7 @@ export interface Campaign {
   difficulty: "chill" | "quick" | "epic";
   newbie: boolean;       // adopts newcomers well (surfaced + filterable on the board)
   reward: number;        // sparks granted to EACH member on completion
+  minRenownRank?: number;   // Renown rank index required to host/join (Phase K4 gating); undefined = open
   steps: CampaignStep[];
 }
 
@@ -78,7 +79,7 @@ export const CAMPAIGNS: Campaign[] = [
     id: "outer-passage",
     title: "The Outer Passage",
     blurb: "A voyage together — cross from the Town to the outer shores, catch a show at the Drive-In, and sail home. Bring a crew.",
-    minParty: 2, maxParty: 5, difficulty: "epic", newbie: false, reward: 22,
+    minParty: 2, maxParty: 5, difficulty: "epic", newbie: false, reward: 22, minRenownRank: 2,
     steps: [
       { label: "Gather at the Town Commons", ring: 1, at: "commons" },
       { label: "Sail to the next shore's Commons", ring: 2, at: "commons" },
@@ -90,7 +91,7 @@ export const CAMPAIGNS: Campaign[] = [
     id: "wonders-marathon",
     title: "Wonders Marathon",
     blurb: "The long haul — circle every landmark of the Town as a full crew. Bragging rights.",
-    minParty: 3, maxParty: 5, difficulty: "epic", newbie: false, reward: 20,
+    minParty: 3, maxParty: 5, difficulty: "epic", newbie: false, reward: 20, minRenownRank: 3,
     steps: [
       { label: "Rally at the Town", ring: TOWN_RING, tx: HALL.x, ty: HALL.y },
       { label: "March to the shore", ring: TOWN_RING, tx: SHORE.x, ty: SHORE.y },

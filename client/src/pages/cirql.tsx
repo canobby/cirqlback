@@ -9,7 +9,7 @@ import { Joystick } from "@/components/joystick";
 import { CharacterCreator } from "@/components/cirql/character-creator";
 import { ARCADE_GAMES } from "@/game/registry";
 import { CAMPAIGNS, campaignById, MATCH_TAGS, difficultyMeta } from "@/game/cirql-campaigns";
-import { renownStanding } from "@/game/cirql-renown";
+import { renownStanding, rankTitle } from "@/game/cirql-renown";
 import { dailyForDate, activeEvent, todayStr, type DailyTask, type CirqlEvent } from "@/game/cirql-daily";
 import { ringName } from "@/game/cirql-ring-gen";
 import { EMOTES, PAIR_GESTURES } from "@/game/cirql-emotes";
@@ -251,6 +251,9 @@ export default function Cirql() {
   // M9 board + party actions
   const postRequest = () => {
     const camp = campaignById(postCampaign);
+    if (postDir === "host" && camp && (camp.minRenownRank ?? 0) > renownStanding(renownRef.current).index) {
+      engineRef.current?.toast(`★ ${camp.title} unlocks at ${rankTitle(camp.minRenownRank!)} — earn more Renown first`); return;
+    }
     wsSend({ t: "board:post", dir: postDir, campaignId: postDir === "host" ? postCampaign : "", steps: camp?.steps.length ?? 1, max: camp?.maxParty ?? 4, tags: postTags, newbie: postNewbie });
     engineRef.current?.toast(postDir === "host" ? "Posted — travellers can join your run" : "Posted — hosts can invite you along");
   };
@@ -1239,16 +1242,22 @@ export default function Cirql() {
                   <div className="mb-2 flex flex-col gap-1.5">
                     {CAMPAIGNS.map((c) => {
                       const dm = difficultyMeta[c.difficulty];
+                      const myRank = renownStanding(renownUi).index;
+                      const locked = (c.minRenownRank ?? 0) > myRank;
                       return (
-                        <button key={c.id} onClick={() => setPostCampaign(c.id)} data-testid={`post-campaign-${c.id}`} className="rounded-lg border p-2 text-left"
-                          style={postCampaign === c.id ? { borderColor: "#35e0d0", background: "rgba(53,224,208,.08)" } : { borderColor: "#233152", background: "transparent" }}>
+                        <button key={c.id} disabled={locked}
+                          onClick={() => locked ? engineRef.current?.toast(`★ ${c.title} unlocks at ${rankTitle(c.minRenownRank!)} — earn more Renown from quests`) : setPostCampaign(c.id)}
+                          data-testid={`post-campaign-${c.id}`} className="rounded-lg border p-2 text-left transition"
+                          style={locked ? { borderColor: "#233152", background: "rgba(255,255,255,.02)", opacity: 0.6 } : postCampaign === c.id ? { borderColor: "#35e0d0", background: "rgba(53,224,208,.08)" } : { borderColor: "#233152", background: "transparent" }}>
                           <div className="flex items-center gap-2">
                             <span className="text-[13px] font-bold text-white">{c.title}</span>
                             <span className="rounded px-1.5 py-0.5 text-[9px] font-black uppercase" style={{ color: dm.color, background: dm.color + "22" }}>{dm.label}</span>
                             {c.newbie && <span className="rounded px-1.5 py-0.5 text-[9px] font-black uppercase text-emerald-300" style={{ background: "rgba(91,232,154,.14)" }}>New-friendly</span>}
                             <span className="ml-auto text-[10px] text-slate-400">{c.minParty}-{c.maxParty} · {c.steps.length} steps</span>
                           </div>
-                          <p className="mt-0.5 text-[11px] leading-snug text-slate-400">{c.blurb}</p>
+                          {locked
+                            ? <p className="mt-0.5 text-[11px] font-bold text-violet-300">🔒 Requires ★ {rankTitle(c.minRenownRank!)}</p>
+                            : <p className="mt-0.5 text-[11px] leading-snug text-slate-400">{c.blurb}</p>}
                         </button>
                       );
                     })}
