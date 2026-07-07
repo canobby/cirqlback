@@ -7,7 +7,7 @@
 // lanterns). Quests are chained via `next`, so completing one can auto-offer the
 // following one — the M4 onboarding chain is just data in QUESTS below.
 
-export type ObjectiveKind = "reach" | "interact" | "enterWonders" | "lightLanterns";
+export type ObjectiveKind = "reach" | "interact" | "enterWonders" | "lightLanterns" | "solvePuzzle";
 
 export interface Objective {
   kind: ObjectiveKind;
@@ -59,6 +59,21 @@ export const QUESTS: QuestDef[] = [
     intro: ["The lit path leads to CirqlCade. Step inside — press E at the door."],
     objectives: [{ kind: "enterWonders", count: 1, label: "Enter CirqlCade" }],
     reward: { sparks: 5 },
+  },
+  // The Sunken Runes — a Myst-style puzzle (CHR-258). NOT given by an NPC; the rune
+  // tablet in the hidden grove grants it on inspection (discovery-driven). Completed by
+  // matching the runes to the tablet's clue, then entering the shrine that opens.
+  {
+    id: "sunken-runes",
+    name: "The Sunken Runes",
+    giver: "",   // granted by the tablet, not a keeper
+    intro: [
+      "The runestone is worn, but the carving is clear:",
+      "\"Four runes ring the shrine.\"",
+      "\"Wake them all — save the second, which must sleep.\"",
+    ],
+    objectives: [{ kind: "solvePuzzle", count: 1, label: "Match the runes, then enter the shrine" }],
+    reward: { sparks: 15 },
   },
 ];
 

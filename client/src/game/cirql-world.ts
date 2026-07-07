@@ -16,7 +16,10 @@ export type PropType =
   | "lantern"   // a plain path lantern
   | "crystal"
   | "dock"      // sail outward to another ring
-  | "marker";   // a quest waypoint target
+  | "marker"    // a quest waypoint target
+  | "tablet"    // a Myst-style clue stone (inspect → grants the puzzle + shows the clue)
+  | "rune"      // a puzzle rune you toggle on/off
+  | "shrine";   // sealed until the runes match the clue → opens for the reward
 
 export interface Prop {
   t: PropType;
@@ -49,6 +52,7 @@ export interface Ring {
   palette: RingPalette;
   spawn: { x: number; y: number };
   props: Prop[];
+  puzzleTarget?: string[];   // rune ids that must be lit (and no others) to open the shrine (CHR-258)
 }
 
 // ---- Ring 0: The Hearth -----------------------------------------------------
@@ -92,7 +96,16 @@ const HEARTH: Ring = {
     { t: "dock", x: 0, y: 400, to: 1, label: "the fog", id: "dock-s" },
     // quest waypoint target (Quest 1 "Find Your Feet")
     { t: "marker", x: -230, y: -20, id: "marker-shore", label: "" },
+    // ---- The Sunken Runes: a hidden puzzle grove in the NW corner (CHR-258) ----
+    { t: "tablet", x: -370, y: -190, id: "rune-tablet", label: "Runestone" },
+    { t: "rune", x: -352, y: -262, id: "rn0" },
+    { t: "rune", x: -320, y: -240, id: "rn1" },
+    { t: "rune", x: -284, y: -240, id: "rn2" },
+    { t: "rune", x: -252, y: -262, id: "rn3" },
+    { t: "shrine", x: -302, y: -300, id: "rune-shrine", label: "Sealed Shrine" },
   ],
+  // wake all but the second rune (rn1 stays dark)
+  puzzleTarget: ["rn0", "rn2", "rn3"],
 };
 
 // ---- Outer rings: stubbed (minimap-only until Phase 2 opens them) ------------

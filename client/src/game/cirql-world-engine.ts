@@ -245,6 +245,15 @@ export class CirqlWorldEngine extends RetroEngine {
       return best;
     }
     if (o.kind === "enterWonders") return this.curRing.props.find((p) => p.t === "wonders") ?? null;
+    if (o.kind === "solvePuzzle") {
+      const target = this.curRing.puzzleTarget; if (!target) return null;
+      if (this.puzzleSolved()) return this.curRing.props.find((p) => p.t === "shrine") ?? null;
+      let best: Prop | null = null, bd = 1e9;   // nearest rune in the wrong state (needs toggling)
+      for (const p of this.curRing.props) if (p.t === "rune" && p.id && (this.lit.has(p.id) !== target.includes(p.id))) {
+        const d = Math.hypot(this.posX - p.x, this.posY - p.y); if (d < bd) { bd = d; best = p; }
+      }
+      return best;
+    }
     if (!o.target) return null;
     return this.curRing.props.find((p) => p.id === o.target) ?? null;
   }
@@ -276,6 +285,22 @@ export class CirqlWorldEngine extends RetroEngine {
     }
     if (this.nearPlayer) { this.onShareLight?.(this.nearPlayer.id); return; }   // share a light with a traveller
     const p = this.near; if (!p) return;
+    // ---- The Sunken Runes puzzle (CHR-258) ----
+    if (p.t === "tablet") { this.openTablet(p); return; }
+    if (p.t === "rune" && p.id) {
+      const wasSolved = this.puzzleSolved();
+      if (this.lit.has(p.id)) this.lit.delete(p.id); else this.lit.add(p.id);   // toggle
+      this.onQuestChange?.();
+      const nowSolved = this.puzzleSolved();
+      if (nowSolved && !wasSolved) this.toast("The runes align — the shrine stirs.");
+      else if (!nowSolved && wasSolved) this.toast("The shrine seals once more.");
+      return;
+    }
+    if (p.t === "shrine") {
+      if (this.puzzleSolved()) { this.advanceObjective("solvePuzzle"); this.toast("The shrine opens to you."); }
+      else this.toast("Sealed. The runes must match the stone.");
+      return;
+    }
     if (p.t === "lantern" && p.id) { if (!this.lit.has(p.id)) { this.lit.add(p.id); this.advanceObjective("lightLanterns"); this.onQuestChange?.(); } }
     else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.onInteract?.("wonders", p); }
     else if (p.t === "npc") { this.openNpcDialog(p); this.onInteract?.("npc", p); }
@@ -284,6 +309,25 @@ export class CirqlWorldEngine extends RetroEngine {
       if (to < 0) this.toast("Only open sea lies inward from the Hearth.");
       else { this.onInteract?.("dock", p); this.sailTo(to); }
     }
+  }
+  /** Is the current ring's rune puzzle solved (exactly the target runes lit)? */
+  private puzzleSolved(): boolean {
+    const target = this.curRing.puzzleTarget; if (!target || !target.length) return false;
+    for (const p of this.curRing.props) if (p.t === "rune" && p.id) {
+      const shouldBeLit = target.includes(p.id);
+      if (this.lit.has(p.id) !== shouldBeLit) return false;
+    }
+    return true;
+  }
+  // Inspect the runestone: show the clue and, first time, grant the puzzle quest.
+  private openTablet(p: Prop) {
+    const q = questById("sunken-runes");
+    const notTaken = !this.quests["sunken-runes"];
+    this.dialog = {
+      name: p.label || "Runestone", accent: "#b26cff", i: 0,
+      lines: q ? q.intro : ["The carving has worn away."],
+      acceptOnClose: notTaken ? "sunken-runes" : undefined,
+    };
   }
   private openNpcDialog(p: Prop) {
     const npcId = p.id || "";
@@ -374,9 +418,10 @@ export class CirqlWorldEngine extends RetroEngine {
       this.near = null; let best = 1e9;
       for (const p of this.curRing.props) {
         const isQL = this.isQuestLantern(p);
-        if (p.t !== "wonders" && p.t !== "npc" && p.t !== "dock" && !isQL) continue;
+        const puzzle = p.t === "rune" || p.t === "tablet" || p.t === "shrine";
+        if (p.t !== "wonders" && p.t !== "npc" && p.t !== "dock" && !isQL && !puzzle) continue;
         const d = Math.hypot(this.posX - p.x, this.posY - p.y);
-        const range = p.r ?? (isQL ? 30 : 40);
+        const range = p.r ?? (isQL || p.t === "rune" ? 26 : 40);
         if (d < range && d < best) { best = d; this.near = p; }
       }
       // a nearby live traveller wins the E prompt if closer than any prop → "share a light"
@@ -489,6 +534,9 @@ export class CirqlWorldEngine extends RetroEngine {
         case "crystal": draws.push({ y: p.y, f: () => this.drawCrystal(sxp, syp, p.big, p.accent || pal.accent) }); break;
         case "lantern": { const isQ = !!p.id && this.currentObjKind() === "lightLanterns"; const litState = isQ ? this.lit.has(p.id!) : true; draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, litState) }); break; }
         case "dock": draws.push({ y: p.y - 40, f: () => this.drawDock(sxp, syp, p) }); break;
+        case "tablet": draws.push({ y: p.y, f: () => this.drawTablet(sxp, syp, this.near === p) }); break;
+        case "rune": { const rl = !!p.id && this.lit.has(p.id); const rn = this.near === p; draws.push({ y: p.y, f: () => this.drawRune(sxp, syp, rl, rn) }); break; }
+        case "shrine": draws.push({ y: p.y + 8, f: () => this.drawShrine(sxp, syp, this.puzzleSolved()) }); break;
         case "marker": { const isTarget = this.objTargetProp() === p; if (isTarget) draws.push({ y: p.y - 1, f: () => this.drawMarker(sxp, syp) }); break; }
         default: break;
       }
@@ -643,6 +691,43 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(cx - 1 * s, cy - 6 * s, 1, 6 * s, "#ffffff");
     if (big) { this.rect(cx + 3 * s, cy - 3 * s, 2 * s, 5 * s, c); this.rect(cx - 5 * s, cy - 2 * s, 2 * s, 4 * s, c); }
   }
+  // ---- The Sunken Runes puzzle props (CHR-258) ----
+  private drawTablet(cx: number, cy: number, near: boolean) {
+    this.disc(cx, cy + 2, 6, "#0a071440");
+    if (near) this.glow(cx, cy - 8, 16, "#b26cff", 0.3);
+    this.rect(cx - 6, cy - 17, 12, 19, "#39324f");            // slab
+    this.rect(cx - 6, cy - 17, 12, 2, "#4c4368");
+    for (let i = 0; i < 4; i++) this.rect(cx - 3, cy - 13 + i * 3, 6, 1, "#9a8fc0");   // runic lines
+    this.labelPill(cx, cy - 25, "Runestone", "#b26cff");
+  }
+  private drawRune(cx: number, cy: number, lit: boolean, near: boolean) {
+    this.disc(cx, cy + 2, 4, "#0a071440");
+    if (lit) this.glow(cx, cy - 8, 18, "#c98aff", this.reduce ? 0.5 : 0.4 + 0.15 * Math.sin(this.t * 2 + cx));
+    else if (near) this.glow(cx, cy - 8, 12, "#6a5a8a", 0.3);
+    this.rect(cx - 3, cy - 11, 6, 13, "#2a2540");             // standing stone
+    this.rect(cx - 2, cy - 15, 4, 5, "#2a2540");
+    const c = lit ? "#e6ccff" : "#4a4460";
+    this.disc(cx, cy - 7, 2, c);                              // glyph
+    if (lit) { this.rect(cx - 1, cy - 12, 2, 3, c); this.rect(cx - 3, cy - 5, 6, 1, c); }
+  }
+  private drawShrine(cx: number, cy: number, open: boolean) {
+    this.rect(cx - 20, cy + 8, 40, 5, "#0a071455");           // base shadow
+    const edge = open ? "#e0c0ff" : "#4a4460";
+    if (open) this.glow(cx, cy - 12, 42, "#b26cff", 0.32 + (this.reduce ? 0 : 0.1 * Math.sin(this.t * 1.5)));
+    this.rect(cx - 16, cy - 26, 6, 34, "#2c2742");            // left pillar
+    this.rect(cx + 10, cy - 26, 6, 34, "#2c2742");            // right pillar
+    this.rect(cx - 18, cy - 31, 36, 7, "#332d4e");            // lintel
+    // portal interior
+    this.rect(cx - 10, cy - 24, 20, 32, open ? "#241046" : "#141024");
+    if (open) {
+      this.glow(cx, cy - 6, 16, "#e6ccff", 0.5);
+      if (!this.reduce) for (let i = 0; i < 5; i++) { const yy = cy + 6 - ((this.t * 20 + i * 8) % 30); this.px(Math.round(cx - 6 + (i * 3)), Math.round(yy), "#e6ccff"); }
+    } else {
+      for (let i = 0; i < 3; i++) this.rect(cx - 10, cy - 20 + i * 9, 20, 2, "#3a3352");   // sealing bars
+    }
+    this.rectLine(cx - 18, cy - 31, 36, 39, edge);
+    this.labelPill(cx, cy - 40, open ? "The Shrine" : "Sealed Shrine", edge);
+  }
   private drawLantern(cx: number, cy: number, c: string, lit: boolean) {
     this.rect(cx - 1, cy - 13, 2, 13, "#2a2015");
     if (lit) { this.glow(cx, cy - 16, 22, c, this.reduce ? 0.5 : 0.4 + 0.15 * Math.sin(this.t * 2 + cx)); this.disc(cx, cy - 16, 3, c); }
@@ -719,7 +804,10 @@ export class CirqlWorldEngine extends RetroEngine {
         : this.near.t === "npc" ? `Talk to ${this.near.label || ""}`
           : this.near.t === "lantern" ? "Light the lantern"
             : this.near.t === "dock" ? (this.near.label || "Set sail")
-              : "Set sail";
+              : this.near.t === "tablet" ? "Read the runestone"
+                : this.near.t === "rune" ? (this.near.id && this.lit.has(this.near.id) ? "Dim the rune" : "Wake the rune")
+                  : this.near.t === "shrine" ? (this.puzzleSolved() ? "Enter the shrine" : "The shrine is sealed")
+                    : "Set sail";
       promptTxt = `E · ${label}`; promptAcc = this.near.accent || "#35e0d0";
     }
     if (promptTxt) {
