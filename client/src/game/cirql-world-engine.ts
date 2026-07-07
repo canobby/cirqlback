@@ -1171,11 +1171,14 @@ export class CirqlWorldEngine extends RetroEngine {
     const bump = this.bumpT > 0 ? Math.round((this.bumpT / 0.16) * 2) : 0;
     const bdx = bump * (this.facing === "left" ? 1 : this.facing === "right" ? -1 : 0);
     const bdy = bump * (this.facing === "up" ? 1 : this.facing === "down" ? -1 : 0);
-    const drawBody = () => this.avatar(cx + bdx, cy + bob + bdy, this.hero, face, this.blinking > 0);
+    // body-gesture transform (I3): bow/twirl/dance-sway tip or spin the whole sprite
+    const gx = this.myEmoteT > 0 ? this.emoteXform(this.myEmote, this.myEmoteT) : null;
+    const paintBody = () => this.avatar(cx + bdx, cy + bob + bdy, this.hero, face, this.blinking > 0);
+    const drawBody = gx ? () => this.withXform(cx, cy, gx, paintBody) : paintBody;
     if (sq > 0) { const b = this.b, s = this.SS; b.save(); b.translate(cx * s, cy * s); b.scale(1 + 0.16 * sq, 1 - 0.24 * sq); b.translate(-cx * s, -cy * s); drawBody(); b.restore(); } else drawBody();
     this.nameTag(cx, cy, this.myName, "#ffd24a");
     if (this.dozing) this.drawZzz(cx + 7, cy - 30 + bob);
-    if (this.myEmoteT > 0 && this.myEmote) this.drawEmote(cx, cy, this.myEmote, this.myEmoteT);
+    if (this.myEmoteT > 0 && this.myEmote) { this.drawEmoteHands(cx, cy + bob, this.hero, this.myEmote, this.myEmoteT); this.drawEmote(cx, cy, this.myEmote, this.myEmoteT); }
     if (this.myChatT > 0 && this.myChat) this.drawBubble(cx, cy, this.myChat, this.myChatT);
   }
   // Rising "z"s over a dozing avatar (I1 AFK doze).
@@ -1208,20 +1211,84 @@ export class CirqlWorldEngine extends RetroEngine {
     const share = this.nearPlayer?.id && this.remotes.get(this.nearPlayer.id) === r;
     if (share) this.ring(cx, cy + 2, 6, "#ffc46b", 1.1);          // highlight the "share a light" target
     if (r.seated) this.seatLegs(cx, cy);
-    this.avatar(cx, cy + bob, r.avatar, r.facing, r.blinking > 0);
+    const gx = r.emoteT > 0 ? this.emoteXform(r.emote, r.emoteT, r.facing) : null;
+    const paintBody = () => this.avatar(cx, cy + bob, r.avatar, r.facing, r.blinking > 0);
+    if (gx) this.withXform(cx, cy, gx, paintBody); else paintBody();
     this.nameTag(cx, cy, r.name, inParty ? "#a8f5ea" : "#dfe6ff");
-    if (r.emoteT > 0 && r.emote) this.drawEmote(cx, cy, r.emote, r.emoteT);
+    if (r.emoteT > 0 && r.emote) { this.drawEmoteHands(cx, cy + bob, r.avatar, r.emote, r.emoteT); this.drawEmote(cx, cy, r.emote, r.emoteT); }
     if (r.chatT > 0 && r.chat) this.drawBubble(cx, cy, r.chat, r.chatT);
   }
-  // A small avatar movement while an emote plays: a dance bounce, a settle-to-sit, or a
-  // celebratory hop. Glyph-only emotes return 0. Reduced-motion keeps everyone still.
+  // The VERTICAL component of an emote's motion (px offset added to the sprite's bob).
+  // Body gestures (wave/bow/clap/…) mostly move limbs via emoteXform/drawEmoteHands and
+  // add little or no vertical bounce here. Glyph-only + reduced-motion return 0.
   private emoteBob(emote: string): number {
     if (!emote || this.reduce) return 0;
     const m = EMOTE_BY_ID[emote]?.motion;
-    if (m === "bob") return -Math.abs(Math.round(Math.sin(this.t * 9) * 2));   // dance/sing bounce
-    if (m === "hop") { const j = Math.sin(this.t * 6); return j > 0 ? -Math.round(j * 5) : 0; }   // wave/celebrate/flip
+    if (m === "bob" || m === "sway") return -Math.abs(Math.round(Math.sin(this.t * 9) * 2));   // dance/sing bounce
+    if (m === "hop" || m === "cheer" || m === "twirl") { const j = Math.sin(this.t * 6); return j > 0 ? -Math.round(j * 5) : 0; }   // celebrate/flip/cheer/twirl hop
+    if (m === "clap") return -Math.abs(Math.round(Math.sin(this.t * 12) * 1));  // tiny clap bob
     if (m === "sit") return 3;                                                  // settle down to rest
     return 0;
+  }
+  // The avatar TRANSFORM for a body gesture (Phase I3): bow tips forward, twirl spins the
+  // sprite (scaleX through −1), dance sways side-to-side. Returns null (no transform) for
+  // glyph/overlay-only emotes or reduced-motion. `life` is the emote's remaining seconds.
+  private emoteXform(emote: string, life: number, facing: Facing = this.facing): { rot: number; sx: number; sy: number } | null {
+    if (!emote || this.reduce) return null;
+    const def = EMOTE_BY_ID[emote]; if (!def) return null;
+    const total = def.hold ?? EMOTE_SECONDS, age = total - life, m = def.motion;
+    if (m === "bow") {
+      // one-shot: down over 0.4s, hold, back up — a nod/bow forward
+      const d = age < 0.4 ? age / 0.4 : age < 0.9 ? 1 : age < 1.35 ? 1 - (age - 0.9) / 0.45 : 0;
+      const lean = facing === "left" ? -0.34 : facing === "right" ? 0.34 : 0;
+      return { rot: lean * d, sx: 1, sy: 1 - 0.2 * d };
+    }
+    if (m === "twirl") {
+      // one-shot pirouette: ~2 spins over 1.4s via scaleX = cos(spin)
+      const p = Math.min(1, age / 1.4);
+      return p < 1 ? { rot: 0, sx: Math.cos(p * TAU * 2), sy: 1 } : null;
+    }
+    if (m === "sway") return { rot: Math.sin(this.t * 5) * 0.13, sx: 1, sy: 1 };   // dance lean
+    return null;
+  }
+  // Run `fn` inside a transform pivoted about the sprite's feet (cx,cy) — used to tip/spin
+  // the avatar for a body gesture without disturbing its ground shadow or name tag.
+  private withXform(cx: number, cy: number, gx: { rot: number; sx: number; sy: number }, fn: () => void) {
+    const b = this.b, s = this.SS;
+    b.save(); b.translate(cx * s, cy * s);
+    if (gx.rot) b.rotate(gx.rot);
+    if (gx.sx !== 1 || gx.sy !== 1) b.scale(gx.sx, gx.sy);
+    b.translate(-cx * s, -cy * s); fn(); b.restore();
+  }
+  // Painted limb overlays for gestures the transform can't do (Phase I3): a waving hand,
+  // two clapping hands, both arms raised in a cheer, a hand-blown kiss + drifting heart.
+  // Drawn over the body (feet at cx,cy). Reduced-motion shows a still pose (no oscillation).
+  private drawEmoteHands(cx: number, cy: number, cfg: AvatarConfig, emote: string, life: number) {
+    const def = EMOTE_BY_ID[emote]; if (!def) return;
+    const m = def.motion, skin = cfg.skin, total = def.hold ?? EMOTE_SECONDS, age = total - life;
+    const osc = this.reduce ? 0.5 : (Math.sin(this.t * 9) + 1) / 2;   // 0..1 wobble
+    if (m === "wave") {
+      // raised right forearm + waving hand
+      const swing = this.reduce ? 1 : Math.sin(this.t * 9) * 2;
+      this.rect(cx + 4, cy - 20, 2, 6, cfg.body);                 // forearm up along the side
+      this.disc(cx + 5 + swing, cy - 21, 2, skin);               // hand
+    } else if (m === "clap") {
+      const gap = this.reduce ? 1 : Math.round(Math.abs(Math.sin(this.t * 12)) * 3);
+      this.disc(cx - 1 - gap, cy - 11, 2, skin);
+      this.disc(cx + 1 + gap, cy - 11, 2, skin);
+      if (!this.reduce && gap <= 1) this.q(cx, cy - 14, "✦", "#fff1c0", 0.7, "c", false, 0.9);   // clap spark
+    } else if (m === "cheer") {
+      const up = this.reduce ? 0 : Math.round(osc * 2);
+      this.rect(cx - 6, cy - 22 - up, 2, 6, cfg.body); this.disc(cx - 5, cy - 23 - up, 2, skin);   // left arm up
+      this.rect(cx + 4, cy - 22 - up, 2, 6, cfg.body); this.disc(cx + 5, cy - 23 - up, 2, skin);   // right arm up
+    } else if (m === "kiss") {
+      this.disc(cx + 4, cy - 17, 2, skin);                       // hand at the mouth
+      if (age > 0.35) {                                          // a small heart drifts out + up
+        const t = Math.min(1, (age - 0.35) / 1.4), hx = cx + 6 + t * 10, hy = cy - 18 - t * 12, a = 1 - t;
+        this.disc(hx - 1, hy, 1.4, hexA("#ff5d7d", a)); this.disc(hx + 1, hy, 1.4, hexA("#ff5d7d", a));
+        this.rect(hx - 1, hy + 1, 3, 1, hexA("#ff5d7d", a)); this.px(hx, hy + 2, hexA("#ff5d7d", a));
+      }
+    }
   }
   // Painted terrain tiles (Phase C) — flat colour cells culled to the viewport; water gets
   // a faint shimmer line. Grass is the default and never painted.

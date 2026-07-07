@@ -1,6 +1,6 @@
 # CIRQLSPACE — Your Sandbox · Linear Register
 
-Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 11). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H COMPLETE. Chapter 2 (I/J/K — the living world) locked; order I → J → K → F → G. Decisions: new Renown + World Energy · tap-ready/wire-later · fully cozy. **▶ BUILDING Phase I — I1 (idle life) + I2 (movement juice) DONE; next I3 (body-gesture emotes).**
+Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 12). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H COMPLETE. Chapter 2 (I/J/K — the living world) locked; order I → J → K → F → G. Decisions: new Renown + World Energy · tap-ready/wire-later · fully cozy. **▶ BUILDING Phase I — I1 (idle life) + I2 (movement juice) + I3 (body-gesture emotes) DONE; next I4 (paired social gestures).**
 
 **Legend:** ☑ Done · ◐ In progress · ☐ Todo · ⧗ *not yet a Linear issue (free-tier issue cap) — tracked in the plan.*
 
@@ -71,7 +71,7 @@ Guiding idea: **population, quests, and movement are one system.** Fully cozy �
 ## I · Character Movement & Life  *(recommended FIRST of Chapter 2 · cheap, engine-side · ⧗ issues pending — cap)*
 - [x] **I1** — Idle life: breathing sway + blink + idle fidgets (look-around/stretch) + AFK doze (auto-sit + Zzz); remotes get local breath+blink *(commit eacdbe0)*
 - [x] **I2** — Movement juice: footstep FX (dust/splash/footprints, world-space) · land squash · collision bump *(turn-in-place folded into I1's look fidget)* *(commit 1a34b1b)*
-- [ ] **I3** — Body-gesture emotes: wave/bow/clap/cheer/point/shrug/nod/twirl/dance/blow-a-kiss/facepalm (extend the emote wheel)
+- [x] **I3** — Body-gesture emotes: grew the wheel to 16 (4×4) with real body motions — wave (waving hand), bow (tip+squash), clap (meeting hands + spark), cheer (both arms up), twirl (spin via scaleX), blow-a-kiss (hand + drifting heart), dance (side-to-side sway); shared by hero + remotes, reduced-motion aware *(commit pending)*
 - [ ] **I4** — Paired social gestures: synced high-five / hug / dance-together (reuse the share-a-light pairing) + sit-together
 - [ ] **I5** — Biome movement flavor: wade+splash · ice-slide · snow/sand footprints · shiver+breath-puff · aura/cape wind flutter
 - [ ] **I6** — World interactions: pet a critter (heart) · hold/present an item · knock/wave entering a shop or sub-map
