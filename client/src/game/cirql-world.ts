@@ -90,6 +90,8 @@ const HEARTH: Ring = {
     { t: "lantern", x: 210, y: 20 },
     // the south dock — sail outward (fogged for now)
     { t: "dock", x: 0, y: 400, to: 1, label: "the fog", id: "dock-s" },
+    // quest waypoint target (Quest 1 "Find Your Feet")
+    { t: "marker", x: -230, y: -20, id: "marker-shore", label: "" },
   ],
 };
 

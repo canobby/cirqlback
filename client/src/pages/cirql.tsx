@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Pencil } from "lucide-react";
+import { ArrowLeft, Zap, Pencil, ScrollText } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { CirqlWorldEngine } from "@/game/cirql-world-engine";
+import { CirqlWorldEngine, type QuestLogRow } from "@/game/cirql-world-engine";
 import type { Btn } from "@/game/retro-engine";
 import { loadAvatarLS, saveAvatarLS, DEFAULT_AVATAR, type AvatarConfig } from "@/game/avatar";
 import { Joystick } from "@/components/joystick";
@@ -13,7 +13,7 @@ import { CharacterCreator } from "@/components/cirql/character-creator";
 // get a character-creation step first; everyone can re-edit their look.
 const INTRO_LS = "cirql_intro_v1";
 
-interface CirqlState { ring: number; x: number; y: number; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; }
+interface CirqlState { ring: number; x: number; y: number; quests?: any; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; }
 
 export default function Cirql() {
   const { user } = useAuth();
@@ -31,12 +31,14 @@ export default function Cirql() {
 
   const [showCreator, setShowCreator] = useState(false);
   const [creatorMode, setCreatorMode] = useState<"create" | "edit">("create");
+  const [showQuests, setShowQuests] = useState(false);
+  const [questRows, setQuestRows] = useState<QuestLogRow[]>([]);
 
   const loggedIn = !!(user as any)?.id;
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, x: s.x, y: s.y, avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current };
+    return { ring: s.ring, x: s.x, y: s.y, quests: (s as any).quests, avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current };
   };
   const persist = () => {
     const st = buildState();
@@ -59,6 +61,9 @@ export default function Cirql() {
     if (import.meta.env.DEV) (window as any).__cirql = eng;
     eng.onInteract = (kind) => { if (kind === "wonders") eng.toast("The Wonders open here soon — 50 games, in-world."); };
     eng.onLocalMove = (ring, x, y) => { posRef.current = { ring, x, y }; scheduleSave(); };
+    // quests: grant the sparks reward on completion, persist progress on any change
+    eng.onQuestComplete = (q) => { sparksRef.current += q.reward.sparks; eng.setStats({ sparks: sparksRef.current }); persist(); };
+    eng.onQuestChange = () => { setQuestRows(eng.getQuestLog()); scheduleSave(); };
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); persist(); eng.destroy(); engineRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -73,7 +78,9 @@ export default function Cirql() {
       const seen = st?.seenIntro ?? (localStorage.getItem(INTRO_LS) === "1");
       avatarRef.current = avatar; nameRef.current = name; seenIntroRef.current = !!seen; sparksRef.current = st?.sparks ?? 0;
       eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: 3, cirqlTotal: 12, online: 1 });
-      if (st && typeof st.x === "number") { eng.applyState({ ring: st.ring, x: st.x, y: st.y }); posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 }; }
+      eng.applyState({ ring: st?.ring ?? 0, x: st?.x, y: st?.y, quests: st?.quests });
+      if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
+      setQuestRows(eng.getQuestLog());
       if (!seen) { setCreatorMode("create"); setShowCreator(true); }
     };
     if (loggedIn) {
@@ -107,8 +114,12 @@ export default function Cirql() {
       <div className="flex w-full max-w-[680px] items-center gap-3 px-4 pb-1 pt-3">
         <Link href="/arcade" className="flex items-center gap-1 text-xs text-cyan-300/70 hover:text-cyan-200" data-testid="link-back"><ArrowLeft className="h-4 w-4" /> Back</Link>
         <div className="ml-1 text-sm font-extrabold uppercase tracking-[0.35em]" style={{ color: "#fff", textShadow: "0 0 10px rgba(53,224,208,.6), 0 0 22px rgba(178,108,255,.35)" }}>CIRQL</div>
+        <button onClick={() => { setQuestRows(engineRef.current?.getQuestLog() ?? []); setShowQuests((v) => !v); }} data-testid="btn-quests"
+          className="ml-auto flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-200/80" style={{ borderColor: "rgba(255,196,107,.3)" }}>
+          <ScrollText className="h-3 w-3" /> Quests
+        </button>
         <button onClick={() => { setCreatorMode("edit"); setShowCreator(true); }} data-testid="btn-edit-look"
-          className="ml-auto flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-200/80" style={{ borderColor: "rgba(53,224,208,.3)" }}>
+          className="flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-200/80" style={{ borderColor: "rgba(53,224,208,.3)" }}>
           <Pencil className="h-3 w-3" /> Look
         </button>
       </div>
@@ -130,6 +141,28 @@ export default function Cirql() {
           </button>
         </div>
       </div>
+
+      {showQuests && (
+        <div className="absolute right-3 top-14 z-[55] w-[240px] rounded-xl border p-3" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.94)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }} data-testid="quest-log">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-amber-300">Quests</span>
+            <button onClick={() => setShowQuests(false)} className="text-xs text-slate-400 hover:text-slate-200">✕</button>
+          </div>
+          {questRows.length === 0 && <p className="text-xs text-slate-400">No quests yet. Talk to Ferra at The Hearth.</p>}
+          <div className="flex flex-col gap-2">
+            {questRows.map((q) => (
+              <div key={q.id} className="rounded-lg px-2.5 py-2" style={{ background: "rgba(255,255,255,.03)" }}>
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full" style={{ background: q.status === "done" ? "#5be89a" : q.status === "active" ? "#ffc46b" : "#4a5c7e" }} />
+                  <span className="text-[13px] font-semibold text-white">{q.name}</span>
+                  <span className="ml-auto text-[9px] uppercase tracking-wider text-slate-400">{q.status}</span>
+                </div>
+                <p className="mt-0.5 pl-4 text-[11px] text-slate-300">{q.objective}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showCreator && (
         <CharacterCreator

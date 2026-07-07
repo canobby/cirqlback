@@ -10,9 +10,14 @@
 import { RetroEngine, type RetroHooks } from "./retro-engine";
 import { loadAvatarLS, AURA_COLORS, type AvatarConfig } from "./avatar";
 import { RINGS, MINIMAP_RINGS, KNOWN_RINGS, type Ring, type Prop } from "./cirql-world";
+import {
+  QUESTS, questById, offerableQuest, questStatusList,
+  type QuestDef, type QuestProgress, type ObjectiveKind, type QuestStatus,
+} from "./cirql-quests";
 
 export type InteractKind = "wonders" | "npc" | "dock";
 export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; }
+export interface QuestLogRow { id: string; name: string; status: QuestStatus; objective: string; }
 
 const TAU = Math.PI * 2;
 function hexA(hex: string, a: number): string {
@@ -20,7 +25,7 @@ function hexA(hex: string, a: number): string {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-interface Dialog { name: string; accent: string; lines: string[]; i: number; }
+interface Dialog { name: string; accent: string; lines: string[]; i: number; acceptOnClose?: string; }
 
 export class CirqlWorldEngine extends RetroEngine {
   private ringIdx = 0;
@@ -38,12 +43,17 @@ export class CirqlWorldEngine extends RetroEngine {
   private msg = ""; private msgT = 0;      // transient toast
 
   private stats: CirqlStats = { sparks: 0, cirqlLit: 3, cirqlTotal: 12, online: 1 };
+  private quests: QuestProgress = {};
 
   // ---- hooks the host page wires ----
   /** Fired when the player interacts (E / on-screen action) with a target. */
   onInteract?: (kind: InteractKind, prop: Prop) => void;
   /** Fired when the player position changes materially (for autosave, later). */
   onLocalMove?: (ring: number, x: number, y: number) => void;
+  /** Fired when a quest completes — the host grants the sparks reward + persists. */
+  onQuestComplete?: (quest: QuestDef) => void;
+  /** Fired when quest progress changes (accept / advance / complete) — host may persist. */
+  onQuestChange?: () => void;
   private lastSent = 0; private lastX = 1e9; private lastY = 1e9;
 
   constructor(canvas: HTMLCanvasElement, hooks: RetroHooks = {}) {
@@ -61,16 +71,72 @@ export class CirqlWorldEngine extends RetroEngine {
   setStats(s: Partial<CirqlStats>) { this.stats = { ...this.stats, ...s }; }
   /** The on-screen action button + the quest system call this to interact. */
   interact() { this.doInteract(); }
-  getState() { return { ring: this.ringIdx, x: Math.round(this.posX), y: Math.round(this.posY) }; }
+  getState() { return { ring: this.ringIdx, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests }; }
   applyState(s: any) {
     if (!s) return;
     if (typeof s.ring === "number" && RINGS[s.ring]?.explorable) { this.ringIdx = s.ring; this.curRing = RINGS[s.ring]; }
     if (typeof s.x === "number" && typeof s.y === "number") { this.posX = s.x; this.posY = s.y; }
+    if (s.quests && typeof s.quests === "object") this.quests = s.quests;
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
   }
   toast(text: string) { this.msg = text; this.msgT = 4.6; }
   /** Current interact target's kind (host may use to theme the action button). */
   nearKind(): InteractKind | null { return (this.near?.t as InteractKind) ?? null; }
+
+  // ---------- quests ----------
+  /** Accept a quest (offered by an NPC or auto-started on first run). */
+  acceptQuest(id: string) {
+    const q = questById(id); if (!q || this.quests[id]) return;
+    this.quests[id] = { status: "active", obj: q.objectives.map(() => 0) };
+    this.toast(`✦ New quest — ${q.name}`);
+    this.onQuestChange?.();
+  }
+  private activeQuest(): QuestDef | null {
+    for (const q of QUESTS) if (this.quests[q.id]?.status === "active") return q;
+    return null;
+  }
+  /** The active quest's current (first unfinished) objective index, or -1. */
+  private currentObjIndex(q: QuestDef): number {
+    const p = this.quests[q.id]; if (!p) return -1;
+    return q.objectives.findIndex((o, i) => (p.obj[i] || 0) < (o.count ?? 1));
+  }
+  /** Advance any active objective matching (kind, targetId); complete the quest if done. */
+  private advanceObjective(kind: ObjectiveKind, targetId?: string) {
+    const q = this.activeQuest(); if (!q) return;
+    const p = this.quests[q.id]; const oi = this.currentObjIndex(q); if (oi < 0) return;
+    const o = q.objectives[oi];
+    if (o.kind !== kind) return;
+    if ((kind === "reach" || kind === "interact") && o.target && o.target !== targetId) return;
+    p.obj[oi] = Math.min(o.count ?? 1, (p.obj[oi] || 0) + 1);
+    this.onQuestChange?.();
+    if (this.currentObjIndex(q) < 0) this.completeQuest(q);
+  }
+  private completeQuest(q: QuestDef) {
+    const p = this.quests[q.id]; if (!p || p.status === "done") return;
+    p.status = "done";
+    this.toast(`✦ ${q.name} complete  +${q.reward.sparks} sparks`);
+    this.onQuestComplete?.(q);
+    this.onQuestChange?.();
+    if (q.next) this.acceptQuest(q.next);
+  }
+  /** Rows for the quest-log panel (available/active/done, with the current objective). */
+  getQuestLog(): QuestLogRow[] {
+    return questStatusList(this.quests)
+      .filter((s) => s.status !== "locked")
+      .map(({ quest, status }) => {
+        const p = this.quests[quest.id];
+        let objective = quest.objectives[0]?.label ?? "";
+        if (status === "active" && p) { const oi = this.currentObjIndex(quest); objective = oi >= 0 ? quest.objectives[oi].label : "Return complete"; }
+        else if (status === "done") objective = "Complete";
+        return { id: quest.id, name: quest.name, status, objective };
+      });
+  }
+  private objTargetProp(): Prop | null {
+    const q = this.activeQuest(); if (!q) return null;
+    const oi = this.currentObjIndex(q); if (oi < 0) return null;
+    const tgt = q.objectives[oi].target; if (!tgt) return null;
+    return this.curRing.props.find((p) => p.id === tgt) ?? null;
+  }
 
   // ---------- interaction ----------
   private solids(): { x: number; y: number; r: number }[] {
@@ -83,26 +149,34 @@ export class CirqlWorldEngine extends RetroEngine {
     return out;
   }
   private doInteract() {
-    if (this.dialog) { this.dialog.i++; if (this.dialog.i >= this.dialog.lines.length) this.dialog = null; return; }
+    if (this.dialog) {
+      this.dialog.i++;
+      if (this.dialog.i >= this.dialog.lines.length) { const acc = this.dialog.acceptOnClose; this.dialog = null; if (acc) this.acceptQuest(acc); }
+      return;
+    }
     const p = this.near; if (!p) return;
-    if (p.t === "wonders") { this.onInteract?.("wonders", p); }
-    else if (p.t === "npc") { this.openDialog(p); this.onInteract?.("npc", p); }
+    if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.onInteract?.("wonders", p); }
+    else if (p.t === "npc") { this.openNpcDialog(p); this.onInteract?.("npc", p); }
     else if (p.t === "dock") {
       const dest = RINGS[p.to ?? -1];
       if (!dest || !dest.explorable) this.toast("The fog past the Hearth hasn't lifted yet.");
       else this.onInteract?.("dock", p);
     }
   }
-  private openDialog(p: Prop) {
-    // Placeholder greeting; the quest system (M4) replaces this with real dialog.
-    this.dialog = {
-      name: p.label || "Ferra", accent: p.accent || this.curRing.palette.accent, i: 0,
-      lines: [
-        "Welcome to The Hearth, traveller.",
-        "Your Cirql is dim — but every friend you gather lights a lantern here.",
-        "When you're ready, the Wonders wait east, past the lanterns.",
-      ],
-    };
+  private openNpcDialog(p: Prop) {
+    const npcId = p.id || "";
+    const accent = p.accent || this.curRing.palette.accent;
+    // an "interact" objective aimed at this NPC advances on talk
+    this.advanceObjective("interact", npcId);
+    // offer a quest if this giver has one available
+    const offer = offerableQuest(npcId, this.quests);
+    if (offer) { this.dialog = { name: p.label || "Ferra", accent, i: 0, lines: offer.intro, acceptOnClose: offer.id }; return; }
+    // otherwise a contextual greeting
+    const active = this.activeQuest();
+    const lines = active
+      ? [`Off you go — ${active.name.toLowerCase()} awaits.`, "The glimmer marks your way."]
+      : ["Well met again, traveller.", "The Wonders wait east, past the lanterns."];
+    this.dialog = { name: p.label || "Ferra", accent, i: 0, lines };
   }
 
   // ---------- update ----------
@@ -152,6 +226,10 @@ export class CirqlWorldEngine extends RetroEngine {
         const range = p.r ?? 40;
         if (d < range && d < best) { best = d; this.near = p; }
       }
+
+      // "reach" quest objectives complete automatically by walking onto the target
+      const tgt = this.objTargetProp();
+      if (tgt && Math.hypot(this.posX - tgt.x, this.posY - tgt.y) < (tgt.r ?? 26)) this.advanceObjective("reach", tgt.id);
     }
 
     // camera easing
@@ -236,6 +314,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big) }); break;
         case "lantern": draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, true) }); break;
         case "dock": draws.push({ y: p.y - 40, f: () => this.drawDock(sxp, syp, p) }); break;
+        case "marker": { const isTarget = this.objTargetProp() === p; if (isTarget) draws.push({ y: p.y - 1, f: () => this.drawMarker(sxp, syp) }); break; }
         default: break;
       }
     }
@@ -243,6 +322,10 @@ export class CirqlWorldEngine extends RetroEngine {
     draws.push({ y: this.posY, f: () => this.drawHero(this.posX - camX, this.posY - camY) });
     draws.sort((a, c) => a.y - c.y);
     for (const d of draws) d.f();
+
+    // quest waypoint — a bouncing chevron over the current objective target
+    const wp = this.objTargetProp();
+    if (wp) { const bob = this.reduce ? 0 : Math.round(Math.sin(this.t * 4) * 2); this.drawWaypoint(wp.x - camX, wp.y - camY - 22 + bob); }
 
     // floating motes
     if (!this.reduce) {
@@ -320,6 +403,20 @@ export class CirqlWorldEngine extends RetroEngine {
     if (lit) { this.glow(cx, cy - 16, 22, c, this.reduce ? 0.5 : 0.4 + 0.15 * Math.sin(this.t * 2 + cx)); this.disc(cx, cy - 16, 3, c); }
     else this.disc(cx, cy - 16, 3, "#3a4258");
   }
+  private drawMarker(cx: number, cy: number) {
+    const c = "#ffd24a";
+    this.glow(cx, cy, 20, c, this.reduce ? 0.35 : 0.28 + 0.14 * Math.sin(this.t * 3));
+    const r = this.reduce ? 7 : 6 + Math.sin(this.t * 3) * 1.5;
+    this.ring(cx, cy, r, c, 1.4);
+    this.disc(cx, cy, 1.5, c);
+  }
+  private drawWaypoint(cx: number, cy: number) {
+    // a downward chevron + soft glow marking "go here"
+    this.glow(cx, cy - 2, 10, "#ffd24a", 0.4);
+    this.rect(cx - 3, cy - 4, 6, 2, "#ffd24a");
+    this.rect(cx - 2, cy - 2, 4, 2, "#ffd24a");
+    this.rect(cx - 1, cy, 2, 2, "#ffd24a");
+  }
   private drawDock(cx: number, cy: number, p: Prop) {
     // planks pointing outward (downward on the south dock)
     for (let i = 0; i < 5; i++) this.rect(cx - 8, cy - 20 + i * 9, 16, 3, "#5a3d22");
@@ -355,6 +452,7 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(3, this.LH - 12, this.textWidth(lit, 1) + 6, 10, "#0a0714aa");
     this.text(6, this.LH - 10, lit, "#ffc46b", 1, false);
 
+    this.drawQuestTracker();
     this.drawMinimap();
 
     // interact prompt
@@ -382,6 +480,20 @@ export class CirqlWorldEngine extends RetroEngine {
     // dialog
     if (this.dialog) this.drawDialog();
   }
+  private drawQuestTracker() {
+    const q = this.activeQuest(); if (!q) return;
+    const oi = this.currentObjIndex(q); if (oi < 0) return;
+    const o = q.objectives[oi];
+    const cnt = o.count ?? 1; const have = this.quests[q.id]?.obj[oi] ?? 0;
+    const prog = cnt > 1 ? `  ${have}/${cnt}` : "";
+    const line = `${o.label}${prog}`;
+    const w = Math.max(this.textWidth(q.name.toUpperCase(), 1), this.textWidth(line, 1)) + 8;
+    const x = 3, y = 15;
+    this.rect(x, y, w, 20, "#0a0714c0");
+    this.rect(x, y, 2, 20, "#ffd24a");
+    this.text(x + 5, y + 3, q.name.toUpperCase(), "#ffd24a", 1, false);
+    this.text(x + 5, y + 12, line, "#eaf6ff", 1, false);
+  }
   private drawMinimap() {
     const b = this.b, s = this.SS;
     const cx = this.LW - 28, cy = this.LH - 30, R = 22;
@@ -395,9 +507,13 @@ export class CirqlWorldEngine extends RetroEngine {
       b.stroke();
     }
     b.setLineDash([]);
+    const dr = step * (this.ringIdx + 1);
+    // quest objective target (gold, pulsing) at its angle on the current ring
+    const tgt = this.objTargetProp();
+    if (tgt) { const ta = Math.atan2(tgt.y, tgt.x); const pr = this.reduce ? 2 : 1.6 + Math.abs(Math.sin(this.t * 3)) * 1.2; b.fillStyle = "#ffd24a"; b.beginPath(); b.arc((cx + Math.cos(ta) * dr) * s, (cy + Math.sin(ta) * dr) * s, pr * s, 0, TAU); b.fill(); }
     // player dot at their angle on the current ring
-    const ang = Math.atan2(this.posY, this.posX); const dr = step * (this.ringIdx + 1);
-    b.fillStyle = "#ffc46b"; b.beginPath(); b.arc((cx + Math.cos(ang) * dr) * s, (cy + Math.sin(ang) * dr) * s, 1.8 * s, 0, TAU); b.fill();
+    const ang = Math.atan2(this.posY, this.posX);
+    b.fillStyle = "#ffffff"; b.beginPath(); b.arc((cx + Math.cos(ang) * dr) * s, (cy + Math.sin(ang) * dr) * s, 1.8 * s, 0, TAU); b.fill();
     // "the endless ocean" fog "?"
     this.text(cx - this.textWidth("?", 1) / 2, cy - R + 1, "?", "rgba(180,190,220,0.6)", 1, false);
   }
