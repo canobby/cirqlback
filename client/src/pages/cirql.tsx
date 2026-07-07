@@ -1127,6 +1127,13 @@ export default function Cirql() {
                   <span className="ml-auto text-[9px] uppercase tracking-wider text-slate-400">{q.status}</span>
                 </div>
                 <p className="mt-0.5 pl-4 text-[11px] text-slate-300">{q.objective}</p>
+                {(q.tier || q.reward) && (
+                  <div className="mt-1 flex items-center gap-2 pl-4 text-[10px]">
+                    {q.tier ? <span className="rounded px-1 py-0.5 font-bold text-amber-200" style={{ background: "rgba(255,196,107,.14)" }} title={`Difficulty tier ${q.tier}`}>Tier {q.tier}</span> : null}
+                    {q.steps && q.steps > 1 ? <span className="text-slate-400">{q.steps} steps</span> : null}
+                    {q.reward ? <span className="ml-auto font-bold text-amber-300">✦ {q.reward}</span> : null}
+                  </div>
+                )}
               </div>
             ))}
           </div>

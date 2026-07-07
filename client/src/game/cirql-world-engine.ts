@@ -24,7 +24,7 @@ import { npcLook, type NpcLook } from "./cirql-npc-looks";
 
 export type InteractKind = "wonders" | "npc" | "dock";
 export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; energy: number; }
-export interface QuestLogRow { id: string; name: string; status: QuestStatus; objective: string; }
+export interface QuestLogRow { id: string; name: string; status: QuestStatus; objective: string; tier?: number; reward?: number; steps?: number; }
 
 const TAU = Math.PI * 2;
 // terrain paint (Phase C): a tile grid over CIRQLSPACE. Cells keyed with a +500 offset so
@@ -539,7 +539,7 @@ export class CirqlWorldEngine extends RetroEngine {
         let objective = quest.objectives[0]?.label ?? "";
         if (status === "active" && p) { const oi = this.currentObjIndex(quest); if (oi >= 0) { const o = quest.objectives[oi]; objective = (o.ring != null && o.ring !== this.ringIdx) ? `Sail to ${ringName(o.ring)} — ${o.label}` : o.label; } else objective = "Return complete"; }
         else if (status === "done") objective = "Complete";
-        return { id: quest.id, name: quest.name, status, objective };
+        return { id: quest.id, name: quest.name, status, objective, tier: quest.tier, reward: quest.reward.sparks, steps: quest.objectives.length };
       });
   }
   private objTargetProp(): Prop | null {

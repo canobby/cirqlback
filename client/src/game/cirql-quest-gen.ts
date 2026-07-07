@@ -36,10 +36,15 @@ export function generateRingQuest(index: number): QuestDef | null {
   const rng = rngFrom(Math.imul(index, 0x9e3779b1) ^ 0xC0FFEE);
   const giver = `keeper-${index}`;
   const name = ring.name;
-  const reward = { sparks: Math.min(16, 5 + index) };  // deeper rings pay more
+  // DIFFICULTY + REWARD scale with how far out you've sailed (Phase K, owner-locked): the
+  // ring index is the tier. Deeper rings = harder quests (more objectives / bigger counts /
+  // longer chains) AND richer rewards. Sub-maps borrow their parent surface ring's tier.
+  const tier = Math.max(1, (index >= 100000 ? index % 100000 : index) - 1);
+  const reward = { sparks: Math.min(60, Math.round(6 + tier * 3)) };
 
   const lanterns = ring.props.filter((p) => p.t === "lantern" && p.id);
   const crystals = ring.props.filter((p) => p.t === "crystal" && p.id);
+  const landmark = ring.props.find((p) => p.t === "landmark");
 
   // which templates can this ring support?
   const options: string[] = [];
@@ -48,22 +53,27 @@ export function generateRingQuest(index: number): QuestDef | null {
   options.push("wayfind");                            // always possible (every ring has an onward dock)
   const shape = options[Math.floor(rng() * options.length)];
 
-  let objectives: Objective[]; let title: string; let intro: string[];
+  const objectives: Objective[] = []; let title: string; let intro: string[];
   if (shape === "kindle") {
-    const n = Math.min(lanterns.length, 2 + Math.floor(rng() * 2));   // 2–3
+    const n = Math.max(2, Math.min(lanterns.length, 2 + Math.floor(tier / 1.5)));   // more lanterns the deeper you go
     title = `Kindle ${name}`;
     intro = [`Welcome to ${name}, traveller.`, `Our lanterns have gone dark on the long night.`, `Would you kindle ${n} of them? Press E beside each one.`];
-    objectives = [{ kind: "lightLanterns", count: n, label: `Kindle ${n} lanterns of ${name}` }];
+    objectives.push({ kind: "lightLanterns", count: n, label: `Kindle ${n} lanterns of ${name}` });
   } else if (shape === "discover") {
     const c = crystals[Math.floor(rng() * crystals.length)];
     title = `The ${name} Shard`;
     intro = [`You've reached ${name}.`, `A singing shard hums somewhere on this shore.`, `Seek it out — follow the glimmer on your map.`];
-    objectives = [{ kind: "reach", target: c.id, label: `Find the shard of ${name}` }];
+    objectives.push({ kind: "reach", target: c.id, label: `Find the shard of ${name}` });
   } else {
     title = `Chart ${name}`;
-    intro = [`${name} greets you, wayfarer.`, `Scout the onward shore for me — reach the far dock.`, `Then sail on whenever you're ready.`];
-    objectives = [{ kind: "reach", target: "dock-out", label: `Scout ${name}'s onward shore` }];
+    intro = [`${name} greets you, wayfarer.`, `Scout ${name} for me, then the onward shore.`, `Sail on whenever you're ready.`];
+    objectives.push({ kind: "reach", target: "dock-out", label: `Scout ${name}'s onward shore` });
   }
 
-  return { id: ringQuestId(index), name: title, giver, intro, objectives, reward };
+  // ESCALATION: deeper rings stack extra objectives → longer, tougher expeditions.
+  if (tier >= 2 && landmark) objectives.push({ kind: "reach", target: `landmark-${index}`, label: `Pay respects at ${landmark.label}` });
+  if (tier >= 4 && shape !== "wayfind") objectives.push({ kind: "reach", target: "dock-out", label: `Chart ${name}'s onward shore` });
+  if (objectives.length > 1) intro = [...intro.slice(0, -1), `It's a fair task — ${objectives.length} steps in all. The far rings ask more, but give more.`];
+
+  return { id: ringQuestId(index), name: title, giver, intro, objectives, reward, tier };
 }

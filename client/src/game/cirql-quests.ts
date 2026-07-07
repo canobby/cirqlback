@@ -25,6 +25,7 @@ export interface QuestDef {
   objectives: Objective[];
   reward: { sparks: number };
   next?: string;         // quest auto-offered on completion (the chain)
+  tier?: number;         // difficulty tier — grows the farther out you sail (Phase K); undefined = authored/onboarding
 }
 
 // The onboarding chain (M4): Find Your Feet → The Lantern Path → The Wonders Door.
