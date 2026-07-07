@@ -28,31 +28,43 @@ interface Biome {
   lanterns: number;    // path lanterns
   rocks: number;       // boulders (solid)
   pond: boolean;       // a little water feature (solid)
-  ambient: "butterfly" | "firefly" | "ember" | "snow" | "gull" | "dust" | "bee" | "dragonfly" | "grasshopper";   // drifting critters
+  flowers: number;     // decorative flower clusters
+  fence: boolean;      // a fence segment
+  path: boolean;       // a dirt/stone trail from the shore inland
+  ambient: "butterfly" | "firefly" | "ember" | "snow" | "gull" | "dust" | "bee" | "dragonfly" | "grasshopper";   // signature critter
 }
 
-// Lush/green biomes rotate through varied critters per ring (so not every ring is the
-// same); frost/ember/coast/dunes keep their signature particle.
-const LUSH_CRITTERS = ["butterfly", "bee", "dragonfly", "grasshopper", "firefly"] as const;
-
-// Biome palettes — same dusk-neon family as the Hearth, shifted per land so each ring
-// reads distinct at a glance. Each biome carries its own landscape mix + ambient life.
+// Each biome is its own SCENE / season — distinct palette + landscape mix + the critter
+// that belongs there. As you sail outward the rings cycle through them, so every shore
+// feels different (spring meadow, tropical lagoon, winter, dry desert, autumn wood…).
 const BIOMES: Biome[] = [
-  { key: "woodland", tree: true, crystals: 1, lanterns: 4, rocks: 3, pond: true, ambient: "butterfly",
-    palette: { sky: ["#1c2b1f", "#101d2e"], sea: "#0c2036", land: "#20402c", grass: "#2f6340", sand: "#b9a06a", accent: "#8ef0a0", mote: "#c8ffd6" } },
-  { key: "coast", tree: true, crystals: 0, lanterns: 5, rocks: 5, pond: false, ambient: "gull",
-    palette: { sky: ["#183048", "#0e1c34"], sea: "#0a3350", land: "#1f3f4a", grass: "#2f6a6a", sand: "#e0cf9a", accent: "#6fd8ff", mote: "#bff0ff" } },
-  { key: "ember", tree: true, crystals: 2, lanterns: 3, rocks: 4, pond: false, ambient: "ember",
-    palette: { sky: ["#2e1622", "#1a0f22"], sea: "#241026", land: "#3a2030", grass: "#5a3040", sand: "#caa070", accent: "#ff8a5c", mote: "#ffd0a8" } },
-  { key: "frost", tree: true, crystals: 3, lanterns: 4, rocks: 4, pond: false, ambient: "snow",
-    palette: { sky: ["#1b2740", "#101a30"], sea: "#12314e", land: "#2a3a52", grass: "#3f5a72", sand: "#cfe0f0", accent: "#9fe6ff", mote: "#e6f6ff" } },
-  { key: "bloom", tree: true, crystals: 1, lanterns: 5, rocks: 2, pond: true, ambient: "butterfly",
-    palette: { sky: ["#2a1a3c", "#161033"], sea: "#151033", land: "#33265a", grass: "#5a4080", sand: "#d9b8e0", accent: "#e08aff", mote: "#f0d0ff" } },
-  { key: "dunes", tree: false, crystals: 2, lanterns: 3, rocks: 6, pond: false, ambient: "dust",
-    palette: { sky: ["#2c2418", "#1a1410"], sea: "#1e2a2a", land: "#4a3a22", grass: "#6a552f", sand: "#e6c98a", accent: "#ffce6b", mote: "#ffe9b8" } },
-  { key: "gleam", tree: true, crystals: 3, lanterns: 6, rocks: 3, pond: true, ambient: "firefly",
-    palette: { sky: ["#101d2e", "#0a1424"], sea: "#0c2036", land: "#1a3348", grass: "#2a5570", sand: "#bcd0e0", accent: "#7fffe6", mote: "#d6fff6" } },
+  // spring meadow — flowers galore, a fence, butterflies
+  { key: "meadow", tree: true, crystals: 0, lanterns: 3, rocks: 1, pond: true, flowers: 12, fence: true, path: true, ambient: "butterfly",
+    palette: { sky: ["#20331f", "#12241a"], sea: "#0e2c33", land: "#2a5a30", grass: "#43884a", sand: "#cdb87a", accent: "#a6f06a", mote: "#e0ffb0" } },
+  // tropical lagoon — turquoise water, palms, dragonflies
+  { key: "tropical", tree: true, crystals: 0, lanterns: 4, rocks: 2, pond: true, flowers: 7, fence: false, path: true, ambient: "dragonfly",
+    palette: { sky: ["#0e3040", "#0a2233"], sea: "#0a5f70", land: "#1f5a52", grass: "#2f8a6a", sand: "#f0e0a0", accent: "#4fe0d0", mote: "#bafff0" } },
+  // winter — snow, frosted trees, pale + still
+  { key: "winter", tree: true, crystals: 2, lanterns: 4, rocks: 3, pond: false, flowers: 0, fence: true, path: true, ambient: "snow",
+    palette: { sky: ["#1b2740", "#101a30"], sea: "#173a56", land: "#3a4a60", grass: "#5a6f88", sand: "#dfeaf6", accent: "#bfe6ff", mote: "#eef7ff" } },
+  // dry desert — sand + red rock, many boulders, no trees, grasshoppers
+  { key: "desert", tree: false, crystals: 1, lanterns: 3, rocks: 9, pond: false, flowers: 1, fence: false, path: true, ambient: "grasshopper",
+    palette: { sky: ["#3a2414", "#20140c"], sea: "#243026", land: "#6a4526", grass: "#8a6a34", sand: "#e8c485", accent: "#ffb058", mote: "#ffe0a8" } },
+  // autumn wood — amber trees, a fence, bees
+  { key: "autumn", tree: true, crystals: 0, lanterns: 4, rocks: 2, pond: false, flowers: 3, fence: true, path: true, ambient: "bee",
+    palette: { sky: ["#2e1c12", "#1a1008"], sea: "#243026", land: "#5a3a1e", grass: "#8a5a26", sand: "#d8b070", accent: "#ff9a3c", mote: "#ffd090" } },
+  // deep woodland — dense trees, a pond, fireflies
+  { key: "woodland", tree: true, crystals: 1, lanterns: 4, rocks: 3, pond: true, flowers: 4, fence: false, path: true, ambient: "firefly",
+    palette: { sky: ["#12241a", "#0a160f"], sea: "#0c2036", land: "#1c3a26", grass: "#2a5a38", sand: "#a89060", accent: "#8ef0a0", mote: "#c8ffd6" } },
+  // sunlit coast — beach, gulls, rocks
+  { key: "coast", tree: true, crystals: 0, lanterns: 5, rocks: 5, pond: false, flowers: 2, fence: false, path: false, ambient: "gull",
+    palette: { sky: ["#183048", "#0e1c34"], sea: "#0a5578", land: "#20464a", grass: "#2f7a6a", sand: "#f0dca0", accent: "#6fd8ff", mote: "#bff0ff" } },
+  // ember reach — volcanic, rising embers
+  { key: "ember", tree: false, crystals: 2, lanterns: 3, rocks: 5, pond: false, flowers: 0, fence: false, path: true, ambient: "ember",
+    palette: { sky: ["#2e1622", "#1a0f16"], sea: "#241016", land: "#4a2020", grass: "#6a3028", sand: "#caa070", accent: "#ff7a4c", mote: "#ffb890" } },
 ];
+
+const FLOWER_COLS = ["#ff8fbf", "#ffd24a", "#ffffff", "#e0a0ff", "#ff6b6b", "#8fd0ff"];
 
 const NAME_A = ["Whisper", "Ember", "Frost", "Gleam", "Coral", "Dusk", "Mist", "Thorn", "Amber", "Silver", "Hollow", "Sable", "Lumen", "Verdant", "Aurora", "Cinder"];
 // suffixes — no "hollow"/"hearth" so we never double a stem or collide with the home ring
@@ -73,7 +85,9 @@ function pick<T>(rng: () => number, arr: T[]): T { return arr[Math.floor(rng() *
 /** Generate the ring at `index` (>= 1). Deterministic: same index → same land, forever. */
 export function generateRing(index: number): Ring {
   const rng = rngFrom(Math.imul(index, 2654435761) ^ 0x9e3779b9);
-  const biome = BIOMES[Math.floor(rng() * BIOMES.length)];
+  // stride through the biomes so consecutive rings are always a different scene and all
+  // biomes get used (3 is coprime with 8 → cycles through every biome, no adjacent repeats)
+  const biome = BIOMES[(index * 3 + 1) % BIOMES.length];
   const name = ringNameFor(rng);
   // rings grow the farther out you sail — more room to roam + populate (Hearth is 430)
   const radius = 440 + index * 55 + Math.floor(rng() * 70);
@@ -104,6 +118,11 @@ export function generateRing(index: number): Ring {
   for (let i = 0; i < scaled(biome.crystals); i++) place("crystal", { big: rng() > 0.5, accent: biome.palette.accent });
   for (let i = 0; i < scaled(biome.lanterns); i++) place("lantern");
   for (let i = 0; i < scaled(biome.rocks); i++) place("rock", { big: rng() > 0.6 });
+  for (let i = 0; i < scaled(biome.flowers); i++) place("flower", { accent: FLOWER_COLS[Math.floor(rng() * FLOWER_COLS.length)] });
+  // a fence segment tucked in an open spot
+  if (biome.fence) { for (let tries = 0; tries < 6; tries++) { const a = rng() * Math.PI * 2, rr = radius * (0.28 + rng() * 0.4); const x = Math.cos(a) * rr, y = Math.sin(a) * rr; if (Math.abs(x) < radius * 0.16 && Math.abs(y) > radius * 0.55) continue; props.push({ t: "fence", x, y }); break; } }
+  // a dirt trail leading inland from the shore (along the arrival lane)
+  if (biome.path) { const n = 5; for (let k = 0; k < n; k++) props.push({ t: "path", x: Math.sin(k * 1.3 + index) * 16, y: -radius * 0.6 + k * (radius * 0.42 / n) }); }
   if (biome.pond) {
     for (let tries = 0; tries < 8; tries++) {
       const a = rng() * Math.PI * 2, rr = radius * (0.3 + rng() * 0.32);
@@ -140,10 +159,7 @@ export function generateRing(index: number): Ring {
     palette: biome.palette,
     spawn: { x: 0, y: -radius * 0.68 },   // arrive near the inward dock
     props,
-    // vary the critter on lush rings (deterministic per index); keep signature particles elsewhere
-    ambient: (biome.key === "woodland" || biome.key === "bloom" || biome.key === "gleam")
-      ? LUSH_CRITTERS[Math.abs(Math.imul(index, 2246822519)) % LUSH_CRITTERS.length]
-      : biome.ambient,
+    ambient: biome.ambient,               // the critter that belongs to this scene
   };
 }
 

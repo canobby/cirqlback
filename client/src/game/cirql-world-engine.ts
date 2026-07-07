@@ -321,6 +321,7 @@ export class CirqlWorldEngine extends RetroEngine {
       else if (p.t === "tree") out.push({ x: p.x, y: p.y + 2, r: p.big ? 13 : 10 });
       else if (p.t === "rock") out.push({ x: p.x, y: p.y, r: p.big ? 12 : 8 });
       else if (p.t === "pond") out.push({ x: p.x, y: p.y, r: (p.r ?? 20) - 2 });
+      else if (p.t === "fence") out.push({ x: p.x, y: p.y, r: 9 });
       else if (p.t === "shrine") out.push({ x: p.x, y: p.y, r: 16 });
       else if (p.t === "theater") out.push({ x: p.x, y: p.y - 4, r: 20 });
       else if (p.t === "gathering") out.push({ x: p.x, y: p.y - 2, r: 11 });
@@ -571,7 +572,8 @@ export class CirqlWorldEngine extends RetroEngine {
     b.strokeStyle = "rgba(255,220,150,0.10)"; b.lineWidth = 20 * s;
     b.beginPath(); b.arc(scx * s, scy * s, R * 0.42 * s, 0, TAU); b.stroke();
 
-    // ponds — drawn flat as ground, under the depth-sorted props
+    // ground decoration — paths + ponds, under the depth-sorted props
+    for (const p of this.curRing.props) if (p.t === "path") this.drawPath(p.x - camX, p.y - camY);
     for (const p of this.curRing.props) if (p.t === "pond") this.drawPond(p.x - camX, p.y - camY, p.r ?? 22);
 
     // ---- collect drawables (depth sorted by feet-y) ----
@@ -595,6 +597,8 @@ export class CirqlWorldEngine extends RetroEngine {
         case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big) }); break;
         case "crystal": draws.push({ y: p.y, f: () => this.drawCrystal(sxp, syp, p.big, p.accent || pal.accent) }); break;
         case "rock": draws.push({ y: p.y, f: () => this.drawRock(sxp, syp, p.big) }); break;
+        case "flower": draws.push({ y: p.y, f: () => this.drawFlower(sxp, syp, p.accent || "#ff8fbf") }); break;
+        case "fence": draws.push({ y: p.y, f: () => this.drawFence(sxp, syp) }); break;
         case "lantern": { const isQ = !!p.id && this.currentObjKind() === "lightLanterns"; const litState = isQ ? this.lit.has(p.id!) : true; draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, litState) }); break; }
         case "dock": draws.push({ y: p.y - 40, f: () => this.drawDock(sxp, syp, p) }); break;
         case "tablet": draws.push({ y: p.y, f: () => this.drawTablet(sxp, syp, this.near === p) }); break;
@@ -766,6 +770,22 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx + 2 * s, cy, 3.5 * s, "#474753");
     this.rect(cx - 6 * s, cy + 1 * s, 12 * s, 2 * s, "#38384352");
     this.disc(cx - 2 * s, cy - 4 * s, 1.5 * s, "#8a8a97");   // highlight
+  }
+  private drawFlower(cx: number, cy: number, c: string) {
+    this.rect(cx, cy - 3, 1, 4, "#3a6a34");                 // stem
+    this.disc(cx - 2, cy - 4, 1.4, c); this.disc(cx + 2, cy - 4, 1.4, c);   // petals
+    this.disc(cx, cy - 6, 1.4, c); this.disc(cx, cy - 2, 1.4, c);
+    this.disc(cx, cy - 4, 1.2, "#ffe58a");                  // centre
+  }
+  private drawFence(cx: number, cy: number) {
+    this.disc(cx, cy + 2, 5, "#0a071430");
+    for (let i = -1; i <= 1; i++) { const px = cx + i * 8; this.rect(px - 1, cy - 8, 2, 12, "#7a5a38"); this.rect(px - 1, cy - 8, 2, 2, "#96703f"); }   // posts
+    this.rect(cx - 9, cy - 6, 18, 1.5, "#8a663f"); this.rect(cx - 9, cy - 1, 18, 1.5, "#8a663f");   // rails
+  }
+  private drawPath(cx: number, cy: number) {
+    const b = this.b, s = this.SS;
+    b.fillStyle = "rgba(90,72,46,0.5)"; b.beginPath(); b.ellipse(cx * s, cy * s, 16 * s, 9 * s, 0, 0, TAU); b.fill();
+    b.fillStyle = "rgba(120,98,64,0.4)"; b.beginPath(); b.ellipse(cx * s, cy * s, 12 * s, 6 * s, 0, 0, TAU); b.fill();
   }
   private drawPond(cx: number, cy: number, r: number) {
     const sea = this.curRing.palette.sea;

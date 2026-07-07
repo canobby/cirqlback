@@ -23,7 +23,10 @@ export type PropType =
   | "gathering" // a social gathering spot (bonfire commons) — every ring has one
   | "theater"   // the Cirql Drive-In: an outdoor screen cycling fake movie posters (ring 2)
   | "rock"      // a solid boulder — walk around it
-  | "pond";     // a little water feature — walk around it
+  | "pond"      // a little water feature — walk around it
+  | "flower"    // a decorative flower cluster (soft — walk through)
+  | "fence"     // a short fence segment (solid — walk around)
+  | "path";     // a dirt/stone trail patch (ground decoration — walk over)
 
 export interface Prop {
   t: PropType;
@@ -103,6 +106,21 @@ const HEARTH: Ring = {
     { t: "rock", x: -285, y: 200, big: true },
     { t: "rock", x: 175, y: -150 },
     { t: "pond", x: -320, y: 55, r: 26 },
+    // wildflowers, a couple of fences + a dirt path from spawn up to the cottage
+    { t: "flower", x: 60, y: 120, accent: "#ff8fbf" },
+    { t: "flower", x: -90, y: 95, accent: "#ffd24a" },
+    { t: "flower", x: 150, y: -40, accent: "#e0a0ff" },
+    { t: "flower", x: -165, y: -70, accent: "#ffffff" },
+    { t: "flower", x: 215, y: 165, accent: "#ff6b6b" },
+    { t: "flower", x: -45, y: 215, accent: "#8fd0ff" },
+    { t: "flower", x: 95, y: -140, accent: "#ff8fbf" },
+    { t: "flower", x: -205, y: 65, accent: "#ffd24a" },
+    { t: "fence", x: 185, y: 95 },
+    { t: "fence", x: -120, y: 150 },
+    { t: "path", x: 0, y: 112 },
+    { t: "path", x: 8, y: 74 },
+    { t: "path", x: -6, y: 34 },
+    { t: "path", x: 4, y: -6 },
     // the path lanterns to the Wonders — quest targets for "The Lantern Path"
     { t: "lantern", x: 95, y: 75, id: "ql1" },
     { t: "lantern", x: 165, y: 55, id: "ql2" },
