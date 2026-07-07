@@ -14,6 +14,7 @@ export interface Objective {
   target?: string;   // prop id (reach/interact) — resolved against the ring's props
   count?: number;    // for lightLanterns (default 1)
   label: string;     // shown in the tracker / log
+  ring?: number;     // if set, this objective is on that ring — advances only there; off-ring the waypoint points to the dock (cross-ring quests)
 }
 
 export interface QuestDef {
@@ -74,6 +75,24 @@ export const QUESTS: QuestDef[] = [
     ],
     objectives: [{ kind: "solvePuzzle", count: 1, label: "Match the runes, then enter the shrine" }],
     reward: { sparks: 15 },
+  },
+  // A cross-ring errand for Ferra — sail out to the next shore and back (CHR: cross-ring
+  // quests). Objectives carry a `ring`, so they advance only on that ring; off-ring the
+  // waypoint points you to the dock that sails you the right way.
+  {
+    id: "neighborly-word",
+    name: "A Word to the Neighbours",
+    giver: "keeper",
+    intro: [
+      "Would you carry a kind word to the next shore for me?",
+      "Sail south from the dock, find their Commons, then come home.",
+      "The map will point the way — follow the glimmer to the dock.",
+    ],
+    objectives: [
+      { kind: "reach", ring: 1, target: "commons", label: "Visit the next shore's Commons" },
+      { kind: "reach", ring: 0, target: "marker-shore", label: "Bring word home to the Hearth" },
+    ],
+    reward: { sparks: 14 },
   },
 ];
 

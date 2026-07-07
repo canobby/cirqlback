@@ -102,6 +102,8 @@ export class CirqlWorldEngine extends RetroEngine {
   private partyWp: { x: number; y: number } | null = null;   // shared campaign waypoint
   private partyArrived = false;                                // local-arrival latch (per step)
   private partyIds = new Set<string>();                        // remote ids in my party (highlighted)
+  private partyTarget: { ring: number; at?: string; x?: number; y?: number } | null = null;   // the step's target (ring-aware)
+  private partyAdvanceable = false;                            // is the current waypoint the real target (vs a dock hint)?
   /** Fired once when the local player reaches the shared party waypoint. */
   onPartyArrive?: () => void;
 
@@ -153,7 +155,8 @@ export class CirqlWorldEngine extends RetroEngine {
     this.posX = 0; this.posY = outward ? -r * 0.68 : r * 0.7;
     this.vx = this.vy = 0; this.facing = outward ? "down" : "up";
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
-    this.near = null; this.dialog = null; this.moveTarget = null; this.partyWp = null;
+    this.near = null; this.dialog = null; this.moveTarget = null;
+    this.resolvePartyWp();   // re-point the shared waypoint for the new ring (target here vs a dock onward)
     this.arriveT = 3.0; this.arriveName = this.curRing.name; this.arriveSub = this.curRing.sub;
     this.onSail?.(this.ringIdx, this.maxRing);
   }
@@ -175,11 +178,42 @@ export class CirqlWorldEngine extends RetroEngine {
   clearRemotes() { this.remotes.clear(); }
 
   // ---------- M9 party host API ----------
-  /** Set the shared campaign waypoint (null = none). Resets the local-arrival latch when it moves. */
-  setPartyWaypoint(wp: { x: number; y: number } | null) {
+  /**
+   * Set the shared campaign target. `ring` says which ring the step is on; `at` is a
+   * prop id resolved on that ring (or x/y for an explicit spot). Off the step's ring the
+   * waypoint points to the dock that sails the right way (and can't be "arrived" at).
+   */
+  setPartyTarget(t: { ring: number; at?: string; x?: number; y?: number } | null) {
+    this.partyTarget = t; this.resolvePartyWp();
+  }
+  private resolvePartyWp() {
+    const t = this.partyTarget;
+    if (!t) { this.setWp(null, false); return; }
+    if ((t.ring ?? 0) === this.ringIdx) {
+      let pos: { x: number; y: number } | null = null;
+      if (t.at) { const p = this.curRing.props.find((x) => x.id === t.at); if (p) pos = { x: p.x, y: p.y }; }
+      else if (t.x != null && t.y != null) pos = { x: t.x, y: t.y };
+      this.setWp(pos, !!pos);                      // on-ring → real target, arrival advances
+    } else {
+      const d = this.dockToward(t.ring ?? 0);
+      this.setWp(d ? { x: d.x, y: d.y } : null, false);   // off-ring → dock hint, no arrival
+    }
+  }
+  private setWp(wp: { x: number; y: number } | null, advanceable: boolean) {
     const changed = (!!wp !== !!this.partyWp) || (wp && this.partyWp && (wp.x !== this.partyWp.x || wp.y !== this.partyWp.y));
     this.partyWp = wp ? { x: wp.x, y: wp.y } : null;
+    this.partyAdvanceable = advanceable;
     if (changed) this.partyArrived = false;
+  }
+  /** The dock on the current ring that sails toward `targetRing` (inward or outward). */
+  private dockToward(targetRing: number): Prop | null {
+    const outward = targetRing > this.ringIdx;
+    for (const p of this.curRing.props) if (p.t === "dock") {
+      const to = p.to ?? -1;
+      if (outward && to > this.ringIdx) return p;
+      if (!outward && to >= 0 && to < this.ringIdx) return p;
+    }
+    return null;
   }
   /** Highlight which remote travellers are in my party. */
   setPartyMembers(ids: string[]) { this.partyIds = new Set(ids); }
@@ -212,6 +246,7 @@ export class CirqlWorldEngine extends RetroEngine {
     const p = this.quests[q.id]; const oi = this.currentObjIndex(q); if (oi < 0) return;
     const o = q.objectives[oi];
     if (o.kind !== kind) return;
+    if (o.ring != null && o.ring !== this.ringIdx) return;   // cross-ring: advance only on the objective's ring
     if ((kind === "reach" || kind === "interact") && o.target && o.target !== targetId) return;
     p.obj[oi] = Math.min(o.count ?? 1, (p.obj[oi] || 0) + 1);
     this.onQuestChange?.();
@@ -236,7 +271,7 @@ export class CirqlWorldEngine extends RetroEngine {
       .map(({ quest, status }) => {
         const p = this.quests[quest.id];
         let objective = quest.objectives[0]?.label ?? "";
-        if (status === "active" && p) { const oi = this.currentObjIndex(quest); objective = oi >= 0 ? quest.objectives[oi].label : "Return complete"; }
+        if (status === "active" && p) { const oi = this.currentObjIndex(quest); if (oi >= 0) { const o = quest.objectives[oi]; objective = (o.ring != null && o.ring !== this.ringIdx) ? `Sail to ${ringName(o.ring)} — ${o.label}` : o.label; } else objective = "Return complete"; }
         else if (status === "done") objective = "Complete";
         return { id: quest.id, name: quest.name, status, objective };
       });
@@ -245,6 +280,7 @@ export class CirqlWorldEngine extends RetroEngine {
     const q = this.activeQuest(); if (!q) return null;
     const oi = this.currentObjIndex(q); if (oi < 0) return null;
     const o = q.objectives[oi];
+    if (o.ring != null && o.ring !== this.ringIdx) return this.dockToward(o.ring);   // cross-ring: point to the dock that sails there
     if (o.kind === "lightLanterns") {   // point to the nearest unlit quest lantern
       let best: Prop | null = null, bd = 1e9;
       for (const p of this.curRing.props) if (p.t === "lantern" && p.id && !this.lit.has(p.id)) { const d = Math.hypot(this.posX - p.x, this.posY - p.y); if (d < bd) { bd = d; best = p; } }
@@ -469,8 +505,9 @@ export class CirqlWorldEngine extends RetroEngine {
       this.lastPresence = this.t;
     }
 
-    // party shared-waypoint arrival — fires once per step (server is idempotent per step)
-    if (this.partyWp && !this.partyArrived && Math.hypot(this.posX - this.partyWp.x, this.posY - this.partyWp.y) < 26) {
+    // party shared-waypoint arrival — fires once per step, only when the waypoint is the
+    // real target (not a cross-ring dock hint); server is idempotent per step
+    if (this.partyWp && this.partyAdvanceable && !this.partyArrived && Math.hypot(this.posX - this.partyWp.x, this.posY - this.partyWp.y) < 26) {
       this.partyArrived = true; this.onPartyArrive?.();
     }
   }
@@ -739,7 +776,14 @@ export class CirqlWorldEngine extends RetroEngine {
       const cols = ["#ffd24a", "#ff8fbf", "#8fd0ff", "#b6ff9c", "#e0a0ff"];
       for (let i = 0; i < 7; i++) { const spd = 9 + (i % 3) * 5; const x = ((t * spd + i * 97) % (W + 40)) - 20; const y = 22 + (i * 53) % (H - 70) + Math.sin(t * 1.8 + i) * 11; this.drawButterfly(x, y, t * 1.6 + i, cols[i % cols.length]); }
     } else if (kind === "firefly") {
-      for (let i = 0; i < 11; i++) { const x = (Math.sin(t * 0.4 + i * 1.3) * 0.5 + 0.5) * W; const y = (Math.cos(t * 0.33 + i * 2.1) * 0.5 + 0.5) * H; const bl = Math.sin(t * 3 + i); if (bl > 0.25) { this.glow(x, y, 5, "#c8ff9a", bl * 0.5); this.disc(x, y, 1, "#eaffcf"); } }
+      // fewer, and wandering organically — two incommensurate drift frequencies per axis
+      // so paths curve + never line up (no straight rows)
+      for (let i = 0; i < 5; i++) {
+        const px = 0.5 + 0.40 * Math.sin(t * 0.21 + i * 2.1) + 0.12 * Math.sin(t * 0.67 + i * 4.7);
+        const py = 0.5 + 0.40 * Math.cos(t * 0.17 + i * 3.3) + 0.12 * Math.cos(t * 0.79 + i * 1.7);
+        const x = px * W, y = py * H, bl = Math.sin(t * 2.6 + i * 1.9);
+        if (bl > 0.15) { this.glow(x, y, 5, "#c8ff9a", bl * 0.5); this.disc(x, y, 1, "#eaffcf"); }
+      }
     } else if (kind === "ember") {
       for (let i = 0; i < 12; i++) { const x = (i * 67 + Math.sin(t + i) * 20) % W; const y = H - ((t * 22 + i * 40) % (H + 20)); const a = Math.max(0, y / H) * 0.8; this.disc(x, y, 1 + (i % 2), hexA("#ff8c3c", a)); }
     } else if (kind === "snow") {
@@ -964,7 +1008,7 @@ export class CirqlWorldEngine extends RetroEngine {
     const o = q.objectives[oi];
     const cnt = o.count ?? 1; const have = this.quests[q.id]?.obj[oi] ?? 0;
     const prog = cnt > 1 ? `  ${have}/${cnt}` : "";
-    const line = `${o.label}${prog}`;
+    const line = (o.ring != null && o.ring !== this.ringIdx) ? `→ Sail to ${ringName(o.ring)}` : `${o.label}${prog}`;
     const w = Math.max(q.name.length, line.length) * 4.4 + 12;
     const x = 3, y = it + 14;
     this.rect(x, y, w, 21, "#0a0714c0");

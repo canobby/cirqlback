@@ -11,7 +11,9 @@
 
 export interface CampaignStep {
   label: string;         // what the party is doing right now
-  tx?: number;           // shared-waypoint world target (Hearth ring coords)
+  ring?: number;         // which ring this step is on (default 0 = Hearth); off-ring the party waypoint points to the dock
+  at?: string;           // a prop id resolved on `ring` (e.g. "commons", "theater") — the shared waypoint
+  tx?: number;           // OR an explicit world target (Hearth ring coords) when `at` isn't used
   ty?: number;
 }
 
@@ -69,6 +71,18 @@ export const CAMPAIGNS: Campaign[] = [
       { label: "Walk to the western shore", tx: SHORE.x, ty: SHORE.y },
       { label: "Follow the coast to the dock", tx: DOCK.x, ty: DOCK.y },
       { label: "Wander home to the Hearth", tx: HEARTH.x, ty: HEARTH.y },
+    ],
+  },
+  {
+    id: "outer-passage",
+    title: "The Outer Passage",
+    blurb: "A voyage together — cross to the outer shores, catch a show at the Drive-In, and sail home. Bring a crew.",
+    minParty: 2, maxParty: 5, difficulty: "epic", newbie: false, reward: 22,
+    steps: [
+      { label: "Gather at the Hearth Commons", ring: 0, at: "commons" },
+      { label: "Sail to the next shore's Commons", ring: 1, at: "commons" },
+      { label: "Catch a show at the Cirql Drive-In", ring: 2, at: "theater" },
+      { label: "Sail home to the Hearth", ring: 0, at: "commons" },
     ],
   },
   {

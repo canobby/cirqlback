@@ -10,6 +10,7 @@ import { CharacterCreator } from "@/components/cirql/character-creator";
 import { ARCADE_GAMES } from "@/game/registry";
 import { CAMPAIGNS, campaignById, MATCH_TAGS, difficultyMeta } from "@/game/cirql-campaigns";
 import { dailyForDate, activeEvent, todayStr, type DailyTask, type CirqlEvent } from "@/game/cirql-daily";
+import { ringName } from "@/game/cirql-ring-gen";
 
 const SPARK_PER_PLAY = 2;
 const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
@@ -72,6 +73,7 @@ export default function Cirql() {
   interface Party { id: string; campaignId: string; hostId: string; step: number; steps: number; max: number; members: { id: string; name: string }[]; }
   const [party, setParty] = useState<Party | null>(null);
   const partyRef = useRef<Party | null>(null);
+  const [curRingUi, setCurRingUi] = useState(0);   // current ring index, for off-ring party UI
   const [board, setBoard] = useState<any[]>([]);
   const [showBoard, setShowBoard] = useState(false);
   const [showParty, setShowParty] = useState(false);
@@ -124,12 +126,12 @@ export default function Cirql() {
     engineRef.current?.toast(`✦ Daily done — +${reward} sparks${ev ? " (festival!)" : ""} · ${dr.streak}-day streak`);
     persist();
   };
-  // Reflect the current party into the engine (shared waypoint + member highlight).
+  // Reflect the current party into the engine (ring-aware shared target + member highlight).
   const syncPartyToEngine = (p: Party | null) => {
     const eng = engineRef.current; if (!eng) return;
-    if (!p) { eng.setPartyWaypoint(null); eng.setPartyMembers([]); return; }
+    if (!p) { eng.setPartyTarget(null); eng.setPartyMembers([]); return; }
     const camp = campaignById(p.campaignId); const step = camp?.steps[p.step];
-    eng.setPartyWaypoint(step && step.tx != null && step.ty != null ? { x: step.tx, y: step.ty } : null);
+    eng.setPartyTarget(step ? { ring: step.ring ?? 0, at: step.at, x: step.tx, y: step.ty } : null);
     eng.setPartyMembers(p.members.map((m) => m.id).filter((id) => id !== myId()));
   };
   const applyParty = (p: Party | null) => { partyRef.current = p; setParty(p); syncPartyToEngine(p); if (p) setShowParty(true); else { setShowParty(false); setChatScope("global"); } };
@@ -200,7 +202,7 @@ export default function Cirql() {
     if (import.meta.env.DEV) (window as any).__cirql = eng;
     eng.onInteract = (kind) => { if (kind === "wonders") setHallOpen(true); };   // step into CirqlCade
     eng.onLocalMove = (ring, x, y) => { posRef.current = { ring, x, y }; scheduleSave(); };
-    eng.onSail = (ring, maxRing) => { const st = eng.getState(); posRef.current = { ring, x: st.x, y: st.y }; if (maxRing > maxRingRef.current) { maxRingRef.current = maxRing; progressDaily("voyage"); } persist(); };   // reaching a new ring is a big save point
+    eng.onSail = (ring, maxRing) => { const st = eng.getState(); posRef.current = { ring, x: st.x, y: st.y }; setCurRingUi(ring); if (maxRing > maxRingRef.current) { maxRingRef.current = maxRing; progressDaily("voyage"); } persist(); };   // reaching a new ring is a big save point
     // quests: grant the sparks reward on completion, persist progress on any change
     eng.onQuestComplete = (q) => { sparksRef.current += q.reward.sparks; eng.setStats({ sparks: sparksRef.current }); if (q.id.startsWith("ring-")) progressDaily("explore"); persist(); };
     eng.onQuestChange = () => { setQuestRows(eng.getQuestLog()); scheduleSave(); };
@@ -250,7 +252,7 @@ export default function Cirql() {
       energyRef.current = st?.worldEnergy ?? 0; membersRef.current = st?.cirqlMembers ?? 0; setMembers(membersRef.current);
       playsRef.current = { day: st?.playDay ?? "", n: st?.playsToday ?? 0 };
       ownedRef.current = Array.isArray(st?.owned) ? st!.owned! : []; setOwned(ownedRef.current); setSparksUi(sparksRef.current);
-      maxRingRef.current = st?.maxRing ?? 0;
+      maxRingRef.current = st?.maxRing ?? 0; setCurRingUi(st?.ring ?? 0);
       if (st?.daily && typeof st.daily.day === "string") dailyRef.current = { day: st.daily.day, done: !!st.daily.done, streak: +st.daily.streak || 0, lastDone: st.daily.lastDone || "" };
       refreshDaily();
       eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: membersRef.current, cirqlTotal: 12, online: 1, energy: energyRef.current });
@@ -679,7 +681,10 @@ export default function Cirql() {
       {/* Party panel — shared campaign progress + members + advance/leave */}
       {showParty && party && (() => {
         const camp = campaignById(party.campaignId);
-        const stepLabel = camp?.steps[party.step]?.label ?? "Wrapping up";
+        const step = camp?.steps[party.step];
+        const stepLabel = step?.label ?? "Wrapping up";
+        const stepRing = step?.ring ?? 0;
+        const offRing = stepRing !== curRingUi;
         return (
           <div className="absolute right-3 top-14 z-[55] w-[260px] rounded-xl border p-3" style={{ borderColor: "rgba(53,224,208,.4)", background: "rgba(8,16,32,.97)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }} data-testid="party-panel">
             <div className="mb-2 flex items-center justify-between">
@@ -696,7 +701,8 @@ export default function Cirql() {
             <div className="mt-2 flex items-start gap-1.5 rounded-lg px-2 py-1.5 text-[12px] text-teal-100" style={{ background: "rgba(53,224,208,.08)" }}>
               <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-300" /> <span>{stepLabel}</span>
             </div>
-            <button onClick={advanceStep} data-testid="party-advance" className="mt-2 w-full rounded-lg py-2 text-[12px] font-extrabold text-slate-900" style={{ background: "linear-gradient(90deg,#35e0d0,#7ff5e8)" }}>We're here → next step</button>
+            {offRing && <div className="mt-1.5 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-amber-200" style={{ background: "rgba(255,196,107,.1)" }}>⛵ This step is on <b className="text-white">{ringName(stepRing)}</b> — sail there with your crew.</div>}
+            <button onClick={advanceStep} disabled={offRing} data-testid="party-advance" className="mt-2 w-full rounded-lg py-2 text-[12px] font-extrabold text-slate-900 disabled:opacity-40" style={{ background: "linear-gradient(90deg,#35e0d0,#7ff5e8)" }}>{offRing ? `Sail to ${ringName(stepRing)} first` : "We're here → next step"}</button>
             <div className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Crew ({party.members.length})</div>
             <div className="mt-1 flex flex-col gap-1">
               {party.members.map((mm) => (
