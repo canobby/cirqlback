@@ -1,6 +1,6 @@
 # CIRQL — Flagship World · Linear Register
 
-Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of every milestone + issue with its status. Live board: linear.app → CIRQL — Flagship World. Generated 2026-07-07 (rev 2). **M0–M10 complete; M8 social now complete; M11 in progress.**
+Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of every milestone + issue with its status. Live board: linear.app → CIRQL — Flagship World. Generated 2026-07-07 (rev 3). **🎉 ALL MILESTONES M0–M11 COMPLETE — 55/55 issues done.**
 
 **Legend:** ☑ = Done · ◑ = Partial · ☐ = Todo.
 
@@ -18,9 +18,9 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 | M8 · Social — presence & chat channels | 3 | 3 |
 | M9 · Campaigns & Party Finder | 4 | 4 |
 | M10 · Endless content engines | 4 | 4 |
-| M11 · Depth & Delight (wishlist) | 7 | 3 |
+| M11 · Depth & Delight (wishlist) | 7 | 7 |
 
-**Overall:** 51 of the 55 issues done. Remaining: the **M11 wishlist** — CHR-259 (Hearth décor + visiting), CHR-261 (tapped businesses → landmarks), CHR-262 (sailing-as-journey), CHR-263 (jump/hop).
+**Overall:** 🎉 **55 of 55 issues done — every milestone complete.** Phase 2 (deferred beyond this project): the real-world **tap→sparqs bridge** (a café tap credits the `sparqbank` wallet + opens rings for everyone) and territories/regional beacons, layered on the CHR-261 landmarks.
 
 ## M0 · Foundations (reused) — DONE
 - [x] **CHR-211** — Reuse: /town websocket presence prototype
@@ -92,12 +92,12 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 - [x] **CHR-257** — Daily + seasonal loops (rotating dailies, events, drops)
 - [x] **CHR-258** — Myst-style puzzle quests / campaigns
 
-## M11 · Depth & Delight (wishlist — owner-approved) — STARTED
+## M11 · Depth & Delight (wishlist — owner-approved) — DONE
 Positioning: **Balanced** (family-friendly / chat-free-first defaults + cosmetic-only + kindness mechanics, with fuller chat + competitive edges for older players).
 - [x] **CHR-265** — Interactive voyages: tunnels/underground, treetops & clouds (commit be24ce3, live)
 - [x] **CHR-260** — Emotes + chat-free expression (commit 4749427, live) — 12-emote wheel → timed glyph over local/remote avatars + `/ws/cirql` relay
 - [x] **CHR-264** — More mini-journeys & cutscenes (commit ff50176, live) — reusable skippable letterboxed cutscene player; wired to arrival / onboarding / campaign-complete / world-energy
-- [ ] **CHR-259** — Hearth décor + visiting friends' Hearths
-- [ ] **CHR-261** — Tapped businesses become in-world landmarks (loyalty ↔ world)
-- [ ] **CHR-262** — Sailing as a mini-journey (interactive voyages)
-- [ ] **CHR-263** — Jump / hop movement (traversal + expression)
+- [x] **CHR-262** — Sailing as a mini-journey (commit 41dd953, live) — steer a boat across the sea, gather drifting light, island grows through fog → land + arrival cutscene
+- [x] **CHR-263** — Jump / hop movement (commit 5df8e39, live) — fake-Z hop (raised sprite, grounded shadow) + HOP button + C/H key
+- [x] **CHR-259** — Hearth décor + visiting friends' Hearths (commit a9badec, live) — spark-bought décor catalog, place/remove on your Hearth, persisted; presence-broadcast visiting of online friends' Hearths
+- [x] **CHR-261** — Tapped businesses → in-world landmarks (commit b5b0068, live) — real tapped businesses become signpost landmarks ringing your Hearth (loyalty↔world; sparqs bridge = Phase 2)
