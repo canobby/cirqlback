@@ -26,7 +26,8 @@ export type PropType =
   | "pond"      // a little water feature — walk around it
   | "flower"    // a decorative flower cluster (soft — walk through)
   | "fence"     // a short fence segment (solid — walk around)
-  | "path";     // a dirt/stone trail patch (ground decoration — walk over)
+  | "path"      // a dirt/stone trail patch (ground decoration — walk over)
+  | "portal";   // a cave/hollow-tree/cloud-stair — travel to a sub-map (CHR-265)
 
 export interface Prop {
   t: PropType;
@@ -39,6 +40,7 @@ export interface Prop {
   big?: boolean;        // larger tree/crystal
   r?: number;           // interaction/collision radius override (world units)
   vert?: boolean;       // fence: draw the segment vertically (for corral sides)
+  sub?: "cave" | "tree" | "cloud" | "up";   // portal kind (CHR-265)
 }
 
 export interface RingPalette {
@@ -143,6 +145,8 @@ const HEARTH: Ring = {
     { t: "shrine", x: -90, y: -278, id: "rune-shrine", label: "Sealed Shrine" },
     // a social gathering spot near spawn — every ring has one
     { t: "gathering", x: 130, y: 185, id: "commons", label: "The Commons" },
+    // a cave mouth in the western rocks → down to The Undervault (CHR-265). to=100000 (cave of ring 0)
+    { t: "portal", x: -340, y: -40, to: 100000, sub: "cave", label: "cave" },
   ],
   // wake all but the second rune (rn1 stays dark)
   puzzleTarget: ["rn0", "rn2", "rn3"],

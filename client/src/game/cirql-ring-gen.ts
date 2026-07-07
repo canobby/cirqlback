@@ -169,6 +169,9 @@ export function generateRing(index: number): Ring {
   // larger rings get extra pockets of a DIFFERENT feel (a little grove + flowerbed — an
   // oasis even on a desert ring) so a big island isn't one uniform scene throughout
   if (radius > 620) { const g = clearSpot(); placeGrove(props, g.x, g.y, 3 + Math.floor(rng() * 2), rng); const f = clearSpot(); placeFlowerBed(props, f.x, f.y, 6, rng); if (rng() > 0.5) { const p = clearSpot(); props.push({ t: "pond", x: p.x, y: p.y, r: 20 + Math.floor(rng() * 10) }); } }
+  // a PORTAL to a sub-map on many rings (an interactive voyage down/up — CHR-265)
+  const portalKind: SubKind | null = (biome.key === "desert" || biome.key === "ember") ? "cave" : (biome.key === "woodland" || biome.key === "meadow" || biome.key === "autumn") ? "tree" : (biome.key === "winter" || biome.key === "coast") ? "cloud" : null;
+  if (portalKind) { const c = clearSpot(); props.push({ t: "portal", x: c.x, y: c.y, to: subIndex(portalKind, index), sub: portalKind, label: portalKind === "cave" ? "cave" : portalKind === "tree" ? "hollow tree" : "cloud stair" }); }
   // a dirt trail leading inland from the shore (along the arrival lane)
   if (biome.path) { const n = 5; for (let k = 0; k < n; k++) props.push({ t: "path", x: Math.sin(k * 1.3 + index) * 16, y: -radius * 0.6 + k * (radius * 0.42 / n) }); }
   if (biome.pond) {
@@ -211,14 +214,54 @@ export function generateRing(index: number): Ring {
   };
 }
 
-/** The ring at `index` — authored Hearth for 0, generated beyond. */
+// ---- sub-maps (CHR-265): tunnels/caves, treetops, clouds ----
+// A sub-map is a ring reached by a PORTAL rather than a dock. Its index encodes its
+// kind + the surface ring it hangs off, so getRing() can generate it on demand and a
+// return portal can point back at the parent. Sub-maps don't extend the fog / maxRing.
+const SUB_BASE = 100000;
+export const SUB_OFFSET = { cave: 100000, tree: 200000, cloud: 300000 } as const;
+export type SubKind = keyof typeof SUB_OFFSET;
+export const isSubMap = (index: number) => index >= SUB_BASE;
+export const parentOf = (index: number) => index % SUB_BASE;
+export const subKindOf = (index: number): SubKind | null => index >= 300000 ? "cloud" : index >= 200000 ? "tree" : index >= SUB_BASE ? "cave" : null;
+export const subIndex = (kind: SubKind, parent: number) => SUB_OFFSET[kind] + parent;
+
+const SUB_META: Record<SubKind, { name: string; sub: string; radius: number; ambient: Ring["ambient"]; palette: RingPalette }> = {
+  cave: { name: "The Undervault", sub: "deep beneath the shore", radius: 360, ambient: "firefly",
+    palette: { sky: ["#0e0a12", "#060409"], sea: "#0a0710", land: "#1c1622", grass: "#2a2030", sand: "#3a2e28", accent: "#7fd8ff", mote: "#bfeaff" } },
+  tree: { name: "The High Canopy", sub: "up among the leaves", radius: 420, ambient: "gull",
+    palette: { sky: ["#2a3a1c", "#16240f"], sea: "#3a5a2a", land: "#3a5a28", grass: "#4f8a3a", sand: "#7a5a34", accent: "#b6ff6a", mote: "#e0ffb0" } },
+  cloud: { name: "The Cloud Reach", sub: "high in the sky", radius: 440, ambient: "butterfly",
+    palette: { sky: ["#a8c8e8", "#7aa8d8"], sea: "#cfe2f4", land: "#e6f0fa", grass: "#f4f8ff", sand: "#dfeaf6", accent: "#ffffff", mote: "#ffffff" } },
+};
+
+/** Generate a sub-map (cave/treetop/cloud) that returns to its parent surface ring. */
+function generateSubMap(kind: SubKind, parent: number, index: number): Ring {
+  const m = SUB_META[kind];
+  const rng = rngFrom(Math.imul(index, 0x85ebca6b) ^ 0x27d4eb2f);
+  const radius = m.radius, props: Prop[] = [];
+  // the way back up to the surface (north)
+  props.push({ t: "portal", x: 0, y: -radius * 0.72, to: parent, sub: "up", label: kind === "cave" ? "↑ surface" : "↓ surface" });
+  // a keeper to greet you
+  props.push({ t: "npc", x: (rng() - 0.5) * radius * 0.4, y: (rng() - 0.2) * radius * 0.35, id: `keeper-${index}`, label: pick(rng, KEEPERS), accent: m.palette.accent });
+  const place = (t: Prop["t"], extra?: Partial<Prop>) => { const a = rng() * TAU, rr = radius * (0.2 + rng() * 0.5); props.push({ t, x: Math.cos(a) * rr, y: Math.sin(a) * rr, ...extra }); };
+  if (kind === "cave") { for (let i = 0; i < 6; i++) place("crystal", { big: rng() > 0.5, accent: m.palette.accent }); for (let i = 0; i < 8; i++) place("flower", { accent: rng() > 0.5 ? "#7fffb0" : "#7fd8ff" }); for (let i = 0; i < 5; i++) place("rock", { big: rng() > 0.6 }); }
+  else if (kind === "tree") { for (let i = 0; i < 7; i++) place("tree", { big: rng() > 0.4 }); for (let i = 0; i < 6; i++) place("flower", { accent: pick(rng, FLOWER_COLS) }); for (let i = 0; i < 4; i++) place("lantern"); }
+  else { for (let i = 0; i < 6; i++) place("crystal", { big: true, accent: "#eaf4ff" }); for (let i = 0; i < 5; i++) place("flower", { accent: "#ffffff" }); }
+  let li = 0, ci = 0;
+  for (const p of props) { if (p.t === "lantern" && !p.id) p.id = `s${index}l${li++}`; else if (p.t === "crystal" && !p.id) p.id = `s${index}c${ci++}`; }
+  return { index, name: m.name, sub: m.sub, radius, explorable: true, palette: m.palette, spawn: { x: 0, y: -radius * 0.55 }, props, ambient: m.ambient };
+}
+
+/** The ring at `index` — authored Hearth for 0, generated surface beyond, sub-map for big indices. */
 export function getRing(index: number): Ring {
   if (index <= 0) return RINGS[0];
+  if (isSubMap(index)) { const k = subKindOf(index)!; return generateSubMap(k, parentOf(index), index); }
   return generateRing(index);
 }
 
-/** Display name for a ring index (authored or generated). */
+/** Display name for a ring index (authored / generated / sub-map). */
 export function ringName(index: number): string {
   if (index <= 0) return RINGS[0].name;
-  return generateRing(index).name;
+  return getRing(index).name;
 }
