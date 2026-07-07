@@ -81,6 +81,7 @@ export const CABINET_META: Record<string, Meta> = {
   wireup: { cat: "puzzle", era: "modern", howto: "Drag a wire from each colour terminal to its matching twin — no crossing, and fill every empty cell to complete the junction box. Cross another wire and it snips it back. Wire up as many boxes as you can before the shift clock runs out." },
   huehop: { cat: "action", era: "modern", howto: "Tap to hop the paint blob up the spinning colour wheels — you can only pass through the slice that matches your own colour, so time each hop. Grab a paint splat to switch colour for the next wheel. Miss the match or fall and it's splat. Climb as high as you can." },
   gardenguard: { cat: "blast", era: "modern", howto: "Pests march down the lanes toward the shop. Spend water to plant defenders on the plots: SPROUTS spit seeds down their row, BLOOMS make more water, SPUDS soak up bites. Pick a plant (SWAP), tap a plot to place it. Survive the waves — let three pests reach the shop and the garden's overrun." },
+  loopline: { cat: "puzzle", era: "modern", howto: "Riders wait at each stop wanting a stop of a certain SHAPE. Drag stop-to-stop to lay a transit line; a train shuttles it, scooping riders up and dropping them at a matching-shape stop. SWAP picks which line you're drawing, CLEAR wipes it. New stops and riders keep coming — let any stop overflow and it's gridlock." },
 };
 
 export function metaFor(id: string): Meta { return CABINET_META[id] || { cat: "action", howto: "" }; }
