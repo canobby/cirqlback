@@ -10,7 +10,7 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 | M0 · Foundations (reused) | 4 | 4 |
 | M1 · The World & Movement | 7 | 7 |
 | M2 · Identity & Persistence | 4 | 4 |
-| M3 · Quest System (backbone) | 4 | 0 |
+| M3 · Quest System (backbone) | 4 | 4 |
 | M4 · First Quest Chain (onboarding) | 4 | 0 |
 | M5 · The Wonders (in-world arcade) | 4 | 0 |
 | M6 · Sparks Economy & Your Cirql | 6 | 0 |
@@ -38,11 +38,11 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 - [x] **CHR-242** — Character creation on first entry (move avatar chooser into CIRQL)
 - [x] **CHR-243** — Expand avatar customization (more choices, fun, circle-friendly)
 
-## M3 · Quest System (backbone)
-- [ ] **CHR-224** — Schema/migration: quests, objectives, player progress
-- [ ] **CHR-225** — Server: quest registry + progress API
-- [ ] **CHR-226** — Client: quest log + objective tracker HUD
-- [ ] **CHR-227** — Client: NPC quest-givers + waypoint markers
+## M3 · Quest System (backbone) — DONE (commit 32e4d9e, live)
+- [x] **CHR-224** — Quest progress persisted in the `cirql` state blob (no migration)
+- [x] **CHR-225** — Quest registry + progress engine + reward→sparks hook
+- [x] **CHR-226** — Client: quest log + objective tracker HUD
+- [x] **CHR-227** — Client: NPC quest-givers + waypoint markers
 
 ## M4 · First Quest Chain (onboarding)
 - [ ] **CHR-228** — Quest 1 — "Find Your Feet" (teaches movement)

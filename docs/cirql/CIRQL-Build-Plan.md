@@ -6,8 +6,9 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 
 ## Progress log
 - **M1 · The World & Movement — DONE & LIVE** (commit `b664883`). Walkable Hearth island: cottage, Wonders monolith, Ferra (NPC), Cirql lantern ring, movement, minimap, glow, interact → dialog/toast.
-- **M2 · Identity & Persistence — DONE & LIVE** (commit `b09c79c`). `/cirql` saves + resumes (ring/position/avatar/name) via the `cirql` game_progress key; first-run character creator (avatar moved into CIRQL) + "Look" re-edit; expanded avatar (hat styles, aura glow, companions, bigger palettes). Verified in-browser (0 errors, tsc clean).
-- **Next up: M3 · Quest System (backbone).**
+- **M2 · Identity & Persistence — DONE & LIVE** (commit `b09c79c`). Save/resume via the `cirql` game_progress key; first-run character creator (avatar moved into CIRQL) + "Look" re-edit; expanded avatar (hat styles, aura glow, companions, bigger palettes).
+- **M3 · Quest System (backbone) — DONE & LIVE** (commit `32e4d9e`). Reusable registry (defs in code, progress in the `cirql` blob — no migration), objective model + chain, reward→sparks hook, objective tracker HUD, waypoint chevron + minimap dot, NPC give-via-dialog, quest-log panel. Reference quest "Find Your Feet" ships. Verified in-browser (0 errors, tsc clean).
+- **Next up: M4 · First Quest Chain (onboarding).**
 
 ## Locked decisions (owner, 2026-07-06 — "ALL IN")
 - **The Wonders** = the 50 arcade cabinets folded IN-WORLD as enchanted monoliths you *attune* to (press E → the cabinet opens as an in-world overlay; you never leave CIRQL). Found on the first quest, which is the movement tutorial.
@@ -38,11 +39,11 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - [x] Character creation on first entry — move avatar chooser into CIRQL *(CHR-242)*
 - [x] Expand avatar customization — more choices, fun, circle-friendly *(CHR-243)*
 
-## M3 · Quest System (reusable backbone)
-- [ ] Schema/migration: quests, objectives, player progress *(CHR-224)*
-- [ ] Server: quest registry + progress API *(CHR-225)*
-- [ ] Client: quest log + objective tracker HUD *(CHR-226)*
-- [ ] Client: NPC quest-givers + waypoint markers *(CHR-227)*
+## M3 · Quest System (reusable backbone) — DONE
+- [x] Schema/persistence: quest progress in the `cirql` state blob (no migration) *(CHR-224)*
+- [x] Quest registry + progress engine + reward→sparks hook *(CHR-225)*
+- [x] Client: quest log + objective tracker HUD *(CHR-226)*
+- [x] Client: NPC quest-givers + waypoint markers *(CHR-227)*
 
 ## M4 · First Quest Chain (onboarding = movement tutorial)
 - [ ] Quest 1 — "Find Your Feet" (teaches movement) *(CHR-228)*
