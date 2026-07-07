@@ -13,6 +13,7 @@ import { dailyForDate, activeEvent, todayStr, type DailyTask, type CirqlEvent } 
 import { ringName } from "@/game/cirql-ring-gen";
 import { EMOTES } from "@/game/cirql-emotes";
 import { WAKE_CUTSCENE, campaignCutscene, worldEnergyCutscene } from "@/game/cirql-cutscenes";
+import { DECOR, decorById, decorPriceKey } from "@/game/cirql-decor";
 
 const SPARK_PER_PLAY = 2;
 const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
@@ -22,7 +23,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 // get a character-creation step first; everyone can re-edit their look.
 const INTRO_LS = "cirql_intro_v1";
 
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; daily?: { day: string; done: boolean; streak: number; lastDone: string }; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; daily?: { day: string; done: boolean; streak: number; lastDone: string }; }
 const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export default function Cirql() {
@@ -51,6 +52,10 @@ export default function Cirql() {
   const [hallOpen, setHallOpen] = useState(false);         // CirqlCade hall (the in-world arcade)
   const [playRoute, setPlayRoute] = useState<string | null>(null); // a cabinet embedded over the world
   const [showCirql, setShowCirql] = useState(false);       // your Cirql / invite panel
+  const [showDecor, setShowDecor] = useState(false);       // Hearth décor palette (CHR-259)
+  const [decorTool, setDecorTool] = useState<string>("");  // selected décor id, "remove", or ""
+  const [decorCount, setDecorCount] = useState(0);         // placed-piece count (reactive)
+  const [visiting, setVisiting] = useState<string | null>(null);   // name of the Hearth you're visiting (CHR-259)
   const [members, setMembers] = useState(0);               // mirror of membersRef for the panel
   const [sparksUi, setSparksUi] = useState(0);             // reactive spark balance (for the shop)
   const [owned, setOwned] = useState<string[]>([]);        // purchased cosmetics
@@ -168,6 +173,7 @@ export default function Cirql() {
     const st = eng.getState();
     ws.send(JSON.stringify({ t: "join", name: nameRef.current, avatar: avatarRef.current, ring: st.ring, x: st.x, y: st.y, dir: "down" }));
     joinedRef.current = true;
+    broadcastDecor();   // share your Hearth décor so travellers can visit (CHR-259)
   };
   // send routes to the active channel (Global / Party / a DM thread)
   const sendMsg = () => {
@@ -229,7 +235,7 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, daily: dailyRef.current };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], daily: dailyRef.current };
   };
   const persist = () => {
     const st = buildState();
@@ -262,6 +268,7 @@ export default function Cirql() {
       persist();
     };
     eng.onQuestChange = () => { setQuestRows(eng.getQuestLog()); scheduleSave(); };
+    eng.onDecorChange = () => { setDecorCount(eng.getDecor().length); broadcastDecor(); persist(); };   // place/remove décor (CHR-259)
 
     // M8 — live presence socket: broadcast our position + share-a-light, and render
     // every other traveller sharing the ring (adapted from the /ws/town prototype).
@@ -301,6 +308,7 @@ export default function Cirql() {
       }
       else if (m.t === "lit") { receiveLight(m.id, m.name); }
       else if (m.t === "emote") { if (!blockedRef.current.has(m.id)) eng.emoteRemote(m.id, m.emote); }
+      else if (m.t === "visit:data") { if (!blockedRef.current.has(m.withId)) { eng.startVisit(m.withName, m.decor || []); setVisiting(m.withName || "Traveller"); setShowDecor(false); setShowChat(false); setShowCirql(false); } }
       // ---- Direct Messages (CHR-248) ----
       else if (m.t === "dm:request") { if (!blockedRef.current.has(m.fromId)) { setDmReqs((r) => r.some((x) => x.fromId === m.fromId) ? r : [...r, { fromId: m.fromId, fromName: m.fromName }]); if (!(showChatRef.current && chatScopeRef.current === "dm")) setUnread((u) => ({ ...u, dm: u.dm + 1 })); eng.toast(`${m.fromName} wants to message you`); } }
       else if (m.t === "dm:open") { setDmThreads((th) => th[m.withId] ? th : { ...th, [m.withId]: { name: m.withName, msgs: [] } }); openDm(m.withId); }
@@ -352,7 +360,8 @@ export default function Cirql() {
       if (st?.daily && typeof st.daily.day === "string") dailyRef.current = { day: st.daily.day, done: !!st.daily.done, streak: +st.daily.streak || 0, lastDone: st.daily.lastDone || "" };
       refreshDaily();
       eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: membersRef.current, cirqlTotal: 12, online: 1, energy: energyRef.current });
-      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests, lit: st?.lit, litForQuest: st?.litForQuest, doneOnce: st?.doneOnce });
+      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests, lit: st?.lit, litForQuest: st?.litForQuest, doneOnce: st?.doneOnce, decor: st?.decor });
+      setDecorCount(eng.getDecor().length);
       if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
       setQuestRows(eng.getQuestLog());
       if (!seen) { setCreatorMode("create"); setShowCreator(true); }
@@ -444,6 +453,23 @@ export default function Cirql() {
     persist();
     return true;
   };
+
+  // ---- Hearth décor (CHR-259) ----
+  const decorOwned = (id: string) => { const def = decorById[id]; return !!def && (def.price === 0 || ownedRef.current.includes(decorPriceKey(id))); };
+  const broadcastDecor = () => wsSend({ t: "decor", decor: engineRef.current?.getDecor() ?? [] });
+  const openDecorate = () => {
+    if (curRingUi !== 0) { engineRef.current?.toast("Sail home to The Hearth to decorate"); return; }
+    setShowDecor(true); setDecorTool(""); engineRef.current?.beginDecorEdit("");
+  };
+  const closeDecorate = () => { setShowDecor(false); setDecorTool(""); engineRef.current?.endDecorEdit(); };
+  const pickDecor = (id: string) => {
+    const def = decorById[id]; if (!def) return;
+    if (!decorOwned(id)) { if (!buyCosmetic(decorPriceKey(id), def.price)) { engineRef.current?.toast(`Need ${def.price} sparqs for the ${def.name}`); return; } engineRef.current?.toast(`✦ ${def.name} unlocked`); }
+    setDecorTool(id); engineRef.current?.setDecorTool(id);
+  };
+  const pickRemove = () => { setDecorTool("remove"); engineRef.current?.setDecorTool(""); };
+  const requestVisit = (id: string) => { wsSend({ t: "visit", toId: id }); engineRef.current?.toast("Knocking…"); };
+  const leaveVisit = () => { engineRef.current?.endVisit(); setVisiting(null); };
 
   // Invite a friend to your Cirql (reuses the platform referral idea; lantern lights on real join, later).
   const invite = async () => {
@@ -575,6 +601,7 @@ export default function Cirql() {
                 {peers.filter((p) => !dmThreads[p.id]).map((p) => (
                   <div key={p.id} data-testid={`dm-peer-${p.id}`} className="mb-1 flex items-center gap-2 rounded-lg px-2.5 py-1.5" style={{ background: "rgba(255,255,255,.03)" }}>
                     <span className="min-w-0 flex-1 truncate text-[12.5px] text-slate-200">{p.name}</span>
+                    <button onClick={() => { requestVisit(p.id); setShowChat(false); }} data-testid={`dm-visit-${p.id}`} className="rounded-lg border px-2 py-1 text-[11px] font-bold text-amber-200" style={{ borderColor: "rgba(255,196,107,.5)" }}>Visit</button>
                     <button onClick={() => requestDm(p.id)} data-testid={`dm-ask-${p.id}`} className="rounded-lg border px-2.5 py-1 text-[11px] font-bold text-violet-200" style={{ borderColor: "rgba(178,108,255,.5)" }}>Message</button>
                     <button onClick={() => blockPlayer(p.id)} className="text-[10px] text-slate-500 hover:text-rose-300">Hide</button>
                   </div>
@@ -617,6 +644,47 @@ export default function Cirql() {
       )}
 
       {/* emote wheel (CHR-260) — a grid of chat-free expressions; tap to play + broadcast */}
+      {/* visiting a friend's Hearth (CHR-259) — a banner with a way back home */}
+      {visiting && (
+        <div className="pointer-events-auto absolute inset-x-0 top-12 z-[16] mx-auto flex max-w-[380px] items-center gap-2 rounded-full border px-3 py-1.5" data-testid="visiting-banner"
+          style={{ borderColor: "rgba(255,196,107,.6)", background: "rgba(10,18,38,.95)", boxShadow: "0 0 18px rgba(255,196,107,.3)" }}>
+          <span className="text-[14px]">🏡</span>
+          <span className="min-w-0 flex-1 truncate text-[12px] text-slate-200">Visiting <b className="text-amber-200">{visiting}</b>'s Hearth</span>
+          <button onClick={leaveVisit} data-testid="visit-leave" className="rounded-full px-3 py-1 text-[12px] font-bold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>Go home</button>
+        </div>
+      )}
+
+      {/* Hearth décor palette (CHR-259) — pick a piece then tap the Hearth to place; world stays tappable */}
+      {showDecor && !visiting && (
+        <div className="pointer-events-auto absolute inset-x-0 top-12 z-[15] mx-auto max-w-[560px] px-3" data-testid="decor-palette">
+          <div className="rounded-2xl border p-2" style={{ borderColor: "rgba(255,196,107,.4)", background: "rgba(10,12,28,.96)", boxShadow: "0 10px 34px rgba(0,0,0,.55)" }}>
+            <div className="mb-1.5 flex items-center gap-2 px-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">Decorate</span>
+              <span className="hidden text-[10px] text-slate-400 sm:inline">{decorTool === "remove" ? "tap a piece to remove" : decorTool ? "tap the Hearth to place" : "pick a piece"}</span>
+              <span className="ml-auto text-[11px] font-bold text-amber-200" data-testid="decor-sparqs">✦ {sparksUi}</span>
+              <button onClick={closeDecorate} data-testid="decor-done" className="rounded-lg px-2.5 py-1 text-[12px] font-bold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>Done</button>
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              <button onClick={pickRemove} data-testid="decor-remove" className="flex h-16 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border text-[9px] font-bold"
+                style={decorTool === "remove" ? { borderColor: "#ff5d7d", color: "#ffb3c3", background: "rgba(255,93,125,.14)" } : { borderColor: "#2a3a66", color: "#9fb0d0" }}>
+                <span className="text-[20px] leading-none">🗑</span> Remove
+              </button>
+              {DECOR.map((d) => {
+                const owned = decorOwned(d.id); const sel = decorTool === d.id;
+                return (
+                  <button key={d.id} onClick={() => pickDecor(d.id)} data-testid={`decor-${d.id}`} title={d.name}
+                    className="flex h-16 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border text-[9px] font-semibold"
+                    style={sel ? { borderColor: "#ffc46b", color: "#0a1220", background: "#ffd98a" } : { borderColor: owned ? "rgba(255,196,107,.35)" : "rgba(150,130,255,.2)", color: owned ? "#ffd98a" : "#b9a8e6", background: "rgba(255,255,255,.03)" }}>
+                    <span className="text-[22px] leading-none">{d.glyph}</span>
+                    {owned ? <span className={sel ? "text-slate-900" : ""}>{d.name.split(" ")[0]}</span> : <span>✦{d.price}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showEmotes && (
         <div className="pointer-events-auto absolute inset-x-0 bottom-[128px] z-[15] mx-auto max-w-[340px] px-4" data-testid="emote-wheel">
           <div className="rounded-2xl border p-2.5" style={{ borderColor: "rgba(178,108,255,.4)", background: "rgba(10,12,28,.96)", boxShadow: "0 10px 34px rgba(0,0,0,.55)" }}>
@@ -752,6 +820,7 @@ export default function Cirql() {
             ))}
           </div>
           <button onClick={invite} data-testid="cirql-invite" className="mt-1 w-full rounded-lg py-2.5 text-[13px] font-extrabold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>Invite a friend ✦</button>
+          <button onClick={() => { setShowCirql(false); openDecorate(); }} data-testid="cirql-decorate" className="mt-2 w-full rounded-lg border py-2 text-[12px] font-bold text-amber-200" style={{ borderColor: "rgba(255,196,107,.4)" }}>🌷 Decorate your Hearth{decorCount > 0 ? ` · ${decorCount}` : ""}</button>
           <p className="mt-2 text-[10.5px] leading-snug text-slate-400">
             Or walk up to a traveller and press <b className="text-cyan-200">E</b> to <span className="text-cyan-300">share a light</span> — it lights a lantern for you both.
             {online > 1 ? <> <span className="text-emerald-300">{online} here now.</span></> : <> <span className="text-slate-500">No one else here right now.</span></>}

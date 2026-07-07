@@ -19,6 +19,7 @@ import {
 import { generateRingQuest } from "./cirql-quest-gen";
 import { EMOTE_BY_ID, EMOTE_SECONDS } from "./cirql-emotes";
 import { arrivalCutscene, BEAT_SECONDS, type Cutscene, type CutsceneBeat, type CutsceneFx } from "./cirql-cutscenes";
+import { decorById } from "./cirql-decor";
 
 export type InteractKind = "wonders" | "npc" | "dock";
 export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; energy: number; }
@@ -58,6 +59,10 @@ export class CirqlWorldEngine extends RetroEngine {
   private posX = 0; private posY = 0;         // player world position
   private vx = 0; private vy = 0; private facing: "up" | "down" | "left" | "right" = "down"; private walk = 0;
   private jumpZ = 0; private jumpVel = 0;      // fake-Z hop (CHR-263): raised height + vertical velocity
+  // Hearth décor (CHR-259): your placed decorations, an edit mode, and a "visiting" overlay
+  private decor: { item: string; x: number; y: number }[] = [];
+  private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
+  private visiting: { name: string; decor: { item: string; x: number; y: number }[] } | null = null;
   private camX = 0; private camY = 0;
   private t = 0;
   private hero: AvatarConfig;
@@ -148,16 +153,39 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Live-update the player's look (character creator / "edit look"). */
   setAvatar(avatar: AvatarConfig) { this.hero = avatar; }
   setStats(s: Partial<CirqlStats>) { this.stats = { ...this.stats, ...s }; }
+  // ---- Hearth décor (CHR-259) ----
+  /** Fired when the player places/removes décor (host persists + rebroadcasts). */
+  onDecorChange?: () => void;
+  getDecor() { return this.decor.slice(); }
+  setDecor(list: { item: string; x: number; y: number }[]) { this.decor = Array.isArray(list) ? list.filter((d) => d && decorById[d.item]).map((d) => ({ item: d.item, x: +d.x, y: +d.y })) : []; }
+  /** Enter décor edit mode; `itemId` is the piece to place, or "" to remove-on-tap. */
+  beginDecorEdit(itemId: string) { if (this.ringIdx !== 0 || this.visiting) return; this.editDecor = true; this.editSel = decorById[itemId] ? itemId : ""; }
+  setDecorTool(itemId: string) { this.editSel = decorById[itemId] ? itemId : ""; }
+  endDecorEdit() { this.editDecor = false; }
+  decorEditing() { return this.editDecor; }
+  clearDecor() { if (this.decor.length) { this.decor = []; this.onDecorChange?.(); } }
+  /** Visit another traveller's Hearth (render their décor read-only over the Hearth). */
+  startVisit(name: string, decor: { item: string; x: number; y: number }[]) {
+    this.editDecor = false;
+    this.visiting = { name: (name || "Traveller").slice(0, 16), decor: (decor || []).filter((d) => d && decorById[d.item]) };
+    if (this.ringIdx !== 0) { this.ringIdx = 0; this.curRing = getRing(0); }
+    this.posX = 0; this.posY = 150; this.camX = -this.LW / 2; this.camY = 150 - this.LH / 2;
+    this.near = null; this.dialog = null;
+  }
+  endVisit() { this.visiting = null; }
+  isVisiting() { return !!this.visiting; }
+  visitingName() { return this.visiting?.name ?? ""; }
   /** Full-screen safe-area: keep the HUD below the floating header + above the controls (CSS px). */
   setHudInsets(topCss: number, botCss: number) { this.insetTopCss = Math.max(0, topCss); this.insetBotCss = Math.max(0, botCss); }
   /** The on-screen action button + the quest system call this to interact. */
   interact() { if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
   /** A little fake-Z hop (CHR-263) — raise the sprite; the shadow stays grounded. */
   jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; if (this.jumpZ <= 0.01 && this.jumpVel <= 0) this.jumpVel = 66; }
-  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce) }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice() }; }
   applyState(s: any) {
     if (!s) return;
     if (Array.isArray(s.doneOnce)) this.doneOnce = new Set(s.doneOnce);
+    if (Array.isArray(s.decor)) this.setDecor(s.decor);
     if (Array.isArray(s.litForQuest)) this.litForQuest = new Set(s.litForQuest);
     if (typeof s.maxRing === "number") this.maxRing = Math.max(this.maxRing, s.maxRing);
     if (typeof s.ring === "number" && s.ring >= 0) { this.ringIdx = s.ring; this.curRing = getRing(s.ring); this.maxRing = Math.max(this.maxRing, s.ring); this.ensureRingQuest(); }
@@ -566,9 +594,25 @@ export class CirqlWorldEngine extends RetroEngine {
     const tapMap = justDown && !this.dialog && this.inMinimap(this.pointer.x, this.pointer.y);
     if (tapMap) { this.mapOpen = true; this.moveTarget = null; }
 
+    // décor edit (CHR-259): a tap places the selected item / removes the nearest one
+    const tapEdit = this.editDecor && justDown && !tapMap && !this.dialog;
+    if (tapEdit) {
+      const wx = this.pointer.x + this.camX, wy = this.pointer.y + this.camY;
+      if (this.editSel) {
+        const rr = Math.hypot(wx, wy), lim = this.curRing.radius * 0.82;
+        const px = rr > lim ? (wx / rr) * lim : wx, py = rr > lim ? (wy / rr) * lim : wy;
+        if (this.decor.length < 80) { this.decor.push({ item: this.editSel, x: Math.round(px), y: Math.round(py) }); this.onDecorChange?.(); }
+      } else {
+        let bi = -1, bd = 22 * 22;
+        for (let i = 0; i < this.decor.length; i++) { const dd = (this.decor[i].x - wx) ** 2 + (this.decor[i].y - wy) ** 2; if (dd < bd) { bd = dd; bi = i; } }
+        if (bi >= 0) { this.decor.splice(bi, 1); this.onDecorChange?.(); }
+      }
+      this.moveTarget = null;
+    }
+
     // movement is frozen while a dialog is open or the chart is up
     if (!this.dialog && !tapMap) {
-      if (this.pointer.down && !this.inMinimap(this.pointer.x, this.pointer.y)) this.moveTarget = { x: this.pointer.x + this.camX, y: this.pointer.y + this.camY };
+      if (this.pointer.down && !this.inMinimap(this.pointer.x, this.pointer.y) && !this.editDecor) this.moveTarget = { x: this.pointer.x + this.camX, y: this.pointer.y + this.camY };
       let dx = (this.btn.right ? 1 : 0) - (this.btn.left ? 1 : 0);
       let dy = (this.btn.down ? 1 : 0) - (this.btn.up ? 1 : 0);
       if (dx || dy) this.moveTarget = null;
@@ -737,12 +781,23 @@ export class CirqlWorldEngine extends RetroEngine {
         default: break;
       }
     }
+    // Hearth décor (CHR-259) — your placed pieces, or the host's while visiting (Hearth only)
+    if (this.ringIdx === 0) {
+      const list = this.visiting ? this.visiting.decor : this.decor;
+      for (const d of list) { const def = decorById[d.item]; if (def) draws.push({ y: d.y, f: () => this.drawDecor(d.x - camX, d.y - camY, def.glyph, def.scale ?? 1) }); }
+    }
     // the player
     draws.push({ y: this.posY, f: () => this.drawHero(this.posX - camX, this.posY - camY) });
     // live remote travellers (depth-sorted in with everything else)
     for (const [rid, r] of Array.from(this.remotes.entries())) draws.push({ y: r.y, f: () => this.drawRemote(r.x - camX, r.y - camY, r, this.partyIds.has(rid)) });
     draws.sort((a, c) => a.y - c.y);
     for (const d of draws) d.f();
+
+    // décor placement ghost — a translucent preview under the pointer while editing
+    if (this.editDecor && this.editSel && this.pointer.down) {
+      const def = decorById[this.editSel];
+      if (def) this.drawDecor(this.pointer.x, this.pointer.y, def.glyph, def.scale ?? 1, 0.55);
+    }
 
     // quest waypoint — a bouncing chevron over the current objective target
     const wp = this.objTargetProp();
@@ -926,6 +981,11 @@ export class CirqlWorldEngine extends RetroEngine {
     if (m === "hop") { const j = Math.sin(this.t * 6); return j > 0 ? -Math.round(j * 5) : 0; }   // wave/celebrate/flip
     if (m === "sit") return 3;                                                  // settle down to rest
     return 0;
+  }
+  // A placed décor piece (CHR-259): an emoji glyph standing on a soft shadow.
+  private drawDecor(cx: number, cy: number, glyph: string, scale: number, alpha = 1) {
+    this.disc(cx, cy + 5, 4 * scale, hexA("#0a0714", 0.38 * alpha));
+    this.q(cx, cy - 8 * scale, glyph, "#ffffff", 1.6 * scale, "c", false, alpha);
   }
   // A timed emote glyph that pops in, drifts up and fades over the avatar (CHR-260).
   private drawEmote(cx: number, feet: number, emote: string, life: number) {

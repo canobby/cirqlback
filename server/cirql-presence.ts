@@ -18,7 +18,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { maskProfanity } from "./chat-filter";
 
-interface Traveller { ws: WebSocket; id: string; name: string; avatar: unknown; ring: number; x: number; y: number; dir: string; partyId?: string; lastAsk?: number; lastPost?: number; lastEmote?: number; lastChat?: number; lastDmReq?: number; lastDm?: number; }
+interface Traveller { ws: WebSocket; id: string; name: string; avatar: unknown; ring: number; x: number; y: number; dir: string; partyId?: string; lastAsk?: number; lastPost?: number; lastEmote?: number; lastChat?: number; lastDmReq?: number; lastDm?: number; decor?: { item: string; x: number; y: number }[]; }
 interface Party { id: string; campaignId: string; steps: number; max: number; hostId: string; members: string[]; step: number; }
 interface Post { id: string; dir: "host" | "seeker"; byId: string; byName: string; campaignId: string; steps: number; max: number; tags: string[]; newbie: boolean; partyId: string | null; }
 
@@ -103,6 +103,16 @@ export function setupCirqlPresence() {
         } else {
           toRing(me.ring, { t: "chat", id: me.id, name: me.name, text, channel: "global" });   // to the ring incl. sender
         }
+      }
+      // ---- Hearth décor: cache each traveller's placements so friends can visit (CHR-259) ----
+      else if (m.t === "decor") {
+        me.decor = Array.isArray(m.decor)
+          ? m.decor.filter((d: any) => d && typeof d.item === "string").slice(0, 80).map((d: any) => ({ item: clip(d.item, 24), x: Math.round(+d.x) || 0, y: Math.round(+d.y) || 0 }))
+          : [];
+      }
+      else if (m.t === "visit") {   // ask for a traveller's Hearth décor to visit it
+        const other = players.get(String(m.toId));
+        if (other && other.id !== me.id) send(me.ws, { t: "visit:data", withId: other.id, withName: other.name, decor: other.decor ?? [] });
       }
       else if (m.t === "emote") {   // chat-free expression relayed to the ring (CHR-260)
         const now = Date.now(); if (me.lastEmote && now - me.lastEmote < 450) return; me.lastEmote = now;
