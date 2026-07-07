@@ -254,6 +254,8 @@ export abstract class RetroEngine {
     }
   }
   private onKeyDown = (e: KeyboardEvent) => {
+    const tgt = e.target as HTMLElement | null;   // don't steal keys from a focused text field (e.g. town chat)
+    if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable)) return;
     const bt = this.keyToBtn(e.code);
     if (!bt) return;
     e.preventDefault();
