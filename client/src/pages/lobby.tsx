@@ -91,6 +91,24 @@ export default function Lobby() {
           </div>
         </div>
 
+        {/* flagship entry — CIRQLVERSE (the living world; CirqlCade + the games live inside) */}
+        <Link href="/cirql" data-testid="link-cirqlverse"
+          className="mt-4 flex items-center gap-3 rounded-2xl border px-4 py-3 active:scale-[0.99]"
+          style={{ borderColor: "rgba(178,108,255,.45)", background: "linear-gradient(90deg, rgba(53,224,208,.14), rgba(178,108,255,.2))", boxShadow: "0 0 28px -6px #b26cff" }}>
+          <span className="text-2xl" style={{ filter: "drop-shadow(0 0 7px #b26cff)" }}>🌌</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-baseline gap-x-2 font-extrabold uppercase leading-none">
+              <span className="flex items-baseline">
+                <span className="tracking-[0.25em]" style={{ color: "#fff", textShadow: "0 0 8px rgba(53,224,208,.55)" }}>CIRQL</span>
+                <span className="tracking-[0.1em]" style={{ fontSize: "0.62em", color: "#c9a6ff", textShadow: "0 0 7px rgba(178,108,255,.75)" }}>VERSE</span>
+              </span>
+              <span className="rounded px-1.5 py-0.5 text-[8px] font-extrabold tracking-wide text-[#0a0714]" style={{ background: "#7be0ff" }}>NEW · FLAGSHIP</span>
+            </div>
+            <div className="mt-1 text-[11px] text-violet-100/75">Enter the living world — CirqlCade &amp; all the games are inside ✦</div>
+          </div>
+          <span className="flex-none text-xl text-violet-200/70">›</span>
+        </Link>
+
         {/* era shelf — top tabs: All · Classic · Modern · Favorites (orthogonal to genre) */}
         <div className="mt-4 flex justify-center gap-1.5 sm:gap-2">
           {ERAS.map((e) => {
