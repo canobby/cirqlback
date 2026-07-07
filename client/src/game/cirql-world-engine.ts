@@ -56,7 +56,8 @@ export class CirqlWorldEngine extends RetroEngine {
   private stats: CirqlStats = { sparks: 0, cirqlLit: 0, cirqlTotal: 12, online: 1, energy: 0 };
   private quests: QuestProgress = {};
   private doneOnce = new Set<string>();   // quest ids completed at least once (repeats pay less)
-  private lit = new Set<string>();   // quest lanterns the player has lit
+  private lit = new Set<string>();   // permanently-lit lanterns + puzzle rune states
+  private litForQuest = new Set<string>();   // lanterns lit for the CURRENT lightLanterns quest (reset on accept — never blocked by stale global lit)
 
   // Smooth-text overlay queue: UI/labels are enqueued in logical coords during
   // render() and painted crisply (system sans) in onOverlay(), so words stay
@@ -131,10 +132,11 @@ export class CirqlWorldEngine extends RetroEngine {
   setHudInsets(topCss: number, botCss: number) { this.insetTopCss = Math.max(0, topCss); this.insetBotCss = Math.max(0, botCss); }
   /** The on-screen action button + the quest system call this to interact. */
   interact() { this.doInteract(); }
-  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), doneOnce: Array.from(this.doneOnce) }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce) }; }
   applyState(s: any) {
     if (!s) return;
     if (Array.isArray(s.doneOnce)) this.doneOnce = new Set(s.doneOnce);
+    if (Array.isArray(s.litForQuest)) this.litForQuest = new Set(s.litForQuest);
     if (typeof s.maxRing === "number") this.maxRing = Math.max(this.maxRing, s.maxRing);
     if (typeof s.ring === "number" && s.ring >= 0) { this.ringIdx = s.ring; this.curRing = getRing(s.ring); this.maxRing = Math.max(this.maxRing, s.ring); this.ensureRingQuest(); }
     if (typeof s.x === "number" && typeof s.y === "number") { this.posX = s.x; this.posY = s.y; }
@@ -225,11 +227,9 @@ export class CirqlWorldEngine extends RetroEngine {
   acceptQuest(id: string) {
     const q = questById(id); if (!q || this.quests[id]?.status === "active") return;   // re-accept allowed if done (repeat)
     this.quests[id] = { status: "active", obj: q.objectives.map(() => 0) };
-    // a "light the lanterns" quest must start with its ring's lanterns dark, so a prior
-    // playthrough's already-lit lanterns can't leave the objective uncompletable
-    if (q.objectives.some((o) => o.kind === "lightLanterns")) {
-      for (const p of this.curRing.props) if (p.t === "lantern" && p.id) this.lit.delete(p.id);
-    }
+    // a "light the lanterns" quest starts fresh: reset the per-quest lit set so the
+    // lanterns are all dark + lightable, regardless of any permanent/global lit state
+    if (q.objectives.some((o) => o.kind === "lightLanterns")) this.litForQuest = new Set();
     this.toast(`✦ New quest — ${q.name}`);
     this.onQuestChange?.();
   }
@@ -259,9 +259,11 @@ export class CirqlWorldEngine extends RetroEngine {
     p.status = "done";
     const first = !this.doneOnce.has(q.id);
     this.doneOnce.add(q.id);
+    // lanterns lit for this quest become permanently lit (the path stays glowing)
+    if (this.litForQuest.size) { for (const id of Array.from(this.litForQuest)) this.lit.add(id); this.litForQuest.clear(); }
     this.onQuestComplete?.(q, first);   // page grants the reward (reduced on repeat) + toast
     this.onQuestChange?.();
-    if (first && q.next) this.acceptQuest(q.next);   // only auto-chain the first time
+    if (q.next) this.acceptQuest(q.next);   // chain onward (re-accepting resets a repeated chain)
   }
   /** Rows for the quest-log panel (available/active/done, with the current objective). */
   getQuestLog(): QuestLogRow[] {
@@ -284,9 +286,9 @@ export class CirqlWorldEngine extends RetroEngine {
     const oi = this.currentObjIndex(q); if (oi < 0) return null;
     const o = q.objectives[oi];
     if (o.ring != null && o.ring !== this.ringIdx) return this.dockToward(o.ring);   // cross-ring: point to the dock that sails there
-    if (o.kind === "lightLanterns") {   // point to the nearest unlit quest lantern
+    if (o.kind === "lightLanterns") {   // point to the nearest lantern not yet lit this quest
       let best: Prop | null = null, bd = 1e9;
-      for (const p of this.curRing.props) if (p.t === "lantern" && p.id && !this.lit.has(p.id)) { const d = Math.hypot(this.posX - p.x, this.posY - p.y); if (d < bd) { bd = d; best = p; } }
+      for (const p of this.curRing.props) if (p.t === "lantern" && p.id && !this.litForQuest.has(p.id)) { const d = Math.hypot(this.posX - p.x, this.posY - p.y); if (d < bd) { bd = d; best = p; } }
       return best;
     }
     if (o.kind === "enterWonders") return this.curRing.props.find((p) => p.t === "wonders") ?? null;
@@ -309,8 +311,9 @@ export class CirqlWorldEngine extends RetroEngine {
     return q.objectives[oi].kind;
   }
   // A lantern is a quest lantern (unlit + interactable) whenever the active quest's
-  // current objective is lightLanterns — works on the Hearth AND generated rings.
-  private isQuestLantern(p: Prop) { return p.t === "lantern" && !!p.id && this.currentObjKind() === "lightLanterns" && !this.lit.has(p.id); }
+  // current objective is lightLanterns and it isn't yet lit FOR THIS QUEST — works on the
+  // Hearth AND generated rings, and is never blocked by permanent/global lit state.
+  private isQuestLantern(p: Prop) { return p.t === "lantern" && !!p.id && this.currentObjKind() === "lightLanterns" && !this.litForQuest.has(p.id); }
 
   // ---------- interaction ----------
   private solids(): { x: number; y: number; r: number }[] {
@@ -354,7 +357,7 @@ export class CirqlWorldEngine extends RetroEngine {
     }
     if (p.t === "gathering") { this.toast("A good place to rest and meet fellow travellers."); return; }
     if (p.t === "theater") { const m = this.nowShowing(); this.dialog = { name: "Cirql Drive-In", accent: "#7fd0ff", i: 0, lines: [`Now showing: "${m.title}"`, m.tagline, "Pull up a bench and stay a while."] }; return; }
-    if (p.t === "lantern" && p.id) { if (!this.lit.has(p.id)) { this.lit.add(p.id); this.advanceObjective("lightLanterns"); this.onQuestChange?.(); } }
+    if (p.t === "lantern" && p.id) { if (this.currentObjKind() === "lightLanterns" && !this.litForQuest.has(p.id)) { this.litForQuest.add(p.id); this.advanceObjective("lightLanterns"); this.onQuestChange?.(); } }
     else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.onInteract?.("wonders", p); }
     else if (p.t === "npc") { this.openNpcDialog(p); this.onInteract?.("npc", p); }
     else if (p.t === "dock") {
@@ -598,8 +601,8 @@ export class CirqlWorldEngine extends RetroEngine {
         case "crystal": draws.push({ y: p.y, f: () => this.drawCrystal(sxp, syp, p.big, p.accent || pal.accent) }); break;
         case "rock": draws.push({ y: p.y, f: () => this.drawRock(sxp, syp, p.big) }); break;
         case "flower": draws.push({ y: p.y, f: () => this.drawFlower(sxp, syp, p.accent || "#ff8fbf") }); break;
-        case "fence": draws.push({ y: p.y, f: () => this.drawFence(sxp, syp) }); break;
-        case "lantern": { const isQ = !!p.id && this.currentObjKind() === "lightLanterns"; const litState = isQ ? this.lit.has(p.id!) : true; draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, litState) }); break; }
+        case "fence": draws.push({ y: p.y, f: () => this.drawFence(sxp, syp, !!p.vert) }); break;
+        case "lantern": { const isQ = !!p.id && this.currentObjKind() === "lightLanterns"; const litState = isQ ? this.litForQuest.has(p.id!) : true; draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, litState) }); break; }
         case "dock": draws.push({ y: p.y - 40, f: () => this.drawDock(sxp, syp, p) }); break;
         case "tablet": draws.push({ y: p.y, f: () => this.drawTablet(sxp, syp, this.near === p) }); break;
         case "rune": { const rl = !!p.id && this.lit.has(p.id); const rn = this.near === p; draws.push({ y: p.y, f: () => this.drawRune(sxp, syp, rl, rn) }); break; }
@@ -777,10 +780,15 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx, cy - 6, 1.4, c); this.disc(cx, cy - 2, 1.4, c);
     this.disc(cx, cy - 4, 1.2, "#ffe58a");                  // centre
   }
-  private drawFence(cx: number, cy: number) {
+  private drawFence(cx: number, cy: number, vert: boolean) {
     this.disc(cx, cy + 2, 5, "#0a071430");
-    for (let i = -1; i <= 1; i++) { const px = cx + i * 8; this.rect(px - 1, cy - 8, 2, 12, "#7a5a38"); this.rect(px - 1, cy - 8, 2, 2, "#96703f"); }   // posts
-    this.rect(cx - 9, cy - 6, 18, 1.5, "#8a663f"); this.rect(cx - 9, cy - 1, 18, 1.5, "#8a663f");   // rails
+    if (vert) {
+      for (let i = -1; i <= 1; i++) { const py = cy + i * 7; this.rect(cx - 1, py - 5, 2, 10, "#7a5a38"); this.rect(cx - 1, py - 5, 2, 2, "#96703f"); }   // posts
+      this.rect(cx - 4, cy - 11, 1.5, 22, "#8a663f"); this.rect(cx + 2.5, cy - 11, 1.5, 22, "#8a663f");   // vertical rails
+    } else {
+      for (let i = -1; i <= 1; i++) { const px = cx + i * 8; this.rect(px - 1, cy - 8, 2, 12, "#7a5a38"); this.rect(px - 1, cy - 8, 2, 2, "#96703f"); }   // posts
+      this.rect(cx - 9, cy - 6, 18, 1.5, "#8a663f"); this.rect(cx - 9, cy - 1, 18, 1.5, "#8a663f");   // rails
+    }
   }
   private drawPath(cx: number, cy: number) {
     const b = this.b, s = this.SS;

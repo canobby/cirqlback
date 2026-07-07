@@ -38,6 +38,7 @@ export interface Prop {
   to?: number;          // dock: destination ring index
   big?: boolean;        // larger tree/crystal
   r?: number;           // interaction/collision radius override (world units)
+  vert?: boolean;       // fence: draw the segment vertically (for corral sides)
 }
 
 export interface RingPalette {
@@ -106,21 +107,24 @@ const HEARTH: Ring = {
     { t: "rock", x: -285, y: 200, big: true },
     { t: "rock", x: 175, y: -150 },
     { t: "pond", x: -320, y: 55, r: 26 },
-    // wildflowers, a couple of fences + a dirt path from spawn up to the cottage
-    { t: "flower", x: 60, y: 120, accent: "#ff8fbf" },
-    { t: "flower", x: -90, y: 95, accent: "#ffd24a" },
-    { t: "flower", x: 150, y: -40, accent: "#e0a0ff" },
-    { t: "flower", x: -165, y: -70, accent: "#ffffff" },
-    { t: "flower", x: 215, y: 165, accent: "#ff6b6b" },
-    { t: "flower", x: -45, y: 215, accent: "#8fd0ff" },
-    { t: "flower", x: 95, y: -140, accent: "#ff8fbf" },
-    { t: "flower", x: -205, y: 65, accent: "#ffd24a" },
-    { t: "fence", x: 185, y: 95 },
-    { t: "fence", x: -120, y: 150 },
-    { t: "path", x: 0, y: 112 },
-    { t: "path", x: 8, y: 74 },
-    { t: "path", x: -6, y: 34 },
-    { t: "path", x: 4, y: -6 },
+    // ---- purposeful garden landscape ----
+    // a flower bed by the spawn path
+    { t: "flower", x: 100, y: 110, accent: "#ff8fbf" }, { t: "flower", x: 114, y: 120, accent: "#ffd24a" },
+    { t: "flower", x: 90, y: 124, accent: "#e0a0ff" }, { t: "flower", x: 108, y: 132, accent: "#ffffff" },
+    { t: "flower", x: 122, y: 110, accent: "#ff6b6b" },
+    // a second bed to the west
+    { t: "flower", x: -150, y: -60, accent: "#8fd0ff" }, { t: "flower", x: -138, y: -50, accent: "#ffd24a" },
+    { t: "flower", x: -162, y: -48, accent: "#ff8fbf" }, { t: "flower", x: -148, y: -38, accent: "#ffffff" },
+    // a small fenced garden east of the cottage (an enclosure open at the bottom)
+    { t: "fence", x: 170, y: -72 }, { t: "fence", x: 192, y: -72 }, { t: "fence", x: 214, y: -72 },   // top
+    { t: "fence", x: 170, y: -30 }, { t: "fence", x: 214, y: -30 },                                    // bottom (gap = gate)
+    { t: "fence", x: 160, y: -58, vert: true }, { t: "fence", x: 160, y: -44, vert: true },            // left
+    { t: "fence", x: 224, y: -58, vert: true }, { t: "fence", x: 224, y: -44, vert: true },            // right
+    { t: "flower", x: 185, y: -55, accent: "#ffd24a" }, { t: "flower", x: 200, y: -48, accent: "#ff8fbf" },   // flowers inside
+    // a fence row along the west field edge
+    { t: "fence", x: -240, y: 150 }, { t: "fence", x: -218, y: 150 }, { t: "fence", x: -196, y: 150 },
+    // a dirt path from spawn up to the cottage
+    { t: "path", x: 0, y: 112 }, { t: "path", x: 8, y: 74 }, { t: "path", x: -6, y: 34 }, { t: "path", x: 4, y: -6 },
     // the path lanterns to the Wonders — quest targets for "The Lantern Path"
     { t: "lantern", x: 95, y: 75, id: "ql1" },
     { t: "lantern", x: 165, y: 55, id: "ql2" },

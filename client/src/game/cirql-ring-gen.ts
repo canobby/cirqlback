@@ -82,6 +82,36 @@ const SUBS = ["a quiet shore", "beyond the fog", "a windswept land", "where lant
 
 function pick<T>(rng: () => number, arr: T[]): T { return arr[Math.floor(rng() * arr.length)]; }
 
+const TAU = Math.PI * 2;
+
+// ---- purposeful landscape formations (things look built/placed, not random scatter) ----
+function placeGrove(props: Prop[], cx: number, cy: number, n: number, rng: () => number) {
+  for (let i = 0; i < n; i++) { const a = rng() * TAU, r = 6 + rng() * 22; props.push({ t: "tree", x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r * 0.7, big: rng() > 0.6 }); }
+}
+function placeFlowerBed(props: Prop[], cx: number, cy: number, n: number, rng: () => number) {
+  for (let i = 0; i < n; i++) { const a = rng() * TAU, r = rng() * 15; props.push({ t: "flower", x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r * 0.7, accent: pick(rng, FLOWER_COLS) }); }
+}
+function placeRockCairn(props: Prop[], cx: number, cy: number, n: number, rng: () => number) {
+  for (let i = 0; i < n; i++) { const a = (i / n) * TAU + rng() * 0.6, r = 5 + i * 3.5; props.push({ t: "rock", x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r * 0.7, big: i === 0 }); }
+}
+// a fenced enclosure (corral) with one open side — reads as built for a purpose
+function placeCorral(props: Prop[], cx: number, cy: number, hw: number, hh: number, rng: () => number) {
+  const gap = Math.floor(rng() * 4), step = 22;   // which side is the opening
+  for (let x = -hw; x <= hw + 0.1; x += step) {
+    if (gap !== 0 || Math.abs(x) > step) props.push({ t: "fence", x: cx + x, y: cy - hh });
+    if (gap !== 1 || Math.abs(x) > step) props.push({ t: "fence", x: cx + x, y: cy + hh });
+  }
+  for (let y = -hh + step; y < hh - 0.1; y += step) {
+    if (gap !== 2 || Math.abs(y) > step) props.push({ t: "fence", x: cx - hw, y: cy + y, vert: true });
+    if (gap !== 3 || Math.abs(y) > step) props.push({ t: "fence", x: cx + hw, y: cy + y, vert: true });
+  }
+}
+// a straight run of fence (a field boundary)
+function placeFenceRow(props: Prop[], cx: number, cy: number, len: number, vert: boolean) {
+  const n = Math.max(2, Math.round(len / 22));
+  for (let i = 0; i < n; i++) { const off = (i - (n - 1) / 2) * 22; props.push(vert ? { t: "fence", x: cx, y: cy + off, vert: true } : { t: "fence", x: cx + off, y: cy }); }
+}
+
 /** Generate the ring at `index` (>= 1). Deterministic: same index → same land, forever. */
 export function generateRing(index: number): Ring {
   const rng = rngFrom(Math.imul(index, 2654435761) ^ 0x9e3779b9);
@@ -114,13 +144,31 @@ export function generateRing(index: number): Ring {
   // scale scenery with the island's size so bigger rings don't feel empty
   const sizeScale = radius / 460;
   const scaled = (n: number) => n <= 0 ? 0 : Math.max(1, Math.round(n * sizeScale));
-  if (biome.tree) { const n = scaled(5 + Math.floor(rng() * 5)); for (let i = 0; i < n; i++) place("tree", { big: rng() > 0.6 }); }
+  // a clear anchor away from the north/south dock lanes (formation centre)
+  const clearSpot = (): { x: number; y: number } => {
+    for (let tries = 0; tries < 12; tries++) {
+      const a = rng() * TAU, rr = radius * (0.22 + rng() * 0.48), x = Math.cos(a) * rr, y = Math.sin(a) * rr;
+      if (Math.abs(x) < radius * 0.16 && Math.abs(y) > radius * 0.55) continue;
+      return { x, y };
+    }
+    return { x: radius * 0.3, y: radius * 0.1 };
+  };
+  // trees: a couple of GROVES (clumps) + a little loose scatter
+  if (biome.tree) {
+    for (let g = 0; g < scaled(2); g++) { const c = clearSpot(); placeGrove(props, c.x, c.y, 3 + Math.floor(rng() * 3), rng); }
+    for (let i = 0; i < scaled(2); i++) place("tree", { big: rng() > 0.6 });
+  }
+  // rocks: a CAIRN formation (+ scatter for rocky biomes like desert)
+  if (biome.rocks > 0) { const c = clearSpot(); placeRockCairn(props, c.x, c.y, Math.min(6, scaled(biome.rocks)), rng); for (let i = 0; i < scaled(Math.max(0, biome.rocks - 4)); i++) place("rock", { big: rng() > 0.6 }); }
+  // flowers: BEDS (clusters), not lone scatter
+  if (biome.flowers > 0) { const beds = Math.max(1, Math.round(scaled(biome.flowers) / 5)); for (let b = 0; b < beds; b++) { const c = clearSpot(); placeFlowerBed(props, c.x, c.y, 5, rng); } }
   for (let i = 0; i < scaled(biome.crystals); i++) place("crystal", { big: rng() > 0.5, accent: biome.palette.accent });
   for (let i = 0; i < scaled(biome.lanterns); i++) place("lantern");
-  for (let i = 0; i < scaled(biome.rocks); i++) place("rock", { big: rng() > 0.6 });
-  for (let i = 0; i < scaled(biome.flowers); i++) place("flower", { accent: FLOWER_COLS[Math.floor(rng() * FLOWER_COLS.length)] });
-  // a fence segment tucked in an open spot
-  if (biome.fence) { for (let tries = 0; tries < 6; tries++) { const a = rng() * Math.PI * 2, rr = radius * (0.28 + rng() * 0.4); const x = Math.cos(a) * rr, y = Math.sin(a) * rr; if (Math.abs(x) < radius * 0.16 && Math.abs(y) > radius * 0.55) continue; props.push({ t: "fence", x, y }); break; } }
+  // fences: a CORRAL (enclosure, open on one side) or a straight field ROW — purposeful
+  if (biome.fence) { const c = clearSpot(); if (rng() > 0.5) placeCorral(props, c.x, c.y, 34, 22, rng); else placeFenceRow(props, c.x, c.y, 70, rng() > 0.5); }
+  // larger rings get extra pockets of a DIFFERENT feel (a little grove + flowerbed — an
+  // oasis even on a desert ring) so a big island isn't one uniform scene throughout
+  if (radius > 620) { const g = clearSpot(); placeGrove(props, g.x, g.y, 3 + Math.floor(rng() * 2), rng); const f = clearSpot(); placeFlowerBed(props, f.x, f.y, 6, rng); if (rng() > 0.5) { const p = clearSpot(); props.push({ t: "pond", x: p.x, y: p.y, r: 20 + Math.floor(rng() * 10) }); } }
   // a dirt trail leading inland from the shore (along the arrival lane)
   if (biome.path) { const n = 5; for (let k = 0; k < n; k++) props.push({ t: "path", x: Math.sin(k * 1.3 + index) * 16, y: -radius * 0.6 + k * (radius * 0.42 / n) }); }
   if (biome.pond) {
