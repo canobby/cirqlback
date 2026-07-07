@@ -14,7 +14,7 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 | M4 · First Quest Chain (onboarding) | 4 | 4 |
 | M5 · CirqlCade (in-world arcade) | 4 | 4 |
 | M6 · Sparks Economy & Your Cirql | 6 | 5 |
-| M7 · Playable Slice Hardening | 3 | 0 |
+| M7 · Playable Slice Hardening | 3 | 3 |
 | M8 · Social — presence & chat channels | 3 | 0 |
 | M9 · Campaigns & Party Finder | 4 | 0 |
 | M10 · Endless content engines | 4 | 0 |
@@ -68,10 +68,10 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 - [x] **CHR-246** — Spend sparks: in-CIRQL cosmetics (buy-in-place in the creator)
 - [ ] **CHR-245** — Unify rewards → sparks (retire arcade reward system) — deferred (platform-wide; own pass)
 
-## M7 · Playable Slice Hardening
-- [ ] **CHR-239** — Full-loop smoke test (enter → quests → Wonders → play → sparks → resume)
-- [ ] **CHR-240** — tsc clean + mobile pass + perf
-- [ ] **CHR-241** — Beta-test checklist entry + deploy
+## M7 · Playable Slice Hardening — DONE (commit 6b52ba9, live)
+- [x] **CHR-239** — Full-loop smoke test (enter → quests → CirqlCade → play → sparks → resume)
+- [x] **CHR-240** — tsc clean + mobile pass + perf
+- [x] **CHR-241** — Beta-test checklist + deploy + `/cirql` surfaced on the arcade lobby
 
 ## M8 · Social — presence & chat channels
 - [ ] **CHR-247** — Live presence in-world (/ws/cirql, room per ring)

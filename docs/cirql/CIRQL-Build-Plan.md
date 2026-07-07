@@ -13,7 +13,8 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - **Brand:** flagship wordmark **CIRQLVERSE** (CIRQL white + VERSE half-size violet); the in-world arcade building renamed **CirqlCade** with a cosmic mystery-dome roof.
 - **M5 · CirqlCade (in-world arcade) — DONE & LIVE** (commit `26eead2`). Enter CirqlCade → a hall of all ~57 live cabinets (from the registry); tap one → it plays **embedded in an iframe over `/cirql`** (never leaves CIRQLVERSE); "← CirqlCade" exits to the hall and the game's own /arcade back-link is caught + routed back; **a spark a play** on exit. Verified end-to-end (0 errors, tsc clean).
 - **M6 · Sparks Economy & Your Cirql — DONE & LIVE** (commits `9f4c0e4`, `df76f4a`). World Energy meter, your-Cirql lanterns + Cirql panel (Invite + "share a light"), capped spark-a-play, and **spend-sparks cosmetics** (buy-in-place in the creator; owned persists). **Only CHR-245 (retire the platform-wide arcade reward system) remains — intentionally deferred** to its own careful pass (big blast radius).
-- **Next up: M7 · Playable Slice Hardening.**
+- **M7 · Playable Slice Hardening — DONE & LIVE** (commit `6b52ba9`). Full-loop smoke (arcade banner → world → create → quests → CirqlCade → play → sparks → spend → resume) verified; tsc clean + mobile pass; **CIRQLVERSE surfaced via a flagship banner on `/arcade`**; beta-test checklist doc created.
+- **🎉 THE PLAYABLE SLICE (M0–M7) IS COMPLETE & LIVE.** Remaining: deferred **CHR-245** + the deeper roadmap **M8** (social/chat) · **M9** (campaigns/party-finder) · **M10** (endless engines) · **M11** (wishlist).
 - **Roadmap grew (owner brainstorm):** added **M8 Social/chat**, **M9 Campaigns & Party Finder**, **M10 Endless content engines** (procedural rings, quest templates, daily/seasonal, Myst-style puzzles), **M11 Depth & Delight wishlist** (Hearth décor+visiting, emotes, tapped-shops→landmarks, sailing-as-journey, jump). Positioning: **Balanced**.
 
 ## Locked decisions (owner, 2026-07-06 — "ALL IN")
@@ -72,10 +73,10 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - [x] Spend sparks: in-CIRQL cosmetics (buy-in-place in the creator) *(CHR-246)*
 - [ ] Unify rewards → sparks (retire the arcade's separate reward system) *(CHR-245)* — deferred (platform-wide; own pass)
 
-## M7 · Playable Slice Hardening
-- [ ] Full-loop smoke test *(CHR-239)*
-- [ ] tsc clean + mobile pass + perf *(CHR-240)*
-- [ ] Beta-test checklist entry + deploy *(CHR-241)*
+## M7 · Playable Slice Hardening — DONE
+- [x] Full-loop smoke test *(CHR-239)*
+- [x] tsc clean + mobile pass + perf *(CHR-240)*
+- [x] Beta-test checklist + deploy + surface `/cirql` in nav *(CHR-241)*
 
 ## M8 · Social — presence & chat channels
 - [ ] Live presence in-world (`/ws/cirql`, room per ring) *(CHR-247)*
