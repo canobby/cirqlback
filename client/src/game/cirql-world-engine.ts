@@ -79,6 +79,9 @@ export class CirqlWorldEngine extends RetroEngine {
   private groundFx: { x: number; y: number; life: number; max: number; kind: "dust" | "splash" | "print" | "snow" | "ash" | "puff"; foot: number }[] = [];
   private stepT = 0; private stepFoot = 1; private squashT = 0; private wasAir = false; private bumpT = 0;
   private breathT = 2;   // cold-biome breath-puff cadence (Phase I5)
+  // world interactions (Phase I6): a knock/wave beat before entering, and an item-get "present" pose
+  private entryAction: { at: number; fn: () => void } | null = null;
+  private presentPose: { glyph: string; color: string; t: number } | null = null;
   // Hearth décor (CHR-259): your placed decorations, an edit mode, and a "visiting" overlay
   private decor: { item: string; x: number; y: number }[] = [];
   private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
@@ -412,6 +415,14 @@ export class CirqlWorldEngine extends RetroEngine {
     this.playEmote(def.emote);   // body animation (I3) + broadcasts so your partner sees it on your remote sprite
   }
   private faceToward(x: number, y: number): Facing { const dx = x - this.posX, dy = y - this.posY; return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"); }
+  // ---- world interactions (Phase I6) ----
+  /** Wave/knock at a shop door or sub-map mouth, then run `fn` a beat later (reduced-motion → now). */
+  private enterWithWave(fn: () => void) {
+    if (this.reduce || this.entryAction) { fn(); return; }
+    this.playEmote("wave"); this.entryAction = { at: this.t + 0.55, fn };
+  }
+  /** Item-get: briefly raise an item overhead (arms up + sparkle). Called on rewards/pickups. */
+  present(glyph: string, color = "#ffd24a") { this.presentPose = { glyph, color, t: 1.7 }; }
   remoteCount() { return this.remotes.size; }
   clearRemotes() { this.remotes.clear(); }
 
@@ -499,6 +510,7 @@ export class CirqlWorldEngine extends RetroEngine {
     // lanterns lit for this quest become permanently lit (the path stays glowing)
     if (this.litForQuest.size) { for (const id of Array.from(this.litForQuest)) this.lit.add(id); this.litForQuest.clear(); }
     this.onQuestComplete?.(q, first);   // page grants the reward (reduced on repeat) + toast
+    if (first) this.present("✦", "#ffd24a");   // item-get: raise the reward overhead (I6)
     this.onQuestChange?.();
     if (q.next) this.acceptQuest(q.next);   // chain onward (re-accepting resets a repeated chain)
   }
@@ -603,14 +615,14 @@ export class CirqlWorldEngine extends RetroEngine {
     if (p.t === "gathering") { this.toast("A good place to rest and meet fellow travellers."); return; }
     if (p.t === "theater") { const m = this.nowShowing(); this.dialog = { name: "Cirql Drive-In", accent: "#7fd0ff", i: 0, lines: [`Now showing: "${m.title}"`, m.tagline, "Pull up a bench and stay a while."] }; return; }
     if (p.t === "lantern" && p.id) { if (this.currentObjKind() === "lightLanterns" && !this.litForQuest.has(p.id)) { this.litForQuest.add(p.id); this.advanceObjective("lightLanterns"); this.onQuestChange?.(); } }
-    else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.onInteract?.("wonders", p); }
+    else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.enterWithWave(() => this.onInteract?.("wonders", p)); }   // wave/knock at the arcade doors (I6)
     else if (p.t === "npc") { this.openNpcDialog(p); this.onInteract?.("npc", p); }
     else if (p.t === "dock") {
       const to = p.to ?? -1;
       if (to < 0) this.toast("Only open sea lies inward from the Hearth.");
       else { this.onInteract?.("dock", p); this.sailTo(to); }
     }
-    else if (p.t === "portal") { if (typeof p.to === "number") this.sailTo(p.to); }
+    else if (p.t === "portal") { if (typeof p.to === "number") { const to = p.to; this.enterWithWave(() => this.sailTo(to)); } }   // wave at the sub-map mouth (I6)
   }
   /** Is the current ring's rune puzzle solved (exactly the target runes lit)? */
   private puzzleSolved(): boolean {
@@ -675,6 +687,9 @@ export class CirqlWorldEngine extends RetroEngine {
     this.squashT = Math.max(0, this.squashT - dt); this.bumpT = Math.max(0, this.bumpT - dt);
     // paired social gesture (I4) — ends on its timer, or if your partner drifts away
     if (this.pair) { this.pair.t -= dt; const r = this.remotes.get(this.pair.withId); if (this.pair.t <= 0 || !r || Math.hypot(this.posX - r.x, this.posY - r.y) > 64) this.pair = null; }
+    // world interactions (I6): fire a delayed shop/sub-map entry after the wave; decay the present pose
+    if (this.entryAction && this.t >= this.entryAction.at) { const f = this.entryAction.fn; this.entryAction = null; f(); }
+    if (this.presentPose) { this.presentPose.t -= dt; if (this.presentPose.t <= 0) this.presentPose = null; }
     // cold-biome breath puff (I5) — a little cloud drifts from the face every couple of seconds
     if (this.isCold() && !this.reduce && !this.dialog && !this.cs) {
       if ((this.breathT -= dt) <= 0) {
@@ -1222,7 +1237,8 @@ export class CirqlWorldEngine extends RetroEngine {
     const breath = (idle && !this.reduce) ? Math.round(Math.sin(this.t * 1.7) * 0.8) : 0;
     const stretch = this.fidget?.kind === "stretch" ? -Math.round(Math.sin((1 - Math.max(0, this.fidget.t) / 0.55) * Math.PI) * 2) : 0;
     const face: Facing = this.fidget?.kind === "lookL" ? "left" : this.fidget?.kind === "lookR" ? "right" : this.fidget?.kind === "lookU" ? "up" : this.facing;
-    const bob = walkBob + this.emoteBob(this.myEmoteT > 0 ? this.myEmote : "") - z + sit + breath + stretch;
+    const presentBob = (this.presentPose && !this.reduce) ? -Math.abs(Math.round(Math.sin(this.t * 8) * 2)) : 0;   // item-get hop (I6)
+    const bob = walkBob + this.emoteBob(this.myEmoteT > 0 ? this.myEmote : "") - z + sit + breath + stretch + presentBob;
     // biome movement flavor (I5): a shiver in the cold; an aura that flutters on the biome wind
     const shiver = (this.isCold() && !this.reduce && this.walk <= 0) ? Math.round(Math.sin(this.t * 22) * 0.5) : 0;
     const wind = this.windAmt();
@@ -1245,7 +1261,22 @@ export class CirqlWorldEngine extends RetroEngine {
     this.nameTag(cx, cy, this.myName, "#ffd24a");
     if (this.dozing) this.drawZzz(cx + 7, cy - 30 + bob);
     if (this.myEmoteT > 0 && this.myEmote) { this.drawEmoteHands(cx, cy + bob, this.hero, this.myEmote, this.myEmoteT); this.drawEmote(cx, cy, this.myEmote, this.myEmoteT); }
+    if (this.presentPose) this.drawPresent(cx, cy + bob, this.presentPose);
     if (this.myChatT > 0 && this.myChat) this.drawBubble(cx, cy, this.myChat, this.myChatT);
+  }
+  // Item-get "present" pose (I6): both arms raised holding the item overhead, with sparkles.
+  private drawPresent(cx: number, cy: number, pr: { glyph: string; color: string; t: number }) {
+    const a = pr.t < 0.4 ? pr.t / 0.4 : 1;   // fade out at the end
+    const rise = this.reduce ? 0 : Math.round(Math.abs(Math.sin(this.t * 8)) * 1.5);
+    // raised arms + hands (like a cheer, reaching up to the item)
+    this.rect(cx - 6, cy - 23 - rise, 2, 6, this.hero.body); this.disc(cx - 5, cy - 24 - rise, 2, this.hero.skin);
+    this.rect(cx + 4, cy - 23 - rise, 2, 6, this.hero.body); this.disc(cx + 5, cy - 24 - rise, 2, this.hero.skin);
+    // the item, glowing, held aloft
+    if (!this.reduce) this.glow(cx, cy - 30 - rise, 10, pr.color, 0.35 * a);
+    this.disc(cx, cy - 30 - rise, 4, hexA("#0a0714", 0.35 * a));
+    this.q(cx, cy - 34 - rise, pr.glyph, "#ffffff", 1.7, "c", false, a);
+    // sparkles
+    if (!this.reduce) for (let i = 0; i < 3; i++) { const ang = this.t * 3 + i * (TAU / 3); this.q(cx + Math.cos(ang) * 8, cy - 30 - rise + Math.sin(ang) * 6, "✦", pr.color, 0.7, "c", false, a * 0.9); }
   }
   // Rising "z"s over a dozing avatar (I1 AFK doze).
   private drawZzz(cx: number, top: number) {
@@ -1754,6 +1785,10 @@ export class CirqlWorldEngine extends RetroEngine {
     const bases: Record<string, number> = { snow: 16, ember: 12, dust: 10, firefly: 7, grasshopper: 9, bee: 9, dragonfly: 7, gull: 4, butterfly: 10 };
     const N = Math.max(bases[kind] ?? 8, Math.min(36, Math.round((bases[kind] ?? 8) * (R / 460))));
     const cols = ["#ffd24a", "#ff8fbf", "#8fd0ff", "#b6ff9c", "#e0a0ff"];
+    // pet-a-critter (I6): while you hold still (standing or sitting, but not AFK-dozing or
+    // mid-dialog), the nearest critter warms to you → a little heart
+    const still = this.walk <= 0 && !this.dozing && !this.dialog;
+    let petX = 0, petY = 0, petD = 1e9;
     for (let i = 0; i < N; i++) {
       // a deterministic world anchor spread across the island (stays with the ground)
       const h = this.ringIdx * 131 + i * 977 + 17;
@@ -1803,7 +1838,10 @@ export class CirqlWorldEngine extends RetroEngine {
       }
       const sx = fx - camX, sy = fy - camY;
       if (render && sx > -30 && sx < W + 30 && sy > -30 && sy < H + 30) render(sx, sy);
+      if (still) { const d = Math.hypot(fx - this.posX, fy - this.posY); if (d < 26 && d < petD) { petD = d; petX = sx; petY = sy; } }
     }
+    // the nearby critter shows a little heart — it's being petted
+    if (still && petD < 26) { const hy = petY - 7 - Math.abs(Math.sin(this.t * 3)) * 2; this.q(petX, hy, "♥", "#ff6b8f", 0.85, "c", false, 0.9); }
   }
   private drawButterfly(x: number, y: number, ph: number, color: string) {
     x = Math.round(x); y = Math.round(y);

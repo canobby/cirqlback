@@ -549,6 +549,7 @@ export default function Cirql() {
     sparksRef.current -= cost; setSparksUi(sparksRef.current);
     ownedRef.current = [...ownedRef.current, id]; setOwned(ownedRef.current);
     engineRef.current?.setStats({ sparks: sparksRef.current });
+    engineRef.current?.present("🎁", "#b26cff");   // item-get: raise your new unlock overhead (I6)
     persist();
     return true;
   };
