@@ -26,24 +26,27 @@ interface Biome {
   tree: boolean;       // scatter trees
   crystals: number;    // crystal clusters
   lanterns: number;    // path lanterns
+  rocks: number;       // boulders (solid)
+  pond: boolean;       // a little water feature (solid)
+  ambient: "butterfly" | "firefly" | "ember" | "snow" | "gull" | "dust";   // drifting critters
 }
 
 // Biome palettes — same dusk-neon family as the Hearth, shifted per land so each ring
-// reads distinct at a glance.
+// reads distinct at a glance. Each biome carries its own landscape mix + ambient life.
 const BIOMES: Biome[] = [
-  { key: "woodland", tree: true, crystals: 1, lanterns: 4,
+  { key: "woodland", tree: true, crystals: 1, lanterns: 4, rocks: 3, pond: true, ambient: "butterfly",
     palette: { sky: ["#1c2b1f", "#101d2e"], sea: "#0c2036", land: "#20402c", grass: "#2f6340", sand: "#b9a06a", accent: "#8ef0a0", mote: "#c8ffd6" } },
-  { key: "coast", tree: true, crystals: 0, lanterns: 5,
+  { key: "coast", tree: true, crystals: 0, lanterns: 5, rocks: 5, pond: false, ambient: "gull",
     palette: { sky: ["#183048", "#0e1c34"], sea: "#0a3350", land: "#1f3f4a", grass: "#2f6a6a", sand: "#e0cf9a", accent: "#6fd8ff", mote: "#bff0ff" } },
-  { key: "ember", tree: true, crystals: 2, lanterns: 3,
+  { key: "ember", tree: true, crystals: 2, lanterns: 3, rocks: 4, pond: false, ambient: "ember",
     palette: { sky: ["#2e1622", "#1a0f22"], sea: "#241026", land: "#3a2030", grass: "#5a3040", sand: "#caa070", accent: "#ff8a5c", mote: "#ffd0a8" } },
-  { key: "frost", tree: true, crystals: 3, lanterns: 4,
+  { key: "frost", tree: true, crystals: 3, lanterns: 4, rocks: 4, pond: false, ambient: "snow",
     palette: { sky: ["#1b2740", "#101a30"], sea: "#12314e", land: "#2a3a52", grass: "#3f5a72", sand: "#cfe0f0", accent: "#9fe6ff", mote: "#e6f6ff" } },
-  { key: "bloom", tree: true, crystals: 1, lanterns: 5,
+  { key: "bloom", tree: true, crystals: 1, lanterns: 5, rocks: 2, pond: true, ambient: "butterfly",
     palette: { sky: ["#2a1a3c", "#161033"], sea: "#151033", land: "#33265a", grass: "#5a4080", sand: "#d9b8e0", accent: "#e08aff", mote: "#f0d0ff" } },
-  { key: "dunes", tree: false, crystals: 2, lanterns: 3,
+  { key: "dunes", tree: false, crystals: 2, lanterns: 3, rocks: 6, pond: false, ambient: "dust",
     palette: { sky: ["#2c2418", "#1a1410"], sea: "#1e2a2a", land: "#4a3a22", grass: "#6a552f", sand: "#e6c98a", accent: "#ffce6b", mote: "#ffe9b8" } },
-  { key: "gleam", tree: true, crystals: 3, lanterns: 6,
+  { key: "gleam", tree: true, crystals: 3, lanterns: 6, rocks: 3, pond: true, ambient: "firefly",
     palette: { sky: ["#101d2e", "#0a1424"], sea: "#0c2036", land: "#1a3348", grass: "#2a5570", sand: "#bcd0e0", accent: "#7fffe6", mote: "#d6fff6" } },
 ];
 
@@ -92,6 +95,16 @@ export function generateRing(index: number): Ring {
   if (biome.tree) { const n = 5 + Math.floor(rng() * 5); for (let i = 0; i < n; i++) place("tree", { big: rng() > 0.6 }); }
   for (let i = 0; i < biome.crystals; i++) place("crystal", { big: rng() > 0.5, accent: biome.palette.accent });
   for (let i = 0; i < biome.lanterns; i++) place("lantern");
+  for (let i = 0; i < biome.rocks; i++) place("rock", { big: rng() > 0.6 });
+  if (biome.pond) {
+    for (let tries = 0; tries < 8; tries++) {
+      const a = rng() * Math.PI * 2, rr = radius * (0.3 + rng() * 0.32);
+      const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
+      if (Math.abs(x) < radius * 0.16 && Math.abs(y) > radius * 0.55) continue;   // keep the dock lanes clear
+      props.push({ t: "pond", x, y, r: 20 + Math.floor(rng() * 12) });
+      break;
+    }
+  }
 
   // a social gathering spot on every ring — ring 2's is the Cirql Drive-In (an outdoor
   // movie screen); the rest get a bonfire commons. Placed east/west, off the dock lanes.
@@ -119,6 +132,7 @@ export function generateRing(index: number): Ring {
     palette: biome.palette,
     spawn: { x: 0, y: -radius * 0.68 },   // arrive near the inward dock
     props,
+    ambient: biome.ambient,
   };
 }
 

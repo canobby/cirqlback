@@ -279,7 +279,12 @@ export class CirqlWorldEngine extends RetroEngine {
     for (const p of this.curRing.props) {
       if (p.t === "hearth") out.push({ x: p.x, y: p.y, r: 40 });
       else if (p.t === "wonders") out.push({ x: p.x, y: p.y, r: 34 });
-      else if (p.t === "tree") out.push({ x: p.x, y: p.y + 2, r: p.big ? 12 : 9 });
+      else if (p.t === "tree") out.push({ x: p.x, y: p.y + 2, r: p.big ? 13 : 10 });
+      else if (p.t === "rock") out.push({ x: p.x, y: p.y, r: p.big ? 12 : 8 });
+      else if (p.t === "pond") out.push({ x: p.x, y: p.y, r: (p.r ?? 20) - 2 });
+      else if (p.t === "shrine") out.push({ x: p.x, y: p.y, r: 16 });
+      else if (p.t === "theater") out.push({ x: p.x, y: p.y - 4, r: 20 });
+      else if (p.t === "gathering") out.push({ x: p.x, y: p.y - 2, r: 11 });
     }
     return out;
   }
@@ -521,6 +526,9 @@ export class CirqlWorldEngine extends RetroEngine {
     b.strokeStyle = "rgba(255,220,150,0.10)"; b.lineWidth = 20 * s;
     b.beginPath(); b.arc(scx * s, scy * s, R * 0.42 * s, 0, TAU); b.stroke();
 
+    // ponds — drawn flat as ground, under the depth-sorted props
+    for (const p of this.curRing.props) if (p.t === "pond") this.drawPond(p.x - camX, p.y - camY, p.r ?? 22);
+
     // ---- collect drawables (depth sorted by feet-y) ----
     const draws: { y: number; f: () => void }[] = [];
     // your Cirql lantern ring around the Hearth
@@ -541,6 +549,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "npc": draws.push({ y: p.y, f: () => this.drawNpc(sxp, syp, p) }); break;
         case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big) }); break;
         case "crystal": draws.push({ y: p.y, f: () => this.drawCrystal(sxp, syp, p.big, p.accent || pal.accent) }); break;
+        case "rock": draws.push({ y: p.y, f: () => this.drawRock(sxp, syp, p.big) }); break;
         case "lantern": { const isQ = !!p.id && this.currentObjKind() === "lightLanterns"; const litState = isQ ? this.lit.has(p.id!) : true; draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, litState) }); break; }
         case "dock": draws.push({ y: p.y - 40, f: () => this.drawDock(sxp, syp, p) }); break;
         case "tablet": draws.push({ y: p.y, f: () => this.drawTablet(sxp, syp, this.near === p) }); break;
@@ -583,6 +592,7 @@ export class CirqlWorldEngine extends RetroEngine {
     }
 
     this.drawFx();
+    this.drawAmbient();
     if (this.mapOpen) this.drawChart(); else this.drawHud();
   }
 
@@ -702,6 +712,58 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(cx - 1 * s, cy - 6 * s, 1, 6 * s, "#ffffff");
     if (big) { this.rect(cx + 3 * s, cy - 3 * s, 2 * s, 5 * s, c); this.rect(cx - 5 * s, cy - 2 * s, 2 * s, 4 * s, c); }
   }
+  // ---- landscape: rocks + ponds ----
+  private drawRock(cx: number, cy: number, big?: boolean) {
+    const s = big ? 1.5 : 1;
+    this.disc(cx, cy + 2, 6 * s, "#0a071440");
+    this.disc(cx, cy - 2 * s, 6 * s, "#565663");
+    this.disc(cx - 2 * s, cy - 1 * s, 4 * s, "#6a6a77");
+    this.disc(cx + 2 * s, cy, 3.5 * s, "#474753");
+    this.rect(cx - 6 * s, cy + 1 * s, 12 * s, 2 * s, "#38384352");
+    this.disc(cx - 2 * s, cy - 4 * s, 1.5 * s, "#8a8a97");   // highlight
+  }
+  private drawPond(cx: number, cy: number, r: number) {
+    const sea = this.curRing.palette.sea;
+    this.fillCirc(cx, cy + 2, r, "rgba(10,15,30,0.35)");     // damp rim shadow
+    this.fillCirc(cx, cy, r, "rgba(70,120,150,0.55)");       // shallow water
+    this.fillCirc(cx, cy, r - 3, sea);                        // deeper centre
+    if (!this.reduce) for (let i = 0; i < 3; i++) { const yy = cy - r * 0.4 + i * r * 0.4; this.rect(cx - r * 0.4, yy + Math.sin(this.t * 2 + i) * 1, r * 0.8, 1, "rgba(255,255,255,0.14)"); }  // shimmer
+    for (let i = 0; i < 8; i++) { const a = i * (TAU / 8); this.disc(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.9, 1.6, "#4a4a52"); }   // rim stones
+  }
+
+  // ---- drifting ambient life, per biome (screen-space; always flitting by) ----
+  private drawAmbient() {
+    const kind = this.curRing.ambient; if (!kind || this.reduce) return;
+    const W = this.LW, H = this.LH, t = this.t;
+    if (kind === "butterfly") {
+      const cols = ["#ffd24a", "#ff8fbf", "#8fd0ff", "#b6ff9c", "#e0a0ff"];
+      for (let i = 0; i < 7; i++) { const spd = 9 + (i % 3) * 5; const x = ((t * spd + i * 97) % (W + 40)) - 20; const y = 22 + (i * 53) % (H - 70) + Math.sin(t * 1.8 + i) * 11; this.drawButterfly(x, y, t * 1.6 + i, cols[i % cols.length]); }
+    } else if (kind === "firefly") {
+      for (let i = 0; i < 11; i++) { const x = (Math.sin(t * 0.4 + i * 1.3) * 0.5 + 0.5) * W; const y = (Math.cos(t * 0.33 + i * 2.1) * 0.5 + 0.5) * H; const bl = Math.sin(t * 3 + i); if (bl > 0.25) { this.glow(x, y, 5, "#c8ff9a", bl * 0.5); this.disc(x, y, 1, "#eaffcf"); } }
+    } else if (kind === "ember") {
+      for (let i = 0; i < 12; i++) { const x = (i * 67 + Math.sin(t + i) * 20) % W; const y = H - ((t * 22 + i * 40) % (H + 20)); const a = Math.max(0, y / H) * 0.8; this.disc(x, y, 1 + (i % 2), hexA("#ff8c3c", a)); }
+    } else if (kind === "snow") {
+      for (let i = 0; i < 16; i++) { const x = (i * 53 + Math.sin(t * 0.6 + i) * 14) % W; const y = (t * 22 + i * 37) % (H + 20); this.disc(x, y, 1 + (i % 2) * 0.5, "rgba(230,244,255,0.8)"); }
+    } else if (kind === "gull") {
+      for (let i = 0; i < 3; i++) { const x = ((t * 20 + i * 150) % (W + 60)) - 30; const y = 28 + i * 22 + Math.sin(t * 0.8 + i) * 6; this.drawGull(x, y, t * 5 + i); }
+    } else if (kind === "dust") {
+      for (let i = 0; i < 9; i++) { const x = ((t * 28 + i * 80) % (W + 30)) - 15; const y = H * 0.5 + (i * 29) % Math.round(H * 0.4) + Math.sin(t + i) * 4; this.disc(x, y, 1, "rgba(230,200,140,0.28)"); }
+    }
+  }
+  private drawButterfly(x: number, y: number, ph: number, color: string) {
+    x = Math.round(x); y = Math.round(y);
+    const w = 2 + Math.abs(Math.sin(ph * 8)) * 1.6;
+    this.rect(x, y - 2, 1, 4, "#241a1a");                    // body
+    this.disc(x - w, y - 1, 1.6, color); this.disc(x + w, y - 1, 1.6, color);
+    this.disc(x - w * 0.7, y + 1, 1.2, color); this.disc(x + w * 0.7, y + 1, 1.2, color);
+  }
+  private drawGull(x: number, y: number, ph: number) {
+    x = Math.round(x); y = Math.round(y);
+    const f = Math.round(Math.sin(ph) * 2);
+    this.rect(x - 3, y - f, 3, 1, "#e8eef6"); this.rect(x, y - f, 3, 1, "#e8eef6");   // two wings, flapping
+    this.px(x, y, "#e8eef6");
+  }
+
   // ---- The Sunken Runes puzzle props (CHR-258) ----
   private drawTablet(cx: number, cy: number, near: boolean) {
     this.disc(cx, cy + 2, 6, "#0a071440");

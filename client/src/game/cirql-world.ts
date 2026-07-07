@@ -21,7 +21,9 @@ export type PropType =
   | "rune"      // a puzzle rune you toggle on/off
   | "shrine"    // sealed until the runes match the clue → opens for the reward
   | "gathering" // a social gathering spot (bonfire commons) — every ring has one
-  | "theater";  // the Cirql Drive-In: an outdoor screen cycling fake movie posters (ring 2)
+  | "theater"   // the Cirql Drive-In: an outdoor screen cycling fake movie posters (ring 2)
+  | "rock"      // a solid boulder — walk around it
+  | "pond";     // a little water feature — walk around it
 
 export interface Prop {
   t: PropType;
@@ -55,6 +57,7 @@ export interface Ring {
   spawn: { x: number; y: number };
   props: Prop[];
   puzzleTarget?: string[];   // rune ids that must be lit (and no others) to open the shrine (CHR-258)
+  ambient?: "butterfly" | "firefly" | "ember" | "snow" | "gull" | "dust";   // drifting critters/particles for the biome
 }
 
 // ---- Ring 0: The Hearth -----------------------------------------------------
@@ -82,7 +85,7 @@ const HEARTH: Ring = {
     { t: "wonders", x: 250, y: 40, id: "wonders", label: "CirqlCade", accent: "#b26cff", r: 46 },
     // the Hearth-keeper NPC (first quest-giver), near spawn
     { t: "npc", x: -60, y: 120, id: "keeper", label: "Ferra", accent: "#7fffe6", r: 34 },
-    // trees / scenery
+    // trees / scenery — a leafy outdoor Hearth
     { t: "tree", x: 190, y: -220, big: true },
     { t: "tree", x: -230, y: -180 },
     { t: "tree", x: 330, y: -120, big: true },
@@ -90,6 +93,16 @@ const HEARTH: Ring = {
     { t: "tree", x: 120, y: 250 },
     { t: "tree", x: -150, y: 280, big: true },
     { t: "tree", x: 300, y: 220 },
+    { t: "tree", x: 255, y: -55 },
+    { t: "tree", x: -300, y: -55, big: true },
+    { t: "tree", x: 55, y: -255 },
+    { t: "tree", x: 350, y: 60 },
+    { t: "tree", x: -210, y: 210, big: true },
+    // boulders + a little pond for an outdoor feel (all solid — walk around them)
+    { t: "rock", x: 285, y: 130 },
+    { t: "rock", x: -285, y: 200, big: true },
+    { t: "rock", x: 175, y: -150 },
+    { t: "pond", x: -320, y: 55, r: 26 },
     // the path lanterns to the Wonders — quest targets for "The Lantern Path"
     { t: "lantern", x: 95, y: 75, id: "ql1" },
     { t: "lantern", x: 165, y: 55, id: "ql2" },
@@ -111,6 +124,7 @@ const HEARTH: Ring = {
   ],
   // wake all but the second rune (rn1 stays dark)
   puzzleTarget: ["rn0", "rn2", "rn3"],
+  ambient: "butterfly",
 };
 
 // ---- Outer rings: stubbed (minimap-only until Phase 2 opens them) ------------
