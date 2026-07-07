@@ -64,14 +64,21 @@ export const QUESTS: QuestDef[] = [
 
 export type QuestProgress = Record<string, { status: "active" | "done"; obj: number[] }>;
 
-export const questById = (id: string): QuestDef | undefined => QUESTS.find((q) => q.id === id);
-export const questsFromGiver = (giver: string): QuestDef[] => QUESTS.filter((q) => q.giver === giver);
+// Dynamic quests (the M10 quest-template generator, CHR-256) register here so they flow
+// through the same lookup/offer/log machinery as the authored ones. Keyed by id; the
+// engine registers the current ring's generated quest as you sail in.
+const dynamicQuests = new Map<string, QuestDef>();
+export function registerQuest(q: QuestDef): void { if (!QUESTS.some((x) => x.id === q.id)) dynamicQuests.set(q.id, q); }
+export function allQuests(): QuestDef[] { return dynamicQuests.size ? QUESTS.concat(Array.from(dynamicQuests.values())) : QUESTS; }
+
+export const questById = (id: string): QuestDef | undefined => allQuests().find((q) => q.id === id);
+export const questsFromGiver = (giver: string): QuestDef[] => allQuests().filter((q) => q.giver === giver);
 
 export type QuestStatus = "locked" | "available" | "active" | "done";
 
 /** Compute display status for every quest given the player's progress. */
 export function questStatusList(progress: QuestProgress): { quest: QuestDef; status: QuestStatus }[] {
-  return QUESTS.map((q) => {
+  return allQuests().map((q) => {
     const pred = QUESTS.find((x) => x.next === q.id);
     const done = progress[q.id]?.status === "done";
     const active = progress[q.id]?.status === "active";

@@ -12,9 +12,10 @@ import { loadAvatarLS, DEFAULT_AVATAR, AURA_COLORS, type AvatarConfig } from "./
 import { RINGS, MINIMAP_RINGS, type Ring, type Prop } from "./cirql-world";
 import { getRing, ringName } from "./cirql-ring-gen";
 import {
-  QUESTS, questById, offerableQuest, questStatusList,
+  allQuests, questById, offerableQuest, questStatusList, registerQuest,
   type QuestDef, type QuestProgress, type ObjectiveKind, type QuestStatus,
 } from "./cirql-quests";
+import { generateRingQuest } from "./cirql-quest-gen";
 
 export type InteractKind = "wonders" | "npc" | "dock";
 export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; energy: number; }
@@ -110,8 +111,12 @@ export class CirqlWorldEngine extends RetroEngine {
     this.hero = loadAvatarLS();
     this.posX = this.curRing.spawn.x; this.posY = this.curRing.spawn.y;
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
+    this.ensureRingQuest();
     this.running = true;
   }
+
+  /** Register the current ring's generated quest so its keeper can offer it (CHR-256). */
+  private ensureRingQuest() { const q = generateRingQuest(this.ringIdx); if (q) registerQuest(q); }
 
   // ---------- host API ----------
   setLocal(name: string, avatar?: AvatarConfig) { this.myName = (name || "You").slice(0, 16); if (avatar) this.hero = avatar; }
@@ -126,7 +131,7 @@ export class CirqlWorldEngine extends RetroEngine {
   applyState(s: any) {
     if (!s) return;
     if (typeof s.maxRing === "number") this.maxRing = Math.max(this.maxRing, s.maxRing);
-    if (typeof s.ring === "number" && s.ring >= 0) { this.ringIdx = s.ring; this.curRing = getRing(s.ring); this.maxRing = Math.max(this.maxRing, s.ring); }
+    if (typeof s.ring === "number" && s.ring >= 0) { this.ringIdx = s.ring; this.curRing = getRing(s.ring); this.maxRing = Math.max(this.maxRing, s.ring); this.ensureRingQuest(); }
     if (typeof s.x === "number" && typeof s.y === "number") { this.posX = s.x; this.posY = s.y; }
     if (s.quests && typeof s.quests === "object") this.quests = s.quests;
     if (Array.isArray(s.lit)) this.lit = new Set(s.lit);
@@ -141,6 +146,7 @@ export class CirqlWorldEngine extends RetroEngine {
     this.ringIdx = dest;
     this.curRing = getRing(dest);
     this.maxRing = Math.max(this.maxRing, dest);
+    this.ensureRingQuest();
     const r = this.curRing.radius;
     // arrive at the dock you came through: inward-bound → south shore, outward-bound → north shore
     this.posX = 0; this.posY = outward ? -r * 0.68 : r * 0.7;
@@ -186,7 +192,7 @@ export class CirqlWorldEngine extends RetroEngine {
     this.onQuestChange?.();
   }
   private activeQuest(): QuestDef | null {
-    for (const q of QUESTS) if (this.quests[q.id]?.status === "active") return q;
+    for (const q of allQuests()) if (this.quests[q.id]?.status === "active") return q;
     return null;
   }
   /** The active quest's current (first unfinished) objective index, or -1. */
@@ -215,8 +221,12 @@ export class CirqlWorldEngine extends RetroEngine {
   }
   /** Rows for the quest-log panel (available/active/done, with the current objective). */
   getQuestLog(): QuestLogRow[] {
+    const curGiver = `keeper-${this.ringIdx}`;
     return questStatusList(this.quests)
       .filter((s) => s.status !== "locked")
+      // keep authored quests + any you've started/finished + the current ring's offer;
+      // hide stale "available" ring quests from rings you've sailed past
+      .filter((s) => !s.quest.id.startsWith("ring-") || this.quests[s.quest.id] || s.quest.giver === curGiver)
       .map(({ quest, status }) => {
         const p = this.quests[quest.id];
         let objective = quest.objectives[0]?.label ?? "";
@@ -238,7 +248,15 @@ export class CirqlWorldEngine extends RetroEngine {
     if (!o.target) return null;
     return this.curRing.props.find((p) => p.id === o.target) ?? null;
   }
-  private isQuestLantern(p: Prop) { return p.t === "lantern" && !!p.id && this.activeQuest()?.id === "lantern-path" && !this.lit.has(p.id); }
+  /** The kind of the active quest's current objective (drives lantern interactivity). */
+  private currentObjKind(): ObjectiveKind | null {
+    const q = this.activeQuest(); if (!q) return null;
+    const oi = this.currentObjIndex(q); if (oi < 0) return null;
+    return q.objectives[oi].kind;
+  }
+  // A lantern is a quest lantern (unlit + interactable) whenever the active quest's
+  // current objective is lightLanterns — works on the Hearth AND generated rings.
+  private isQuestLantern(p: Prop) { return p.t === "lantern" && !!p.id && this.currentObjKind() === "lightLanterns" && !this.lit.has(p.id); }
 
   // ---------- interaction ----------
   private solids(): { x: number; y: number; r: number }[] {
@@ -277,9 +295,12 @@ export class CirqlWorldEngine extends RetroEngine {
     if (offer) { this.dialog = { name: p.label || "Ferra", accent, i: 0, lines: offer.intro, acceptOnClose: offer.id }; return; }
     // otherwise a contextual greeting
     const active = this.activeQuest();
+    const home = this.ringIdx === 0;
     const lines = active
       ? [`Off you go — ${active.name.toLowerCase()} awaits.`, "The glimmer marks your way."]
-      : ["Well met again, traveller.", "CirqlCade waits east, past the lanterns."];
+      : home
+        ? ["Well met again, traveller.", "CirqlCade waits east, past the lanterns."]
+        : [`Safe travels on ${this.curRing.name}.`, "The onward dock lies to the south — the fog thins the farther you sail."];
     this.dialog = { name: p.label || "Ferra", accent, i: 0, lines };
   }
 
@@ -466,7 +487,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "npc": draws.push({ y: p.y, f: () => this.drawNpc(sxp, syp, p) }); break;
         case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big) }); break;
         case "crystal": draws.push({ y: p.y, f: () => this.drawCrystal(sxp, syp, p.big, p.accent || pal.accent) }); break;
-        case "lantern": { const isQ = !!p.id && this.activeQuest()?.id === "lantern-path"; const litState = isQ ? this.lit.has(p.id!) : true; draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, litState) }); break; }
+        case "lantern": { const isQ = !!p.id && this.currentObjKind() === "lightLanterns"; const litState = isQ ? this.lit.has(p.id!) : true; draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, litState) }); break; }
         case "dock": draws.push({ y: p.y - 40, f: () => this.drawDock(sxp, syp, p) }); break;
         case "marker": { const isTarget = this.objTargetProp() === p; if (isTarget) draws.push({ y: p.y - 1, f: () => this.drawMarker(sxp, syp) }); break; }
         default: break;

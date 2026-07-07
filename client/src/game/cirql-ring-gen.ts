@@ -93,6 +93,14 @@ export function generateRing(index: number): Ring {
   for (let i = 0; i < biome.crystals; i++) place("crystal", { big: rng() > 0.5, accent: biome.palette.accent });
   for (let i = 0; i < biome.lanterns; i++) place("lantern");
 
+  // stable ids so the quest-template generator (CHR-256) can target this ring's own
+  // lanterns + crystals; unique per ring so the lit-set never collides across rings
+  let li = 0, ci = 0;
+  for (const p of props) {
+    if (p.t === "lantern" && !p.id) p.id = `r${index}l${li++}`;
+    else if (p.t === "crystal" && !p.id) p.id = `r${index}c${ci++}`;
+  }
+
   return {
     index,
     name,
