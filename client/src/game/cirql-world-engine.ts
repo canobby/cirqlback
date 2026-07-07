@@ -188,6 +188,11 @@ export class CirqlWorldEngine extends RetroEngine {
   acceptQuest(id: string) {
     const q = questById(id); if (!q || this.quests[id]) return;
     this.quests[id] = { status: "active", obj: q.objectives.map(() => 0) };
+    // a "light the lanterns" quest must start with its ring's lanterns dark, so a prior
+    // playthrough's already-lit lanterns can't leave the objective uncompletable
+    if (q.objectives.some((o) => o.kind === "lightLanterns")) {
+      for (const p of this.curRing.props) if (p.t === "lantern" && p.id) this.lit.delete(p.id);
+    }
     this.toast(`✦ New quest — ${q.name}`);
     this.onQuestChange?.();
   }

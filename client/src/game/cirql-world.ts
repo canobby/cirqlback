@@ -96,13 +96,14 @@ const HEARTH: Ring = {
     { t: "dock", x: 0, y: 400, to: 1, label: "the fog", id: "dock-s" },
     // quest waypoint target (Quest 1 "Find Your Feet")
     { t: "marker", x: -230, y: -20, id: "marker-shore", label: "" },
-    // ---- The Sunken Runes: a hidden puzzle grove in the NW corner (CHR-258) ----
-    { t: "tablet", x: -370, y: -190, id: "rune-tablet", label: "Runestone" },
-    { t: "rune", x: -352, y: -262, id: "rn0" },
-    { t: "rune", x: -320, y: -240, id: "rn1" },
-    { t: "rune", x: -284, y: -240, id: "rn2" },
-    { t: "rune", x: -252, y: -262, id: "rn3" },
-    { t: "shrine", x: -302, y: -300, id: "rune-shrine", label: "Sealed Shrine" },
+    // ---- The Sunken Runes: a hidden puzzle grove, NW of the Hearth but well on land
+    // (all props sit ≤ ~290 from centre — comfortably inside the green, off the shore) ----
+    { t: "tablet", x: -150, y: -186, id: "rune-tablet", label: "Runestone" },
+    { t: "rune", x: -138, y: -240, id: "rn0" },
+    { t: "rune", x: -108, y: -216, id: "rn1" },
+    { t: "rune", x: -72, y: -216, id: "rn2" },
+    { t: "rune", x: -42, y: -240, id: "rn3" },
+    { t: "shrine", x: -90, y: -278, id: "rune-shrine", label: "Sealed Shrine" },
   ],
   // wake all but the second rune (rn1 stays dark)
   puzzleTarget: ["rn0", "rn2", "rn3"],
