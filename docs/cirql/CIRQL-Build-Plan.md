@@ -5,8 +5,9 @@
 CIRQL is the flagship: a persistent, magical, social world of concentric island-rings. You start at **The Hearth** and sail outward forever. This plan is the working guide — checkoff lists mirror the Linear project **"CIRQL — Flagship World"** (team CHR). **Scope of this pass: "through the arcade beat"** — a shippable playable slice; deeper social depth is Phase 2 at the bottom.
 
 ## Progress log
-- **M1 · The World & Movement — DONE & LIVE** (commit `b664883`, deployed). `/cirql` is a walkable island on the RetroEngine: The Hearth cottage, the Wonders monolith, the Hearth-keeper NPC (Ferra), the Cirql lantern ring, movement (keys/run/click/joystick), edge-clamp + collision, minimap, glow/motes/aurora, and the interact → dialog/toast pipeline. Verified in-browser (0 console errors, tsc clean).
-- **Next up: M2 · Identity & Persistence** — save/resume + character creation (avatar moves into CIRQL).
+- **M1 · The World & Movement — DONE & LIVE** (commit `b664883`). Walkable Hearth island: cottage, Wonders monolith, Ferra (NPC), Cirql lantern ring, movement, minimap, glow, interact → dialog/toast.
+- **M2 · Identity & Persistence — DONE & LIVE** (commit `b09c79c`). `/cirql` saves + resumes (ring/position/avatar/name) via the `cirql` game_progress key; first-run character creator (avatar moved into CIRQL) + "Look" re-edit; expanded avatar (hat styles, aura glow, companions, bigger palettes). Verified in-browser (0 errors, tsc clean).
+- **Next up: M3 · Quest System (backbone).**
 
 ## Locked decisions (owner, 2026-07-06 — "ALL IN")
 - **The Wonders** = the 50 arcade cabinets folded IN-WORLD as enchanted monoliths you *attune* to (press E → the cabinet opens as an in-world overlay; you never leave CIRQL). Found on the first quest, which is the movement tutorial.
@@ -31,11 +32,11 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - [x] Minimap: concentric rings + fog + player dot *(CHR-220)*
 - [x] Ambient neon polish (glow-up kit) *(CHR-221)*
 
-## M2 · Identity & Persistence
-- [ ] Cirql state model + save/load endpoints (`cirql` key) *(CHR-222)*
-- [ ] Load-on-enter + autosave + resume *(CHR-223)*
-- [ ] Character creation on first entry — move avatar chooser into CIRQL *(CHR-242)*
-- [ ] Expand avatar customization — more choices, fun, circle-friendly *(CHR-243)*
+## M2 · Identity & Persistence — DONE
+- [x] Cirql state model + save/load endpoints (`cirql` key) *(CHR-222)*
+- [x] Load-on-enter + autosave + resume *(CHR-223)*
+- [x] Character creation on first entry — move avatar chooser into CIRQL *(CHR-242)*
+- [x] Expand avatar customization — more choices, fun, circle-friendly *(CHR-243)*
 
 ## M3 · Quest System (reusable backbone)
 - [ ] Schema/migration: quests, objectives, player progress *(CHR-224)*

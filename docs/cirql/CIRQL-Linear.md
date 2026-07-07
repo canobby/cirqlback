@@ -9,7 +9,7 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 |---|---|---|
 | M0 · Foundations (reused) | 4 | 4 |
 | M1 · The World & Movement | 7 | 7 |
-| M2 · Identity & Persistence | 4 | 0 |
+| M2 · Identity & Persistence | 4 | 4 |
 | M3 · Quest System (backbone) | 4 | 0 |
 | M4 · First Quest Chain (onboarding) | 4 | 0 |
 | M5 · The Wonders (in-world arcade) | 4 | 0 |
@@ -32,11 +32,11 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 - [x] **CHR-220** — Minimap: concentric rings + fog + player dot
 - [x] **CHR-221** — Ambient neon polish (glow-up kit: lighting + motes)
 
-## M2 · Identity & Persistence
-- [ ] **CHR-222** — Cirql state model + save/load endpoints (game_progress 'cirql')
-- [ ] **CHR-223** — Load-on-enter + autosave + resume
-- [ ] **CHR-242** — Character creation on first entry (move avatar chooser into CIRQL)
-- [ ] **CHR-243** — Expand avatar customization (more choices, fun, circle-friendly)
+## M2 · Identity & Persistence — DONE (commit b09c79c, live)
+- [x] **CHR-222** — Cirql state model + save/load endpoints (game_progress 'cirql')
+- [x] **CHR-223** — Load-on-enter + autosave + resume
+- [x] **CHR-242** — Character creation on first entry (move avatar chooser into CIRQL)
+- [x] **CHR-243** — Expand avatar customization (more choices, fun, circle-friendly)
 
 ## M3 · Quest System (backbone)
 - [ ] **CHR-224** — Schema/migration: quests, objectives, player progress
