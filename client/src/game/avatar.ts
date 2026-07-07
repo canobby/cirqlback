@@ -4,38 +4,60 @@
 // cabinet. It's drawn through a tiny painter interface so the same routine works on
 // a plain 2D canvas (customizer/lobby) and on a RetroEngine buffer (in-game hero).
 
+export type HatStyle = "cap" | "crown" | "band" | "beanie" | "none";
+export type AvatarAura = "none" | "teal" | "violet" | "gold" | "rose" | "mint" | "sky";
+
 export interface AvatarConfig {
   skin: string;   // face/hands hex
   eye: string;    // eye hex
-  hat: string;    // cap colour hex
+  hat: string;    // hat colour hex
   body: string;   // shirt/outfit hex
   bib?: string;   // overalls/apron hex (optional)
   tool?: "none" | "mug" | "pizza" | "wrench" | "broom" | "spatula";
-  sidekick?: "none" | "star" | "cat" | "bot" | "donut" | "vinyl" | "taco";
+  sidekick?: "none" | "star" | "cat" | "bot" | "donut" | "vinyl" | "taco" | "moth" | "sprite";
+  // --- CIRQL additions (CHR-243): all optional so existing arcade avatars are unchanged ---
+  hatStyle?: HatStyle;   // shape of the headwear (defaults to the classic cap)
+  aura?: AvatarAura;     // a soft glow the world/preview paints behind the figure (on-brand light)
 }
 
 export const DEFAULT_AVATAR: AvatarConfig = {
   skin: "#f4c79a", eye: "#1a1226", hat: "#33b0e0", body: "#e2544f", bib: "#3a6ad0",
-  tool: "none", sidekick: "none",
+  tool: "none", sidekick: "none", hatStyle: "cap", aura: "none",
+};
+
+// The soft-glow palette for auras (hex per aura id). "none" → no glow. Rendered by
+// the host (RetroEngine.glow / a canvas radial), NOT by paintAvatar.
+export const AURA_COLORS: Record<AvatarAura, string | null> = {
+  none: null, teal: "#35e0d0", violet: "#b26cff", gold: "#ffc46b", rose: "#ff7ea8", mint: "#5be89a", sky: "#78b4ff",
 };
 
 // ---------- customizer catalogs ----------
 export interface Swatch { c: string; lock?: string }
 export interface Opt<T> { k: T; label: string; lock?: string }
 
-export const SKINS: string[] = ["#f4c79a", "#e0a878", "#c68a5a", "#8a5a3a", "#5a3a28"];
-export const EYES: string[] = ["#1a1226", "#2c2350", "#5a2f2f"];
+export const SKINS: string[] = ["#f9dcc0", "#f4c79a", "#e0a878", "#c68a5a", "#a06a42", "#8a5a3a", "#5a3a28", "#3d2817"];
+export const EYES: string[] = ["#1a1226", "#2c2350", "#5a2f2f", "#2f5a4a", "#3a4d6b", "#6b3a5a"];
 export const HAT_COLORS: Swatch[] = [
-  { c: "#33b0e0" }, { c: "#ff5d7d" }, { c: "#ffd24a" }, { c: "#33e650" },
-  { c: "#b79bff", lock: "Reach Level 5" }, { c: "#ffcf4a", lock: "Play all 10 cabinets" },
+  { c: "#33b0e0" }, { c: "#ff5d7d" }, { c: "#ffd24a" }, { c: "#33e650" }, { c: "#b79bff" },
+  { c: "#35e0d0" }, { c: "#ff7ea8" }, { c: "#ffc46b" }, { c: "#78b4ff" }, { c: "#f4efe6" },
+];
+// Headwear shapes (CIRQL). "cap" is the classic arcade look = the default.
+export const HAT_STYLES: Opt<HatStyle>[] = [
+  { k: "cap", label: "Cap" }, { k: "beanie", label: "Beanie" }, { k: "band", label: "Band" }, { k: "crown", label: "Crown" }, { k: "none", label: "Bare" },
 ];
 export const BODY_COLORS: Swatch[] = [
-  { c: "#e2544f" }, { c: "#3a6ad0" }, { c: "#33a06a" }, { c: "#ff77a8" },
-  { c: "#7a4fd0", lock: "Play 5 cabinets" }, { c: "#ffb020", lock: "Reach 1,000 ★" }, { c: "#33e650", lock: "Play 40 runs" },
+  { c: "#e2544f" }, { c: "#3a6ad0" }, { c: "#33a06a" }, { c: "#ff77a8" }, { c: "#7a4fd0" },
+  { c: "#ffb020" }, { c: "#35e0d0" }, { c: "#b26cff" }, { c: "#5be89a" }, { c: "#20242e" },
 ];
 export const SIDEKICKS: Opt<NonNullable<AvatarConfig["sidekick"]>>[] = [
-  { k: "none", label: "None" }, { k: "star", label: "Star" }, { k: "cat", label: "Cat" }, { k: "bot", label: "Bot", lock: "Beat a boss" },
-  { k: "donut", label: "Donut", lock: "Score 300 in Dozen" }, { k: "vinyl", label: "Vinyl", lock: "Reach side 3 in Spin City" }, { k: "taco", label: "Taco", lock: "Score 300 in Taco Stack" },
+  { k: "none", label: "None" }, { k: "star", label: "Star" }, { k: "cat", label: "Cat" }, { k: "bot", label: "Bot" },
+  { k: "moth", label: "Moth" }, { k: "sprite", label: "Sprite" },
+  { k: "donut", label: "Donut" }, { k: "vinyl", label: "Vinyl" }, { k: "taco", label: "Taco" },
+];
+// Aura glows — the on-brand "light" cosmetic. "none" = no glow.
+export const AURAS: Opt<AvatarAura>[] = [
+  { k: "none", label: "None" }, { k: "teal", label: "Teal" }, { k: "violet", label: "Violet" }, { k: "gold", label: "Gold" },
+  { k: "rose", label: "Rose" }, { k: "mint", label: "Mint" }, { k: "sky", label: "Sky" },
 ];
 
 // Per-shop outfit overrides — the same figure, re-skinned as the cabinet's hero.
@@ -96,14 +118,37 @@ export function paintAvatar(p: AvatarPainter, x: number, y: number, cfg: AvatarC
   p.px(x - 2, y - 20, "#fff"); p.px(x + 2, y - 20, "#fff");
   p.rect(x - 1, y - 17, 3, 1, "#c65a4a"); p.px(x, y - 17, "#e07a68");
   p.px(x - 3, y - 17, p.shade(skin, -0.15)); p.px(x + 3, y - 17, p.shade(skin, -0.15)); // cheeks
-  // cap: dome + brim + pom
-  p.rect(x - 4, y - 23, 8, 2, hat); p.rect(x - 3, y - 25, 6, 2, hat); p.px(x - 3, y - 23, p.shade(hat, 0.25));
-  p.rect(x - 6, y - 22, 5, 1, p.shade(hat, -0.25)); // brim
-  p.px(x, y - 26, "#ffd24a");
+  // headwear (shape chosen by hatStyle; "cap" is the classic default)
+  drawHat(p, x, y, hat, cfg.hatStyle ?? "cap");
   // tool in hand
   drawTool(p, x, y, cfg.tool);
   // sidekick toy
   drawSidekick(p, x, y, cfg.sidekick);
+}
+
+function drawHat(p: AvatarPainter, x: number, y: number, hat: string, style: HatStyle) {
+  switch (style) {
+    case "none":
+      break;
+    case "band": // thin headband + a little gem
+      p.rect(x - 4, y - 22, 8, 1, hat); p.px(x, y - 23, "#fff1e8");
+      break;
+    case "beanie": // rounded dome, no brim, folded band
+      p.rect(x - 4, y - 23, 8, 2, hat); p.rect(x - 3, y - 25, 6, 2, hat); p.px(x - 3, y - 23, p.shade(hat, 0.25));
+      p.rect(x - 4, y - 22, 8, 1, p.shade(hat, -0.2)); p.px(x, y - 26, p.shade(hat, 0.4));
+      break;
+    case "crown": // gold-ish band with three points (uses the hat colour)
+      p.rect(x - 4, y - 22, 8, 2, hat);
+      p.rect(x - 4, y - 24, 2, 2, hat); p.rect(x - 1, y - 25, 2, 3, hat); p.rect(x + 2, y - 24, 2, 2, hat);
+      p.px(x - 3, y - 24, "#fff1e8"); p.px(x, y - 25, "#fff1e8"); p.px(x + 3, y - 24, "#fff1e8");
+      break;
+    case "cap":
+    default: // dome + brim + pom (the classic arcade cap)
+      p.rect(x - 4, y - 23, 8, 2, hat); p.rect(x - 3, y - 25, 6, 2, hat); p.px(x - 3, y - 23, p.shade(hat, 0.25));
+      p.rect(x - 6, y - 22, 5, 1, p.shade(hat, -0.25)); // brim
+      p.px(x, y - 26, "#ffd24a");
+      break;
+  }
 }
 
 function drawTool(p: AvatarPainter, x: number, y: number, tool: AvatarConfig["tool"]) {
@@ -126,6 +171,8 @@ function drawSidekick(p: AvatarPainter, x: number, y: number, s: AvatarConfig["s
     case "donut": p.disc(sx, y - 3, 3, "#ff9ec2"); p.px(sx, y - 3, "#0c0820"); p.px(sx - 1, y - 5, "#33e650"); p.px(sx + 1, y - 4, "#3bb6ff"); break;
     case "vinyl": p.disc(sx, y - 3, 3, "#181818"); p.px(sx, y - 3, "#e23b4e"); p.px(sx - 2, y - 3, "#3a3a3a"); break;
     case "taco": p.rect(sx - 3, y - 4, 6, 3, "#e2b06a"); p.rect(sx - 3, y - 2, 6, 1, "#c0392b"); p.px(sx - 2, y - 3, "#33e650"); p.px(sx + 1, y - 3, "#33e650"); break;
+    case "moth": p.disc(sx, y - 4, 2, "#d9c48a"); p.px(sx - 2, y - 5, "#f0e6c0"); p.px(sx + 2, y - 5, "#f0e6c0"); p.px(sx - 2, y - 3, "#c9b070"); p.px(sx + 2, y - 3, "#c9b070"); break;
+    case "sprite": p.ball(sx, y - 4, 2, "#7fffe6"); p.px(sx - 2, y - 4, "#bafff2"); p.px(sx + 2, y - 5, "#bafff2"); break;
     default: break;
   }
 }

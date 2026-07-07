@@ -8,7 +8,7 @@
 // "your Cirql" plug in on top of this (M2–M6) via the hooks below.
 
 import { RetroEngine, type RetroHooks } from "./retro-engine";
-import { loadAvatarLS, type AvatarConfig } from "./avatar";
+import { loadAvatarLS, AURA_COLORS, type AvatarConfig } from "./avatar";
 import { RINGS, MINIMAP_RINGS, KNOWN_RINGS, type Ring, type Prop } from "./cirql-world";
 
 export type InteractKind = "wonders" | "npc" | "dock";
@@ -56,6 +56,8 @@ export class CirqlWorldEngine extends RetroEngine {
 
   // ---------- host API ----------
   setLocal(name: string, avatar?: AvatarConfig) { this.myName = (name || "You").slice(0, 16); if (avatar) this.hero = avatar; }
+  /** Live-update the player's look (character creator / "edit look"). */
+  setAvatar(avatar: AvatarConfig) { this.hero = avatar; }
   setStats(s: Partial<CirqlStats>) { this.stats = { ...this.stats, ...s }; }
   /** The on-screen action button + the quest system call this to interact. */
   interact() { this.doInteract(); }
@@ -260,6 +262,9 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- props ----------
   private drawHero(cx: number, cy: number) {
     const bob = this.walk > 0 ? Math.round(Math.sin(this.walk)) : 0;
+    // aura glow (cosmetic) behind the figure
+    const aura = this.hero.aura && AURA_COLORS[this.hero.aura];
+    if (aura) this.glow(cx, cy - 12, 20, aura, this.reduce ? 0.4 : 0.32 + 0.1 * Math.sin(this.t * 2.5));
     this.disc(cx, cy + 2, 4, "#0a071460");
     this.ring(cx, cy + 2, 6, "#35e0d0", 1.1);       // gentle "you" ring
     this.avatar(cx, cy + bob, this.hero);
