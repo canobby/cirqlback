@@ -112,7 +112,7 @@ function placeFenceRow(props: Prop[], cx: number, cy: number, len: number, vert:
   for (let i = 0; i < n; i++) { const off = (i - (n - 1) / 2) * 22; props.push(vert ? { t: "fence", x: cx, y: cy + off, vert: true } : { t: "fence", x: cx + off, y: cy }); }
 }
 
-/** Generate the ring at `index` (>= 1). Deterministic: same index → same land, forever. */
+/** Generate the ring at `index` (>= 2 — the wilds beyond CIRQLSPACE + Town). Deterministic. */
 export function generateRing(index: number): Ring {
   const rng = rngFrom(Math.imul(index, 2654435761) ^ 0x9e3779b9);
   // stride through the biomes so consecutive rings are always a different scene and all
@@ -253,9 +253,10 @@ function generateSubMap(kind: SubKind, parent: number, index: number): Ring {
   return { index, name: m.name, sub: m.sub, radius, explorable: true, palette: m.palette, spawn: { x: 0, y: -radius * 0.55 }, props, ambient: m.ambient };
 }
 
-/** The ring at `index` — authored Hearth for 0, generated surface beyond, sub-map for big indices. */
+/** The ring at `index` — authored CIRQLSPACE (0) + Town (1), generated wilds (>=2), sub-map for big indices. */
 export function getRing(index: number): Ring {
   if (index <= 0) return RINGS[0];
+  if (index === 1) return RINGS[1];   // the authored Town hub
   if (isSubMap(index)) { const k = subKindOf(index)!; return generateSubMap(k, parentOf(index), index); }
   return generateRing(index);
 }

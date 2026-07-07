@@ -31,7 +31,7 @@ export const ringQuestId = (index: number) => `ring-${index}-q`;
  * scout the onward shore) and scales the reward by how far out you've sailed.
  */
 export function generateRingQuest(index: number): QuestDef | null {
-  if (index <= 0) return null;                       // ring 0 uses the authored onboarding chain
+  if (index <= 1) return null;                       // ring 0 (CIRQLSPACE) + ring 1 (authored Town) use authored quests
   const ring = getRing(index);
   const rng = rngFrom(Math.imul(index, 0x9e3779b1) ^ 0xC0FFEE);
   const giver = `keeper-${index}`;

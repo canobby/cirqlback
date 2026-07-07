@@ -29,13 +29,14 @@ export interface Campaign {
   steps: CampaignStep[];
 }
 
-// Landmarks on CIRQLSPACE ring (mirrors cirql-world.ts prop positions) so steps can
-// point the shared waypoint at real places.
-const HEARTH = { x: 0, y: -70 };
+// Landmarks on the TOWN ring (ring 1) — mirrors cirql-world.ts prop positions so steps
+// can point the shared waypoint at real places. (All game content lives in the Town now.)
+const TOWN_RING = 1;
+const HALL = { x: 0, y: -70 };       // Town Hall
 const CADE = { x: 250, y: 40 };
 const FERRA = { x: -60, y: 120 };
 const SHORE = { x: -230, y: -20 };
-const DOCK = { x: 0, y: 400 };
+const DOCK = { x: 0, y: 420 };
 const LANTERNS = { x: 165, y: 55 };
 
 export const CAMPAIGNS: Campaign[] = [
@@ -45,21 +46,21 @@ export const CAMPAIGNS: Campaign[] = [
     blurb: "Kindle the path together and wake CirqlCade's glow. A gentle first run for a new crew.",
     minParty: 2, maxParty: 4, difficulty: "chill", newbie: true, reward: 12,
     steps: [
-      { label: "Gather at CIRQLSPACE", tx: HEARTH.x, ty: HEARTH.y },
-      { label: "Light the path lanterns", tx: LANTERNS.x, ty: LANTERNS.y },
-      { label: "Attune at CirqlCade", tx: CADE.x, ty: CADE.y },
-      { label: "Return to Ferra together", tx: FERRA.x, ty: FERRA.y },
+      { label: "Gather at the Town", ring: TOWN_RING, tx: HALL.x, ty: HALL.y },
+      { label: "Light the path lanterns", ring: TOWN_RING, tx: LANTERNS.x, ty: LANTERNS.y },
+      { label: "Attune at CirqlCade", ring: TOWN_RING, tx: CADE.x, ty: CADE.y },
+      { label: "Return to Ferra together", ring: TOWN_RING, tx: FERRA.x, ty: FERRA.y },
     ],
   },
   {
     id: "wonders-circuit",
     title: "The Wonders Circuit",
-    blurb: "A quick loop of the isle — meet at the arcade, share a Wonder, regroup at home.",
+    blurb: "A quick loop of the Town — meet at the arcade, share a Wonder, regroup at the hall.",
     minParty: 2, maxParty: 4, difficulty: "quick", newbie: false, reward: 10,
     steps: [
-      { label: "Meet at CirqlCade", tx: CADE.x, ty: CADE.y },
-      { label: "Each play a Wonder", tx: CADE.x, ty: CADE.y },
-      { label: "Regroup at CIRQLSPACE", tx: HEARTH.x, ty: HEARTH.y },
+      { label: "Meet at CirqlCade", ring: TOWN_RING, tx: CADE.x, ty: CADE.y },
+      { label: "Each play a Wonder", ring: TOWN_RING, tx: CADE.x, ty: CADE.y },
+      { label: "Regroup at the Town Hall", ring: TOWN_RING, tx: HALL.x, ty: HALL.y },
     ],
   },
   {
@@ -68,34 +69,34 @@ export const CAMPAIGNS: Campaign[] = [
     blurb: "A calm walk to the western shore and around to the dock — good for chatting and cloud-watching.",
     minParty: 2, maxParty: 5, difficulty: "chill", newbie: true, reward: 8,
     steps: [
-      { label: "Walk to the western shore", tx: SHORE.x, ty: SHORE.y },
-      { label: "Follow the coast to the dock", tx: DOCK.x, ty: DOCK.y },
-      { label: "Wander home to CIRQLSPACE", tx: HEARTH.x, ty: HEARTH.y },
+      { label: "Walk to the western shore", ring: TOWN_RING, tx: SHORE.x, ty: SHORE.y },
+      { label: "Follow the coast to the dock", ring: TOWN_RING, tx: DOCK.x, ty: DOCK.y },
+      { label: "Wander back to the Town Hall", ring: TOWN_RING, tx: HALL.x, ty: HALL.y },
     ],
   },
   {
     id: "outer-passage",
     title: "The Outer Passage",
-    blurb: "A voyage together — cross to the outer shores, catch a show at the Drive-In, and sail home. Bring a crew.",
+    blurb: "A voyage together — cross from the Town to the outer shores, catch a show at the Drive-In, and sail home. Bring a crew.",
     minParty: 2, maxParty: 5, difficulty: "epic", newbie: false, reward: 22,
     steps: [
-      { label: "Gather at CIRQLSPACE Commons", ring: 0, at: "commons" },
-      { label: "Sail to the next shore's Commons", ring: 1, at: "commons" },
+      { label: "Gather at the Town Commons", ring: 1, at: "commons" },
+      { label: "Sail to the next shore's Commons", ring: 2, at: "commons" },
       { label: "Catch a show at the Cirql Drive-In", ring: 2, at: "theater" },
-      { label: "Sail home to CIRQLSPACE", ring: 0, at: "commons" },
+      { label: "Sail home to the Town", ring: 1, at: "commons" },
     ],
   },
   {
     id: "wonders-marathon",
     title: "Wonders Marathon",
-    blurb: "The long haul — circle every landmark of CIRQLSPACE ring as a full crew. Bragging rights.",
+    blurb: "The long haul — circle every landmark of the Town as a full crew. Bragging rights.",
     minParty: 3, maxParty: 5, difficulty: "epic", newbie: false, reward: 20,
     steps: [
-      { label: "Rally at CIRQLSPACE", tx: HEARTH.x, ty: HEARTH.y },
-      { label: "March to the shore", tx: SHORE.x, ty: SHORE.y },
-      { label: "On to the dock", tx: DOCK.x, ty: DOCK.y },
-      { label: "Light the lantern path", tx: LANTERNS.x, ty: LANTERNS.y },
-      { label: "Finish at CirqlCade", tx: CADE.x, ty: CADE.y },
+      { label: "Rally at the Town", ring: TOWN_RING, tx: HALL.x, ty: HALL.y },
+      { label: "March to the shore", ring: TOWN_RING, tx: SHORE.x, ty: SHORE.y },
+      { label: "On to the dock", ring: TOWN_RING, tx: DOCK.x, ty: DOCK.y },
+      { label: "Light the lantern path", ring: TOWN_RING, tx: LANTERNS.x, ty: LANTERNS.y },
+      { label: "Finish at CirqlCade", ring: TOWN_RING, tx: CADE.x, ty: CADE.y },
     ],
   },
 ];
