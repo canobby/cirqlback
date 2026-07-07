@@ -26,6 +26,12 @@ export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: numb
 export interface QuestLogRow { id: string; name: string; status: QuestStatus; objective: string; }
 
 const TAU = Math.PI * 2;
+// terrain paint (Phase C): a tile grid over CIRQLSPACE. Cells keyed with a +500 offset so
+// negative coords stay unique; grass is the default (never stored). Tile chars: s=sand,
+// t=stone, w=water, p=path.
+const TILE = 30;
+const CK = (gx: number, gy: number) => (gy + 500) * 1000 + (gx + 500);
+const TILE_COL: Record<string, string> = { s: "#c9ad74", t: "#565663", w: "#183a58", p: "#6a4a2a" };
 function hexA(hex: string, a: number): string {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
@@ -63,6 +69,9 @@ export class CirqlWorldEngine extends RetroEngine {
   private decor: { item: string; x: number; y: number }[] = [];
   private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
   private snapGrid = false;                             // snap placement to a grid (CHR-273)
+  // terrain paint (Phase C): sparse tile grid + paint mode
+  private terrain = new Map<number, string>();
+  private editPaint = false; private paintTile = "s"; private brush = 1; private paintStroke = false;
   private visiting: { name: string; decor: { item: string; x: number; y: number }[] } | null = null;
   private camX = 0; private camY = 0;
   private t = 0;
@@ -160,10 +169,30 @@ export class CirqlWorldEngine extends RetroEngine {
   getDecor() { return this.decor.slice(); }
   setDecor(list: { item: string; x: number; y: number }[]) { this.decor = Array.isArray(list) ? list.filter((d) => d && decorById[d.item]).map((d) => ({ item: d.item, x: +d.x, y: +d.y })) : []; }
   /** Enter décor edit mode; `itemId` is the piece to place, or "" to remove-on-tap. */
-  beginDecorEdit(itemId: string) { if (this.ringIdx !== 0 || this.visiting) return; this.editDecor = true; this.editSel = decorById[itemId] ? itemId : ""; }
+  beginDecorEdit(itemId: string) { if (this.ringIdx !== 0 || this.visiting) return; this.editDecor = true; this.editPaint = false; this.editSel = decorById[itemId] ? itemId : ""; }
   setDecorTool(itemId: string) { this.editSel = decorById[itemId] ? itemId : ""; }
   setSnap(on: boolean) { this.snapGrid = !!on; }
   endDecorEdit() { this.editDecor = false; }
+  // ---- terrain paint (Phase C) ----
+  beginPaint(tile: string) { if (this.ringIdx !== 0 || this.visiting) return; this.editPaint = true; this.editDecor = false; this.paintTile = tile; }
+  setPaintTile(tile: string) { this.paintTile = tile; }
+  setBrush(n: number) { this.brush = Math.max(1, Math.min(4, n | 0)); }
+  endPaint() { this.editPaint = false; }
+  paintingMode() { return this.editPaint; }
+  getTerrain(): Record<string, string> { const o: Record<string, string> = {}; for (const [k, v] of Array.from(this.terrain)) o[k] = v; return o; }
+  setTerrain(obj: any) { this.terrain.clear(); if (obj && typeof obj === "object") for (const k in obj) { const n = +k; if (Number.isFinite(n)) this.terrain.set(n, String(obj[k])); } }
+  clearTerrain() { if (this.terrain.size) { this.terrain.clear(); this.onDecorChange?.(); } }
+  private tileAtWorld(wx: number, wy: number) { return this.terrain.get(CK(Math.round(wx / TILE), Math.round(wy / TILE))) ?? "g"; }
+  private paintAt(wx: number, wy: number) {
+    const cx = Math.round(wx / TILE), cy = Math.round(wy / TILE), rad = this.brush - 1, lim = this.curRing.radius * 0.86;
+    for (let gy = cy - rad; gy <= cy + rad; gy++) for (let gx = cx - rad; gx <= cx + rad; gx++) {
+      if (Math.hypot(gx * TILE, gy * TILE) > lim) continue;
+      const key = CK(gx, gy);
+      if (this.paintTile === "g") this.terrain.delete(key);                       // grass = erase
+      else if (this.terrain.size < 2400 || this.terrain.has(key)) this.terrain.set(key, this.paintTile);
+    }
+    this.paintStroke = true;
+  }
   decorEditing() { return this.editDecor; }
   clearDecor() { if (this.decor.length) { this.decor = []; this.onDecorChange?.(); } }
   /** Visit another traveller's CIRQLSPACE (render their décor read-only over it). */
@@ -183,11 +212,12 @@ export class CirqlWorldEngine extends RetroEngine {
   interact() { if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
   /** A little fake-Z hop (CHR-263) — raise the sprite; the shadow stays grounded. */
   jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; if (this.jumpZ <= 0.01 && this.jumpVel <= 0) this.jumpVel = 66; }
-  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice() }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), terrain: this.getTerrain() }; }
   applyState(s: any) {
     if (!s) return;
     if (Array.isArray(s.doneOnce)) this.doneOnce = new Set(s.doneOnce);
     if (Array.isArray(s.decor)) this.setDecor(s.decor);
+    if (s.terrain && typeof s.terrain === "object") this.setTerrain(s.terrain);
     if (Array.isArray(s.litForQuest)) this.litForQuest = new Set(s.litForQuest);
     if (typeof s.maxRing === "number") this.maxRing = Math.max(this.maxRing, s.maxRing);
     if (typeof s.ring === "number" && s.ring >= 0) { this.ringIdx = s.ring; this.curRing = getRing(s.ring); this.maxRing = Math.max(this.maxRing, s.ring); this.ensureRingQuest(); }
@@ -624,9 +654,16 @@ export class CirqlWorldEngine extends RetroEngine {
       this.moveTarget = null;
     }
 
+    // terrain paint (Phase C): drag to paint tiles; persist once per stroke on release
+    if (this.editPaint && this.pointer.down && !tapMap && !this.dialog && !this.inMinimap(this.pointer.x, this.pointer.y)) {
+      this.paintAt(this.pointer.x + this.camX, this.pointer.y + this.camY);
+      this.moveTarget = null;
+    }
+    if (this.paintStroke && !this.pointer.down) { this.paintStroke = false; this.onDecorChange?.(); }
+
     // movement is frozen while a dialog is open or the chart is up
     if (!this.dialog && !tapMap) {
-      if (this.pointer.down && !this.inMinimap(this.pointer.x, this.pointer.y) && !this.editDecor) this.moveTarget = { x: this.pointer.x + this.camX, y: this.pointer.y + this.camY };
+      if (this.pointer.down && !this.inMinimap(this.pointer.x, this.pointer.y) && !this.editDecor && !this.editPaint) this.moveTarget = { x: this.pointer.x + this.camX, y: this.pointer.y + this.camY };
       let dx = (this.btn.right ? 1 : 0) - (this.btn.left ? 1 : 0);
       let dy = (this.btn.down ? 1 : 0) - (this.btn.up ? 1 : 0);
       if (dx || dy) this.moveTarget = null;
@@ -641,7 +678,15 @@ export class CirqlWorldEngine extends RetroEngine {
       this.vx += (tvx - this.vx) * Math.min(1, dt * 16);
       this.vy += (tvy - this.vy) * Math.min(1, dt * 16);
       if (moving) this.facing = Math.abs(dy) > Math.abs(dx) ? (dy > 0 ? "down" : "up") : (dx > 0 ? "right" : "left");
+      const preX = this.posX, preY = this.posY;
       this.posX += this.vx * dt; this.posY += this.vy * dt;
+
+      // painted water tiles are non-walkable (Phase C) — slide back out (per axis for a smooth edge)
+      if (this.ringIdx === 0 && !this.editPaint && this.terrain.size && this.tileAtWorld(this.posX, this.posY) === "w") {
+        if (this.tileAtWorld(this.posX, preY) !== "w") this.posY = preY;
+        else if (this.tileAtWorld(preX, this.posY) !== "w") this.posX = preX;
+        else { this.posX = preX; this.posY = preY; }
+      }
 
       // solid props — push the player out of them
       for (const s of this.solids()) {
@@ -756,6 +801,8 @@ export class CirqlWorldEngine extends RetroEngine {
     b.strokeStyle = "rgba(255,220,150,0.10)"; b.lineWidth = 20 * s;
     b.beginPath(); b.arc(scx * s, scy * s, R * 0.42 * s, 0, TAU); b.stroke();
 
+    // painted terrain — the base ground layer under everything (Phase C, CIRQLSPACE only)
+    if (this.ringIdx === 0 && this.terrain.size) this.drawTerrain(camX, camY);
     // ground decoration — paths + ponds, under the depth-sorted props
     for (const p of this.curRing.props) if (p.t === "path") this.drawPath(p.x - camX, p.y - camY);
     for (const p of this.curRing.props) if (p.t === "pond") this.drawPond(p.x - camX, p.y - camY, p.r ?? 22);
@@ -1015,6 +1062,19 @@ export class CirqlWorldEngine extends RetroEngine {
     if (m === "hop") { const j = Math.sin(this.t * 6); return j > 0 ? -Math.round(j * 5) : 0; }   // wave/celebrate/flip
     if (m === "sit") return 3;                                                  // settle down to rest
     return 0;
+  }
+  // Painted terrain tiles (Phase C) — flat colour cells culled to the viewport; water gets
+  // a faint shimmer line. Grass is the default and never painted.
+  private drawTerrain(camX: number, camY: number) {
+    const half = TILE / 2;
+    for (const [key, t] of Array.from(this.terrain)) {
+      const gx = (key % 1000) - 500, gy = ((key / 1000) | 0) - 500;
+      const sx = gx * TILE - camX, sy = gy * TILE - camY;
+      if (sx < -TILE || sx > this.LW + TILE || sy < -TILE || sy > this.LH + TILE) continue;   // cull
+      const col = TILE_COL[t]; if (!col) continue;
+      this.rect(sx - half, sy - half, TILE + 1, TILE + 1, col);
+      if (t === "w" && !this.reduce) this.rect(sx - half + 4, sy - 3 + Math.round(Math.sin(this.t * 2 + gx) * 1.5), TILE - 8, 1, "rgba(255,255,255,0.12)");
+    }
   }
   // A placed décor piece (CHR-259): an emoji glyph standing on a soft shadow.
   private drawDecor(cx: number, cy: number, glyph: string, scale: number, alpha = 1) {

@@ -23,7 +23,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 // get a character-creation step first; everyone can re-edit their look.
 const INTRO_LS = "cirql_intro_v1";
 
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; daily?: { day: string; done: boolean; streak: number; lastDone: string }; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; daily?: { day: string; done: boolean; streak: number; lastDone: string }; }
 const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export default function Cirql() {
@@ -57,6 +57,9 @@ export default function Cirql() {
   const [decorTool, setDecorTool] = useState<string>("");  // selected décor id, "remove", or ""
   const [decorCat, setDecorCat] = useState<DecorCategory>("nature");   // active build category (CHR-272)
   const [snapOn, setSnapOn] = useState(false);             // grid-snap placement (CHR-273)
+  const [buildMode, setBuildMode] = useState<"place" | "paint">("place");   // Phase C terrain paint
+  const [paintTile, setPaintTile] = useState("s");
+  const [brushSize, setBrushSize] = useState(1);
   const [decorCount, setDecorCount] = useState(0);         // placed-piece count (reactive)
   const [visiting, setVisiting] = useState<string | null>(null);   // name of the Hearth you're visiting (CHR-259)
   const [members, setMembers] = useState(0);               // mirror of membersRef for the panel
@@ -238,7 +241,7 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], daily: dailyRef.current };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, daily: dailyRef.current };
   };
   const persist = () => {
     const st = buildState();
@@ -363,7 +366,7 @@ export default function Cirql() {
       if (st?.daily && typeof st.daily.day === "string") dailyRef.current = { day: st.daily.day, done: !!st.daily.done, streak: +st.daily.streak || 0, lastDone: st.daily.lastDone || "" };
       refreshDaily();
       eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: membersRef.current, cirqlTotal: 12, online: 1, energy: energyRef.current });
-      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests, lit: st?.lit, litForQuest: st?.litForQuest, doneOnce: st?.doneOnce, decor: st?.decor });
+      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests, lit: st?.lit, litForQuest: st?.litForQuest, doneOnce: st?.doneOnce, decor: st?.decor, terrain: st?.terrain });
       setDecorCount(eng.getDecor().length);
       if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
       setQuestRows(eng.getQuestLog());
@@ -464,7 +467,12 @@ export default function Cirql() {
     if (curRingUi !== 0) { engineRef.current?.toast("Sail home to CIRQLSPACE to decorate"); return; }
     setShowDecor(true); setDecorTool(""); engineRef.current?.beginDecorEdit("");
   };
-  const closeDecorate = () => { setShowDecor(false); setDecorTool(""); engineRef.current?.endDecorEdit(); };
+  const closeDecorate = () => { setShowDecor(false); setDecorTool(""); setBuildMode("place"); engineRef.current?.endDecorEdit(); engineRef.current?.endPaint(); };
+  // Phase C terrain paint mode
+  const switchToPaint = () => { setBuildMode("paint"); engineRef.current?.beginPaint(paintTile); };
+  const switchToPlace = () => { setBuildMode("place"); engineRef.current?.endPaint(); engineRef.current?.beginDecorEdit(decorTool && decorTool !== "remove" ? decorTool : ""); };
+  const pickPaintTile = (t: string) => { setPaintTile(t); setBuildMode("paint"); engineRef.current?.beginPaint(t); };
+  const pickBrush = (n: number) => { setBrushSize(n); engineRef.current?.setBrush(n); };
   const pickDecor = (id: string) => {
     const def = decorById[id]; if (!def) return;
     if (!decorOwned(id)) { if (!buyCosmetic(decorPriceKey(id), def.price)) { engineRef.current?.toast(`Need ${def.price} sparqs for the ${def.name}`); return; } engineRef.current?.toast(`✦ ${def.name} unlocked`); }
@@ -696,38 +704,65 @@ export default function Cirql() {
         <div className="pointer-events-auto absolute inset-x-0 top-12 z-[15] mx-auto max-w-[580px] px-3" data-testid="decor-palette">
           <div className="rounded-2xl border p-2" style={{ borderColor: "rgba(255,196,107,.4)", background: "rgba(10,12,28,.96)", boxShadow: "0 10px 34px rgba(0,0,0,.55)" }}>
             <div className="mb-1.5 flex items-center gap-2 px-1">
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">Build</span>
-              <span className="hidden text-[10px] text-slate-400 sm:inline">{decorTool === "remove" ? "tap a piece to remove" : decorTool ? "tap to place" : "pick a piece"}</span>
+              {/* Place ▸ Paint mode toggle */}
+              <div className="flex overflow-hidden rounded-lg border" style={{ borderColor: "#2a3a66" }}>
+                <button onClick={switchToPlace} data-testid="build-place" className="px-2 py-0.5 text-[10px] font-bold" style={buildMode === "place" ? { color: "#0a1220", background: "#ffd98a" } : { color: "#a9c2e6" }}>Place</button>
+                <button onClick={switchToPaint} data-testid="build-paint" className="px-2 py-0.5 text-[10px] font-bold" style={buildMode === "paint" ? { color: "#0a1220", background: "#7ff5e8" } : { color: "#a9c2e6" }}>Paint</button>
+              </div>
               <button onClick={() => { const on = !snapOn; setSnapOn(on); engineRef.current?.setSnap(on); }} data-testid="decor-grid"
-                className="ml-auto rounded-lg border px-2 py-0.5 text-[10px] font-bold" style={snapOn ? { borderColor: "#35e0d0", color: "#0a1220", background: "#7ff5e8" } : { borderColor: "#2a3a66", color: "#9fb0d0" }}># Grid</button>
-              <span className="text-[11px] font-bold text-amber-200" data-testid="decor-sparqs">✦ {sparksUi}</span>
+                className="rounded-lg border px-2 py-0.5 text-[10px] font-bold" style={snapOn ? { borderColor: "#35e0d0", color: "#0a1220", background: "#7ff5e8" } : { borderColor: "#2a3a66", color: "#9fb0d0" }}># Grid</button>
+              <span className="ml-auto text-[11px] font-bold text-amber-200" data-testid="decor-sparqs">✦ {sparksUi}</span>
               <button onClick={closeDecorate} data-testid="decor-done" className="rounded-lg px-2.5 py-1 text-[12px] font-bold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>Done</button>
             </div>
-            {/* category tabs + remove tool */}
-            <div className="mb-1.5 flex gap-1 overflow-x-auto pb-0.5">
-              {CATEGORIES.map((c) => (
-                <button key={c.key} onClick={() => setDecorCat(c.key)} data-testid={`decor-cat-${c.key}`}
-                  className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold"
-                  style={decorCat === c.key ? { borderColor: "#ffc46b", color: "#0a1220", background: "#ffd98a" } : { borderColor: "#2a3a66", color: "#a9c2e6" }}>
-                  <span>{c.icon}</span> {c.label}
-                </button>
-              ))}
-              <button onClick={pickRemove} data-testid="decor-remove" className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold"
-                style={decorTool === "remove" ? { borderColor: "#ff5d7d", color: "#ffb3c3", background: "rgba(255,93,125,.14)" } : { borderColor: "#3a2a72", color: "#c9a0d0" }}>🗑 Remove</button>
-            </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {DECOR.filter((d) => d.category === decorCat).map((d) => {
-                const owned = decorOwned(d.id); const sel = decorTool === d.id;
-                return (
-                  <button key={d.id} onClick={() => pickDecor(d.id)} data-testid={`decor-${d.id}`} title={d.name}
-                    className="flex h-16 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border text-[9px] font-semibold"
-                    style={sel ? { borderColor: "#ffc46b", color: "#0a1220", background: "#ffd98a" } : { borderColor: owned ? "rgba(255,196,107,.35)" : "rgba(150,130,255,.2)", color: owned ? "#ffd98a" : "#b9a8e6", background: "rgba(255,255,255,.03)" }}>
-                    <span className="text-[22px] leading-none">{d.glyph}</span>
-                    {owned ? <span className={`truncate max-w-[52px] ${sel ? "text-slate-900" : ""}`}>{d.name.split(" ")[0]}</span> : <span>✦{d.price}</span>}
+
+            {buildMode === "place" ? (<>
+              {/* category tabs + remove tool */}
+              <div className="mb-1.5 flex gap-1 overflow-x-auto pb-0.5">
+                {CATEGORIES.map((c) => (
+                  <button key={c.key} onClick={() => setDecorCat(c.key)} data-testid={`decor-cat-${c.key}`}
+                    className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold"
+                    style={decorCat === c.key ? { borderColor: "#ffc46b", color: "#0a1220", background: "#ffd98a" } : { borderColor: "#2a3a66", color: "#a9c2e6" }}>
+                    <span>{c.icon}</span> {c.label}
                   </button>
-                );
-              })}
-            </div>
+                ))}
+                <button onClick={pickRemove} data-testid="decor-remove" className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold"
+                  style={decorTool === "remove" ? { borderColor: "#ff5d7d", color: "#ffb3c3", background: "rgba(255,93,125,.14)" } : { borderColor: "#3a2a72", color: "#c9a0d0" }}>🗑 Remove</button>
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                {DECOR.filter((d) => d.category === decorCat).map((d) => {
+                  const owned = decorOwned(d.id); const sel = decorTool === d.id;
+                  return (
+                    <button key={d.id} onClick={() => pickDecor(d.id)} data-testid={`decor-${d.id}`} title={d.name}
+                      className="flex h-16 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border text-[9px] font-semibold"
+                      style={sel ? { borderColor: "#ffc46b", color: "#0a1220", background: "#ffd98a" } : { borderColor: owned ? "rgba(255,196,107,.35)" : "rgba(150,130,255,.2)", color: owned ? "#ffd98a" : "#b9a8e6", background: "rgba(255,255,255,.03)" }}>
+                      <span className="text-[22px] leading-none">{d.glyph}</span>
+                      {owned ? <span className={`truncate max-w-[52px] ${sel ? "text-slate-900" : ""}`}>{d.name.split(" ")[0]}</span> : <span>✦{d.price}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </>) : (<>
+              {/* terrain paint (Phase C): tile swatches (Grass = erase) + brush size */}
+              <div className="flex items-center gap-1.5 pb-1">
+                {[{ t: "g", n: "Grass", c: "#3a6a44" }, { t: "s", n: "Sand", c: "#c9ad74" }, { t: "t", n: "Stone", c: "#565663" }, { t: "w", n: "Water", c: "#183a58" }, { t: "p", n: "Path", c: "#6a4a2a" }].map((tl) => (
+                  <button key={tl.t} onClick={() => pickPaintTile(tl.t)} data-testid={`paint-${tl.t}`} title={tl.n}
+                    className="flex h-14 w-14 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border text-[9px] font-bold"
+                    style={paintTile === tl.t ? { borderColor: "#35e0d0", color: "#eaf6ff", background: "rgba(53,224,208,.12)" } : { borderColor: "#2a3a66", color: "#a9c2e6" }}>
+                    <span className="h-6 w-6 rounded-md border" style={{ background: tl.c, borderColor: "rgba(255,255,255,.15)" }} />{tl.t === "g" ? "Erase" : tl.n}
+                  </button>
+                ))}
+                <div className="ml-1 flex flex-col items-center gap-0.5">
+                  <span className="text-[9px] uppercase tracking-wider text-slate-400">Brush</span>
+                  <div className="flex gap-1">
+                    {[1, 2, 3].map((n) => (
+                      <button key={n} onClick={() => pickBrush(n)} data-testid={`brush-${n}`}
+                        className="h-7 w-7 rounded-lg border text-[11px] font-bold" style={brushSize === n ? { borderColor: "#35e0d0", color: "#0a1220", background: "#7ff5e8" } : { borderColor: "#2a3a66", color: "#a9c2e6" }}>{n}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <p className="px-1 text-[10px] text-slate-400">Drag on your CIRQLSPACE to paint the ground. Water blocks walking.</p>
+            </>)}
           </div>
         </div>
       )}
