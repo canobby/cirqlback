@@ -1,6 +1,6 @@
 # CIRQLSPACE — Your Sandbox · Linear Register
 
-Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 5). **Status: BUILDING — ✅ Phase A + ✅ B + ✅ C COMPLETE; next up Phase D (land growth).**
+Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 6). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D COMPLETE; next up Phase E (live parties).**
 
 **Legend:** ☑ Done · ◐ In progress · ☐ Todo · ⧗ *not yet a Linear issue (free-tier issue cap) — tracked in the plan.*
 
@@ -10,7 +10,7 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 | A · Restructure — blank CIRQLSPACE + Town | 6 | ✅ **DONE (6/6)** |
 | B · Building v1 (objects) | 4 | ✅ **DONE (4/4)** |
 | C · Terrain paint | 3 ⧗ | ✅ **DONE (3/3)** |
-| D · Land growth (cozy → estate) | 3 ⧗ | Todo |
+| D · Land growth (cozy → estate) | 3 ⧗ | ✅ **DONE (3/3)** |
 | E · Live parties | 4 ⧗ | Todo |
 | F · Town stores (NPC shops) | 4 ⧗ | Todo |
 | G · Music & SFX | 3 ⧗ | Todo |
@@ -37,10 +37,11 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 - [x] **C2** — Paint brush UI: Place▸Paint toggle + tile swatches (grass/sand/stone/water/path) + brush sizes 1–3
 - [x] **C3** — Water tiles non-walkable (per-axis slide-out) + terrain render layer (culled, shimmer)
 
-## D · Land growth (cozy → estate)  *(⧗ issues pending — Linear cap)*
-- [ ] **D1** — Cozy start + SPARQS-priced expansion tiers (escalating)
-- [ ] **D2** — Milestone unlocks (tutorial / first party / N visitors) + estate cap
-- [ ] **D3** — Expansion UX + new-land-as-blank
+## D · Land growth (cozy → estate)  *(⧗ tracked here — Linear cap; ✅ built commit 95fc3b6)*
+- [x] **D1** — Cozy start + 7 tiers (buildable radius 170→430); effR() drives island render + edge-clamp + placement + paint
+- [x] **D2** — Milestone unlocks (tier 1 free gift · tier 2 free after placing 10) + SPARQS tiers 3–6 (30/70/140/260) + estate cap
+- [x] **D3** — "Your Land" Inventory section: current tier + progress bar + Expand (shows cost/milestone); new land blank
+  - *(deferred: party/visitor milestones — arrive with Phase E)*
 
 ## E · Live parties  *(⧗ issues pending — Linear cap)*
 - [ ] **E1** — Space rooms on presence (keyed by host id) + join/leave
