@@ -9,7 +9,7 @@
 
 import { RetroEngine, shade, mix, type RetroHooks } from "./retro-engine";
 import { loadAvatarLS, DEFAULT_AVATAR, AURA_COLORS, type AvatarConfig } from "./avatar";
-import { RINGS, MINIMAP_RINGS, type Ring, type Prop } from "./cirql-world";
+import { RINGS, MINIMAP_RINGS, type Ring, type Prop, type RingPalette } from "./cirql-world";
 import { getRing, ringName, isSubMap, parentOf, subKindOf } from "./cirql-ring-gen";
 import { MOVIES, REEL_SECONDS } from "./cirql-theater";
 import {
@@ -984,6 +984,8 @@ export class CirqlWorldEngine extends RetroEngine {
       b.ellipse((scx + Math.cos(a) * rr) * s, (scy + Math.sin(a) * rr) * s, (70 + (i % 4) * 18) * s, (48 + (i % 3) * 16) * s, a, 0, TAU);
       b.fill();
     }
+    // groundcover (Phase J3): deterministic per-biome texture so the ground is never bald
+    if (this.ringIdx !== 0) this.drawGroundcover(scx, scy, R);
     // faint path ring
     b.strokeStyle = "rgba(255,220,150,0.10)"; b.lineWidth = 20 * s;
     b.beginPath(); b.arc(scx * s, scy * s, R * 0.42 * s, 0, TAU); b.stroke();
@@ -1777,6 +1779,38 @@ export class CirqlWorldEngine extends RetroEngine {
     }
   }
 
+  // ---- groundcover (Phase J3): a static, deterministic scatter of tiny ground details
+  //      (tufts/clover/pebbles · snow drifts/sparkles · sand pebbles/ripples · ash specks/
+  //      embers) so no biome floor is a flat bald colour. World-space, culled + zoom-aware. ----
+  private drawGroundcover(scx: number, scy: number, R: number) {
+    const kind = this.groundKind(), pal = this.curRing.palette;
+    const half = R - 26, N = Math.min(150, Math.round(R / 4.5));
+    const mx = this.LW / 2 * (1 / this.zoom - 1) + 24, my = this.LH / 2 * (1 / this.zoom - 1) + 24;
+    for (let i = 0; i < N; i++) {
+      const h = (Math.imul(this.ringIdx + 7, 2246822519) + Math.imul(i + 1, 3266489917)) >>> 0;
+      const ang = (h % 62831) / 10000, rr = half * (0.06 + ((h >>> 5) % 1000) / 1000 * 0.94);
+      const sx = scx + Math.cos(ang) * rr, sy = scy + Math.sin(ang) * rr * 0.82;
+      if (sx < -mx || sx > this.LW + mx || sy < -my || sy > this.LH + my) continue;
+      this.drawCoverDetail(Math.round(sx), Math.round(sy), kind, (h >>> 12) % 3, pal);
+    }
+  }
+  private drawCoverDetail(x: number, y: number, kind: "snow" | "sand" | "ash" | "grass", v: number, pal: RingPalette) {
+    if (kind === "grass") {
+      if (v === 0) { const c = shade(pal.grass, 0.22); this.px(x, y, c); this.px(x, y - 1, c); this.px(x + 1, y, shade(pal.grass, -0.18)); }   // grass tuft
+      else if (v === 1) { const c = shade(pal.grass, -0.24); this.px(x - 1, y, c); this.px(x + 1, y - 1, c); this.px(x, y + 1, c); }             // clover speckle
+      else this.px(x, y, "rgba(178,168,148,0.5)");                                                                                                // pebble
+    } else if (kind === "snow") {
+      if (v === 0) this.disc(x, y, 1.4, "rgba(255,255,255,0.5)"); else this.px(x, y, "rgba(202,226,255,0.6)");                                     // drift / sparkle
+    } else if (kind === "sand") {
+      if (v === 0) { this.px(x, y, "rgba(120,100,70,0.5)"); this.px(x + 1, y, "rgba(120,100,70,0.32)"); }                                          // pebble
+      else if (v === 1) this.rect(x - 3, y, 6, 1, "rgba(255,240,200,0.16)");                                                                       // ripple
+      else this.px(x, y, shade(pal.sand, -0.2));
+    } else {   // ash
+      if (v === 0) this.px(x, y, "rgba(40,34,30,0.6)");                                                                                            // dark speck
+      else if (v === 1) this.rect(x - 1, y, 3, 1, "rgba(18,14,12,0.5)");                                                                           // crack
+      else if (!this.reduce) this.disc(x, y, 1, hexA("#ff8c3c", 0.28 + 0.1 * Math.sin(this.t * 2 + x)));                                           // ember glow
+    }
+  }
   // ---- drifting ambient life, per biome (WORLD-space — stays put in the world, each
   //      creature moves in its own way; count scales with the island's size) ----
   private drawAmbient() {
