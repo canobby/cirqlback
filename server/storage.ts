@@ -3196,6 +3196,21 @@ export class DatabaseStorage implements IStorage {
     return rows.map((r) => ({ id: r.id, name: r.name, establishmentType: (r.establishmentType as string[] | null) ?? null }));
   }
 
+  // Per-business award status for a customer — visits (tap count) + points earned there
+  // (powers the clickable CIRQL landmarks, CHR-261).
+  async getCustomerBusinessStats(email: string, limit = 24): Promise<{ id: string; name: string; type: string; visits: number; points: number }[]> {
+    if (!email) return [];
+    const rows = await db
+      .select({ id: businesses.id, name: businesses.name, establishmentType: businesses.establishmentType, visits: count(), points: sql<number>`COALESCE(SUM(${taps.pointsEarned}),0)`, last: sql<string>`MAX(${taps.createdAt})` })
+      .from(taps)
+      .innerJoin(businesses, eq(taps.businessId, businesses.id))
+      .where(and(eq(taps.customerEmail, email), eq(businesses.isActive, true)))
+      .groupBy(businesses.id, businesses.name, businesses.establishmentType)
+      .orderBy(sql`MAX(${taps.createdAt}) DESC`)
+      .limit(limit);
+    return rows.map((r) => ({ id: r.id, name: r.name, type: ((r.establishmentType as string[] | null)?.[0] || "").toLowerCase(), visits: Number(r.visits) || 0, points: Number(r.points) || 0 }));
+  }
+
   // Reward operations
   async getRewardsByUser(userId: string): Promise<Reward[]> {
     return await db.select().from(rewards).where(eq(rewards.userId, userId));

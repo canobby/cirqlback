@@ -152,8 +152,8 @@ export function registerTapsRewardsRoutes(app: Express, deps: RouteDeps) {
       let email = u?.email;
       if (!email && u?.id) email = (await storage.getUser(u.id))?.email;
       if (!email) return res.json({ landmarks: [] });
-      const biz = await storage.getCustomerVisitedBusinesses(email, 24);
-      res.json({ landmarks: biz.map((b) => ({ name: b.name, type: (b.establishmentType?.[0] || "").toLowerCase() })) });
+      const biz = await storage.getCustomerBusinessStats(email, 24);
+      res.json({ landmarks: biz.map((b) => ({ name: b.name, type: b.type, visits: b.visits, points: b.points })) });
     } catch (err) { console.error("cirql landmarks error:", err); res.status(500).json({ error: "Failed to load landmarks" }); }
   });
 

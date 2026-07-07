@@ -56,6 +56,7 @@ export default function Cirql() {
   const [decorTool, setDecorTool] = useState<string>("");  // selected décor id, "remove", or ""
   const [decorCount, setDecorCount] = useState(0);         // placed-piece count (reactive)
   const [visiting, setVisiting] = useState<string | null>(null);   // name of the Hearth you're visiting (CHR-259)
+  const [landmarkView, setLandmarkView] = useState<{ name: string; glyph: string; accent: string; visits: number; points: number } | null>(null);   // tapped-landmark status (CHR-261)
   const [members, setMembers] = useState(0);               // mirror of membersRef for the panel
   const [sparksUi, setSparksUi] = useState(0);             // reactive spark balance (for the shop)
   const [owned, setOwned] = useState<string[]>([]);        // purchased cosmetics
@@ -279,6 +280,7 @@ export default function Cirql() {
     eng.onShareLight = (id) => shareLight(id);
     eng.onEmote = (emote) => wsSend({ t: "emote", emote });
     // light gathered while sailing → sparqs (CHR-262), capped small so it can't be farmed
+    eng.onLandmarkTap = (lm) => setLandmarkView(lm);   // open a tapped-business landmark's award status
     eng.onVoyageReward = (light) => {
       const gain = Math.max(0, Math.min(6, Math.round(light)));
       if (gain <= 0) return;
@@ -444,7 +446,7 @@ export default function Cirql() {
   };
 
   // Real tapped businesses → Hearth landmarks (CHR-261). Category → glyph/accent.
-  const landmarkVisual = (b: { name: string; type?: string }) => {
+  const landmarkVisual = (b: { name: string; type?: string; visits?: number; points?: number }) => {
     const t = `${b.type || ""} ${b.name || ""}`.toLowerCase();   // category type + name (names often reveal the kind)
     const has = (...k: string[]) => k.some((x) => t.includes(x));
     let glyph = "📍", accent = "#ffc46b";
@@ -458,7 +460,7 @@ export default function Cirql() {
     else if (has("gym", "fitness", "yoga", "studio")) { glyph = "🏋️"; accent = "#7fd0ff"; }
     else if (has("salon", "spa", "beauty", "hair", "nail")) { glyph = "💇"; accent = "#ff8fbf"; }
     else if (has("book")) { glyph = "📚"; accent = "#c99a5b"; }
-    return { name: b.name, glyph, accent };
+    return { name: b.name, glyph, accent, visits: +(b.visits ?? 0), points: +(b.points ?? 0) };
   };
   const loadLandmarks = () => {
     if (!loggedIn) return;
@@ -669,6 +671,23 @@ export default function Cirql() {
       )}
 
       {/* emote wheel (CHR-260) — a grid of chat-free expressions; tap to play + broadcast */}
+      {/* tapped-business landmark status (CHR-261) — your award status at that shop */}
+      {landmarkView && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center p-6" style={{ background: "rgba(4,3,12,.7)", backdropFilter: "blur(2px)" }} onClick={() => setLandmarkView(null)} data-testid="landmark-panel">
+          <div className="w-full max-w-[320px] rounded-2xl border p-5 text-center" style={{ borderColor: landmarkView.accent + "66", background: "linear-gradient(180deg, rgba(16,18,34,.98), rgba(8,8,20,.99))", boxShadow: `0 24px 70px rgba(0,0,0,.6), 0 0 40px ${landmarkView.accent}22` }} onClick={(e) => e.stopPropagation()}>
+            <div className="text-[34px] leading-none" style={{ filter: `drop-shadow(0 0 8px ${landmarkView.accent})` }}>{landmarkView.glyph}</div>
+            <div className="mt-1.5 text-[15px] font-extrabold text-white">{landmarkView.name}</div>
+            <div className="mt-0.5 text-[11px] uppercase tracking-widest" style={{ color: landmarkView.accent }}>your landmark</div>
+            <div className="mt-3 flex justify-center gap-4">
+              <div><div className="text-[22px] font-black text-white" data-testid="landmark-visits">{landmarkView.visits}</div><div className="text-[10px] uppercase tracking-wider text-slate-400">visits</div></div>
+              <div><div className="text-[22px] font-black" style={{ color: landmarkView.accent }} data-testid="landmark-points">{landmarkView.points.toLocaleString()}</div><div className="text-[10px] uppercase tracking-wider text-slate-400">points earned</div></div>
+            </div>
+            <p className="mt-3 text-[11.5px] leading-snug text-slate-300">Every real tap at <b className="text-white">{landmarkView.name}</b> lights your CIRQLSPACE. Keep tapping to grow your world.</p>
+            <button onClick={() => setLandmarkView(null)} className="mt-3 w-full rounded-lg py-2 text-[13px] font-bold text-slate-900" style={{ background: landmarkView.accent }}>Close</button>
+          </div>
+        </div>
+      )}
+
       {/* visiting a friend's Hearth (CHR-259) — a banner with a way back home */}
       {visiting && (
         <div className="pointer-events-auto absolute inset-x-0 top-12 z-[16] mx-auto flex max-w-[380px] items-center gap-2 rounded-full border px-3 py-1.5" data-testid="visiting-banner"
