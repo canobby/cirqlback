@@ -293,6 +293,8 @@ export class CirqlWorldEngine extends RetroEngine {
   toggleSit() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.seated = !this.seated; this.poseDirty = true; this.dozing = false; this.idleT = 0; if (this.seated) { this.vx = 0; this.vy = 0; this.moveTarget = null; } this.onSeatChange?.(this.seated); }
   private standUp() { this.dozing = false; this.idleT = 0; if (this.seated) { this.seated = false; this.poseDirty = true; this.onSeatChange?.(false); } }
   isSeated() { return this.seated; }
+  /** How many distinct quests you've completed at least once (feeds the K5 journeys). */
+  questsCompleted() { return this.doneOnce.size; }
   /** Jump straight to a start location (no sailing voyage) — used by the startup picker.
    *  "last" keeps the already-applied saved spot; "home" = CIRQLSPACE spawn; "arcade" =
    *  standing at the CirqlCade entrance on the Town ring (one tap from the games hall). */

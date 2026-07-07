@@ -10,6 +10,7 @@ import { CharacterCreator } from "@/components/cirql/character-creator";
 import { ARCADE_GAMES } from "@/game/registry";
 import { CAMPAIGNS, campaignById, MATCH_TAGS, difficultyMeta } from "@/game/cirql-campaigns";
 import { renownStanding, rankTitle } from "@/game/cirql-renown";
+import { JOURNEYS, JOURNEY_MILESTONE_RENOWN, journeyStanding, reachedClaims, type JourneyMetric } from "@/game/cirql-journeys";
 import { dailyForDate, activeEvent, todayStr, type DailyTask, type CirqlEvent } from "@/game/cirql-daily";
 import { ringName } from "@/game/cirql-ring-gen";
 import { EMOTES, PAIR_GESTURES } from "@/game/cirql-emotes";
@@ -36,7 +37,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 const INTRO_LS = "cirql_intro_v1";
 
 type StartDest = "home" | "last" | "arcade";
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; gatheredWisps?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; renown?: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; graduated?: number[]; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; gatheredWisps?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; renown?: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; graduated?: number[]; journeys?: string[]; }
 interface GameSettings { brightness: number; music: number; sfx: number; reduce: boolean; smooth: boolean; pixel: number; }
 const DEFAULT_SETTINGS: GameSettings = { brightness: 1, music: 0.7, sfx: 0.8, reduce: false, smooth: false, pixel: 1.5 };
 const todayUTC = () => new Date().toISOString().slice(0, 10);
@@ -57,6 +58,8 @@ export default function Cirql() {
   const [renownUi, setRenownUi] = useState(0);
   const graduatedRef = useRef<Set<number>>(new Set());   // ring indices whose quest you've completed = "circles graduated" (K2)
   const [graduatedUi, setGraduatedUi] = useState(0);
+  const journeyClaimsRef = useRef<Set<string>>(new Set());   // milestone claims ("journeyId:idx") already rewarded (K5)
+  const [journeyTick, setJourneyTick] = useState(0);         // bump to re-render the journeys panel
   const energyRef = useRef<number>(0);           // World Energy 0..1
   const membersRef = useRef<number>(0);          // your Cirql size (lanterns lit)
   const playsRef = useRef<{ day: string; n: number }>({ day: "", n: 0 }); // daily play count (anti-farm)
@@ -280,7 +283,28 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, gatheredWisps: (s as any).gatheredWisps, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current, renown: renownRef.current, graduated: Array.from(graduatedRef.current) };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, gatheredWisps: (s as any).gatheredWisps, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current, renown: renownRef.current, graduated: Array.from(graduatedRef.current), journeys: Array.from(journeyClaimsRef.current) };
+  };
+  // The live metric values the K5 journeys track (all from state the game already keeps).
+  const journeyMetrics = (): Record<JourneyMetric, number> => ({
+    maxRing: maxRingRef.current, circles: graduatedRef.current.size,
+    landTier: landTierRef.current, questsDone: engineRef.current?.questsCompleted() ?? 0,
+  });
+  // Grant Renown + celebrate any newly-reached journey milestones (fires once each).
+  const checkJourneys = () => {
+    const m = journeyMetrics(); let changed = false;
+    for (const j of JOURNEYS) {
+      const v = m[j.metric] ?? 0;
+      j.milestones.forEach((target, i) => {
+        const key = `${j.id}:${i}`;
+        if (v >= target && !journeyClaimsRef.current.has(key)) {
+          journeyClaimsRef.current.add(key); changed = true;
+          const ren = grantRenown(JOURNEY_MILESTONE_RENOWN[Math.min(i, JOURNEY_MILESTONE_RENOWN.length - 1)]);
+          setTimeout(() => engineRef.current?.toast(`${j.icon} ${j.title} — milestone reached! +${ren} Renown`), 500);
+        }
+      });
+    }
+    if (changed) { setJourneyTick((t) => t + 1); persist(); }
   };
   // Grant Renown (personal standing) + celebrate any rank-up. Returns the amount granted.
   const grantRenown = (amount: number) => {
@@ -340,7 +364,7 @@ export default function Cirql() {
     if (import.meta.env.DEV) (window as any).__cirql = eng;
     eng.onInteract = (kind) => { if (kind === "wonders") openHall(); };   // step into CirqlCade
     eng.onLocalMove = (ring, x, y) => { posRef.current = { ring, x, y }; scheduleSave(); };
-    eng.onSail = (ring, maxRing) => { const st = eng.getState(); posRef.current = { ring, x: st.x, y: st.y }; setCurRingUi(ring); if (maxRing > maxRingRef.current) { maxRingRef.current = maxRing; progressDaily("voyage"); } persist(); };   // reaching a new ring is a big save point
+    eng.onSail = (ring, maxRing) => { const st = eng.getState(); posRef.current = { ring, x: st.x, y: st.y }; setCurRingUi(ring); if (maxRing > maxRingRef.current) { maxRingRef.current = maxRing; progressDaily("voyage"); checkJourneys(); } persist(); };   // reaching a new ring is a big save point
     // quests: grant the sparks reward on completion, persist progress on any change
     eng.onQuestComplete = (q, first) => {
       const reward = first ? q.reward.sparks : Math.max(1, Math.round(q.reward.sparks * 0.25));   // repeats pay ~a quarter
@@ -358,6 +382,7 @@ export default function Cirql() {
           setTimeout(() => eng.toast(`★ Circle graduated! ${graduatedRef.current.size} circle${graduatedRef.current.size === 1 ? "" : "s"} earned · +${bonus} Renown`), 900);
         }
       }
+      checkJourneys();   // quests done / circles / rings reached may cross a journey milestone (K5)
       persist();
     };
     eng.onQuestChange = () => { setQuestRows(eng.getQuestLog()); scheduleSave(); };
@@ -475,6 +500,10 @@ export default function Cirql() {
       eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: membersRef.current, cirqlTotal: 12, online: 1, energy: energyRef.current });
       eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests, lit: st?.lit, litForQuest: st?.litForQuest, gatheredWisps: st?.gatheredWisps, doneOnce: st?.doneOnce, decor: st?.decor, terrain: st?.terrain, landTier: st?.landTier });
       landTierRef.current = eng.getLandTier(); setLandTierUi(landTierRef.current);
+      // K5 journeys: load claimed milestones; a pre-journeys save seeds silently so existing
+      // progress doesn't dump a flood of rewards — only future milestones pay out.
+      journeyClaimsRef.current = Array.isArray(st?.journeys) ? new Set(st!.journeys!) : new Set(reachedClaims(journeyMetrics()));
+      setJourneyTick((t) => t + 1);
       setDecorCount(eng.getDecor().length);
       if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
       setQuestRows(eng.getQuestLog());
@@ -635,6 +664,7 @@ export default function Cirql() {
     }
     landTierRef.current = next; setLandTierUi(next); eng.setLandTier(next);
     eng.toast(`✦ Your CIRQLSPACE grew — ${m.label}!`);
+    checkJourneys();   // growing your homestead may cross a journey milestone (K5)
     persist();
   };
   const requestVisit = (id: string) => { wsSend({ t: "visit", toId: id }); engineRef.current?.toast("Knocking…"); };
@@ -1128,7 +1158,7 @@ export default function Cirql() {
       )}
 
       {showQuests && (
-        <div className="absolute right-3 top-14 z-[55] w-[240px] rounded-xl border p-3" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.94)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }} data-testid="quest-log">
+        <div className="absolute right-3 top-14 z-[55] max-h-[calc(100vh-92px)] w-[240px] overflow-y-auto rounded-xl border p-3" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.94)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }} data-testid="quest-log">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-widest text-amber-300">Quests</span>
             <button onClick={() => setShowQuests(false)} className="text-xs text-slate-400 hover:text-slate-200">✕</button>
@@ -1187,6 +1217,29 @@ export default function Cirql() {
                 )}
               </div>
             ))}
+          </div>
+          {/* Flagship Journeys (Phase K5) — long-running, world-spanning campaigns */}
+          <div className="mt-3 mb-1 flex items-center gap-1.5">
+            <span className="text-[10px] font-black uppercase tracking-widest text-cyan-300/80">Journeys</span>
+            <span className="text-[9px] text-slate-500">— your long voyages</span>
+          </div>
+          <div className="flex flex-col gap-1.5" data-testid="journeys" data-tick={journeyTick}>
+            {JOURNEYS.map((j) => {
+              const st = journeyStanding(j, journeyMetrics()[j.metric] ?? 0);
+              return (
+                <div key={j.id} className="rounded-lg border p-2" style={{ borderColor: "rgba(53,224,208,.2)", background: "rgba(53,224,208,.04)" }}>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[14px] leading-none">{j.icon}</span>
+                    <span className="text-[12px] font-bold text-white">{j.title}</span>
+                    <span className="ml-auto text-[9px] text-slate-400">{st.done}/{j.milestones.length}</span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,.07)" }}>
+                    <div className="h-full rounded-full" style={{ width: `${Math.round(st.progress * 100)}%`, background: "linear-gradient(90deg,#35e0d0,#7ff5e8)" }} />
+                  </div>
+                  <div className="mt-0.5 text-[9.5px] text-cyan-200/70">{st.next ? `${st.value} / ${st.next} ${j.unit}` : `Complete ✦ — ${j.unit}`}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
