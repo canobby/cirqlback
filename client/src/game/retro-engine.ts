@@ -14,7 +14,7 @@
 
 import { clamp, mulberry32, hexToRgb, LS, TAU } from "./arcade-core";
 import { FONT, FONT_W, FONT_H, GLYPH_ADVANCE } from "./retro-font";
-import { paintAvatar, type AvatarConfig } from "./avatar";
+import { paintAvatar, type AvatarConfig, type AvatarDir } from "./avatar";
 import type { MusicKit } from "./musickit";
 
 export { LS, TAU };
@@ -76,6 +76,12 @@ export abstract class RetroEngine {
   protected DPR = 1;
   protected dispW = 0;
   protected dispH = 0;
+  // Responsive "world" mode (opt-in; cabinets stay fixed-resolution). When `fit`
+  // is on, the logical buffer is resized each layout to MATCH the container shape
+  // at `fitPx` CSS-px per logical pixel — so the view fills the screen and simply
+  // shows more world (no letterbox, no stretch, no crop).
+  protected fit = false;
+  protected fitPx = 1.5;
 
   // palette
   protected pal = RETRO_PALETTE;
@@ -232,9 +238,19 @@ export abstract class RetroEngine {
     const host = this.cv.parentElement;
     const availW = host ? host.clientWidth : window.innerWidth;
     const availH = host ? host.clientHeight : window.innerHeight;
-    const scale = Math.max(1, Math.min(availW / this.LW, availH / this.LH));
-    this.dispW = Math.floor(this.LW * scale);
-    this.dispH = Math.floor(this.LH * scale);
+    if (this.fit) {
+      // fill the container: logical size follows its shape at a fixed pixel scale
+      this.LW = Math.max(96, Math.round(availW / this.fitPx));
+      this.LH = Math.max(96, Math.round(availH / this.fitPx));
+      this.buf.width = Math.round(this.LW * this.SS);
+      this.buf.height = Math.round(this.LH * this.SS);
+      this.dispW = Math.max(1, Math.floor(availW));
+      this.dispH = Math.max(1, Math.floor(availH));
+    } else {
+      const scale = Math.max(1, Math.min(availW / this.LW, availH / this.LH));
+      this.dispW = Math.floor(this.LW * scale);
+      this.dispH = Math.floor(this.LH * scale);
+    }
     this.DPR = Math.min(window.devicePixelRatio || 1, 2);
     this.cv.width = Math.floor(this.dispW * this.DPR);
     this.cv.height = Math.floor(this.dispH * this.DPR);
@@ -337,14 +353,14 @@ export abstract class RetroEngine {
   protected textCenter(y: number, str: string, c: string | number, sc = 1, shadow = true) { this.text(Math.round((this.LW - this.textWidth(str, sc)) / 2), y, str, c, sc, shadow); }
 
   /** Draw the player's toy avatar (the cabinet hero) with feet centred at (x, y). */
-  protected avatar(x: number, y: number, cfg: AvatarConfig) {
+  protected avatar(x: number, y: number, cfg: AvatarConfig, dir: AvatarDir = "down") {
     paintAvatar({
       px: (a, b, c) => this.px(a, b, c),
       rect: (a, b, w, h, c) => this.rect(a, b, w, h, c),
       disc: (cx, cy, r, c) => this.disc(cx, cy, r, c),
       ball: (cx, cy, r, base) => this.ball(cx, cy, r, base),
       shade: (c, amt) => shade(c, amt),
-    }, x, y, cfg);
+    }, x, y, cfg, dir);
   }
 
   // ---- juice API (call from a cabinet's update/render) ----

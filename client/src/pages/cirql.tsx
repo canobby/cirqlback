@@ -124,8 +124,8 @@ export default function Cirql() {
         </button>
       </div>
 
-      <div className="relative flex min-h-0 w-full flex-1 items-center justify-center p-2">
-        <canvas ref={canvasRef} data-testid="cirql-canvas" className="block" style={{ imageRendering: "pixelated", boxShadow: "0 0 60px rgba(53,224,208,.16)", borderRadius: 6 }} />
+      <div className="relative min-h-0 w-full flex-1 overflow-hidden">
+        <canvas ref={canvasRef} data-testid="cirql-canvas" className="block" style={{ imageRendering: "pixelated" }} />
       </div>
 
       <div className="flex w-full max-w-[680px] items-end justify-between gap-4 px-5 pb-[calc(14px+env(safe-area-inset-bottom))] pt-1">

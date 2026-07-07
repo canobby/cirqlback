@@ -31,7 +31,7 @@ export class CirqlWorldEngine extends RetroEngine {
   private ringIdx = 0;
   private curRing: Ring = RINGS[0];
   private posX = 0; private posY = 0;         // player world position
-  private vx = 0; private vy = 0; private face = 1; private walk = 0;
+  private vx = 0; private vy = 0; private facing: "up" | "down" | "left" | "right" = "down"; private walk = 0;
   private camX = 0; private camY = 0;
   private t = 0;
   private hero: AvatarConfig;
@@ -66,6 +66,8 @@ export class CirqlWorldEngine extends RetroEngine {
 
   constructor(canvas: HTMLCanvasElement, hooks: RetroHooks = {}) {
     super(canvas, hooks, 264, 200);
+    // responsive full-bleed world viewport (fills the screen, shows more world)
+    this.fit = true; this.fitPx = 1.5; this.resize();
     this.hero = loadAvatarLS();
     this.posX = this.curRing.spawn.x; this.posY = this.curRing.spawn.y;
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
@@ -211,7 +213,7 @@ export class CirqlWorldEngine extends RetroEngine {
       const tvx = moving ? dx * spd : 0, tvy = moving ? dy * spd : 0;
       this.vx += (tvx - this.vx) * Math.min(1, dt * 16);
       this.vy += (tvy - this.vy) * Math.min(1, dt * 16);
-      if (Math.abs(dx) > 0.2) this.face = dx > 0 ? 1 : -1;
+      if (moving) this.facing = Math.abs(dy) > Math.abs(dx) ? (dy > 0 ? "down" : "up") : (dx > 0 ? "right" : "left");
       this.posX += this.vx * dt; this.posY += this.vy * dt;
 
       // solid props — push the player out of them
@@ -359,7 +361,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (aura) this.glow(cx, cy - 12, 20, aura, this.reduce ? 0.4 : 0.32 + 0.1 * Math.sin(this.t * 2.5));
     this.disc(cx, cy + 2, 4, "#0a071460");
     this.ring(cx, cy + 2, 6, "#35e0d0", 1.1);       // gentle "you" ring
-    this.avatar(cx, cy + bob, this.hero);
+    this.avatar(cx, cy + bob, this.hero, this.facing);
     this.nameTag(cx, cy, this.myName, "#ffd24a");
   }
   private drawHearth(cx: number, cy: number, p: Prop) {

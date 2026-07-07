@@ -6,6 +6,8 @@
 
 export type HatStyle = "cap" | "crown" | "band" | "beanie" | "none";
 export type AvatarAura = "none" | "teal" | "violet" | "gold" | "rose" | "mint" | "sky";
+/** Facing direction for top-down worlds. "down" = front (default, arcade look). */
+export type AvatarDir = "down" | "up" | "left" | "right";
 
 export interface AvatarConfig {
   skin: string;   // face/hands hex
@@ -98,7 +100,7 @@ export interface AvatarPainter {
  * Paint the toy figure with feet centred at (x, y); it stands ~27px tall and ~12px
  * wide. Draw shadow/scene first — this only paints the figure + tool + sidekick.
  */
-export function paintAvatar(p: AvatarPainter, x: number, y: number, cfg: AvatarConfig) {
+export function paintAvatar(p: AvatarPainter, x: number, y: number, cfg: AvatarConfig, dir: AvatarDir = "down") {
   const { skin, eye, hat, body } = cfg;
   const bib = cfg.bib;
   const legs = "#2f4a8a";
@@ -107,21 +109,34 @@ export function paintAvatar(p: AvatarPainter, x: number, y: number, cfg: AvatarC
   p.rect(x - 3, y - 1, 2, 1, "#e0b088"); p.rect(x + 1, y - 1, 2, 1, "#e0b088");
   // body
   p.rect(x - 4, y - 15, 8, 9, body); p.rect(x - 4, y - 15, 8, 1, p.shade(body, 0.4));
-  if (bib) { p.rect(x - 2, y - 13, 4, 7, bib); p.px(x - 1, y - 11, "#ffd24a"); p.px(x + 1, y - 11, "#ffd24a"); }
+  if (bib && dir !== "up") { p.rect(x - 2, y - 13, 4, 7, bib); p.px(x - 1, y - 11, "#ffd24a"); p.px(x + 1, y - 11, "#ffd24a"); }
   // arms
   p.rect(x - 6, y - 14, 2, 6, body); p.rect(x + 4, y - 14, 2, 6, body);
   p.px(x - 6, y - 8, skin); p.px(x + 5, y - 8, skin);
   // head
   p.disc(x, y - 19, 4, skin);
   p.px(x - 4, y - 18, p.shade(skin, -0.25)); p.px(x + 4, y - 18, p.shade(skin, -0.25));
-  p.px(x - 2, y - 19, eye); p.px(x + 2, y - 19, eye);
-  p.px(x - 2, y - 20, "#fff"); p.px(x + 2, y - 20, "#fff");
-  p.rect(x - 1, y - 17, 3, 1, "#c65a4a"); p.px(x, y - 17, "#e07a68");
-  p.px(x - 3, y - 17, p.shade(skin, -0.15)); p.px(x + 3, y - 17, p.shade(skin, -0.15)); // cheeks
+  // face — varies with facing direction
+  if (dir === "up") {
+    p.rect(x - 3, y - 17, 6, 2, p.shade(skin, -0.38));          // back of head: no face, hint of hair
+  } else if (dir === "left") {
+    p.px(x - 2, y - 19, eye); p.px(x - 2, y - 20, "#fff");
+    p.rect(x - 2, y - 17, 2, 1, "#c65a4a");
+    p.px(x - 4, y - 18, skin); p.px(x - 3, y - 17, p.shade(skin, -0.15)); // nose + cheek
+  } else if (dir === "right") {
+    p.px(x + 2, y - 19, eye); p.px(x + 2, y - 20, "#fff");
+    p.rect(x, y - 17, 2, 1, "#c65a4a");
+    p.px(x + 4, y - 18, skin); p.px(x + 3, y - 17, p.shade(skin, -0.15));
+  } else { // down / front
+    p.px(x - 2, y - 19, eye); p.px(x + 2, y - 19, eye);
+    p.px(x - 2, y - 20, "#fff"); p.px(x + 2, y - 20, "#fff");
+    p.rect(x - 1, y - 17, 3, 1, "#c65a4a"); p.px(x, y - 17, "#e07a68");
+    p.px(x - 3, y - 17, p.shade(skin, -0.15)); p.px(x + 3, y - 17, p.shade(skin, -0.15)); // cheeks
+  }
   // headwear (shape chosen by hatStyle; "cap" is the classic default)
   drawHat(p, x, y, hat, cfg.hatStyle ?? "cap");
-  // tool in hand
-  drawTool(p, x, y, cfg.tool);
+  // tool in hand (hidden from the back)
+  if (dir !== "up") drawTool(p, x, y, cfg.tool);
   // sidekick toy
   drawSidekick(p, x, y, cfg.sidekick);
 }
