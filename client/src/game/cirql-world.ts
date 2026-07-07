@@ -19,7 +19,9 @@ export type PropType =
   | "marker"    // a quest waypoint target
   | "tablet"    // a Myst-style clue stone (inspect → grants the puzzle + shows the clue)
   | "rune"      // a puzzle rune you toggle on/off
-  | "shrine";   // sealed until the runes match the clue → opens for the reward
+  | "shrine"    // sealed until the runes match the clue → opens for the reward
+  | "gathering" // a social gathering spot (bonfire commons) — every ring has one
+  | "theater";  // the Cirql Drive-In: an outdoor screen cycling fake movie posters (ring 2)
 
 export interface Prop {
   t: PropType;
@@ -104,6 +106,8 @@ const HEARTH: Ring = {
     { t: "rune", x: -72, y: -216, id: "rn2" },
     { t: "rune", x: -42, y: -240, id: "rn3" },
     { t: "shrine", x: -90, y: -278, id: "rune-shrine", label: "Sealed Shrine" },
+    // a social gathering spot near spawn — every ring has one
+    { t: "gathering", x: 130, y: 185, id: "commons", label: "The Commons" },
   ],
   // wake all but the second rune (rn1 stays dark)
   puzzleTarget: ["rn0", "rn2", "rn3"],

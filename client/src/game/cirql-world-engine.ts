@@ -11,6 +11,7 @@ import { RetroEngine, type RetroHooks } from "./retro-engine";
 import { loadAvatarLS, DEFAULT_AVATAR, AURA_COLORS, type AvatarConfig } from "./avatar";
 import { RINGS, MINIMAP_RINGS, type Ring, type Prop } from "./cirql-world";
 import { getRing, ringName } from "./cirql-ring-gen";
+import { MOVIES, REEL_SECONDS } from "./cirql-theater";
 import {
   allQuests, questById, offerableQuest, questStatusList, registerQuest,
   type QuestDef, type QuestProgress, type ObjectiveKind, type QuestStatus,
@@ -306,6 +307,8 @@ export class CirqlWorldEngine extends RetroEngine {
       else this.toast("Sealed. The runes must match the stone.");
       return;
     }
+    if (p.t === "gathering") { this.toast("A good place to rest and meet fellow travellers."); return; }
+    if (p.t === "theater") { const m = this.nowShowing(); this.dialog = { name: "Cirql Drive-In", accent: "#7fd0ff", i: 0, lines: [`Now showing: "${m.title}"`, m.tagline, "Pull up a bench and stay a while."] }; return; }
     if (p.t === "lantern" && p.id) { if (!this.lit.has(p.id)) { this.lit.add(p.id); this.advanceObjective("lightLanterns"); this.onQuestChange?.(); } }
     else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.onInteract?.("wonders", p); }
     else if (p.t === "npc") { this.openNpcDialog(p); this.onInteract?.("npc", p); }
@@ -424,7 +427,8 @@ export class CirqlWorldEngine extends RetroEngine {
       for (const p of this.curRing.props) {
         const isQL = this.isQuestLantern(p);
         const puzzle = p.t === "rune" || p.t === "tablet" || p.t === "shrine";
-        if (p.t !== "wonders" && p.t !== "npc" && p.t !== "dock" && !isQL && !puzzle) continue;
+        const social = p.t === "gathering" || p.t === "theater";
+        if (p.t !== "wonders" && p.t !== "npc" && p.t !== "dock" && !isQL && !puzzle && !social) continue;
         const d = Math.hypot(this.posX - p.x, this.posY - p.y);
         const range = p.r ?? (isQL || p.t === "rune" ? 26 : 40);
         if (d < range && d < best) { best = d; this.near = p; }
@@ -542,6 +546,8 @@ export class CirqlWorldEngine extends RetroEngine {
         case "tablet": draws.push({ y: p.y, f: () => this.drawTablet(sxp, syp, this.near === p) }); break;
         case "rune": { const rl = !!p.id && this.lit.has(p.id); const rn = this.near === p; draws.push({ y: p.y, f: () => this.drawRune(sxp, syp, rl, rn) }); break; }
         case "shrine": draws.push({ y: p.y + 8, f: () => this.drawShrine(sxp, syp, this.puzzleSolved()) }); break;
+        case "gathering": draws.push({ y: p.y, f: () => this.drawGathering(sxp, syp, p) }); break;
+        case "theater": draws.push({ y: p.y + 6, f: () => this.drawTheater(sxp, syp, p) }); break;
         case "marker": { const isTarget = this.objTargetProp() === p; if (isTarget) draws.push({ y: p.y - 1, f: () => this.drawMarker(sxp, syp) }); break; }
         default: break;
       }
@@ -733,6 +739,44 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rectLine(cx - 18, cy - 31, 36, 39, edge);
     this.labelPill(cx, cy - 40, open ? "The Shrine" : "Sealed Shrine", edge);
   }
+  // ---- social gathering spots ----
+  private drawGathering(cx: number, cy: number, p: Prop) {
+    const near = this.near === p;
+    this.glow(cx, cy - 4, 30, "#ffb066", (this.reduce ? 0.3 : 0.26 + 0.08 * Math.sin(this.t * 3)) + (near ? 0.1 : 0));
+    this.fillCirc(cx, cy + 1, 22, "rgba(58,48,38,0.5)");         // paved commons
+    for (let i = 0; i < 6; i++) { const a = i * (TAU / 6) + 0.3; const bx = cx + Math.cos(a) * 20, by = cy + Math.sin(a) * 11; this.rect(bx - 3, by - 1, 6, 3, "#4a3f33"); }  // benches/stones
+    this.rect(cx - 5, cy - 1, 10, 3, "#3a2a1e");                  // fire logs
+    if (!this.reduce) { const f = Math.sin(this.t * 6); this.disc(cx, cy - 4, 4, "#ff5d2a"); this.disc(cx, cy - 6 + f, 3, "#ff8a3d"); this.disc(cx, cy - 9 + f * 1.4, 2, "#ffd24a"); }
+    else this.disc(cx, cy - 6, 3, "#ff8a3d");
+    this.labelPill(cx, cy - 22, p.label || "The Commons", "#ffb066");
+  }
+  private nowShowing() { return MOVIES[Math.floor(this.t / REEL_SECONDS) % MOVIES.length]; }
+  private drawTheater(cx: number, cy: number, p: Prop) {
+    const b = this.b, s = this.SS, m = this.nowShowing();
+    this.glow(cx, cy - 42, 64, "#cfe0ff", 0.12);                 // ambient screen light
+    // ground + a couple of bench rows in front
+    this.fillCirc(cx, cy + 8, 40, "rgba(30,30,44,0.35)");
+    for (let r = 0; r < 2; r++) for (let i = -1; i <= 1; i++) this.rect(cx + i * 16 - 5, cy + 6 + r * 8, 12, 3, "#3a3242");
+    // posts
+    this.rect(cx - 32, cy - 24, 5, 26, "#2b2b38");
+    this.rect(cx + 27, cy - 24, 5, 26, "#2b2b38");
+    // screen
+    const SW = 76, SH = 48, sx0 = cx - SW / 2, sy0 = cy - 24 - SH;
+    this.rect(sx0 - 3, sy0 - 3, SW + 6, SH + 6, "#15151f");      // bezel
+    const g = b.createLinearGradient(0, sy0 * s, 0, (sy0 + SH) * s); g.addColorStop(0, m.bg1); g.addColorStop(1, m.bg2);
+    b.fillStyle = g; b.fillRect(sx0 * s, sy0 * s, SW * s, SH * s);
+    b.fillStyle = "rgba(255,255,255,0.04)"; for (let i = 2; i < SH; i += 3) b.fillRect(sx0 * s, (sy0 + i) * s, SW * s, 1 * s);  // scanlines
+    this.rectLine(sx0, sy0, SW, SH, "#0a0a14");
+    // poster art (emoji) + title (smooth overlay)
+    this.q(cx, sy0 + 5, m.emoji, "#ffffff", 2.9, "c");
+    const lines = this.wrapText(m.title.toUpperCase(), 17).slice(0, 2);
+    const ty = sy0 + SH - (lines.length * 8) - 2;
+    for (let i = 0; i < lines.length; i++) this.q(cx, ty + i * 8, lines[i], "#ffffff", 0.9, "c", true);
+    // marquee under the screen
+    this.rect(cx - 30, cy - 1, 60, 8, "#0a0a14");
+    this.q(cx, cy + 1, "✦ NOW SHOWING", "#ffd24a", 0.72, "c", true);
+    this.labelPill(cx, sy0 - 11, p.label || "Cirql Drive-In", "#7fd0ff");
+  }
   private drawLantern(cx: number, cy: number, c: string, lit: boolean) {
     this.rect(cx - 1, cy - 13, 2, 13, "#2a2015");
     if (lit) { this.glow(cx, cy - 16, 22, c, this.reduce ? 0.5 : 0.4 + 0.15 * Math.sin(this.t * 2 + cx)); this.disc(cx, cy - 16, 3, c); }
@@ -812,7 +856,9 @@ export class CirqlWorldEngine extends RetroEngine {
               : this.near.t === "tablet" ? "Read the runestone"
                 : this.near.t === "rune" ? (this.near.id && this.lit.has(this.near.id) ? "Dim the rune" : "Wake the rune")
                   : this.near.t === "shrine" ? (this.puzzleSolved() ? "Enter the shrine" : "The shrine is sealed")
-                    : "Set sail";
+                    : this.near.t === "theater" ? "Watch the show"
+                      : this.near.t === "gathering" ? "Rest a while"
+                        : "Set sail";
       promptTxt = `E · ${label}`; promptAcc = this.near.accent || "#35e0d0";
     }
     if (promptTxt) {
@@ -888,8 +934,9 @@ export class CirqlWorldEngine extends RetroEngine {
     // player dot at their angle on the current ring
     const ang = Math.atan2(this.posY, this.posX);
     b.fillStyle = "#ffffff"; b.beginPath(); b.arc((cx + Math.cos(ang) * dr) * s, (cy + Math.sin(ang) * dr) * s, 1.8 * s, 0, TAU); b.fill();
-    // tappable hint
-    this.q(cx, cy + R + 2, "MAP", "#8fa6c6", 0.8, "c", true);
+    // current ring name + tappable hint under the minimap
+    this.q(cx, cy + R + 2, this.curRing.name, this.curRing.palette.accent, 0.92, "c", true);
+    this.q(cx, cy + R + 11, "tap · chart", "#8fa6c6", 0.72, "c");
   }
   private drawChart() {
     const b = this.b, s = this.SS, W = this.LW, H = this.LH;

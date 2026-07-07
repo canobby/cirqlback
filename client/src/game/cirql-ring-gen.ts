@@ -93,6 +93,15 @@ export function generateRing(index: number): Ring {
   for (let i = 0; i < biome.crystals; i++) place("crystal", { big: rng() > 0.5, accent: biome.palette.accent });
   for (let i = 0; i < biome.lanterns; i++) place("lantern");
 
+  // a social gathering spot on every ring — ring 2's is the Cirql Drive-In (an outdoor
+  // movie screen); the rest get a bonfire commons. Placed east/west, off the dock lanes.
+  if (index === 2) {
+    props.push({ t: "theater", x: radius * 0.34, y: -radius * 0.02, id: "theater", label: "Cirql Drive-In", r: 52 });
+  } else {
+    const side = rng() > 0.5 ? 1 : -1;
+    props.push({ t: "gathering", x: side * radius * 0.42, y: (rng() - 0.5) * radius * 0.22, id: "commons", label: "The Commons" });
+  }
+
   // stable ids so the quest-template generator (CHR-256) can target this ring's own
   // lanterns + crystals; unique per ring so the lit-set never collides across rings
   let li = 0, ci = 0;
