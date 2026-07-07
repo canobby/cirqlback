@@ -73,6 +73,9 @@ export class CirqlWorldEngine extends RetroEngine {
   // idle life (Phase I1): breathing, blink, occasional fidgets, and an AFK doze
   private idleT = 0; private blinkT = 1.5; private blinking = 0; private dozing = false;
   private fidget: { kind: "lookL" | "lookR" | "lookU" | "stretch"; t: number } | null = null; private nextFidget = 4;
+  // movement juice (Phase I2): world-space ground FX + step cadence + land squash + collision bump
+  private groundFx: { x: number; y: number; life: number; max: number; kind: "dust" | "splash" | "print"; foot: number }[] = [];
+  private stepT = 0; private stepFoot = 1; private squashT = 0; private wasAir = false; private bumpT = 0;
   // Hearth décor (CHR-259): your placed decorations, an edit mode, and a "visiting" overlay
   private decor: { item: string; x: number; y: number }[] = [];
   private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
@@ -625,6 +628,13 @@ export class CirqlWorldEngine extends RetroEngine {
     this.arriveT = Math.max(0, this.arriveT - dt);
     // fake-Z hop physics (CHR-263) — always settles, independent of movement
     if (this.jumpZ > 0 || this.jumpVel !== 0) { this.jumpVel -= 260 * dt; this.jumpZ += this.jumpVel * dt; if (this.jumpZ <= 0) { this.jumpZ = 0; this.jumpVel = 0; } }
+    // land squash + puff (I2) — fires the frame you touch down after a hop
+    const air = this.jumpZ > 0.5;
+    if (this.wasAir && !air) { this.squashT = 0.18; if (!this.reduce) this.spawnGroundFx(this.posX, this.posY, "dust"); }
+    this.wasAir = air;
+    // decay movement-juice timers + age the ground FX (I2)
+    this.squashT = Math.max(0, this.squashT - dt); this.bumpT = Math.max(0, this.bumpT - dt);
+    if (this.groundFx.length) { for (const f of this.groundFx) f.life -= dt; if (this.groundFx.some((f) => f.life <= 0)) this.groundFx = this.groundFx.filter((f) => f.life > 0); }
     // live-zoom easing (Phase H2)
     if (Math.abs(this.zoom - this.zoomTarget) > 0.001) this.zoom += (this.zoomTarget - this.zoom) * Math.min(1, dt * 10); else this.zoom = this.zoomTarget;
 
@@ -773,17 +783,31 @@ export class CirqlWorldEngine extends RetroEngine {
         else { this.posX = preX; this.posY = preY; }
       }
 
-      // solid props — push the player out of them
+      // solid props — push the player out of them; bumping one gives a little recoil + puff (I2)
       for (const s of this.solids()) {
         const ox = this.posX - s.x, oy = this.posY - s.y, d = Math.hypot(ox, oy);
         const min = s.r + 5;
-        if (d < min && d > 0.001) { const k = min / d; this.posX = s.x + ox * k; this.posY = s.y + oy * k; }
+        if (d < min && d > 0.001) {
+          const k = min / d; this.posX = s.x + ox * k; this.posY = s.y + oy * k;
+          if (moving && this.bumpT <= 0) { this.bumpT = 0.16; if (!this.reduce) this.spawnGroundFx(this.posX, this.posY, "dust"); }
+        }
       }
       // island edge — keep the player on the (tier-limited) land
       const rr = Math.hypot(this.posX, this.posY), lim = this.effR() * 0.9;
       if (rr > lim) { this.posX = this.posX / rr * lim; this.posY = this.posY / rr * lim; }
 
       this.walk = Math.hypot(this.vx, this.vy) > 8 ? this.walk + dt * 10 : 0;
+
+      // footstep FX (I2): a step mark each stride — splash on water, prints on sand, dust otherwise
+      if (moving && !this.seated && this.walk > 0) {
+        if ((this.stepT -= dt) <= 0) {
+          this.stepFoot = -this.stepFoot; this.stepT = this.btn.b ? 0.17 : 0.26;
+          const t = this.ringIdx === 0 ? this.tileAtWorld(this.posX, this.posY) : "g";
+          const kind = t === "w" ? "splash" : t === "s" ? "print" : "dust";
+          const off = this.facing === "left" || this.facing === "right" ? 0 : this.stepFoot * 3;
+          if (kind === "print" || !this.reduce) this.spawnGroundFx(this.posX + off, this.posY + 1, kind, this.stepFoot);
+        }
+      } else this.stepT = 0;
 
       // nearest interactable in range (incl. unlit quest lanterns during The Lantern Path)
       this.near = null; let best = 1e9;
@@ -894,6 +918,7 @@ export class CirqlWorldEngine extends RetroEngine {
 
     // painted terrain — the base ground layer under everything (Phase C, CIRQLSPACE only)
     if (this.ringIdx === 0 && this.curTerrain().size) this.drawTerrain(camX, camY);
+    if (this.groundFx.length) this.drawGroundFx(camX, camY);   // footstep/land FX on the ground (I2)
     // ground decoration — paths + ponds, under the depth-sorted props
     for (const p of this.curRing.props) if (p.t === "path") this.drawPath(p.x - camX, p.y - camY);
     for (const p of this.curRing.props) if (p.t === "pond") this.drawPond(p.x - camX, p.y - camY, p.r ?? 22);
@@ -1141,7 +1166,13 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx, cy + 2, this.seated ? 6 : Math.max(2, 4 - this.jumpZ * 0.16), "#0a071460");   // wider contact seated; shrinks as you rise
     this.ring(cx, cy + 2, 6, "#35e0d0", 1.1);       // gentle "you" ring (grounded)
     if (this.seated) this.seatLegs(cx, cy);
-    this.avatar(cx, cy + bob, this.hero, face, this.blinking > 0);
+    // land squash + collision bump (I2)
+    const sq = this.squashT > 0 ? this.squashT / 0.18 : 0;
+    const bump = this.bumpT > 0 ? Math.round((this.bumpT / 0.16) * 2) : 0;
+    const bdx = bump * (this.facing === "left" ? 1 : this.facing === "right" ? -1 : 0);
+    const bdy = bump * (this.facing === "up" ? 1 : this.facing === "down" ? -1 : 0);
+    const drawBody = () => this.avatar(cx + bdx, cy + bob + bdy, this.hero, face, this.blinking > 0);
+    if (sq > 0) { const b = this.b, s = this.SS; b.save(); b.translate(cx * s, cy * s); b.scale(1 + 0.16 * sq, 1 - 0.24 * sq); b.translate(-cx * s, -cy * s); drawBody(); b.restore(); } else drawBody();
     this.nameTag(cx, cy, this.myName, "#ffd24a");
     if (this.dozing) this.drawZzz(cx + 7, cy - 30 + bob);
     if (this.myEmoteT > 0 && this.myEmote) this.drawEmote(cx, cy, this.myEmote, this.myEmoteT);
@@ -1151,6 +1182,20 @@ export class CirqlWorldEngine extends RetroEngine {
   private drawZzz(cx: number, top: number) {
     const a = (this.t * 0.5) % 1;
     for (let i = 0; i < 3; i++) { const p = (a + i / 3) % 1; this.q(cx + p * 7, top - p * 14, "z", "#cfe6ff", 0.8 + p * 0.7, "c", true, (1 - p) * 0.9); }
+  }
+  // World-space ground FX (I2): footstep dust/splash/prints + hop-land puffs (scroll + zoom with the world).
+  private spawnGroundFx(x: number, y: number, kind: "dust" | "splash" | "print", foot = 1) {
+    if (this.groundFx.length > 40) this.groundFx.shift();
+    const max = kind === "print" ? 1.5 : kind === "splash" ? 0.5 : 0.4;
+    this.groundFx.push({ x, y, life: max, max, kind, foot });
+  }
+  private drawGroundFx(camX: number, camY: number) {
+    for (const f of this.groundFx) {
+      const sx = f.x - camX, sy = f.y - camY, age = 1 - f.life / f.max;
+      if (f.kind === "print") this.disc(sx, sy, 1.6, hexA("#5a3d22", Math.min(1, f.life / f.max) * 0.5));
+      else if (f.kind === "splash") this.ring(sx, sy, 2 + age * 6, hexA("#bfe6ff", (1 - age) * 0.7), 1);
+      else this.disc(sx, sy - age * 3, 1.5 + age * 3, hexA("#d8cdb8", (1 - age) * 0.4));
+    }
   }
   private drawRemote(cx: number, cy: number, r: RemotePlayer, inParty = false) {
     const sit = r.seated ? 3 : 0;
