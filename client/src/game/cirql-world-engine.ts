@@ -52,6 +52,11 @@ export class CirqlWorldEngine extends RetroEngine {
   private q(x: number, y: number, s: string, c: string, sc = 1, align: "l" | "c" | "r" = "l", bold = false, alpha = 1) {
     this.ui.push({ x, y, s, c, sc, align, bold, alpha });
   }
+  // Safe-area insets (CSS px) so the HUD clears the floating header + controls in
+  // full-screen mode; converted to logical px on use.
+  private insetTopCss = 0; private insetBotCss = 0;
+  private itop() { return this.dispW > 0 ? this.insetTopCss * this.LW / this.dispW : 0; }
+  private ibot() { return this.dispW > 0 ? this.insetBotCss * this.LW / this.dispW : 0; }
 
   // ---- hooks the host page wires ----
   /** Fired when the player interacts (E / on-screen action) with a target. */
@@ -79,6 +84,8 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Live-update the player's look (character creator / "edit look"). */
   setAvatar(avatar: AvatarConfig) { this.hero = avatar; }
   setStats(s: Partial<CirqlStats>) { this.stats = { ...this.stats, ...s }; }
+  /** Full-screen safe-area: keep the HUD below the floating header + above the controls (CSS px). */
+  setHudInsets(topCss: number, botCss: number) { this.insetTopCss = Math.max(0, topCss); this.insetBotCss = Math.max(0, botCss); }
   /** The on-screen action button + the quest system call this to interact. */
   interact() { this.doInteract(); }
   getState() { return { ring: this.ringIdx, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests }; }
@@ -452,46 +459,45 @@ export class CirqlWorldEngine extends RetroEngine {
     this.q(cx, y, s, c, 0.95, "c", true);
   }
   private drawHud() {
-    // top strip
-    this.rect(0, 0, this.LW, 13, "#0a0714b0");
-    this.q(this.LW / 2, 3, "CIRQL", "#ffffff", 1.25, "c", true);
-    this.ring(9, 7, 3, "#33e650", 1.3); this.q(15, 3, `${this.stats.online}`, "#c2fbe0", 1, "l");
-    this.q(this.LW - 4, 3, `${this.stats.sparks} SPARKS`, "#ffc46b", 1, "r", true);
-    // your cirql (bottom-left card)
+    const it = this.itop(), ib = this.ibot();
+    // top row (below the floating header): online (left) · sparks (right)
+    this.ring(9, it + 6, 3, "#33e650", 1.3); this.q(15, it + 2, `${this.stats.online}`, "#c2fbe0", 1, "l");
+    this.q(this.LW - 4, it + 2, `${this.stats.sparks} SPARKS`, "#ffc46b", 1, "r", true);
+
+    this.drawQuestTracker(it);
+    this.drawMinimap(it);
+
+    // your cirql — just above the controls, left
     const lit = `CIRQL ${this.stats.cirqlLit}/${this.stats.cirqlTotal}`;
-    this.rect(3, this.LH - 12, this.textWidth(lit, 1) + 6, 10, "#0a0714aa");
-    this.q(6, this.LH - 11, lit, "#ffc46b", 1, "l", true);
+    this.q(6, this.LH - ib - 11, lit, "#ffc46b", 1, "l", true);
 
-    this.drawQuestTracker();
-    this.drawMinimap();
-
-    // interact prompt
+    // interact prompt — bottom-centre, above the controls
     if (this.near && !this.dialog) {
       const label = this.near.t === "wonders" ? "Enter the Wonders"
         : this.near.t === "npc" ? `Talk to ${this.near.label || ""}`
           : "Set sail";
       const txt = `E · ${label}`;
       const w = Math.max(this.textWidth(txt, 1), txt.length * 3.6);
-      const x = Math.round((this.LW - w) / 2), y = this.LH - 26;
+      const x = Math.round((this.LW - w) / 2), y = this.LH - ib - 24;
       this.rect(x - 5, y - 3, w + 10, 12, "#0a0714dd");
       this.rectLine(x - 5, y - 3, w + 10, 12, this.near.accent || "#35e0d0");
       this.q(this.LW / 2, y, txt, "#eaf6ff", 1, "c", true);
     }
 
-    // toast
+    // toast — top centre (below the top row)
     if (this.msgT > 0) {
       const w = Math.max(this.textWidth(this.msg, 1), this.msg.length * 3.4); const x = Math.round((this.LW - w) / 2);
       const a = Math.min(1, this.msgT * 1.5);
       this.b.globalAlpha = a;
-      this.rect(x - 5, 16, w + 10, 11, "#0a0714e0"); this.rectLine(x - 5, 16, w + 10, 11, "#b26cff");
+      this.rect(x - 5, it + 14, w + 10, 11, "#0a0714e0"); this.rectLine(x - 5, it + 14, w + 10, 11, "#b26cff");
       this.b.globalAlpha = 1;
-      this.q(this.LW / 2, 18, this.msg, "#e6d8ff", 1, "c", false, a);
+      this.q(this.LW / 2, it + 16, this.msg, "#e6d8ff", 1, "c", false, a);
     }
 
     // dialog
     if (this.dialog) this.drawDialog();
   }
-  private drawQuestTracker() {
+  private drawQuestTracker(it: number) {
     const q = this.activeQuest(); if (!q) return;
     const oi = this.currentObjIndex(q); if (oi < 0) return;
     const o = q.objectives[oi];
@@ -499,15 +505,15 @@ export class CirqlWorldEngine extends RetroEngine {
     const prog = cnt > 1 ? `  ${have}/${cnt}` : "";
     const line = `${o.label}${prog}`;
     const w = Math.max(q.name.length, line.length) * 4.4 + 12;
-    const x = 3, y = 15;
+    const x = 3, y = it + 14;
     this.rect(x, y, w, 21, "#0a0714c0");
     this.rect(x, y, 2, 21, "#ffd24a");
     this.q(x + 5, y + 3, q.name, "#ffd24a", 1, "l", true);
     this.q(x + 5, y + 12, line, "#eaf6ff", 0.95, "l");
   }
-  private drawMinimap() {
+  private drawMinimap(it: number) {
     const b = this.b, s = this.SS;
-    const cx = this.LW - 28, cy = this.LH - 30, R = 22;
+    const cx = this.LW - 26, cy = it + 34, R = 20;
     b.fillStyle = "rgba(6,12,26,0.82)"; b.beginPath(); b.arc(cx * s, cy * s, R * s, 0, TAU); b.fill();
     const step = (R - 3) / MINIMAP_RINGS;
     for (let i = MINIMAP_RINGS - 1; i >= 0; i--) {
@@ -530,7 +536,7 @@ export class CirqlWorldEngine extends RetroEngine {
   private drawDialog() {
     if (!this.dialog) return;
     const d = this.dialog;
-    const boxY = this.LH - 46, boxH = 40;
+    const boxH = 40, boxY = this.LH - this.ibot() - boxH - 6;
     this.rect(6, boxY, this.LW - 12, boxH, "#0a0714ee");
     this.rectLine(6, boxY, this.LW - 12, boxH, d.accent);
     this.q(11, boxY + 4, d.name, d.accent, 1, "l", true);

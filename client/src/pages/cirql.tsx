@@ -19,6 +19,8 @@ export default function Cirql() {
   const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<CirqlWorldEngine | null>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
 
   // identity/persistence held in refs so the engine's autosave callback stays fresh
   const avatarRef = useRef<AvatarConfig>({ ...DEFAULT_AVATAR });
@@ -96,6 +98,18 @@ export default function Cirql() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn]);
 
+  // Full-screen: keep the in-engine HUD clear of the floating header + controls.
+  useEffect(() => {
+    const update = () => {
+      const eng = engineRef.current; if (!eng) return;
+      eng.setHudInsets(headerRef.current?.offsetHeight ?? 0, controlsRef.current?.offsetHeight ?? 0);
+    };
+    const id = requestAnimationFrame(update);
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    return () => { cancelAnimationFrame(id); window.removeEventListener("resize", update); window.removeEventListener("orientationchange", update); };
+  }, []);
+
   const onConfirm = (cfg: AvatarConfig, name: string) => {
     avatarRef.current = cfg; nameRef.current = name || nameRef.current || "Traveller"; seenIntroRef.current = true;
     engineRef.current?.setAvatar(cfg); engineRef.current?.setLocal(nameRef.current, cfg);
@@ -110,33 +124,38 @@ export default function Cirql() {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center" style={{ background: "#060b1a", color: "#eaf6ff", touchAction: "none", userSelect: "none" }}>
-      <div className="flex w-full max-w-[680px] items-center gap-3 px-4 pb-1 pt-3">
-        <Link href="/arcade" className="flex items-center gap-1 text-xs text-cyan-300/70 hover:text-cyan-200" data-testid="link-back"><ArrowLeft className="h-4 w-4" /> Back</Link>
+    <div className="fixed inset-0 z-50 overflow-hidden" style={{ background: "#060b1a", color: "#eaf6ff", touchAction: "none", userSelect: "none" }}>
+      {/* full-screen world — extends under the header and controls */}
+      <div className="absolute inset-0 overflow-hidden">
+        <canvas ref={canvasRef} data-testid="cirql-canvas" className="block" style={{ imageRendering: "pixelated" }} />
+      </div>
+
+      {/* floating header — taps pass through to the world except on the buttons */}
+      <div ref={headerRef} className="pointer-events-none absolute inset-x-0 top-0 z-10 mx-auto flex max-w-[680px] items-center gap-3 px-4 pb-2 pt-3"
+        style={{ background: "linear-gradient(180deg, rgba(6,11,26,.72), rgba(6,11,26,0))" }}>
+        <Link href="/arcade" className="pointer-events-auto flex items-center gap-1 text-xs text-cyan-300/80 hover:text-cyan-200" data-testid="link-back"><ArrowLeft className="h-4 w-4" /> Back</Link>
         <div className="ml-1 text-sm font-extrabold uppercase tracking-[0.35em]" style={{ color: "#fff", textShadow: "0 0 10px rgba(53,224,208,.6), 0 0 22px rgba(178,108,255,.35)" }}>CIRQL</div>
         <button onClick={() => { setQuestRows(engineRef.current?.getQuestLog() ?? []); setShowQuests((v) => !v); }} data-testid="btn-quests"
-          className="ml-auto flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-200/80" style={{ borderColor: "rgba(255,196,107,.3)" }}>
+          className="pointer-events-auto ml-auto flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-200/90" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
           <ScrollText className="h-3 w-3" /> Quests
         </button>
         <button onClick={() => { setCreatorMode("edit"); setShowCreator(true); }} data-testid="btn-edit-look"
-          className="flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-200/80" style={{ borderColor: "rgba(53,224,208,.3)" }}>
+          className="pointer-events-auto flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-200/90" style={{ borderColor: "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
           <Pencil className="h-3 w-3" /> Look
         </button>
       </div>
 
-      <div className="relative min-h-0 w-full flex-1 overflow-hidden">
-        <canvas ref={canvasRef} data-testid="cirql-canvas" className="block" style={{ imageRendering: "pixelated" }} />
-      </div>
-
-      <div className="flex w-full max-w-[680px] items-end justify-between gap-4 px-5 pb-[calc(14px+env(safe-area-inset-bottom))] pt-1">
+      {/* controls tray — captures all taps in this band so only the controls move the character */}
+      <div ref={controlsRef} className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-w-[680px] items-end justify-between gap-4 px-5 pb-[calc(14px+env(safe-area-inset-bottom))] pt-6"
+        style={{ background: "linear-gradient(0deg, rgba(6,11,26,.78) 40%, rgba(6,11,26,0))", touchAction: "none" }}>
         <Joystick press={(b) => engineRef.current?.press(b)} release={(b) => engineRef.current?.release(b)} color="#35e0d0" size={128} />
         <div className="mb-1 flex items-end gap-3">
           <button onPointerDown={(e) => { e.preventDefault(); engineRef.current?.interact(); }} data-testid="btn-interact"
             className="flex h-16 w-16 flex-col items-center justify-center rounded-full border-[1.5px] text-[9px] font-extrabold active:scale-90"
-            style={{ borderColor: "#ffc46b", color: "#ffd98a", background: "rgba(255,196,107,.08)", boxShadow: "0 0 16px rgba(255,196,107,.2) inset", touchAction: "none" }}>
+            style={{ borderColor: "#ffc46b", color: "#ffd98a", background: "rgba(255,196,107,.12)", boxShadow: "0 0 16px rgba(255,196,107,.2) inset", touchAction: "none" }}>
             <span className="text-lg leading-none">E</span><span className="mt-0.5">TALK / ENTER</span>
           </button>
-          <button {...hold("b")} data-testid="btn-run" className="flex h-14 w-14 flex-col items-center justify-center rounded-full border-[1.5px] text-[9px] font-extrabold active:scale-90" style={{ borderColor: "#3bb6ff", color: "#7be0ff", background: "rgba(255,255,255,.03)", boxShadow: "0 0 16px rgba(59,182,255,.2) inset", touchAction: "none" }}>
+          <button {...hold("b")} data-testid="btn-run" className="flex h-14 w-14 flex-col items-center justify-center rounded-full border-[1.5px] text-[9px] font-extrabold active:scale-90" style={{ borderColor: "#3bb6ff", color: "#7be0ff", background: "rgba(10,18,38,.4)", boxShadow: "0 0 16px rgba(59,182,255,.2) inset", touchAction: "none" }}>
             <Zap className="h-5 w-5" /> RUN
           </button>
         </div>
