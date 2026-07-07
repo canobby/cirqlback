@@ -3,16 +3,15 @@ import { Sparkles, X, Loader2, Check } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { perksForGame } from "@shared/arcade-perks";
 
-// PerkButton — the per-game reward-bridge shop (the moat). Spend Cirqlback points
-// (earned mostly from partner taps) to ARM power-ups for your next run of this
-// game. Self-hides for games without a catalog. Perked runs stay off the Daily
+// PerkButton — the per-game power-up shop. The arcade is FREE (owner decision):
+// arming a power-up for your next run costs nothing, so the arcade never touches a
+// currency. Self-hides for games without a catalog. Perked runs stay off the Daily
 // board (your personal best still counts).
 
 export function PerkButton({ gameId, name, accent = "#fbbf24" }: { gameId: string; name: string; accent?: string }) {
   const { user } = useAuth();
   const perks = perksForGame(gameId);
   const [open, setOpen] = useState(false);
-  const [balance, setBalance] = useState(0);
   const [armed, setArmed] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -23,7 +22,7 @@ export function PerkButton({ gameId, name, accent = "#fbbf24" }: { gameId: strin
     setLoading(true);
     fetch(`/api/game/perks/shop?gameId=${encodeURIComponent(gameId)}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) { setBalance(d.balance || 0); setArmed(d.armed || {}); } setLoading(false); })
+      .then((d) => { if (d) { setArmed(d.armed || {}); } setLoading(false); })
       .catch(() => setLoading(false));
   };
   const openIt = () => { setOpen(true); setMsg(null); if (user) load(); };
@@ -32,8 +31,7 @@ export function PerkButton({ gameId, name, accent = "#fbbf24" }: { gameId: strin
     fetch("/api/game/perks/arm", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId, perkId: pid }) })
       .then(async (r) => {
         const j = await r.json().catch(() => null);
-        if (r.ok && j?.ok) { setBalance(j.balance); setArmed(j.armed || {}); }
-        else if (r.status === 402) setMsg("Not enough points — tap partner shops to earn more.");
+        if (r.ok && j?.ok) { setArmed(j.armed || {}); }
         else if (j?.reason === "already") { if (j.armed) setArmed(j.armed); setMsg("Already armed for your next run."); }
         else setMsg("Couldn't arm that perk.");
         setBusy(null);
@@ -55,14 +53,13 @@ export function PerkButton({ gameId, name, accent = "#fbbf24" }: { gameId: strin
             </div>
 
             {!user ? (
-              <p className="py-8 text-center text-sm text-violet-100/70">Log in and tap partner shops to earn points, then arm power-ups for your runs.</p>
+              <p className="py-8 text-center text-sm text-violet-100/70">Log in to arm power-ups for your runs — they're free.</p>
             ) : (
               <>
-                <div className="mb-3 text-[12px]" style={{ color: accent + "cc" }}>Balance <b className="text-white">{balance.toLocaleString()}</b> points {loading && <Loader2 className="ml-1 inline h-3 w-3 animate-spin" />}</div>
+                <div className="mb-3 text-[12px]" style={{ color: accent + "cc" }}>Power-ups are <b className="text-white">free</b> — arm any for your next run {loading && <Loader2 className="ml-1 inline h-3 w-3 animate-spin" />}</div>
                 <div className="space-y-2">
                   {perks.map((p) => {
                     const isArmed = !!armed[p.id];
-                    const can = balance >= p.cost;
                     return (
                       <div key={p.id} className="flex items-center gap-3 rounded-xl border px-3 py-2" style={{ borderColor: isArmed ? accent + "66" : "rgba(150,130,255,.16)", background: isArmed ? accent + "12" : "rgba(255,255,255,.02)" }}>
                         <span className="text-xl" style={{ filter: `drop-shadow(0 0 6px ${accent})` }}>{p.emoji}</span>
@@ -73,8 +70,8 @@ export function PerkButton({ gameId, name, accent = "#fbbf24" }: { gameId: strin
                         {isArmed ? (
                           <span className="flex items-center gap-1 text-[12px] font-bold" style={{ color: accent }}><Check className="h-4 w-4" /> Armed</span>
                         ) : (
-                          <button onClick={() => arm(p.id)} disabled={busy === p.id || !can} data-testid={`arm-${p.id}`} className="rounded-full px-3 py-1.5 text-[12px] font-bold active:scale-95 disabled:opacity-40" style={{ color: "#0a0714", background: `linear-gradient(90deg, ${accent}, #a78bfa)` }}>
-                            {busy === p.id ? "…" : `${p.cost} pts`}
+                          <button onClick={() => arm(p.id)} disabled={busy === p.id} data-testid={`arm-${p.id}`} className="rounded-full px-3 py-1.5 text-[12px] font-bold active:scale-95 disabled:opacity-40" style={{ color: "#0a0714", background: `linear-gradient(90deg, ${accent}, #a78bfa)` }}>
+                            {busy === p.id ? "…" : "Arm"}
                           </button>
                         )}
                       </div>

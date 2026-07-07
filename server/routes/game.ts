@@ -191,9 +191,8 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
   // pragmatic plausibility, not DRM. Keeps each player's best for the day.
   const CB_EPOCH = Math.floor(Date.parse("2026-01-01T00:00:00Z") / 86400000);
   const cbDailyNum = () => Math.floor(Date.now() / 86400000) - CB_EPOCH + 1;
-  const DAILY_PLAY_POINTS = 10;   // once-a-day reward for playing a game's Daily
-  const PLAY_POINT_SCALE = 25;    // score-per-★ for the performance reward
-  const PLAY_POINT_CAP = 50;      // max performance ★ awarded per submission (anti-farm)
+  const ARCADE_DAILY_SPARQS = 3;      // sparqs for playing a game's Daily (first time today)
+  const ARCADE_DAILY_SPARQ_CAP = 15;  // max arcade sparqs bankable per UTC day (keeps the balance modest)
 
   app.post("/api/game/daily/score", isAuthenticated, async (req, res) => {
     try {
@@ -205,18 +204,15 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
       if (!Number.isFinite(bestCombo) || bestCombo < 0 || bestCombo > 100_000) return res.status(400).json({ error: "Invalid combo" });
       const day = utcDay(Date.now());
       const result = await storage.submitDailyScore(userId, day, cbDailyNum(), score, bestCombo, restored, gameKey(req));
-      // Points on play: a once-a-day flat reward for showing up (first Daily play)
-      // plus a performance reward scaled to how much you beat your own best by —
-      // capped per submission so it rewards real improvement, not loss-farming.
-      let earned = 0;
-      if (result.firstToday) earned += DAILY_PLAY_POINTS;
-      earned += Math.min(PLAY_POINT_CAP, Math.floor((result.improvedBy || 0) / PLAY_POINT_SCALE));
-      let reward: { points: number; total?: number } | null = null;
-      if (earned > 0) {
+      // The arcade is a SPARQ earner now (owner decision) — playing a game's Daily banks
+      // sparqs into the server-side sparq wallet, which CIRQL claims. A flat once-a-day
+      // reward per game, capped across the whole arcade so the balance stays modest. The
+      // arcade no longer touches platform points (those stay the real-world loyalty economy).
+      let reward: { sparqs: number } | null = null;
+      if (result.firstToday) {
         try {
-          await storage.updateUserPoints(userId, earned);
-          const u = await storage.getUser(userId);
-          reward = { points: earned, total: (u as any)?.totalPoints };
+          const granted = await storage.creditSparqWallet(userId, ARCADE_DAILY_SPARQS, ARCADE_DAILY_SPARQ_CAP);
+          if (granted > 0) reward = { sparqs: granted };
         } catch { /* reward is best-effort */ }
       }
       res.json({ ...result, dailyNum: cbDailyNum(), reward });
@@ -224,6 +220,12 @@ export function registerGameRoutes(app: Express, _deps: RouteDeps) {
       console.error("daily score submit error:", err);
       res.status(500).json({ error: "Failed to submit score" });
     }
+  });
+
+  // CIRQL drains arcade-earned sparqs from the server-side wallet into its own balance.
+  app.post("/api/game/sparqs/claim", isAuthenticated, async (req, res) => {
+    try { res.json({ claimed: await storage.claimSparqWallet((req.user as any).id) }); }
+    catch (err) { console.error("sparq claim error:", err); res.status(500).json({ error: "Failed to claim sparqs" }); }
   });
 
   app.get("/api/game/daily/leaderboard", isAuthenticated, async (req, res) => {

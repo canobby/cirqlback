@@ -111,7 +111,7 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
   const [sound, setSound] = useState(() => lsGet(c.lsKey + "_snd") !== "0");
   const [haptics, setHaptics] = useState(() => lsGet(c.lsKey + "_hap") !== "0");
   const [dailyRank, setDailyRank] = useState<{ rank: number; total: number } | null>(null);
-  const [dailyReward, setDailyReward] = useState<{ points: number } | null>(null);
+  const [dailyReward, setDailyReward] = useState<{ sparqs: number } | null>(null);
 
   // Freestyle / practice mode + arcade perks
   const freestyleRef = useRef(false);
@@ -247,7 +247,7 @@ export default function ArcadeGameShell({ config }: { config: GameConfig }) {
               ))}
             </div>
             {dailyRank && <div className="text-xs text-cyan-300/80">Daily rank <b className="text-white">#{dailyRank.rank}</b> of {dailyRank.total}</div>}
-            {dailyReward && <div className="text-xs text-amber-300/90">🎁 Daily reward <b className="text-white">+{dailyReward.points}</b> points</div>}
+            {dailyReward && <div className="text-xs text-amber-300/90">✦ Daily reward <b className="text-white">+{dailyReward.sparqs}</b> sparq{dailyReward.sparqs > 1 ? "s" : ""} — claim in CIRQLVERSE</div>}
             {wasFreestyle && <div className="text-[11px] text-violet-300/50">Freestyle run — not ranked</div>}
             {wasPerked && <div className="text-[11px] text-amber-300/70">✦ Perked run — off the Daily board</div>}
             {!user && <div className="text-[11px] text-violet-300/50">Log in to save your best &amp; join the Daily board.</div>}

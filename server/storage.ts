@@ -1842,6 +1842,35 @@ export class DatabaseStorage implements IStorage {
     return ids;
   }
 
+  // ---- Sparq wallet: arcade-earned sparqs, banked server-side, claimed by CIRQL ----
+  // CIRQL sparqs live in CIRQL's own client-authoritative save, so the arcade can't
+  // write them directly (it would clobber CIRQL's autosave, especially when a cabinet
+  // is played embedded inside CIRQL). Instead the arcade credits this server-authoritative
+  // wallet (a `game_progress` row, gameId='sparqbank') and CIRQL drains it on load /
+  // when it returns from a cabinet. A per-UTC-day cap keeps the balance modest.
+  async creditSparqWallet(userId: string, amount: number, dailyCap: number): Promise<number> {
+    const p = await this.getOrCreateGameProgress(userId, "sparqbank");
+    const s = (p.state as any) || {};
+    const today = new Date().toISOString().slice(0, 10);
+    const sameDay = s.day === today;
+    const earnedToday = sameDay ? (Number(s.earnedToday) || 0) : 0;
+    const grant = Math.max(0, Math.min(amount, dailyCap - earnedToday));
+    if (grant <= 0) {
+      if (!sameDay) await this.saveGameProgress(userId, { state: { ...s, day: today, earnedToday: 0 } }, "sparqbank");
+      return 0;
+    }
+    const pending = (Number(s.pending) || 0) + grant;
+    await this.saveGameProgress(userId, { state: { ...s, pending, day: today, earnedToday: earnedToday + grant } }, "sparqbank");
+    return grant;
+  }
+  async claimSparqWallet(userId: string): Promise<number> {
+    const p = await this.getOrCreateGameProgress(userId, "sparqbank");
+    const s = (p.state as any) || {};
+    const pending = Number(s.pending) || 0;
+    if (pending > 0) await this.saveGameProgress(userId, { state: { ...s, pending: 0 } }, "sparqbank");
+    return pending;
+  }
+
   // CHR-116: redeem a set of banked tap-rewards at once (clamped to what's
   // actually banked). Server-authoritative so the bank can't be over-spent.
   // Returns the amounts actually spent + the remaining bank.

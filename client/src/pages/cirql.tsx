@@ -179,6 +179,23 @@ export default function Cirql() {
   const shareLight = (id: string) => wsSend({ t: "light", to: id });
   const playEmote = (id: string) => { engineRef.current?.playEmote(id); setShowEmotes(false); };
 
+  // Claim sparqs earned by playing arcade Dailies (banked in the server sparq wallet).
+  // Called on load + when returning from a cabinet, so arcade play feeds your CIRQL world.
+  const claimArcadeSparqs = () => {
+    if (!loggedIn) return;
+    fetch("/api/game/sparqs/claim", { method: "POST", credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const n = Number(d?.claimed) || 0; if (n <= 0) return;
+        sparksRef.current += n; energyRef.current = Math.min(1, energyRef.current + n * 0.01);
+        engineRef.current?.setStats({ sparks: sparksRef.current, energy: energyRef.current });
+        setSparksUi(sparksRef.current);
+        engineRef.current?.toast(`✦ +${n} sparq${n > 1 ? "s" : ""} earned in the arcade`);
+        persist();
+      })
+      .catch(() => { /* best-effort */ });
+  };
+
   // DM request/accept handshake (CHR-248)
   const requestDm = (id: string) => { wsSend({ t: "dm:request", toId: id }); engineRef.current?.toast("DM request sent"); };
   const acceptDmReq = (fromId: string) => { wsSend({ t: "dm:accept", fromId }); setDmReqs((r) => r.filter((x) => x.fromId !== fromId)); };
@@ -338,7 +355,7 @@ export default function Cirql() {
       loadedRef.current = true;
       fetch("/api/game/progress?gameId=cirql", { credentials: "include" })
         .then((r) => (r.ok ? r.json() : null))
-        .then((d) => applyIdentity(d?.state || null))
+        .then((d) => { applyIdentity(d?.state || null); claimArcadeSparqs(); })   // sweep up sparqs earned in the arcade
         .catch(() => applyIdentity(null));
     } else if (!loadedRef.current) {
       loadedRef.current = true;
@@ -395,6 +412,7 @@ export default function Cirql() {
       }
       progressDaily("attune");   // playing a Wonder can satisfy today's daily
       persist();
+      claimArcadeSparqs();        // sweep up any sparqs that cabinet's Daily just banked
     }
     setPlayRoute(null);
   };
