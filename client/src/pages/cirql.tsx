@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile, ChevronsUp, Backpack, Hammer } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { CirqlWorldEngine, type QuestLogRow } from "@/game/cirql-world-engine";
+import { CirqlWorldEngine, LAND_TIERS, type QuestLogRow } from "@/game/cirql-world-engine";
 import type { Btn } from "@/game/retro-engine";
 import { loadAvatarLS, saveAvatarLS, DEFAULT_AVATAR, type AvatarConfig } from "@/game/avatar";
 import { Joystick } from "@/components/joystick";
@@ -16,6 +16,17 @@ import { WAKE_CUTSCENE, campaignCutscene, worldEnergyCutscene } from "@/game/cir
 import { DECOR, decorById, decorPriceKey, CATEGORIES, type DecorCategory } from "@/game/cirql-decor";
 
 const SPARK_PER_PLAY = 2;
+// CIRQLSPACE land-growth tiers (Phase D) — cozy → estate. First two are free (a gift + a
+// build milestone); the rest are an escalating SPARQS sink up to the estate cap.
+const LAND_META: { label: string; cost: number; milestone?: "gift" | "build10" }[] = [
+  { label: "Cozy Plot", cost: 0 },                     // 0 — start
+  { label: "Garden", cost: 0, milestone: "gift" },     // 1 — free gift
+  { label: "Yard", cost: 0, milestone: "build10" },    // 2 — free after placing 10 things
+  { label: "Grounds", cost: 30 },
+  { label: "Meadow", cost: 70 },
+  { label: "Estate", cost: 140 },
+  { label: "Domain", cost: 260 },                      // 6 — estate cap
+];
 const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 
 // CIRQL — the flagship world (M1 world + M2 identity/persistence).
@@ -23,7 +34,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 // get a character-creation step first; everyone can re-edit their look.
 const INTRO_LS = "cirql_intro_v1";
 
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; daily?: { day: string; done: boolean; streak: number; lastDone: string }; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; }
 const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export default function Cirql() {
@@ -61,6 +72,8 @@ export default function Cirql() {
   const [paintTile, setPaintTile] = useState("s");
   const [brushSize, setBrushSize] = useState(1);
   const [decorCount, setDecorCount] = useState(0);         // placed-piece count (reactive)
+  const landTierRef = useRef(0);                           // CIRQLSPACE land tier (Phase D)
+  const [landTierUi, setLandTierUi] = useState(0);
   const [visiting, setVisiting] = useState<string | null>(null);   // name of the Hearth you're visiting (CHR-259)
   const [members, setMembers] = useState(0);               // mirror of membersRef for the panel
   const [sparksUi, setSparksUi] = useState(0);             // reactive spark balance (for the shop)
@@ -241,7 +254,7 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, daily: dailyRef.current };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current };
   };
   const persist = () => {
     const st = buildState();
@@ -366,7 +379,8 @@ export default function Cirql() {
       if (st?.daily && typeof st.daily.day === "string") dailyRef.current = { day: st.daily.day, done: !!st.daily.done, streak: +st.daily.streak || 0, lastDone: st.daily.lastDone || "" };
       refreshDaily();
       eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: membersRef.current, cirqlTotal: 12, online: 1, energy: energyRef.current });
-      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests, lit: st?.lit, litForQuest: st?.litForQuest, doneOnce: st?.doneOnce, decor: st?.decor, terrain: st?.terrain });
+      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests, lit: st?.lit, litForQuest: st?.litForQuest, doneOnce: st?.doneOnce, decor: st?.decor, terrain: st?.terrain, landTier: st?.landTier });
+      landTierRef.current = eng.getLandTier(); setLandTierUi(landTierRef.current);
       setDecorCount(eng.getDecor().length);
       if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
       setQuestRows(eng.getQuestLog());
@@ -479,6 +493,21 @@ export default function Cirql() {
     setDecorTool(id); engineRef.current?.setDecorTool(id);
   };
   const pickRemove = () => { setDecorTool("remove"); engineRef.current?.setDecorTool(""); };
+  // Expand your CIRQLSPACE to the next land tier (Phase D) — free gift / build milestone / SPARQS.
+  const expandLand = () => {
+    const eng = engineRef.current; if (!eng) return;
+    const next = landTierRef.current + 1;
+    if (next >= LAND_META.length) { eng.toast("Your CIRQLSPACE is at its full size ✦"); return; }
+    const m = LAND_META[next];
+    if (m.milestone === "build10" && (eng.getDecor().length < 10)) { eng.toast("Place 10 things first to earn this expansion"); return; }
+    if (m.cost > 0) {
+      if (sparksRef.current < m.cost) { eng.toast(`Need ${m.cost} sparqs to expand to ${m.label}`); return; }
+      sparksRef.current -= m.cost; setSparksUi(sparksRef.current); eng.setStats({ sparks: sparksRef.current });
+    }
+    landTierRef.current = next; setLandTierUi(next); eng.setLandTier(next);
+    eng.toast(`✦ Your CIRQLSPACE grew — ${m.label}!`);
+    persist();
+  };
   const requestVisit = (id: string) => { wsSend({ t: "visit", toId: id }); engineRef.current?.toast("Knocking…"); };
   const leaveVisit = () => { engineRef.current?.endVisit(); setVisiting(null); };
 
@@ -687,6 +716,19 @@ export default function Cirql() {
             <button onClick={() => { setShowInventory(false); openDecorate(); }} data-testid="inv-build" className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg py-2.5 text-[13px] font-extrabold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>
               <Hammer className="h-4 w-4" /> Build your CIRQLSPACE
             </button>
+            {/* Your Land — grow your CIRQLSPACE (Phase D) */}
+            {(() => {
+              const cur = LAND_META[landTierUi], next = LAND_META[landTierUi + 1];
+              const canBuild10 = next?.milestone !== "build10" || decorCount >= 10;
+              const label = !next ? "Full size ✦" : next.milestone === "gift" ? "Claim (free gift)" : next.milestone === "build10" ? (canBuild10 ? "Claim (free)" : `Place 10 first (${decorCount}/10)`) : `Expand · ✦${next.cost}`;
+              return (
+                <div className="mt-2 rounded-lg border px-2.5 py-2" data-testid="inv-land" style={{ borderColor: "rgba(126,231,135,.3)", background: "rgba(126,231,135,.06)" }}>
+                  <div className="flex items-center gap-1.5 text-[11px]"><span className="text-emerald-300">🏝️ Land:</span> <b className="text-white">{cur.label}</b> <span className="ml-auto text-[10px] text-slate-400">tier {landTierUi}/{LAND_META.length - 1}</span></div>
+                  <div className="mt-1 flex gap-0.5">{LAND_TIERS.map((_, i) => <span key={i} className="h-1.5 flex-1 rounded-full" style={{ background: i <= landTierUi ? "#7ee787" : "rgba(255,255,255,.12)" }} />)}</div>
+                  {next && <button onClick={expandLand} data-testid="inv-expand" disabled={!canBuild10 && next.milestone === "build10"} className="mt-1.5 w-full rounded-lg py-1.5 text-[11.5px] font-bold text-slate-900 disabled:opacity-50" style={{ background: "linear-gradient(90deg,#7ee787,#a6f0ac)" }}>{label} → {next.label}</button>}
+                </div>
+              );
+            })()}
             <div className="mt-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">How it works</div>
             <ul className="mt-1 flex flex-col gap-1 text-[11.5px] leading-snug text-slate-300">
               <li>🏝️ This island is <b className="text-white">yours</b>. Tap <b className="text-amber-200">Build</b> to place things &amp; make it your own.</li>

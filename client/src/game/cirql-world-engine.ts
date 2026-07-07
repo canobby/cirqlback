@@ -31,6 +31,8 @@ const TAU = Math.PI * 2;
 // t=stone, w=water, p=path.
 const TILE = 30;
 const CK = (gx: number, gy: number) => (gy + 500) * 1000 + (gx + 500);
+// land growth (Phase D): CIRQLSPACE starts cozy and expands outward in tiers (buildable radius).
+export const LAND_TIERS = [170, 215, 260, 305, 350, 395, 430];   // radius per tier (0=cozy … 6=estate cap)
 const TILE_COL: Record<string, string> = { s: "#c9ad74", t: "#565663", w: "#183a58", p: "#6a4a2a" };
 function hexA(hex: string, a: number): string {
   const n = parseInt(hex.slice(1), 16);
@@ -72,6 +74,7 @@ export class CirqlWorldEngine extends RetroEngine {
   // terrain paint (Phase C): sparse tile grid + paint mode
   private terrain = new Map<number, string>();
   private editPaint = false; private paintTile = "s"; private brush = 1; private paintStroke = false;
+  private landTier = 0;                                 // CIRQLSPACE buildable-land tier (Phase D)
   private visiting: { name: string; decor: { item: string; x: number; y: number }[] } | null = null;
   private camX = 0; private camY = 0;
   private t = 0;
@@ -182,9 +185,14 @@ export class CirqlWorldEngine extends RetroEngine {
   getTerrain(): Record<string, string> { const o: Record<string, string> = {}; for (const [k, v] of Array.from(this.terrain)) o[k] = v; return o; }
   setTerrain(obj: any) { this.terrain.clear(); if (obj && typeof obj === "object") for (const k in obj) { const n = +k; if (Number.isFinite(n)) this.terrain.set(n, String(obj[k])); } }
   clearTerrain() { if (this.terrain.size) { this.terrain.clear(); this.onDecorChange?.(); } }
+  // ---- land growth (Phase D) ----
+  /** Effective buildable/walkable radius — the land tier on CIRQLSPACE, else the full ring. */
+  private effR() { return this.ringIdx === 0 ? LAND_TIERS[Math.max(0, Math.min(LAND_TIERS.length - 1, this.landTier))] : this.curRing.radius; }
+  getLandTier() { return this.landTier; }
+  setLandTier(n: number) { this.landTier = Math.max(0, Math.min(LAND_TIERS.length - 1, n | 0)); this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2; }
   private tileAtWorld(wx: number, wy: number) { return this.terrain.get(CK(Math.round(wx / TILE), Math.round(wy / TILE))) ?? "g"; }
   private paintAt(wx: number, wy: number) {
-    const cx = Math.round(wx / TILE), cy = Math.round(wy / TILE), rad = this.brush - 1, lim = this.curRing.radius * 0.86;
+    const cx = Math.round(wx / TILE), cy = Math.round(wy / TILE), rad = this.brush - 1, lim = this.effR() * 0.86;
     for (let gy = cy - rad; gy <= cy + rad; gy++) for (let gx = cx - rad; gx <= cx + rad; gx++) {
       if (Math.hypot(gx * TILE, gy * TILE) > lim) continue;
       const key = CK(gx, gy);
@@ -212,12 +220,13 @@ export class CirqlWorldEngine extends RetroEngine {
   interact() { if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
   /** A little fake-Z hop (CHR-263) — raise the sprite; the shadow stays grounded. */
   jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; if (this.jumpZ <= 0.01 && this.jumpVel <= 0) this.jumpVel = 66; }
-  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), terrain: this.getTerrain() }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), terrain: this.getTerrain(), landTier: this.landTier }; }
   applyState(s: any) {
     if (!s) return;
     if (Array.isArray(s.doneOnce)) this.doneOnce = new Set(s.doneOnce);
     if (Array.isArray(s.decor)) this.setDecor(s.decor);
     if (s.terrain && typeof s.terrain === "object") this.setTerrain(s.terrain);
+    if (typeof s.landTier === "number") this.landTier = Math.max(0, Math.min(LAND_TIERS.length - 1, s.landTier | 0));
     if (Array.isArray(s.litForQuest)) this.litForQuest = new Set(s.litForQuest);
     if (typeof s.maxRing === "number") this.maxRing = Math.max(this.maxRing, s.maxRing);
     if (typeof s.ring === "number" && s.ring >= 0) { this.ringIdx = s.ring; this.curRing = getRing(s.ring); this.maxRing = Math.max(this.maxRing, s.ring); this.ensureRingQuest(); }
@@ -642,7 +651,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (tapEdit) {
       const wx = this.pointer.x + this.camX, wy = this.pointer.y + this.camY;
       if (this.editSel) {
-        const rr = Math.hypot(wx, wy), lim = this.curRing.radius * 0.82;
+        const rr = Math.hypot(wx, wy), lim = this.effR() * 0.82;
         let px = rr > lim ? (wx / rr) * lim : wx, py = rr > lim ? (wy / rr) * lim : wy;
         if (this.snapGrid) { px = Math.round(px / 20) * 20; py = Math.round(py / 20) * 20; }   // grid snap (CHR-273)
         if (this.decor.length < 120) { this.decor.push({ item: this.editSel, x: Math.round(px), y: Math.round(py) }); this.onDecorChange?.(); }
@@ -694,8 +703,8 @@ export class CirqlWorldEngine extends RetroEngine {
         const min = s.r + 5;
         if (d < min && d > 0.001) { const k = min / d; this.posX = s.x + ox * k; this.posY = s.y + oy * k; }
       }
-      // island edge — keep the player on land
-      const rr = Math.hypot(this.posX, this.posY), lim = this.curRing.radius * 0.9;
+      // island edge — keep the player on the (tier-limited) land
+      const rr = Math.hypot(this.posX, this.posY), lim = this.effR() * 0.9;
       if (rr > lim) { this.posX = this.posX / rr * lim; this.posY = this.posY / rr * lim; }
 
       this.walk = Math.hypot(this.vx, this.vy) > 8 ? this.walk + dt * 10 : 0;
@@ -784,8 +793,8 @@ export class CirqlWorldEngine extends RetroEngine {
     const camX = this.camX, camY = this.camY;
     const scx = -camX, scy = -camY; // island centre (world 0,0) on screen
 
-    // island landmass
-    const R = this.curRing.radius;
+    // island landmass — grows with the land tier on CIRQLSPACE (Phase D)
+    const R = this.effR();
     this.fillCirc(scx + 4, scy + 6, R, "rgba(0,0,0,0.30)");   // soft cast
     this.fillCirc(scx, scy, R, pal.sand);
     this.fillCirc(scx, scy, R - 22, pal.land);
