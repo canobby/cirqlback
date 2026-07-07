@@ -6,7 +6,7 @@ A major new chapter for the CIRQL flagship. **CIRQLSPACE (ring 0) is reinvented 
 
 > **ring 0 = you · ring 1 = the community (Town) · ring 2+ = the endless wilds.**
 
-Status (2026-07-07): **BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E complete; owner pulled ✨ Phase H (Sit, Zoom & Diorama) ahead as the next build; F (Town stores) + G (Music) still queued.** Owner approved the vision + the phase plan below; build proceeds phase by phase. Phase E shipped CIRQLSPACE live parties (personal space rooms, host-build streaming to visitors, open↔invite toggle + cap 8 + host-only edit; commit 395dc6a). This plan mirrors the Linear project **"CIRQLSPACE — Your Sandbox"** (team CHR). Regenerate the PDF whenever this plan or the Linear register changes (owner standing request).
+Status (2026-07-07): **BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H complete; F (Town stores) + G (Music) still queued.** Phase H shipped free-sit (broadcast pose), continuous live zoom (pinch/scroll/buttons + tap-to-travel), the tilted-3/4 diorama beauty shot, and postcard capture/share (commits 8e8d5ce, 5ea4896, 716a434). Owner approved the vision + the phase plan below; build proceeds phase by phase. Phase E shipped CIRQLSPACE live parties (personal space rooms, host-build streaming to visitors, open↔invite toggle + cap 8 + host-only edit; commit 395dc6a). This plan mirrors the Linear project **"CIRQLSPACE — Your Sandbox"** (team CHR). Regenerate the PDF whenever this plan or the Linear register changes (owner standing request).
 
 ---
 
