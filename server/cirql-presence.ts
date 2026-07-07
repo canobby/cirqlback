@@ -16,8 +16,9 @@
 // HTML, so trim + length-clip is enough; matchmaking posts are structured (tag ids, no
 // freeform text) for safety (possible minors — CHR-254).
 import { WebSocketServer, WebSocket } from "ws";
+import { maskProfanity } from "./chat-filter";
 
-interface Traveller { ws: WebSocket; id: string; name: string; avatar: unknown; ring: number; x: number; y: number; dir: string; partyId?: string; lastAsk?: number; lastPost?: number; lastEmote?: number; }
+interface Traveller { ws: WebSocket; id: string; name: string; avatar: unknown; ring: number; x: number; y: number; dir: string; partyId?: string; lastAsk?: number; lastPost?: number; lastEmote?: number; lastChat?: number; }
 interface Party { id: string; campaignId: string; steps: number; max: number; hostId: string; members: string[]; step: number; }
 interface Post { id: string; dir: "host" | "seeker"; byId: string; byName: string; campaignId: string; steps: number; max: number; tags: string[]; newbie: boolean; partyId: string | null; }
 
@@ -92,7 +93,8 @@ export function setupCirqlPresence() {
         toRing(me.ring, { t: "move", id, x: me.x, y: me.y, dir: me.dir }, id);
       }
       else if (m.t === "chat") {
-        const text = clip(m.text, 120); if (!text) return;
+        const now = Date.now(); if (me.lastChat && now - me.lastChat < 700) return; me.lastChat = now;   // anti-spam rate limit
+        const text = maskProfanity(clip(m.text, 120)); if (!text) return;   // server-authoritative moderation (CHR-249)
         if (m.scope === "party" && me.partyId) {   // party channel — only fellow members
           const p = parties.get(me.partyId);
           if (p) for (const mid of p.members) { const pl = players.get(mid); if (pl) send(pl.ws, { t: "chat", id: me.id, name: me.name, text, channel: "party" }); }

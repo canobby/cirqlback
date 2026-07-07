@@ -70,6 +70,9 @@ export default function Cirql() {
   const [chatDraft, setChatDraft] = useState("");
   const [chatScope, setChatScope] = useState<"global" | "party">("global");
   const [feed, setFeed] = useState<{ key: number; name: string; text: string; me: boolean; party: boolean }[]>([]);
+  const [unread, setUnread] = useState<{ global: number; party: number }>({ global: 0, party: 0 });   // per-channel unread (CHR-249)
+  const showChatRef = useRef(false);        // live mirrors so the ws handler reads current UI focus
+  const chatScopeRef = useRef<"global" | "party">("global");
   const feedKey = useRef(0);
 
   // M9 — campaigns, board, parties
@@ -101,6 +104,11 @@ export default function Cirql() {
   const loggedIn = !!(user as any)?.id;
 
   const myId = () => myIdRef.current;
+
+  // keep live mirrors of the chat focus so the (once-created) ws handler can tell whether
+  // an incoming message is "seen" (chat open on its channel) or should mark unread.
+  useEffect(() => { showChatRef.current = showChat; if (showChat) setUnread((u) => ({ ...u, [chatScope]: 0 })); }, [showChat, chatScope]);
+  useEffect(() => { chatScopeRef.current = chatScope; }, [chatScope]);
 
   const yesterdayOf = (day: string) => { const d = new Date(day + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
   // Roll the daily to today (resetting done + breaking a lapsed streak) and refresh the event.
@@ -236,7 +244,15 @@ export default function Cirql() {
       else if (m.t === "join") { eng.addRemote(m); refreshCount(); pushFeed("", `${m.name} arrived`); }
       else if (m.t === "move") { eng.moveRemote(m.id, m.x, m.y, m.dir); }
       else if (m.t === "leave") { eng.removeRemote(m.id); refreshCount(); }
-      else if (m.t === "chat") { if (blockedRef.current.has(m.id) && m.id !== myIdRef.current) return; const isP = m.channel === "party"; if (m.id === myIdRef.current) { eng.sayLocal(m.text); pushFeed(m.name, m.text, true, isP); } else { eng.chatRemote(m.id, m.text); pushFeed(m.name, m.text, false, isP); } }
+      else if (m.t === "chat") {
+        if (blockedRef.current.has(m.id) && m.id !== myIdRef.current) return;
+        const isP = m.channel === "party"; const mine = m.id === myIdRef.current;
+        if (mine) { eng.sayLocal(m.text); pushFeed(m.name, m.text, true, isP); }
+        else { eng.chatRemote(m.id, m.text); pushFeed(m.name, m.text, false, isP); }
+        // unread: count messages not currently in view (chat closed, or on the other channel) — never your own
+        const ch: "global" | "party" = isP ? "party" : "global";
+        if (!mine && !(showChatRef.current && chatScopeRef.current === ch)) setUnread((u) => ({ ...u, [ch]: u[ch] + 1 }));
+      }
       else if (m.t === "lit") { receiveLight(m.id, m.name); }
       else if (m.t === "emote") { if (!blockedRef.current.has(m.id)) eng.emoteRemote(m.id, m.emote); }
       // M9 board + party
@@ -407,8 +423,9 @@ export default function Cirql() {
           </button>
         )}
         <button onClick={() => setShowChat((v) => !v)} data-testid="btn-chat" title="Chat"
-          className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border" style={{ borderColor: showChat ? "rgba(53,224,208,.65)" : "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)", color: connected ? "#7be0ff" : "#7a8bb0" }}>
+          className="pointer-events-auto relative flex h-7 w-7 items-center justify-center rounded-full border" style={{ borderColor: showChat ? "rgba(53,224,208,.65)" : "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)", color: connected ? "#7be0ff" : "#7a8bb0" }}>
           <MessageCircle className="h-3.5 w-3.5" />
+          {(unread.global + unread.party) > 0 && !showChat && <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[8px] font-black text-slate-900" style={{ background: "#35e0d0" }} data-testid="chat-unread">{Math.min(9, unread.global + unread.party)}</span>}
         </button>
         <button onClick={() => { setQuestRows(engineRef.current?.getQuestLog() ?? []); refreshDaily(); setShowQuests((v) => !v); }} data-testid="btn-quests" title="Quests & Daily"
           className="pointer-events-auto relative flex h-7 w-7 items-center justify-center rounded-full border text-amber-200/90" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
@@ -429,29 +446,42 @@ export default function Cirql() {
           render regardless; this is the "open chat" mode). */}
       {showChat && (
         <>
-          <div className="pointer-events-auto absolute inset-x-0 top-12 z-[14] mx-auto flex max-w-[520px] items-center gap-2 px-4">
-            {party && (
-              <button onClick={() => setChatScope((s) => (s === "party" ? "global" : "party"))} data-testid="cirql-chat-scope"
-                className="flex h-10 shrink-0 items-center rounded-xl border px-2.5 text-[10px] font-extrabold uppercase tracking-wide"
-                style={chatScope === "party" ? { borderColor: "#35e0d0", color: "#7ff5e8", background: "rgba(53,224,208,.12)" } : { borderColor: "#3a2a72", color: "#c9b8ff", background: "rgba(178,108,255,.08)" }}>
-                {chatScope === "party" ? "Party" : "Global"}
+          <div className="pointer-events-auto absolute inset-x-0 top-12 z-[14] mx-auto flex max-w-[520px] flex-col gap-1.5 px-4">
+            {/* channel switcher (CHR-249) — Global · Party · DM, with per-channel unread dots */}
+            <div className="flex items-center gap-1.5" data-testid="chat-channels">
+              {(["global", "party"] as const).map((ch) => {
+                const active = chatScope === ch; const disabled = ch === "party" && !party; const dot = unread[ch] > 0 && !active;
+                return (
+                  <button key={ch} disabled={disabled} onClick={() => setChatScope(ch)} data-testid={`chat-tab-${ch}`}
+                    className="relative flex h-8 items-center rounded-lg border px-3 text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-35"
+                    style={active ? { borderColor: "#35e0d0", color: "#0a1220", background: "#7ff5e8" } : { borderColor: "#2a3a66", color: "#a9c2e6", background: "rgba(10,18,38,.6)" }}>
+                    {ch === "global" ? "Global" : "Party"}
+                    {dot && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full" style={{ background: "#ffc46b", boxShadow: "0 0 6px #ffc46b" }} />}
+                  </button>
+                );
+              })}
+              <button disabled data-testid="chat-tab-dm" title="Direct messages — coming soon"
+                className="flex h-8 items-center gap-1 rounded-lg border px-3 text-[11px] font-extrabold uppercase tracking-wide opacity-40" style={{ borderColor: "#2a3a66", color: "#8ba0c4", background: "rgba(10,18,38,.6)" }}>
+                DM <span className="text-[8px] normal-case tracking-normal text-slate-500">soon</span>
               </button>
-            )}
-            <input value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }} maxLength={120}
-              placeholder={connected ? (party && chatScope === "party" ? "Message your party…" : "Say something to the ring…") : "connecting…"} data-testid="cirql-chat-input"
-              className="min-w-0 flex-1 rounded-xl border px-3 py-2 text-[13px] outline-none" style={{ borderColor: "#2a3a66", background: "rgba(6,11,26,.92)", color: "#fff", touchAction: "auto" }} />
-            <button onClick={sendChat} data-testid="cirql-chat-send" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[1.5px] active:scale-90" style={{ borderColor: "#35e0d0", color: "#35e0d0", background: "rgba(53,224,208,.08)" }}><Send className="h-5 w-5" /></button>
+            </div>
+            <div className="flex items-center gap-2">
+              <input value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }} maxLength={120}
+                placeholder={connected ? (chatScope === "party" ? "Message your party…" : "Say something to the ring…") : "connecting…"} data-testid="cirql-chat-input"
+                className="min-w-0 flex-1 rounded-xl border px-3 py-2 text-[13px] outline-none" style={{ borderColor: "#2a3a66", background: "rgba(6,11,26,.92)", color: "#fff", touchAction: "auto" }} />
+              <button onClick={sendChat} data-testid="cirql-chat-send" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[1.5px] active:scale-90" style={{ borderColor: "#35e0d0", color: "#35e0d0", background: "rgba(53,224,208,.08)" }}><Send className="h-5 w-5" /></button>
+            </div>
           </div>
-          {feed.length > 0 && (
-            <div className="pointer-events-none absolute left-3 top-[86px] z-[12] flex max-w-[62%] flex-col gap-1">
-              {feed.slice(-5).map((mm) => (
+          {(() => { const shown = feed.filter((mm) => (chatScope === "party") === mm.party).slice(-5); return shown.length > 0 && (
+            <div className="pointer-events-none absolute left-3 top-[132px] z-[12] flex max-w-[62%] flex-col gap-1" data-testid="chat-feed">
+              {shown.map((mm) => (
                 <div key={mm.key} className="w-fit rounded-md px-2 py-1 text-[11px] leading-tight" style={{ background: "rgba(6,11,26,.72)", border: `1px solid ${mm.party ? "#35e0d066" : mm.me ? "#ffc46b55" : mm.name ? "#b26cff44" : "#35e0d044"}` }}>
                   {mm.party && <span className="mr-1 text-[8px] font-black uppercase tracking-wider text-teal-300/80">party</span>}
                   {mm.name ? <><span className="font-bold" style={{ color: mm.me ? "#ffd98a" : mm.party ? "#7ff5e8" : "#c9b8ff" }}>{mm.name}:</span> <span className="text-cyan-50/90">{mm.text}</span></> : <span className="italic text-cyan-300/80">{mm.text}</span>}
                 </div>
               ))}
             </div>
-          )}
+          ); })()}
         </>
       )}
 
