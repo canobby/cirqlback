@@ -11,7 +11,7 @@ import { ARCADE_GAMES } from "@/game/registry";
 import { CAMPAIGNS, campaignById, MATCH_TAGS, difficultyMeta } from "@/game/cirql-campaigns";
 import { dailyForDate, activeEvent, todayStr, type DailyTask, type CirqlEvent } from "@/game/cirql-daily";
 import { ringName } from "@/game/cirql-ring-gen";
-import { EMOTES } from "@/game/cirql-emotes";
+import { EMOTES, PAIR_GESTURES } from "@/game/cirql-emotes";
 import { WAKE_CUTSCENE, campaignCutscene, worldEnergyCutscene } from "@/game/cirql-cutscenes";
 import { DECOR, decorById, decorPriceKey, CATEGORIES, type DecorCategory } from "@/game/cirql-decor";
 
@@ -96,6 +96,7 @@ export default function Cirql() {
   const [online, setOnline] = useState(1);
   const [showChat, setShowChat] = useState(false);
   const [showEmotes, setShowEmotes] = useState(false);      // emote wheel (CHR-260)
+  const [nearPlayer, setNearPlayer] = useState<{ id: string; name: string } | null>(null);   // nearby traveller → "Together" panel (I4)
   const [chatDraft, setChatDraft] = useState("");
   const [chatScope, setChatScope] = useState<"global" | "party" | "dm">("global");
   const [feed, setFeed] = useState<{ key: number; name: string; text: string; me: boolean; party: boolean }[]>([]);
@@ -208,6 +209,7 @@ export default function Cirql() {
   };
   const shareLight = (id: string) => wsSend({ t: "light", to: id });
   const playEmote = (id: string) => { engineRef.current?.playEmote(id); setShowEmotes(false); };
+  const playPair = (id: string) => engineRef.current?.requestPair(id);   // offer a paired social gesture (I4)
 
   // Claim sparqs earned by playing arcade Dailies (banked in the server sparq wallet).
   // Called on load + when returning from a cabinet, so arcade play feeds your CIRQL world.
@@ -302,6 +304,8 @@ export default function Cirql() {
     eng.onPresence = (ring, x, y, facing, pose) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: "move", ring, x, y, dir: facing, pose })); };
     eng.onShareLight = (id) => shareLight(id);
     eng.onEmote = (emote) => wsSend({ t: "emote", emote });
+    eng.onNearPlayer = (p) => setNearPlayer(p);                        // show/hide the "Together" panel (I4)
+    eng.onPairGesture = (id, g) => wsSend({ t: "pair", to: id, g });   // offer a paired social gesture
     // light gathered while sailing → sparqs (CHR-262), capped small so it can't be farmed
     eng.onVoyageReward = (light) => {
       const gain = Math.max(0, Math.min(6, Math.round(light)));
@@ -335,6 +339,7 @@ export default function Cirql() {
       }
       else if (m.t === "lit") { receiveLight(m.id, m.name); }
       else if (m.t === "emote") { if (!blockedRef.current.has(m.id)) eng.emoteRemote(m.id, m.emote); }
+      else if (m.t === "paired") { if (!blockedRef.current.has(m.withId)) eng.startPair(m.withId, m.g); }   // synced paired gesture (I4)
       // ---- CIRQLSPACE live parties (Phase E) ----
       else if (m.t === "visit:data") { if (!blockedRef.current.has(m.withId)) { eng.startVisit(m.withName, m); setVisiting(m.withName || "Traveller"); setShowDecor(false); setShowChat(false); setShowCirql(false); setShowInventory(false); } }
       else if (m.t === "visit:build") { eng.updateVisit(m); }   // host edited while you watch
@@ -899,6 +904,25 @@ export default function Cirql() {
                   style={{ borderColor: "rgba(178,108,255,.25)", background: "rgba(178,108,255,.06)" }}>
                   <span className="text-[22px] leading-none">{e.glyph}</span>
                   <span className="text-[9px] font-semibold text-violet-200/80">{e.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* "Together" panel (Phase I4) — appears when you're next to a traveller; paired social gestures */}
+      {nearPlayer && !showDecor && !showInventory && !dioramaOn && !visiting && !showEmotes && (
+        <div className="pointer-events-auto absolute inset-x-0 bottom-[128px] z-[15] mx-auto max-w-[320px] px-4" data-testid="together-panel">
+          <div className="rounded-2xl border p-2.5" style={{ borderColor: "rgba(255,196,107,.45)", background: "rgba(10,12,28,.96)", boxShadow: "0 10px 34px rgba(0,0,0,.55)" }}>
+            <div className="mb-1.5 px-1 text-[10px] font-black uppercase tracking-widest text-amber-200/80">Together with {nearPlayer.name}</div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {PAIR_GESTURES.map((g) => (
+                <button key={g.id} onClick={() => playPair(g.id)} data-testid={`pair-${g.id}`}
+                  className="flex flex-col items-center justify-center gap-0.5 rounded-xl border py-2 transition active:scale-90"
+                  style={{ borderColor: "rgba(255,196,107,.28)", background: "rgba(255,196,107,.06)" }}>
+                  <span className="text-[22px] leading-none">{g.glyph}</span>
+                  <span className="text-[9px] font-semibold text-amber-100/80">{g.label}</span>
                 </button>
               ))}
             </div>

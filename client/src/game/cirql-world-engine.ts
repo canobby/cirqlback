@@ -17,7 +17,7 @@ import {
   type QuestDef, type QuestProgress, type ObjectiveKind, type QuestStatus,
 } from "./cirql-quests";
 import { generateRingQuest } from "./cirql-quest-gen";
-import { EMOTE_BY_ID, EMOTE_SECONDS } from "./cirql-emotes";
+import { EMOTE_BY_ID, EMOTE_SECONDS, PAIR_BY_ID } from "./cirql-emotes";
 import { arrivalCutscene, BEAT_SECONDS, type Cutscene, type CutsceneBeat, type CutsceneFx } from "./cirql-cutscenes";
 import { decorById, DECOR_SOLID } from "./cirql-decor";
 
@@ -139,11 +139,17 @@ export class CirqlWorldEngine extends RetroEngine {
   private myChat = ""; private myChatT = 0;                 // your own chat bubble
   private myEmote = ""; private myEmoteT = 0;               // your own active emote (CHR-260)
   private nearPlayer: { id: string; name: string } | null = null;  // remote in "share a light" range
+  private lastNearId: string | null = null;                        // last announced nearPlayer (fire onNearPlayer on change)
+  private pair: { withId: string; g: string; t: number } | null = null;   // active paired social gesture (Phase I4)
   private lastPresence = 0; private lastPx = 1e9; private lastPy = 1e9;
   /** Fired often (throttled) with the live position, for the presence socket. */
   onPresence?: (ring: number, x: number, y: number, facing: Facing, pose: string) => void;
   /** Fired when the player presses E next to another traveller (share a light). */
   onShareLight?: (id: string) => void;
+  /** Fired when the nearby traveller changes (null when none) — the page shows the "Together" panel. */
+  onNearPlayer?: (p: { id: string; name: string } | null) => void;
+  /** Fired when the player offers a paired social gesture — the host relays it to both (Phase I4). */
+  onPairGesture?: (id: string, g: string) => void;
   /** Fired when the local player plays an emote (broadcast over the presence socket). */
   onEmote?: (emote: string) => void;
   /** Fired at the end of a sailing voyage with the light gathered (host grants sparqs). */
@@ -365,7 +371,7 @@ export class CirqlWorldEngine extends RetroEngine {
     this.remotes.set(s.id, { x: s.x, y: s.y, tx: s.x, ty: s.y, facing: this.facingOf(s.dir), name: (s.name || "Traveller").slice(0, 16), avatar: s.avatar || DEFAULT_AVATAR, chat: "", chatT: 0, walk: 0, emote: "", emoteT: 0, seated: s.pose === "sit", blinkT: 1 + Math.random() * 4, blinking: 0 });
   }
   moveRemote(id: string, x: number, y: number, dir: string, pose?: string) { const r = this.remotes.get(id); if (r) { r.tx = x; r.ty = y; r.facing = this.facingOf(dir); if (pose !== undefined) r.seated = pose === "sit"; } }
-  removeRemote(id: string) { this.remotes.delete(id); }
+  removeRemote(id: string) { this.remotes.delete(id); if (this.pair?.withId === id) this.pair = null; if (this.nearPlayer?.id === id) { this.nearPlayer = null; if (this.lastNearId) { this.lastNearId = null; this.onNearPlayer?.(null); } } }
   chatRemote(id: string, text: string) { const r = this.remotes.get(id); if (r) { r.chat = text; r.chatT = 5.5; } }
   /** A remote traveller played an emote — show its glyph (+ motion) over them (CHR-260). */
   emoteRemote(id: string, emote: string) { const r = this.remotes.get(id); const def = EMOTE_BY_ID[emote]; if (r && def) { r.emote = emote; r.emoteT = def.hold ?? EMOTE_SECONDS; } }
@@ -373,6 +379,19 @@ export class CirqlWorldEngine extends RetroEngine {
   sayLocal(text: string) { this.myChat = text; this.myChatT = 5.5; }
   /** Play an emote locally + broadcast it (called by the emote wheel). */
   playEmote(emote: string) { const def = EMOTE_BY_ID[emote]; if (!def) return; this.myEmote = emote; this.myEmoteT = def.hold ?? EMOTE_SECONDS; this.onEmote?.(emote); }
+  // ---- paired social gestures (Phase I4) — a two-person moment with the nearby traveller ----
+  /** Offer a paired gesture to the traveller you're standing next to; the host relays it to both. */
+  requestPair(g: string) { if (this.nearPlayer && PAIR_BY_ID[g]) this.onPairGesture?.(this.nearPlayer.id, g); }
+  /** Start a synced paired gesture — called on BOTH sides when the host relays `paired`. */
+  startPair(withId: string, g: string) {
+    const def = PAIR_BY_ID[g]; if (!def) return;
+    const r = this.remotes.get(withId);
+    this.pair = { withId, g, t: def.hold };
+    if (r) { this.facing = this.faceToward(r.x, r.y); this.poseDirty = true; }   // turn to face your partner
+    if (g === "sit") { this.dozing = false; this.idleT = 0; if (!this.seated) { this.seated = true; this.onSeatChange?.(true); this.poseDirty = true; } }
+    this.playEmote(def.emote);   // body animation (I3) + broadcasts so your partner sees it on your remote sprite
+  }
+  private faceToward(x: number, y: number): Facing { const dx = x - this.posX, dy = y - this.posY; return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"); }
   remoteCount() { return this.remotes.size; }
   clearRemotes() { this.remotes.clear(); }
 
@@ -634,6 +653,8 @@ export class CirqlWorldEngine extends RetroEngine {
     this.wasAir = air;
     // decay movement-juice timers + age the ground FX (I2)
     this.squashT = Math.max(0, this.squashT - dt); this.bumpT = Math.max(0, this.bumpT - dt);
+    // paired social gesture (I4) — ends on its timer, or if your partner drifts away
+    if (this.pair) { this.pair.t -= dt; const r = this.remotes.get(this.pair.withId); if (this.pair.t <= 0 || !r || Math.hypot(this.posX - r.x, this.posY - r.y) > 64) this.pair = null; }
     if (this.groundFx.length) { for (const f of this.groundFx) f.life -= dt; if (this.groundFx.some((f) => f.life <= 0)) this.groundFx = this.groundFx.filter((f) => f.life > 0); }
     // live-zoom easing (Phase H2)
     if (Math.abs(this.zoom - this.zoomTarget) > 0.001) this.zoom += (this.zoomTarget - this.zoom) * Math.min(1, dt * 10); else this.zoom = this.zoomTarget;
@@ -826,6 +847,8 @@ export class CirqlWorldEngine extends RetroEngine {
         const d = Math.hypot(this.posX - r.x, this.posY - r.y);
         if (d < 30 && d < best) { best = d; this.nearPlayer = { id, name: r.name }; this.near = null; }
       }
+      // tell the page when the nearby traveller changes → it shows/hides the "Together" panel (I4)
+      if ((this.nearPlayer?.id ?? null) !== this.lastNearId) { this.lastNearId = this.nearPlayer?.id ?? null; this.onNearPlayer?.(this.nearPlayer); }
 
       // "reach" quest objectives complete automatically by walking onto the target
       const tgt = this.objTargetProp();
@@ -989,6 +1012,12 @@ export class CirqlWorldEngine extends RetroEngine {
     for (const [rid, r] of Array.from(this.remotes.entries())) draws.push({ y: r.y, f: () => this.drawRemote(r.x - camX, r.y - camY, r, this.partyIds.has(rid)) });
     draws.sort((a, c) => a.y - c.y);
     for (const d of draws) d.f();
+
+    // paired social gesture (I4) — a shared flourish blooms between you and your partner
+    if (this.pair) {
+      const r = this.remotes.get(this.pair.withId);
+      if (r) this.drawPairFx((this.posX + r.x) / 2 - camX, (this.posY + r.y) / 2 - camY, this.pair.g);
+    }
 
     // décor placement ghost — a translucent preview under the pointer while editing
     if (this.editDecor && this.editSel && this.pointer.down) {
@@ -1288,6 +1317,19 @@ export class CirqlWorldEngine extends RetroEngine {
         this.disc(hx - 1, hy, 1.4, hexA("#ff5d7d", a)); this.disc(hx + 1, hy, 1.4, hexA("#ff5d7d", a));
         this.rect(hx - 1, hy + 1, 3, 1, hexA("#ff5d7d", a)); this.px(hx, hy + 2, hexA("#ff5d7d", a));
       }
+    }
+  }
+  // The shared flourish drawn at the midpoint between two paired travellers (Phase I4):
+  // a spark for a high-five, drifting hearts for a hug, music notes for a dance.
+  private drawPairFx(mx: number, my: number, g: string) {
+    const def = PAIR_BY_ID[g]; if (!def) return;
+    my -= 18;   // lift to head height between the two
+    const glyph = def.fx === "hearts" ? "♥" : def.fx === "notes" ? "♪" : "✦";
+    const col = def.fx === "hearts" ? "#ff5d7d" : def.fx === "notes" ? "#b6a0ff" : "#fff1c0";
+    if (this.reduce) { this.q(mx, my, glyph, col, 1.4, "c", false, 0.9); return; }
+    for (let i = 0; i < 3; i++) {
+      const p = (this.t * 0.7 + i / 3) % 1;
+      this.q(mx + Math.sin((this.t + i * 2) * 3) * 5, my - p * 13, glyph, col, 1.5 - p * 0.5, "c", false, (1 - p) * 0.95);
     }
   }
   // Painted terrain tiles (Phase C) — flat colour cells culled to the viewport; water gets

@@ -163,6 +163,14 @@ export function setupCirqlPresence() {
           send(other.ws, { t: "lit", id: me.id, name: me.name });
         }
       }
+      else if (m.t === "pair") {   // a synced paired social gesture — relay to BOTH so they play it together (I4)
+        const other = players.get(String(m.to));
+        if (other && other.id !== me.id && roomKey(other) === roomKey(me)) {
+          const g = clip(m.g, 16); if (!g) return;
+          send(me.ws, { t: "paired", withId: other.id, g });
+          send(other.ws, { t: "paired", withId: me.id, g });
+        }
+      }
       // ---- M9 campaign board + matchmaking ----
       else if (m.t === "board:get") { send(ws, { t: "board:list", posts: boardList() }); }
       else if (m.t === "board:post") {

@@ -48,3 +48,26 @@ export const EMOTES: EmoteDef[] = [
 ];
 
 export const EMOTE_BY_ID: Record<string, EmoteDef> = Object.fromEntries(EMOTES.map((e) => [e.id, e]));
+
+// ---------- paired social gestures (Phase I4) ----------
+// Two-person moments you can only offer when standing next to another traveller. The
+// server relays one request to BOTH players (same handshake as "share a light"), so each
+// side turns to face the other and plays the gesture in sync, with a shared flourish
+// (spark / hearts / notes) blooming between them. The body animation reuses an I3 emote
+// motion by id; `fx` picks the between-them flourish the engine draws at their midpoint.
+export type PairFx = "spark" | "hearts" | "notes";
+export interface PairDef {
+  id: string;
+  label: string;
+  glyph: string;    // shown on the "Together" panel button
+  emote: string;    // I3 emote id whose body motion each partner plays
+  fx: PairFx;       // the flourish drawn between the pair
+  hold: number;     // seconds
+}
+export const PAIR_GESTURES: PairDef[] = [
+  { id: "highfive", label: "High-Five", glyph: "✋", emote: "wave",  fx: "spark",  hold: 2.4 },
+  { id: "hug",      label: "Hug",       glyph: "🤗", emote: "bow",   fx: "hearts", hold: 2.8 },
+  { id: "dance",    label: "Dance",     glyph: "💃", emote: "dance", fx: "notes",  hold: 4.4 },
+  { id: "sit",      label: "Sit",       glyph: "🪑", emote: "sit",   fx: "hearts", hold: 6 },
+];
+export const PAIR_BY_ID: Record<string, PairDef> = Object.fromEntries(PAIR_GESTURES.map((g) => [g.id, g]));
