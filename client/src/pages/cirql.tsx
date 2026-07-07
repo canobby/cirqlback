@@ -1350,7 +1350,7 @@ export default function Cirql() {
       {showSettings && (
         <div className="pointer-events-auto absolute inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(5,6,15,.8)" }} data-testid="settings-panel"
           onClick={(e) => { if (e.target === e.currentTarget) setShowSettings(false); }}>
-          <div className="w-full max-w-[360px] rounded-2xl border p-4" style={{ borderColor: "rgba(53,224,208,.35)", background: "rgba(10,14,30,.98)", boxShadow: "0 18px 52px rgba(0,0,0,.6)" }}>
+          <div className="max-h-[90vh] w-full max-w-[360px] overflow-y-auto rounded-2xl border p-4" style={{ borderColor: "rgba(53,224,208,.35)", background: "rgba(10,14,30,.98)", boxShadow: "0 18px 52px rgba(0,0,0,.6)" }}>
             <div className="mb-3 flex items-center">
               <span className="text-[14px] font-black tracking-wide text-cyan-100">Settings</span>
               <button onClick={() => setShowSettings(false)} className="ml-auto text-slate-400 hover:text-slate-200"><X className="h-4 w-4" /></button>
@@ -1398,7 +1398,7 @@ export default function Cirql() {
       {/* startup location picker — Home / Last spot / Arcade (Phase-I polish) */}
       {startPick && (
         <div className="absolute inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(5,6,15,.86)" }} data-testid="start-picker">
-          <div className="w-full max-w-[380px] rounded-2xl border p-4" style={{ borderColor: "rgba(53,224,208,.35)", background: "rgba(10,14,30,.98)", boxShadow: "0 18px 52px rgba(0,0,0,.6)" }}>
+          <div className="max-h-[92vh] w-full max-w-[380px] overflow-y-auto rounded-2xl border p-4" style={{ borderColor: "rgba(53,224,208,.35)", background: "rgba(10,14,30,.98)", boxShadow: "0 18px 52px rgba(0,0,0,.6)" }}>
             <div className="text-center text-[15px] font-black tracking-wide text-cyan-100">Where to?</div>
             <div className="mb-3 mt-0.5 text-center text-[11px] text-slate-400">Pick where to begin{nameRef.current && nameRef.current !== "Traveller" ? `, ${nameRef.current}` : ""}.</div>
             <div className="flex flex-col gap-2">

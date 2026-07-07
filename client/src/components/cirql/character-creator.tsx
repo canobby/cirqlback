@@ -129,7 +129,7 @@ export function CharacterCreator({ initial, initialName, mode = "create", sparks
             </button>
           ))}
         </div>
-        <div className="min-h-[92px] px-5 py-3">{panel}</div>
+        <div className="min-h-[92px] flex-1 overflow-y-auto px-5 py-3">{panel}</div>
 
         <div className="flex gap-2 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-1">
           {mode === "edit" && onCancel && (
