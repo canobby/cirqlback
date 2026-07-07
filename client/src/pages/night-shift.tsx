@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Zap } from "lucide-react";
+import { ArrowLeft, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { NightShiftEngine } from "@/game/night-shift-engine";
 import type { Btn } from "@/game/retro-engine";
 import { recordRun, recordPoints } from "@/game/rewards";
+import { Joystick } from "@/components/joystick";
 
 const GAME_ID = "nightshift";
 const lsGet = (k: string) => { try { return window.localStorage.getItem(k); } catch { return null; } };
@@ -42,9 +43,6 @@ export default function NightShift() {
     style: { touchAction: "none" as const },
   });
 
-  const padBtn = "flex h-11 w-11 items-center justify-center rounded-xl border-[1.5px] active:scale-90";
-  const padStyle = { borderColor: "#ff5d7d", background: "rgba(255,255,255,.03)", boxShadow: "0 0 14px rgba(255,93,125,.2) inset", touchAction: "none" as const };
-
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center" style={{ background: "#0c0a16", color: "#ffe6ea", touchAction: "none", userSelect: "none" }}>
       <div className="flex w-full max-w-[560px] items-center gap-3 px-4 pb-1 pt-3">
@@ -62,16 +60,9 @@ export default function NightShift() {
         )}
       </div>
 
-      {/* controls: 4-way d-pad (move) · DASH */}
-      <div className="flex w-full max-w-[560px] items-end justify-between gap-4 px-6 pb-[calc(18px+env(safe-area-inset-bottom))] pt-2">
-        <div className="grid grid-cols-3 grid-rows-2 gap-1.5" style={{ width: 148 }}>
-          <div />
-          <button {...hold("up")} data-testid="btn-up" className={padBtn} style={padStyle}><ChevronUp className="h-6 w-6 text-pink-200" /></button>
-          <div />
-          <button {...hold("left")} data-testid="btn-left" className={padBtn} style={padStyle}><ChevronLeft className="h-6 w-6 text-pink-200" /></button>
-          <button {...hold("down")} data-testid="btn-down" className={padBtn} style={padStyle}><ChevronDown className="h-6 w-6 text-pink-200" /></button>
-          <button {...hold("right")} data-testid="btn-right" className={padBtn} style={padStyle}><ChevronRight className="h-6 w-6 text-pink-200" /></button>
-        </div>
+      {/* controls: analog joystick (move) · DASH */}
+      <div className="flex w-full max-w-[560px] items-center justify-between gap-4 px-6 pb-[calc(18px+env(safe-area-inset-bottom))] pt-2">
+        <Joystick press={(b) => engineRef.current?.press(b)} release={(b) => engineRef.current?.release(b)} color="#ff5d7d" size={140} />
         <button {...hold("a")} data-testid="btn-jump" className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-full border-[2px] text-[12px] font-extrabold active:scale-90" style={{ borderColor: "#3bb6ff", color: "#fff", background: "radial-gradient(circle at 50% 38%, rgba(59,182,255,.3), rgba(12,10,22,.9))", boxShadow: "0 0 26px rgba(59,182,255,.4)", touchAction: "none" }}><Zap className="h-6 w-6" /> DASH</button>
       </div>
     </div>

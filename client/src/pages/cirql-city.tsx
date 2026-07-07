@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Zap } from "lucide-react";
+import { ArrowLeft, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlCityEngine } from "@/game/cirql-city-engine";
 import type { Btn } from "@/game/retro-engine";
 import { recordRun, recordPoints } from "@/game/rewards";
 import { syncProgressFromServer } from "@/game/cirql-city-save";
+import { Joystick } from "@/components/joystick";
 
 const GAME_ID = "cirqlcity";
 
@@ -54,9 +55,6 @@ export default function CirqlCity() {
     style: { touchAction: "none" as const },
   });
 
-  const padBtn = "flex h-11 w-11 items-center justify-center rounded-xl border-[1.5px] active:scale-90";
-  const padStyle = { borderColor: "#b79bff", background: "rgba(255,255,255,.03)", boxShadow: "0 0 14px rgba(183,155,255,.2) inset", touchAction: "none" as const };
-
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center" style={{ background: "#0a0714", color: "#fff4ea", touchAction: "none", userSelect: "none" }}>
       <div className="flex w-full max-w-[620px] items-center gap-3 px-4 pb-1 pt-3">
@@ -74,16 +72,9 @@ export default function CirqlCity() {
         )}
       </div>
 
-      {/* controls: 4-way d-pad (town + platforming) · RUN + JUMP/ENTER */}
-      <div className="flex w-full max-w-[620px] items-end justify-between gap-4 px-6 pb-[calc(18px+env(safe-area-inset-bottom))] pt-2">
-        <div className="grid grid-cols-3 grid-rows-2 gap-1.5" style={{ width: 148 }}>
-          <div />
-          <button {...hold("up")} data-testid="btn-up" className={padBtn} style={padStyle}><ChevronUp className="h-6 w-6 text-violet-200" /></button>
-          <div />
-          <button {...hold("left")} data-testid="btn-left" className={padBtn} style={padStyle}><ChevronLeft className="h-6 w-6 text-violet-200" /></button>
-          <button {...hold("down")} data-testid="btn-down" className={padBtn} style={padStyle}><ChevronDown className="h-6 w-6 text-violet-200" /></button>
-          <button {...hold("right")} data-testid="btn-right" className={padBtn} style={padStyle}><ChevronRight className="h-6 w-6 text-violet-200" /></button>
-        </div>
+      {/* controls: analog joystick (town + platforming) · RUN + JUMP/ENTER */}
+      <div className="flex w-full max-w-[620px] items-center justify-between gap-4 px-6 pb-[calc(18px+env(safe-area-inset-bottom))] pt-2">
+        <Joystick press={(b) => engineRef.current?.press(b)} release={(b) => engineRef.current?.release(b)} color="#b79bff" size={140} />
         <div className="flex items-center gap-3">
           <button {...hold("b")} data-testid="btn-run" className="flex h-14 w-14 flex-col items-center justify-center rounded-full border-[1.5px] text-[10px] font-extrabold active:scale-90" style={{ borderColor: "#3bb6ff", color: "#7be0ff", background: "rgba(255,255,255,.03)", boxShadow: "0 0 18px rgba(59,182,255,.25) inset", touchAction: "none" }}><Zap className="h-5 w-5" /> RUN</button>
           <button {...hold("a")} data-testid="btn-jump" className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-full border-[2px] text-[13px] font-extrabold active:scale-90" style={{ borderColor: "#ffd24a", color: "#fff", background: "radial-gradient(circle at 50% 38%, rgba(255,210,74,.3), rgba(20,12,6,.9))", boxShadow: "0 0 26px rgba(255,210,74,.4)", touchAction: "none" }}>JUMP</button>

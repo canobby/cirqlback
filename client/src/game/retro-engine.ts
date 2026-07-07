@@ -145,6 +145,8 @@ export abstract class RetroEngine {
     this.cv.addEventListener("pointermove", this.onPointer);
     this.cv.addEventListener("pointerup", this.onPointerUp);
     this.cv.addEventListener("pointercancel", this.onPointerUp);
+    this.cv.addEventListener("contextmenu", this.onContextMenu);   // no long-press copy/search callout mid-game
+    const cs = this.cv.style as any; cs.webkitTouchCallout = "none"; cs.webkitUserSelect = "none"; cs.userSelect = "none"; cs.webkitTapHighlightColor = "transparent"; cs.touchAction = "none";
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
     document.addEventListener("visibilitychange", this.onVisibility);
@@ -270,6 +272,7 @@ export abstract class RetroEngine {
     if (e.type === "pointerdown") { this.pointer.down = true; this.resumeAudio(); this.fireGesture(); }
   };
   private onPointerUp = () => { this.pointer.down = false; };
+  private onContextMenu = (e: Event) => e.preventDefault();
   private onVisibility = () => { if (!document.hidden) this.last = performance.now(); };
 
   // ---------- the 16-bit draw kit (operates on the buffer, in logical pixels) ----------
@@ -420,6 +423,7 @@ export abstract class RetroEngine {
     this.cv.removeEventListener("pointermove", this.onPointer);
     this.cv.removeEventListener("pointerup", this.onPointerUp);
     this.cv.removeEventListener("pointercancel", this.onPointerUp);
+    this.cv.removeEventListener("contextmenu", this.onContextMenu);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
     document.removeEventListener("visibilitychange", this.onVisibility);
