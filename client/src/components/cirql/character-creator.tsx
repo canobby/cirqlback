@@ -115,7 +115,7 @@ export function CharacterCreator({ initial, initialName, mode = "create", sparks
             <label className="text-[10px] uppercase tracking-widest text-cyan-300/60">Name</label>
             <input value={name} onChange={(e) => setName(e.target.value.slice(0, 16))} maxLength={16} placeholder="Traveller" data-testid="creator-name"
               className="w-36 rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: "rgba(255,255,255,.14)", background: "rgba(255,255,255,.04)", color: "#fff" }} />
-            <p className="w-36 text-[10px] leading-snug text-slate-400">You have <span className="font-bold text-amber-300">✦ {sparks}</span> sparks. Tap a locked look to buy it.</p>
+            <p className="w-36 text-[10px] leading-snug text-slate-400">You have <span className="font-bold text-amber-300">✦ {sparks}</span> sparqs. Tap a locked look to buy it.</p>
           </div>
         </div>
 

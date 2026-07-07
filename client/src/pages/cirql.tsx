@@ -124,7 +124,7 @@ export default function Cirql() {
     engineRef.current?.setStats({ sparks: sparksRef.current, energy: energyRef.current });
     setSparksUi(sparksRef.current);
     setDailyUi({ day: dr.day, done: true, streak: dr.streak });
-    engineRef.current?.toast(`✦ Daily done — +${reward} sparks${ev ? " (festival!)" : ""} · ${dr.streak}-day streak`);
+    engineRef.current?.toast(`✦ Daily done — +${reward} sparqs${ev ? " (festival!)" : ""} · ${dr.streak}-day streak`);
     persist();
   };
   // Reflect the current party into the engine (ring-aware shared target + member highlight).
@@ -208,7 +208,7 @@ export default function Cirql() {
     eng.onQuestComplete = (q, first) => {
       const reward = first ? q.reward.sparks : Math.max(1, Math.round(q.reward.sparks * 0.25));   // repeats pay ~a quarter
       sparksRef.current += reward; eng.setStats({ sparks: sparksRef.current }); setSparksUi(sparksRef.current);
-      eng.toast(first ? `✦ ${q.name} — +${reward} sparks` : `✦ ${q.name} again — +${reward} sparks`);
+      eng.toast(first ? `✦ ${q.name} — +${reward} sparqs` : `✦ ${q.name} again — +${reward} sparqs`);
       if (first && q.id.startsWith("ring-")) progressDaily("explore");   // only the first counts toward the daily
       persist();
     };
@@ -248,7 +248,7 @@ export default function Cirql() {
         sparksRef.current += rw; energyRef.current = Math.min(1, energyRef.current + rw * 0.01);
         eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current);
         applyParty(null);
-        eng.toast(first ? `✦ ${camp?.title || "Campaign"} complete — +${rw} sparks!` : `✦ ${camp?.title || "Campaign"} again — +${rw} sparks!`);
+        eng.toast(first ? `✦ ${camp?.title || "Campaign"} complete — +${rw} sparqs!` : `✦ ${camp?.title || "Campaign"} again — +${rw} sparqs!`);
         persist();
       }
     };
@@ -331,13 +331,13 @@ export default function Cirql() {
       if (earned > 0) {
         sparksRef.current += earned;
         energyRef.current += earned * 0.015;                 // sparks feed the World Energy meter
-        let msg = `+${earned} spark${earned > 1 ? "s" : ""}`;
+        let msg = `+${earned} sparq${earned > 1 ? "s" : ""}`;
         if (energyRef.current >= 1) { energyRef.current = 0.06; msg = "✦ You've fed the world — it stirs."; }
         engineRef.current?.setStats({ sparks: sparksRef.current, energy: energyRef.current });
         setSparksUi(sparksRef.current);
         engineRef.current?.toast(msg);
       } else {
-        engineRef.current?.toast("Rest a while — more sparks tomorrow.");
+        engineRef.current?.toast("Rest a while — more sparqs tomorrow.");
       }
       progressDaily("attune");   // playing a Wonder can satisfy today's daily
       persist();
@@ -485,7 +485,7 @@ export default function Cirql() {
             </div>
             <span className="ml-auto text-[10px] uppercase tracking-widest text-violet-300/60">{CADE_GAMES.length} wonders</span>
           </div>
-          <p className="px-4 pb-2 text-[12px] leading-snug text-violet-200/60">Attune to a Wonder — every run earns you <span className="text-amber-300">sparks</span>.</p>
+          <p className="px-4 pb-2 text-[12px] leading-snug text-violet-200/60">Attune to a Wonder — every run earns you <span className="text-amber-300">sparqs</span>.</p>
           <div className="grid min-h-0 flex-1 grid-cols-3 gap-2 overflow-y-auto px-3 pb-[calc(16px+env(safe-area-inset-bottom))] sm:grid-cols-4">
             {CADE_GAMES.map((g) => (
               <button key={g.id} onClick={() => setPlayRoute(g.route)} data-testid={`cade-${g.id}`}
@@ -528,7 +528,7 @@ export default function Cirql() {
               <div className="mt-0.5 text-[13px] font-semibold text-white">{d.title}</div>
               <p className="text-[11px] leading-snug text-slate-300">{d.blurb}</p>
               <div className="mt-1 text-[11px] font-bold" style={{ color: dailyUi.done ? "#5be89a" : "#ffd98a" }}>
-                {dailyUi.done ? "✓ Done today — come back tomorrow" : `Reward: ${d.reward * (event?.sparkMult ?? 1)} sparks${event ? " (doubled!)" : ""}`}
+                {dailyUi.done ? "✓ Done today — come back tomorrow" : `Reward: ${d.reward * (event?.sparkMult ?? 1)} sparqs${event ? " (doubled!)" : ""}`}
               </div>
             </div>
           ); })()}

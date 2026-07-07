@@ -1027,7 +1027,7 @@ export class CirqlWorldEngine extends RetroEngine {
     const it = this.itop(), ib = this.ibot();
     // top row (below the floating header): online (left) · sparks (right)
     this.ring(9, it + 6, 3, "#33e650", 1.3); this.q(15, it + 2, `${this.stats.online}`, "#c2fbe0", 1, "l");
-    this.q(this.LW - 4, it + 2, `${this.stats.sparks} SPARKS`, "#ffc46b", 1, "r", true);
+    this.q(this.LW - 4, it + 2, `${this.stats.sparks} SPARQS`, "#ffc46b", 1, "r", true);
 
     this.drawQuestTracker(it);
     this.drawMinimap(it);

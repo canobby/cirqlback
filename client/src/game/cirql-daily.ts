@@ -54,7 +54,7 @@ export function dailyForDate(date: string): Daily {
 export function activeEvent(d = new Date()): CirqlEvent | null {
   const dow = d.getUTCDay();           // 0 = Sun … 6 = Sat
   if (dow === 0 || dow === 6) {
-    return { id: "lantern-festival", name: "Lantern Festival", blurb: "The weekend sky glows — daily sparks are doubled.", sparkMult: 2, accent: "#ffc46b" };
+    return { id: "lantern-festival", name: "Lantern Festival", blurb: "The weekend sky glows — daily sparqs are doubled.", sparkMult: 2, accent: "#ffc46b" };
   }
   return null;
 }
