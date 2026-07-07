@@ -20,7 +20,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 // get a character-creation step first; everyone can re-edit their look.
 const INTRO_LS = "cirql_intro_v1";
 
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; daily?: { day: string; done: boolean; streak: number; lastDone: string }; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; daily?: { day: string; done: boolean; streak: number; lastDone: string }; }
 const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export default function Cirql() {
@@ -80,6 +80,7 @@ export default function Cirql() {
   const [asks, setAsks] = useState<{ fromId: string; fromName: string }[]>([]);       // join requests to me (host)
   const [invites, setInvites] = useState<{ fromId: string; fromName: string; partyId: string; campaignId: string }[]>([]);
   const blockedRef = useRef<Set<string>>(new Set());
+  const doneCampaignsRef = useRef<Set<string>>(new Set());   // campaigns finished once (repeats pay less)
   // post form
   const [postDir, setPostDir] = useState<"host" | "seeker">("host");
   const [postCampaign, setPostCampaign] = useState<string>(CAMPAIGNS[0].id);
@@ -179,7 +180,7 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, daily: dailyRef.current };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, daily: dailyRef.current };
   };
   const persist = () => {
     const st = buildState();
@@ -204,7 +205,13 @@ export default function Cirql() {
     eng.onLocalMove = (ring, x, y) => { posRef.current = { ring, x, y }; scheduleSave(); };
     eng.onSail = (ring, maxRing) => { const st = eng.getState(); posRef.current = { ring, x: st.x, y: st.y }; setCurRingUi(ring); if (maxRing > maxRingRef.current) { maxRingRef.current = maxRing; progressDaily("voyage"); } persist(); };   // reaching a new ring is a big save point
     // quests: grant the sparks reward on completion, persist progress on any change
-    eng.onQuestComplete = (q) => { sparksRef.current += q.reward.sparks; eng.setStats({ sparks: sparksRef.current }); if (q.id.startsWith("ring-")) progressDaily("explore"); persist(); };
+    eng.onQuestComplete = (q, first) => {
+      const reward = first ? q.reward.sparks : Math.max(1, Math.round(q.reward.sparks * 0.25));   // repeats pay ~a quarter
+      sparksRef.current += reward; eng.setStats({ sparks: sparksRef.current }); setSparksUi(sparksRef.current);
+      eng.toast(first ? `✦ ${q.name} — +${reward} sparks` : `✦ ${q.name} again — +${reward} sparks`);
+      if (first && q.id.startsWith("ring-")) progressDaily("explore");   // only the first counts toward the daily
+      persist();
+    };
     eng.onQuestChange = () => { setQuestRows(eng.getQuestLog()); scheduleSave(); };
 
     // M8 — live presence socket: broadcast our position + share-a-light, and render
@@ -233,7 +240,17 @@ export default function Cirql() {
       else if (m.t === "party:invite") { if (!blockedRef.current.has(m.fromId)) { setInvites((v) => v.some((x) => x.partyId === m.partyId) ? v : [...v, { fromId: m.fromId, fromName: m.fromName, partyId: m.partyId, campaignId: m.campaignId }]); eng.toast(`${m.fromName} invited you to a campaign`); } }
       else if (m.t === "party:declined") { eng.toast(`${m.byName} can't take you right now`); }
       else if (m.t === "party:disband") { applyParty(null); eng.toast(m.reason || "The party disbanded"); }
-      else if (m.t === "party:complete") { const camp = campaignById(m.campaignId); const rw = camp?.reward ?? 0; sparksRef.current += rw; energyRef.current = Math.min(1, energyRef.current + rw * 0.01); eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current); applyParty(null); eng.toast(`✦ ${camp?.title || "Campaign"} complete — +${rw} sparks!`); persist(); }
+      else if (m.t === "party:complete") {
+        const camp = campaignById(m.campaignId); const base = camp?.reward ?? 0;
+        const first = !doneCampaignsRef.current.has(m.campaignId);
+        const rw = first ? base : Math.max(2, Math.round(base * 0.25));   // repeat campaigns pay ~a quarter
+        doneCampaignsRef.current.add(m.campaignId);
+        sparksRef.current += rw; energyRef.current = Math.min(1, energyRef.current + rw * 0.01);
+        eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current);
+        applyParty(null);
+        eng.toast(first ? `✦ ${camp?.title || "Campaign"} complete — +${rw} sparks!` : `✦ ${camp?.title || "Campaign"} again — +${rw} sparks!`);
+        persist();
+      }
     };
 
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); persist(); try { ws.close(); } catch { /* ignore */ } eng.destroy(); engineRef.current = null; };
@@ -253,10 +270,11 @@ export default function Cirql() {
       playsRef.current = { day: st?.playDay ?? "", n: st?.playsToday ?? 0 };
       ownedRef.current = Array.isArray(st?.owned) ? st!.owned! : []; setOwned(ownedRef.current); setSparksUi(sparksRef.current);
       maxRingRef.current = st?.maxRing ?? 0; setCurRingUi(st?.ring ?? 0);
+      doneCampaignsRef.current = new Set(Array.isArray(st?.doneCampaigns) ? st!.doneCampaigns! : []);
       if (st?.daily && typeof st.daily.day === "string") dailyRef.current = { day: st.daily.day, done: !!st.daily.done, streak: +st.daily.streak || 0, lastDone: st.daily.lastDone || "" };
       refreshDaily();
       eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: membersRef.current, cirqlTotal: 12, online: 1, energy: energyRef.current });
-      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests });
+      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests, doneOnce: st?.doneOnce });
       if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
       setQuestRows(eng.getQuestLog());
       if (!seen) { setCreatorMode("create"); setShowCreator(true); }

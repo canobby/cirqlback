@@ -28,8 +28,12 @@ interface Biome {
   lanterns: number;    // path lanterns
   rocks: number;       // boulders (solid)
   pond: boolean;       // a little water feature (solid)
-  ambient: "butterfly" | "firefly" | "ember" | "snow" | "gull" | "dust";   // drifting critters
+  ambient: "butterfly" | "firefly" | "ember" | "snow" | "gull" | "dust" | "bee" | "dragonfly" | "grasshopper";   // drifting critters
 }
+
+// Lush/green biomes rotate through varied critters per ring (so not every ring is the
+// same); frost/ember/coast/dunes keep their signature particle.
+const LUSH_CRITTERS = ["butterfly", "bee", "dragonfly", "grasshopper", "firefly"] as const;
 
 // Biome palettes — same dusk-neon family as the Hearth, shifted per land so each ring
 // reads distinct at a glance. Each biome carries its own landscape mix + ambient life.
@@ -71,7 +75,8 @@ export function generateRing(index: number): Ring {
   const rng = rngFrom(Math.imul(index, 2654435761) ^ 0x9e3779b9);
   const biome = BIOMES[Math.floor(rng() * BIOMES.length)];
   const name = ringNameFor(rng);
-  const radius = 380 + Math.floor(rng() * 140);
+  // rings grow the farther out you sail — more room to roam + populate (Hearth is 430)
+  const radius = 440 + index * 55 + Math.floor(rng() * 70);
   const props: Prop[] = [];
 
   // two docks: inward (north → index-1) and onward (south → index+1)
@@ -92,10 +97,13 @@ export function generateRing(index: number): Ring {
       return;
     }
   };
-  if (biome.tree) { const n = 5 + Math.floor(rng() * 5); for (let i = 0; i < n; i++) place("tree", { big: rng() > 0.6 }); }
-  for (let i = 0; i < biome.crystals; i++) place("crystal", { big: rng() > 0.5, accent: biome.palette.accent });
-  for (let i = 0; i < biome.lanterns; i++) place("lantern");
-  for (let i = 0; i < biome.rocks; i++) place("rock", { big: rng() > 0.6 });
+  // scale scenery with the island's size so bigger rings don't feel empty
+  const sizeScale = radius / 460;
+  const scaled = (n: number) => n <= 0 ? 0 : Math.max(1, Math.round(n * sizeScale));
+  if (biome.tree) { const n = scaled(5 + Math.floor(rng() * 5)); for (let i = 0; i < n; i++) place("tree", { big: rng() > 0.6 }); }
+  for (let i = 0; i < scaled(biome.crystals); i++) place("crystal", { big: rng() > 0.5, accent: biome.palette.accent });
+  for (let i = 0; i < scaled(biome.lanterns); i++) place("lantern");
+  for (let i = 0; i < scaled(biome.rocks); i++) place("rock", { big: rng() > 0.6 });
   if (biome.pond) {
     for (let tries = 0; tries < 8; tries++) {
       const a = rng() * Math.PI * 2, rr = radius * (0.3 + rng() * 0.32);
@@ -132,7 +140,10 @@ export function generateRing(index: number): Ring {
     palette: biome.palette,
     spawn: { x: 0, y: -radius * 0.68 },   // arrive near the inward dock
     props,
-    ambient: biome.ambient,
+    // vary the critter on lush rings (deterministic per index); keep signature particles elsewhere
+    ambient: (biome.key === "woodland" || biome.key === "bloom" || biome.key === "gleam")
+      ? LUSH_CRITTERS[Math.abs(Math.imul(index, 2246822519)) % LUSH_CRITTERS.length]
+      : biome.ambient,
   };
 }
 

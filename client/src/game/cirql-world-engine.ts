@@ -13,7 +13,7 @@ import { RINGS, MINIMAP_RINGS, type Ring, type Prop } from "./cirql-world";
 import { getRing, ringName } from "./cirql-ring-gen";
 import { MOVIES, REEL_SECONDS } from "./cirql-theater";
 import {
-  allQuests, questById, offerableQuest, questStatusList, registerQuest,
+  allQuests, questById, offerableQuest, repeatableQuest, questStatusList, registerQuest,
   type QuestDef, type QuestProgress, type ObjectiveKind, type QuestStatus,
 } from "./cirql-quests";
 import { generateRingQuest } from "./cirql-quest-gen";
@@ -55,6 +55,7 @@ export class CirqlWorldEngine extends RetroEngine {
 
   private stats: CirqlStats = { sparks: 0, cirqlLit: 0, cirqlTotal: 12, online: 1, energy: 0 };
   private quests: QuestProgress = {};
+  private doneOnce = new Set<string>();   // quest ids completed at least once (repeats pay less)
   private lit = new Set<string>();   // quest lanterns the player has lit
 
   // Smooth-text overlay queue: UI/labels are enqueued in logical coords during
@@ -82,8 +83,8 @@ export class CirqlWorldEngine extends RetroEngine {
   onLocalMove?: (ring: number, x: number, y: number) => void;
   /** Fired when the player sails to a new ring (host persists ring + maxRing). */
   onSail?: (ring: number, maxRing: number) => void;
-  /** Fired when a quest completes — the host grants the sparks reward + persists. */
-  onQuestComplete?: (quest: QuestDef) => void;
+  /** Fired when a quest completes — host grants the reward (reduced when firstTime=false) + persists. */
+  onQuestComplete?: (quest: QuestDef, firstTime: boolean) => void;
   /** Fired when quest progress changes (accept / advance / complete) — host may persist. */
   onQuestChange?: () => void;
   private lastSent = 0; private lastX = 1e9; private lastY = 1e9;
@@ -130,9 +131,10 @@ export class CirqlWorldEngine extends RetroEngine {
   setHudInsets(topCss: number, botCss: number) { this.insetTopCss = Math.max(0, topCss); this.insetBotCss = Math.max(0, botCss); }
   /** The on-screen action button + the quest system call this to interact. */
   interact() { this.doInteract(); }
-  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit) }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), doneOnce: Array.from(this.doneOnce) }; }
   applyState(s: any) {
     if (!s) return;
+    if (Array.isArray(s.doneOnce)) this.doneOnce = new Set(s.doneOnce);
     if (typeof s.maxRing === "number") this.maxRing = Math.max(this.maxRing, s.maxRing);
     if (typeof s.ring === "number" && s.ring >= 0) { this.ringIdx = s.ring; this.curRing = getRing(s.ring); this.maxRing = Math.max(this.maxRing, s.ring); this.ensureRingQuest(); }
     if (typeof s.x === "number" && typeof s.y === "number") { this.posX = s.x; this.posY = s.y; }
@@ -221,7 +223,7 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- quests ----------
   /** Accept a quest (offered by an NPC or auto-started on first run). */
   acceptQuest(id: string) {
-    const q = questById(id); if (!q || this.quests[id]) return;
+    const q = questById(id); if (!q || this.quests[id]?.status === "active") return;   // re-accept allowed if done (repeat)
     this.quests[id] = { status: "active", obj: q.objectives.map(() => 0) };
     // a "light the lanterns" quest must start with its ring's lanterns dark, so a prior
     // playthrough's already-lit lanterns can't leave the objective uncompletable
@@ -255,10 +257,11 @@ export class CirqlWorldEngine extends RetroEngine {
   private completeQuest(q: QuestDef) {
     const p = this.quests[q.id]; if (!p || p.status === "done") return;
     p.status = "done";
-    this.toast(`✦ ${q.name} complete  +${q.reward.sparks} sparks`);
-    this.onQuestComplete?.(q);
+    const first = !this.doneOnce.has(q.id);
+    this.doneOnce.add(q.id);
+    this.onQuestComplete?.(q, first);   // page grants the reward (reduced on repeat) + toast
     this.onQuestChange?.();
-    if (q.next) this.acceptQuest(q.next);
+    if (first && q.next) this.acceptQuest(q.next);   // only auto-chain the first time
   }
   /** Rows for the quest-log panel (available/active/done, with the current objective). */
   getQuestLog(): QuestLogRow[] {
@@ -383,9 +386,14 @@ export class CirqlWorldEngine extends RetroEngine {
     const accent = p.accent || this.curRing.palette.accent;
     // an "interact" objective aimed at this NPC advances on talk
     this.advanceObjective("interact", npcId);
-    // offer a quest if this giver has one available
-    const offer = offerableQuest(npcId, this.quests);
-    if (offer) { this.dialog = { name: p.label || "Ferra", accent, i: 0, lines: offer.intro, acceptOnClose: offer.id }; return; }
+    // offer a fresh quest, or re-offer a finished one for a smaller reward (repeatable)
+    const fresh = offerableQuest(npcId, this.quests);
+    const offer = fresh || repeatableQuest(npcId, this.quests);
+    if (offer) {
+      const repeat = !fresh;
+      this.dialog = { name: p.label || "Ferra", accent, i: 0, lines: repeat ? [...offer.intro, "— though you've done this before; the reward will be slighter."] : offer.intro, acceptOnClose: offer.id };
+      return;
+    }
     // otherwise a contextual greeting
     const active = this.activeQuest();
     const home = this.ringIdx === 0;
@@ -768,30 +776,63 @@ export class CirqlWorldEngine extends RetroEngine {
     for (let i = 0; i < 8; i++) { const a = i * (TAU / 8); this.disc(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.9, 1.6, "#4a4a52"); }   // rim stones
   }
 
-  // ---- drifting ambient life, per biome (screen-space; always flitting by) ----
+  // ---- drifting ambient life, per biome (WORLD-space — stays put in the world, each
+  //      creature moves in its own way; count scales with the island's size) ----
   private drawAmbient() {
     const kind = this.curRing.ambient; if (!kind || this.reduce) return;
-    const W = this.LW, H = this.LH, t = this.t;
-    if (kind === "butterfly") {
-      const cols = ["#ffd24a", "#ff8fbf", "#8fd0ff", "#b6ff9c", "#e0a0ff"];
-      for (let i = 0; i < 7; i++) { const spd = 9 + (i % 3) * 5; const x = ((t * spd + i * 97) % (W + 40)) - 20; const y = 22 + (i * 53) % (H - 70) + Math.sin(t * 1.8 + i) * 11; this.drawButterfly(x, y, t * 1.6 + i, cols[i % cols.length]); }
-    } else if (kind === "firefly") {
-      // fewer, and wandering organically — two incommensurate drift frequencies per axis
-      // so paths curve + never line up (no straight rows)
-      for (let i = 0; i < 5; i++) {
-        const px = 0.5 + 0.40 * Math.sin(t * 0.21 + i * 2.1) + 0.12 * Math.sin(t * 0.67 + i * 4.7);
-        const py = 0.5 + 0.40 * Math.cos(t * 0.17 + i * 3.3) + 0.12 * Math.cos(t * 0.79 + i * 1.7);
-        const x = px * W, y = py * H, bl = Math.sin(t * 2.6 + i * 1.9);
-        if (bl > 0.15) { this.glow(x, y, 5, "#c8ff9a", bl * 0.5); this.disc(x, y, 1, "#eaffcf"); }
+    const camX = this.camX, camY = this.camY, R = this.curRing.radius, t = this.t, W = this.LW, H = this.LH;
+    const bases: Record<string, number> = { snow: 16, ember: 12, dust: 10, firefly: 7, grasshopper: 9, bee: 9, dragonfly: 7, gull: 4, butterfly: 10 };
+    const N = Math.max(bases[kind] ?? 8, Math.min(36, Math.round((bases[kind] ?? 8) * (R / 460))));
+    const cols = ["#ffd24a", "#ff8fbf", "#8fd0ff", "#b6ff9c", "#e0a0ff"];
+    for (let i = 0; i < N; i++) {
+      // a deterministic world anchor spread across the island (stays with the ground)
+      const h = this.ringIdx * 131 + i * 977 + 17;
+      const ang = (h % 6283) / 1000, rad = R * (0.1 + ((h >> 3) % 82) / 100);
+      let fx = Math.cos(ang) * rad, fy = Math.sin(ang) * rad;   // final world position
+      let render: ((sx: number, sy: number) => void) | null = null;
+      if (kind === "butterfly") {
+        fx += Math.sin(t * 0.7 + i) * 24 + Math.sin(t * 1.9 + i * 2) * 8;
+        fy += Math.cos(t * 0.6 + i * 1.3) * 18 + Math.cos(t * 2.1 + i) * 6;
+        const c = cols[i % cols.length]; render = (sx, sy) => this.drawButterfly(sx, sy, t * 1.6 + i, c);
+      } else if (kind === "bee") {
+        fx += Math.sin(t * 2.6 + i) * 12 + Math.sin(t * 6.5 + i * 3) * 5;   // fast tight zigzag
+        fy += Math.cos(t * 2.3 + i * 1.7) * 9 + Math.cos(t * 7.1 + i) * 4;
+        render = (sx, sy) => this.drawBee(sx, sy, t);
+      } else if (kind === "dragonfly") {
+        const seg = Math.floor(t * 0.55 + i * 1.3), lt = (t * 0.55 + i * 1.3) - seg;   // hover, then dart
+        const dartA = seg * 2.4 + i * 1.9, dist = lt < 0.35 ? 0 : (lt - 0.35) / 0.65 * 46;
+        fx += Math.cos(dartA) * dist + Math.sin(t * 9 + i) * 1.5;
+        fy += Math.sin(dartA) * dist + Math.cos(t * 9 + i) * 1.5;
+        render = (sx, sy) => this.drawDragonfly(sx, sy, t, dartA);
+      } else if (kind === "grasshopper") {
+        const cyc = 2.2 + (i % 4) * 0.5, prog = (t + i * 0.9) / cyc, hopN = Math.floor(prog), ph = prog - hopN;
+        const ra = hopN * 1.7 + i * 2.1, ra2 = (hopN + 1) * 1.7 + i * 2.1;
+        let gx = Math.cos(ra) * 16, gy = Math.sin(ra) * 9; let jumping = false;
+        if (ph > 0.72) { const jt = (ph - 0.72) / 0.28; jumping = true;   // arc-hop to the next rest spot
+          gx = Math.cos(ra) * 16 + (Math.cos(ra2) * 16 - Math.cos(ra) * 16) * jt;
+          gy = Math.sin(ra) * 9 + (Math.sin(ra2) * 9 - Math.sin(ra) * 9) * jt - Math.sin(jt * Math.PI) * 20;
+        }
+        fx += gx; fy += gy; render = (sx, sy) => this.drawGrasshopper(sx, sy, jumping);
+      } else if (kind === "firefly") {
+        fx += Math.sin(t * 0.5 + i * 2.1) * 22 + Math.sin(t * 0.9 + i) * 8;
+        fy += Math.cos(t * 0.43 + i * 1.7) * 18 + Math.cos(t * 1.1 + i * 2) * 7;
+        const bl = Math.sin(t * 2.6 + i * 1.9); if (bl > 0.15) render = (sx, sy) => { this.glow(sx, sy, 5, "#c8ff9a", bl * 0.5); this.disc(sx, sy, 1, "#eaffcf"); };
+      } else if (kind === "gull") {
+        fx = ((t * 26 + i * 260) % (R * 2.6)) - R * 1.3;   // glide across
+        fy = -R * 0.55 + i * 46 + Math.sin(t * 0.8 + i) * 12;
+        render = (sx, sy) => this.drawGull(sx, sy, t * 5 + i);
+      } else if (kind === "snow") {
+        fx += Math.sin(t * 0.6 + i) * 12; fy = ((t * 34 + h) % (R * 2)) - R;   // fall
+        render = (sx, sy) => this.disc(sx, sy, 1 + (i % 2) * 0.5, "rgba(230,244,255,0.85)");
+      } else if (kind === "ember") {
+        fx += Math.sin(t * 1.1 + i) * 8; fy = R - ((t * 40 + h) % (R * 2));   // rise
+        const a = Math.max(0, (fy + R) / (R * 2)) * 0.8; render = (sx, sy) => this.disc(sx, sy, 1 + (i % 2), hexA("#ff8c3c", a));
+      } else if (kind === "dust") {
+        fx = ((t * 30 + i * 90 + h) % (R * 2.4)) - R * 1.2; fy += Math.sin(t * 0.9 + i) * 6;   // low drift
+        render = (sx, sy) => this.disc(sx, sy, 1, "rgba(230,200,140,0.3)");
       }
-    } else if (kind === "ember") {
-      for (let i = 0; i < 12; i++) { const x = (i * 67 + Math.sin(t + i) * 20) % W; const y = H - ((t * 22 + i * 40) % (H + 20)); const a = Math.max(0, y / H) * 0.8; this.disc(x, y, 1 + (i % 2), hexA("#ff8c3c", a)); }
-    } else if (kind === "snow") {
-      for (let i = 0; i < 16; i++) { const x = (i * 53 + Math.sin(t * 0.6 + i) * 14) % W; const y = (t * 22 + i * 37) % (H + 20); this.disc(x, y, 1 + (i % 2) * 0.5, "rgba(230,244,255,0.8)"); }
-    } else if (kind === "gull") {
-      for (let i = 0; i < 3; i++) { const x = ((t * 20 + i * 150) % (W + 60)) - 30; const y = 28 + i * 22 + Math.sin(t * 0.8 + i) * 6; this.drawGull(x, y, t * 5 + i); }
-    } else if (kind === "dust") {
-      for (let i = 0; i < 9; i++) { const x = ((t * 28 + i * 80) % (W + 30)) - 15; const y = H * 0.5 + (i * 29) % Math.round(H * 0.4) + Math.sin(t + i) * 4; this.disc(x, y, 1, "rgba(230,200,140,0.28)"); }
+      const sx = fx - camX, sy = fy - camY;
+      if (render && sx > -30 && sx < W + 30 && sy > -30 && sy < H + 30) render(sx, sy);
     }
   }
   private drawButterfly(x: number, y: number, ph: number, color: string) {
@@ -800,6 +841,28 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(x, y - 2, 1, 4, "#241a1a");                    // body
     this.disc(x - w, y - 1, 1.6, color); this.disc(x + w, y - 1, 1.6, color);
     this.disc(x - w * 0.7, y + 1, 1.2, color); this.disc(x + w * 0.7, y + 1, 1.2, color);
+  }
+  private drawBee(x: number, y: number, t: number) {
+    x = Math.round(x); y = Math.round(y);
+    this.disc(x - 2, y - 1, 1.5, "rgba(232,240,255,0.5)"); this.disc(x + 2, y - 1, 1.5, "rgba(232,240,255,0.5)");   // wing blur
+    this.disc(x, y, 2, "#ffcf3a");                          // body
+    this.rect(x - 1, y - 1, 2, 1, "#241a08"); this.rect(x - 1, y + 1, 2, 1, "#241a08");   // stripes
+  }
+  private drawDragonfly(x: number, y: number, t: number, ang: number) {
+    x = Math.round(x); y = Math.round(y);
+    const dx = Math.cos(ang), dy = Math.sin(ang), px = -dy, py = dx;
+    for (let k = 1; k <= 4; k++) this.px(Math.round(x - dx * k), Math.round(y - dy * k), k < 2 ? "#7fffe6" : "#3ad0c0");   // slender tail
+    this.disc(x, y, 1.4, "#aefff2");                        // head
+    const wf = Math.abs(Math.sin(t * 22)) * 1.4 + 1.4;      // 4 blurring wings
+    this.disc(x + px * wf, y + py * wf, 1.3, "rgba(200,255,245,0.5)"); this.disc(x - px * wf, y - py * wf, 1.3, "rgba(200,255,245,0.5)");
+    this.disc(x - dx + px * wf, y - dy + py * wf, 1.1, "rgba(200,255,245,0.4)"); this.disc(x - dx - px * wf, y - dy - py * wf, 1.1, "rgba(200,255,245,0.4)");
+  }
+  private drawGrasshopper(x: number, y: number, jumping: boolean) {
+    x = Math.round(x); y = Math.round(y);
+    this.disc(x, y + 2, 2.5, "#0a071430");                  // shadow
+    this.rect(x - 2, y - 2, 4, 3, "#5b9a3a"); this.rect(x + 1, y - 3, 2, 2, "#6fb04a");   // body + head
+    if (jumping) { this.rect(x - 4, y, 2, 1, "#3a6a24"); this.rect(x - 5, y + 1, 1, 2, "#3a6a24"); }   // legs extended
+    else { this.rect(x - 3, y + 1, 2, 1, "#3a6a24"); this.rect(x + 2, y + 1, 2, 1, "#3a6a24"); }       // legs folded
   }
   private drawGull(x: number, y: number, ph: number) {
     x = Math.round(x); y = Math.round(y);

@@ -57,7 +57,7 @@ export interface Ring {
   spawn: { x: number; y: number };
   props: Prop[];
   puzzleTarget?: string[];   // rune ids that must be lit (and no others) to open the shrine (CHR-258)
-  ambient?: "butterfly" | "firefly" | "ember" | "snow" | "gull" | "dust";   // drifting critters/particles for the biome
+  ambient?: "butterfly" | "firefly" | "ember" | "snow" | "gull" | "dust" | "bee" | "dragonfly" | "grasshopper";   // drifting critters/particles for the biome
 }
 
 // ---- Ring 0: The Hearth -----------------------------------------------------

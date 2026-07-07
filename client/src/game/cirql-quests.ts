@@ -126,3 +126,8 @@ export function questStatusList(progress: QuestProgress): { quest: QuestDef; sta
 export function offerableQuest(giver: string, progress: QuestProgress): QuestDef | undefined {
   return questStatusList(progress).find((s) => s.status === "available" && s.quest.giver === giver)?.quest;
 }
+
+/** A finished quest this giver can offer again (for a reduced reward). */
+export function repeatableQuest(giver: string, progress: QuestProgress): QuestDef | undefined {
+  return allQuests().find((q) => q.giver === giver && progress[q.id]?.status === "done");
+}
