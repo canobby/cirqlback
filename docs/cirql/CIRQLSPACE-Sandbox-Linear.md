@@ -1,6 +1,6 @@
 # CIRQLSPACE — Your Sandbox · Linear Register
 
-Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 11). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H COMPLETE. Chapter 2 (I/J/K — the living world) locked; confirmed order I → J → K → F → G. Decisions locked: new Renown + World Energy · tap-ready/wire-later · fully cozy. Next up: Phase I.**
+Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 11). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H COMPLETE. Chapter 2 (I/J/K — the living world) locked; order I → J → K → F → G. Decisions: new Renown + World Energy · tap-ready/wire-later · fully cozy. **▶ BUILDING Phase I — I1 (idle life) + I2 (movement juice) DONE; next I3 (body-gesture emotes).**
 
 **Legend:** ☑ Done · ◐ In progress · ☐ Todo · ⧗ *not yet a Linear issue (free-tier issue cap) — tracked in the plan.*
 
@@ -14,7 +14,7 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 | E · Live parties | 4 ⧗ | ✅ **DONE (4/4)** |
 | ✨ H · Sit, Zoom & Diorama | 4 ⧗ | ✅ **DONE (4/4)** |
 | — *Chapter 2 · The Living World* — | | |
-| I · Character Movement & Life | 6 ⧗ | Todo *(rec. next)* |
+| I · Character Movement & Life | 6 ⧗ | ◐ **In progress (2/6)** |
 | J · Living Circles — World Population | 5 ⧗ | Todo |
 | K · Quests, NPCs & Campaigns | 6 ⧗ | Todo |
 | F · Town stores (NPC shops) | 4 ⧗ | Todo *(after K1)* |
@@ -69,8 +69,8 @@ Gather + show off your CIRQLSPACE. Locked: **free-sit** (social only) · **both*
 Guiding idea: **population, quests, and movement are one system.** Fully cozy — no combat; "boss" beats are cooperative set-pieces.
 
 ## I · Character Movement & Life  *(recommended FIRST of Chapter 2 · cheap, engine-side · ⧗ issues pending — cap)*
-- [ ] **I1** — Idle life: breathing sway + blink + random idle fidgets (look/stretch/tap/yawn) + AFK doze (auto-sit + Zzz)
-- [ ] **I2** — Movement juice: turn-in-place · footstep FX (dust/ripple/splash/footprints) · squash-on-land · collision recoil-bump
+- [x] **I1** — Idle life: breathing sway + blink + idle fidgets (look-around/stretch) + AFK doze (auto-sit + Zzz); remotes get local breath+blink *(commit eacdbe0)*
+- [x] **I2** — Movement juice: footstep FX (dust/splash/footprints, world-space) · land squash · collision bump *(turn-in-place folded into I1's look fidget)* *(commit 1a34b1b)*
 - [ ] **I3** — Body-gesture emotes: wave/bow/clap/cheer/point/shrug/nod/twirl/dance/blow-a-kiss/facepalm (extend the emote wheel)
 - [ ] **I4** — Paired social gestures: synced high-five / hug / dance-together (reuse the share-a-light pairing) + sit-together
 - [ ] **I5** — Biome movement flavor: wade+splash · ice-slide · snow/sand footprints · shiver+breath-puff · aura/cape wind flutter
