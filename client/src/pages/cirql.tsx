@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile, ChevronsUp, Backpack, Hammer, Armchair, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile, ChevronsUp, Backpack, Hammer, Armchair, ZoomIn, ZoomOut, Camera, Share2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlWorldEngine, LAND_TIERS, type QuestLogRow } from "@/game/cirql-world-engine";
 import type { Btn } from "@/game/retro-engine";
@@ -77,6 +77,7 @@ export default function Cirql() {
   const [visiting, setVisiting] = useState<string | null>(null);   // name of the CIRQLSPACE you're visiting (Phase E)
   const [seated, setSeated] = useState(false);                     // free-sit pose (Phase H1) — mirrors engine for the button
   const [zoomUi, setZoomUi] = useState(1);                         // live zoom level (Phase H2) — mirrors engine for the control
+  const [dioramaOn, setDioramaOn] = useState(false);               // tilted-3/4 beauty shot open (Phase H3)
   const [spaceOpen, setSpaceOpen] = useState(true);                // your space: open to anyone (true) or invite-only
   const [spaceInvites, setSpaceInvites] = useState<{ fromId: string; fromName: string }[]>([]);   // pending invites to visit
   const [members, setMembers] = useState(0);               // mirror of membersRef for the panel
@@ -313,6 +314,7 @@ export default function Cirql() {
     eng.onPartyArrive = () => { const p = partyRef.current; if (p) wsSend({ t: "party:advance", step: p.step }); };
     eng.onSeatChange = (s) => setSeated(s);   // keep the Sit button in sync (auto-stand on walk) — Phase H1
     eng.onZoomChange = (z) => setZoomUi(z);   // keep the zoom % readout in sync (wheel/pinch/reset) — Phase H2
+    eng.onDioramaChange = (on) => setDioramaOn(on);   // sync the beauty-shot overlay (tap-to-close) — Phase H3
     const refreshCount = () => { const n = eng.remoteCount() + 1; setOnline(n); eng.setStats({ online: n }); };
     ws.onopen = () => { setConnected(true); tryJoin(); };
     ws.onclose = () => { setConnected(false); joinedRef.current = false; };
@@ -544,6 +546,26 @@ export default function Cirql() {
   };
   const requestVisit = (id: string) => { wsSend({ t: "visit", toId: id }); engineRef.current?.toast("Knocking…"); };
   const leaveVisit = () => { wsSend({ t: "space:home" }); engineRef.current?.endVisit(); setVisiting(null); };
+  // Capture the diorama frame → a shareable postcard (Phase H4). The label is composited onto
+  // the same canvas, so a straight capture is the finished card. Share sheet on mobile; download else.
+  const sharePostcard = async () => {
+    const cv = canvasRef.current; if (!cv) return;
+    try {
+      const blob: Blob | null = await new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
+      if (!blob) throw new Error("no blob");
+      const file = new File([blob], "my-cirqlspace.png", { type: "image/png" });
+      const nav = navigator as any;
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        await nav.share({ files: [file], title: "My CIRQLSPACE", text: "Come visit my CIRQLSPACE in CIRQLVERSE ✦" });
+        engineRef.current?.toast("Postcard shared ✦");
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = "my-cirqlspace.png"; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        engineRef.current?.toast("Postcard saved ✦");
+      }
+    } catch { engineRef.current?.toast("Couldn't make the postcard"); }
+  };
   const toggleSpaceOpen = () => wsSend({ t: "space:mode", open: !spaceOpen });
   const inviteToSpace = (id: string) => wsSend({ t: "space:invite", toId: id });
   const acceptSpaceInvite = (hostId: string) => { setSpaceInvites((v) => v.filter((x) => x.fromId !== hostId)); requestVisit(hostId); };
@@ -884,8 +906,8 @@ export default function Cirql() {
         </div>
       )}
 
-      {/* live zoom control (Phase H2) — a floating +/- on the right; hidden while building */}
-      {!showDecor && !showInventory && (
+      {/* live zoom control (Phase H2) — a floating +/- on the right; hidden while building/diorama */}
+      {!showDecor && !showInventory && !dioramaOn && (
         <div className="pointer-events-auto absolute right-3 top-1/2 z-[16] flex -translate-y-1/2 flex-col items-center gap-1.5" data-testid="zoom-control">
           <button onPointerDown={(e) => { e.preventDefault(); engineRef.current?.zoomBy(1.15); setZoomUi(engineRef.current?.getZoom() ?? 1); }} data-testid="btn-zoom-in" title="Zoom in"
             className="flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] active:scale-90" style={{ borderColor: "rgba(53,224,208,.5)", color: "#7be0ff", background: "rgba(10,18,38,.55)" }}>
@@ -899,12 +921,26 @@ export default function Cirql() {
             className="flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] active:scale-90" style={{ borderColor: "rgba(53,224,208,.5)", color: "#7be0ff", background: "rgba(10,18,38,.55)" }}>
             <ZoomOut className="h-4 w-4" />
           </button>
+          {curRingUi === 0 && !visiting && (
+            <button onPointerDown={(e) => { e.preventDefault(); engineRef.current?.openDiorama(); }} data-testid="btn-diorama" title="Diorama view"
+              className="mt-1 flex h-11 w-11 items-center justify-center rounded-full border-[1.5px] active:scale-90" style={{ borderColor: "rgba(255,206,140,.6)", color: "#ffce8c", background: "rgba(40,28,8,.5)", boxShadow: "0 0 14px rgba(255,206,140,.2) inset" }}>
+              <Camera className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* diorama beauty shot (Phase H3) — the canvas owns the screen; this is just the exit + share bar */}
+      {dioramaOn && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[40] flex items-center justify-center gap-3 px-5 pb-[calc(20px+env(safe-area-inset-bottom))]" data-testid="diorama-bar">
+          <button onClick={() => { engineRef.current?.closeDiorama(); }} data-testid="diorama-close" className="pointer-events-auto rounded-full border px-5 py-2 text-[13px] font-bold text-slate-200" style={{ borderColor: "rgba(120,140,180,.4)", background: "rgba(10,18,38,.7)" }}>Close</button>
+          <button onClick={sharePostcard} data-testid="diorama-share" className="pointer-events-auto flex items-center gap-2 rounded-full px-5 py-2 text-[13px] font-extrabold text-slate-900" style={{ background: "linear-gradient(90deg,#ffce8c,#ffd98a)" }}><Share2 className="h-4 w-4" /> Share postcard</button>
         </div>
       )}
 
       {/* controls tray — captures all taps in this band so only the controls move the character */}
       <div ref={controlsRef} className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-w-[680px] items-end justify-between gap-4 px-5 pb-[calc(14px+env(safe-area-inset-bottom))] pt-6"
-        style={{ background: "linear-gradient(0deg, rgba(6,11,26,.78) 40%, rgba(6,11,26,0))", touchAction: "none" }}>
+        style={{ background: "linear-gradient(0deg, rgba(6,11,26,.78) 40%, rgba(6,11,26,0))", touchAction: "none", display: dioramaOn ? "none" : undefined }}>
         <Joystick press={(b) => engineRef.current?.press(b)} release={(b) => engineRef.current?.release(b)} color="#35e0d0" size={128} />
         <div className="mb-1 flex items-end gap-3">
           <button onPointerDown={(e) => { e.preventDefault(); setShowEmotes((v) => !v); }} data-testid="btn-emotes" title="Emotes"

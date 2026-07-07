@@ -7,7 +7,7 @@
 // an NPC raises an interact prompt. Persistence, quests, the Wonders arcade and
 // "your Cirql" plug in on top of this (M2–M6) via the hooks below.
 
-import { RetroEngine, type RetroHooks } from "./retro-engine";
+import { RetroEngine, shade, mix, type RetroHooks } from "./retro-engine";
 import { loadAvatarLS, DEFAULT_AVATAR, AURA_COLORS, type AvatarConfig } from "./avatar";
 import { RINGS, MINIMAP_RINGS, type Ring, type Prop } from "./cirql-world";
 import { getRing, ringName, isSubMap, parentOf, subKindOf } from "./cirql-ring-gen";
@@ -69,6 +69,7 @@ export class CirqlWorldEngine extends RetroEngine {
   private jumpZ = 0; private jumpVel = 0;      // fake-Z hop (CHR-263): raised height + vertical velocity
   private seated = false; private poseDirty = false;   // free-sit pose (Phase H1) — broadcast even when standing still
   private zoom = 1; private zoomTarget = 1;            // live camera zoom (Phase H2): 1 = normal, <1 sees more
+  private diorama = false; private dioramaAng = 0; private dioramaT = 0;   // tilted 3/4 beauty shot (Phase H3)
   // Hearth décor (CHR-259): your placed decorations, an edit mode, and a "visiting" overlay
   private decor: { item: string; x: number; y: number }[] = [];
   private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
@@ -244,7 +245,7 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Full-screen safe-area: keep the HUD below the floating header + above the controls (CSS px). */
   setHudInsets(topCss: number, botCss: number) { this.insetTopCss = Math.max(0, topCss); this.insetBotCss = Math.max(0, botCss); }
   /** The on-screen action button + the quest system call this to interact. */
-  interact() { if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
+  interact() { if (this.diorama) { this.closeDiorama(); return; } if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
   /** A little fake-Z hop (CHR-263) — raise the sprite; the shadow stays grounded. */
   jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.standUp(); if (this.jumpZ <= 0.01 && this.jumpVel <= 0) this.jumpVel = 66; }
   /** Free-sit (Phase H1) — plop down where you stand; any movement stands you back up. */
@@ -262,6 +263,11 @@ export class CirqlWorldEngine extends RetroEngine {
     const fx = this.LW / 2, fy = this.LH / 2;
     return { x: (px - fx) / this.zoom + fx + this.camX, y: (py - fy) / this.zoom + fy + this.camY };
   }
+  // ---- diorama beauty shot (Phase H3) — a tilted 3/4 "physical model" of your whole CIRQLSPACE ----
+  onDioramaChange?: (on: boolean) => void;
+  openDiorama() { if (this.ringIdx !== 0 || this.cs || this.voyage) return; this.diorama = true; this.dioramaT = 0; this.dioramaAng = -0.5; this.editDecor = false; this.editPaint = false; this.onDioramaChange?.(true); }
+  closeDiorama() { if (!this.diorama) return; this.diorama = false; this.onDioramaChange?.(false); }
+  isDiorama() { return this.diorama; }
   getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), terrain: this.getTerrain(), landTier: this.landTier }; }
   applyState(s: any) {
     if (!s) return;
@@ -610,6 +616,8 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- update ----------
   protected update(dt: number) {
     this.t += dt;
+    // diorama beauty shot (Phase H3): freeze the sim, sweep in, and slowly orbit the model
+    if (this.diorama) { this.dioramaT = Math.min(1, this.dioramaT + dt * 1.4); if (!this.reduce) this.dioramaAng += dt * 0.2; this.updateFx(dt); return; }
     this.msgT = Math.max(0, this.msgT - dt);
     this.arriveT = Math.max(0, this.arriveT - dt);
     // fake-Z hop physics (CHR-263) — always settles, independent of movement
@@ -817,6 +825,7 @@ export class CirqlWorldEngine extends RetroEngine {
   protected render() {
     this.ui.length = 0;   // reset the smooth-text queue for this frame
     if (this.voyage) { this.drawVoyage(); this.drawFx(); return; }   // the sailing crossing owns the screen
+    if (this.diorama) { this.drawDiorama(); this.drawFx(); return; }   // the beauty shot owns the screen (Phase H3)
     const b = this.b, s = this.SS, W = this.LW * s, H = this.LH * s, pal = this.curRing.palette;
     // sky/sea backdrop
     const g = b.createLinearGradient(0, 0, 0, H);
@@ -1148,6 +1157,88 @@ export class CirqlWorldEngine extends RetroEngine {
       this.rect(sx - half, sy - half, TILE + 1, TILE + 1, col);
       if (t === "w" && !this.reduce) this.rect(sx - half + 4, sy - 3 + Math.round(Math.sin(this.t * 2 + gx) * 1.5), TILE - 8, 1, "rgba(255,255,255,0.12)");
     }
+  }
+  // ---- diorama beauty shot (Phase H3): a tilted 3/4 model of your whole CIRQLSPACE ----
+  // Draw a sprite upright but scaled about its base — billboards stay unskewed on the tilted ground.
+  private billboard(sx: number, sy: number, scale: number, fn: () => void) {
+    const b = this.b, s = this.SS;
+    b.save(); b.translate(sx * s, sy * s); b.scale(scale, scale); b.translate(-sx * s, -sy * s); fn(); b.restore();
+  }
+  private drawDiorama() {
+    const b = this.b, s = this.SS, W = this.LW * s, H = this.LH * s, pal = this.curRing.palette;
+    const ease = this.dioramaT * this.dioramaT * (3 - 2 * this.dioramaT);   // smoothstep sweep-in
+    // graded golden-hour sky
+    const g = b.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#2a1e42"); g.addColorStop(0.45, "#4a3358"); g.addColorStop(1, "#182a44");
+    b.fillStyle = g; b.fillRect(0, 0, W, H);
+    const gg = b.createRadialGradient(W * 0.5, H * 0.02, 0, W * 0.5, H * 0.02, W * 0.8);
+    gg.addColorStop(0, "rgba(255,206,140,0.28)"); gg.addColorStop(1, "rgba(255,206,140,0)");
+    b.fillStyle = gg; b.fillRect(0, 0, W, H);
+    // drifting clouds (behind the model)
+    if (!this.reduce) for (let i = 0; i < 5; i++) {
+      const cxx = ((this.t * 6 + i * 150) % (this.LW + 200)) - 100, cyy = this.LH * (0.08 + (i % 3) * 0.06);
+      b.fillStyle = hexA("#ffffff", 0.05); b.beginPath(); b.ellipse(cxx * s, cyy * s, (46 + i * 8) * s, 12 * s, 0, 0, TAU); b.fill();
+    }
+    // projection: rotate around island centre, squash Y (the tilt), scale to fit the frame
+    const R = this.effR(), SQ = 0.56;
+    const Z = Math.min((this.LW * 0.82) / (2 * R), (this.LH * 0.52) / (2 * R * SQ)) * (0.78 + 0.22 * ease);
+    const cx = this.LW / 2, cy = this.LH * 0.47;
+    const ca = Math.cos(this.dioramaAng), sa = Math.sin(this.dioramaAng);
+    const proj = (wx: number, wy: number) => ({ sx: cx + (wx * ca - wy * sa) * Z, sy: cy + (wx * sa + wy * ca) * SQ * Z });
+    const ell = (ccx: number, ccy: number, rx: number, ry: number, col: string) => { b.fillStyle = col; b.beginPath(); b.ellipse(ccx * s, ccy * s, rx * s, ry * s, 0, 0, TAU); b.fill(); };
+    const rX = R * Z, rY = R * Z * SQ, TH = Math.max(8, R * Z * 0.16);
+    // float shadow on the sea
+    ell(cx, cy + TH + 10, rX * 1.04, rY * 0.5, "rgba(0,0,0,0.34)");
+    // extruded island thickness — a floating chunk of land, dark below → shore up top
+    const steps = Math.min(40, Math.max(1, Math.round(TH)));
+    for (let k = steps; k >= 0; k--) { const f = k / steps; ell(cx, cy + TH * f, rX, rY, shade(mix(pal.sand, "#3a2413", 0.55), -0.12 * f)); }
+    // top surfaces
+    ell(cx, cy, rX, rY, pal.sand);
+    ell(cx, cy, (R - 22) * Z, (R - 22) * Z * SQ, pal.land);
+    for (let i = 0; i < 8; i++) { const a = i * 0.94, rr = (i * 53) % (R - 130); const p = proj(Math.cos(a) * rr, Math.sin(a) * rr); ell(p.sx, p.sy, (46 + (i % 4) * 12) * Z, (30 + (i % 3) * 10) * Z * SQ, pal.grass); }
+    // painted terrain, projected as squashed cells
+    if (this.ringIdx === 0) for (const [key, t] of Array.from(this.terrain)) {
+      const col = TILE_COL[t]; if (!col) continue;
+      const gx = (key % 1000) - 500, gy = ((key / 1000) | 0) - 500; const p = proj(gx * TILE, gy * TILE);
+      this.rect(p.sx - TILE * Z / 2, p.sy - TILE * SQ * Z / 2, TILE * Z + 1, TILE * SQ * Z + 1, col);
+    }
+    // billboards — props, décor, you (+ friends): project the base, depth-sort, draw upright
+    const spriteScale = Math.min(1, Z + 0.3);
+    const items: { d: number; f: () => void }[] = [];
+    for (const pr of this.curRing.props) {
+      const p = proj(pr.x, pr.y);
+      if (pr.t === "npc") items.push({ d: p.sy, f: () => this.billboard(p.sx, p.sy, spriteScale, () => this.drawNpc(p.sx, p.sy, pr)) });
+      else if (pr.t === "dock") items.push({ d: p.sy, f: () => this.billboard(p.sx, p.sy, spriteScale, () => this.drawDock(p.sx, p.sy, pr)) });
+    }
+    for (const dd of this.decor) {
+      const def = decorById[dd.item]; if (!def) continue; const r = def.render ?? "glyph"; const p = proj(dd.x, dd.y);
+      const draw = () => {
+        if (r === "path") this.drawPath(p.sx, p.sy);
+        else if (r === "pond") this.drawPond(p.sx, p.sy, 20);
+        else if (r === "stone") this.drawRock(p.sx, p.sy, def.big);
+        else if (r === "fence") this.drawFence(p.sx, p.sy, false);
+        else if (r === "tree") this.drawTree(p.sx, p.sy, def.big, this.treeKind(dd.x, dd.y));
+        else if (r === "bush") this.drawBush(p.sx, p.sy);
+        else if (r === "flower") this.drawFlower(p.sx, p.sy, def.accent || "#ff8fbf");
+        else if (r === "lantern") this.drawLantern(p.sx, p.sy, def.accent || pal.accent, true);
+        else if (r === "crystal") this.drawCrystal(p.sx, p.sy, def.big, def.accent || pal.accent);
+        else this.drawDecor(p.sx, p.sy, def.glyph, def.scale ?? 1);
+      };
+      items.push({ d: p.sy, f: () => this.billboard(p.sx, p.sy, spriteScale, draw) });
+    }
+    { const p = proj(this.posX, this.posY); items.push({ d: p.sy + 0.5, f: () => this.billboard(p.sx, p.sy, spriteScale, () => { this.disc(p.sx, p.sy + 2, 4, "#0a071460"); this.avatar(p.sx, p.sy, this.hero, this.facing); }) }); }
+    for (const r of Array.from(this.remotes.values())) { const p = proj(r.x, r.y); items.push({ d: p.sy, f: () => this.billboard(p.sx, p.sy, spriteScale, () => { this.disc(p.sx, p.sy + 2, 4, "#0a071460"); this.avatar(p.sx, p.sy, r.avatar, r.facing); }) }); }
+    items.sort((a, c) => a.d - c.d);
+    for (const it of items) it.f();
+    // vignette
+    const vg = b.createRadialGradient(W * 0.5, H * 0.5, H * 0.18, W * 0.5, H * 0.5, H * 0.78);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(4,2,12,0.55)");
+    b.fillStyle = vg; b.fillRect(0, 0, W, H);
+    // postcard label
+    const pieces = this.decor.length;
+    this.q(this.LW / 2, this.LH * 0.06, "◆ DIORAMA", "#ffce8c", 1.0, "c", true, 0.7 * ease + 0.3);
+    this.q(this.LW / 2, this.LH * 0.83, `${this.myName}'s CIRQLSPACE`, "#ffffff", 1.5, "c", true);
+    this.q(this.LW / 2, this.LH * 0.83 + 18, `Tier ${this.landTier + 1}  ·  ${pieces} piece${pieces === 1 ? "" : "s"}`, "#ffd98a", 1.0, "c");
   }
   // A placed décor piece (CHR-259): an emoji glyph standing on a soft shadow.
   private drawDecor(cx: number, cy: number, glyph: string, scale: number, alpha = 1) {
