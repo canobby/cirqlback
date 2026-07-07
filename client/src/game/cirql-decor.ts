@@ -1,41 +1,90 @@
-// CIRQL — Hearth décor (CHR-259, M11 "Depth & Delight").
+// CIRQLSPACE — the build catalog (CHR-259 → CHR-272, Phase B).
 //
-// Spark-bought decorations you place on your Hearth to make the home island yours
-// (Stardew / Animal Crossing lineage). Each item is a charming emoji glyph drawn at a
-// world position over a soft shadow — so new décor is pure data, no per-item pixel art.
-// Owned items persist in the `cirql` save (`owned`, shared with cosmetics); placements
-// persist as `decor: {item,x,y}[]`. Presence broadcasts your placements so friends can
-// visit your Hearth.
+// Everything you place on YOUR CIRQLSPACE to make it yours (Stardew / Animal-Crossing /
+// 2D-Minecraft lineage). Items are bought with SPARQS and placed by tap; nature/structure
+// items render as real pixel props (reusing the engine's drawTree/drawPond/… so they look
+// like the world), the rest as charming emoji glyphs — so new items are cheap to add.
+// Placements persist in the `cirql` save; presence broadcasts them so friends can visit.
+// Décor is CIRQLSPACE-only (ring 0) and can't be placed anywhere else.
+
+// How an item draws in-world. "glyph" = emoji (default, non-solid). The others reuse the
+// engine's pixel art; solids are walked-around (see the engine's decor collision).
+export type DecorRender =
+  | "glyph" | "path" | "flower" | "lantern" | "crystal"   // non-solid
+  | "stone" | "fence" | "tree" | "bush" | "pond";         // solid (or walk-around)
+
+export type DecorCategory = "nature" | "paths" | "structures" | "furniture" | "lights" | "special";
 
 export interface DecorDef {
   id: string;
   name: string;
-  glyph: string;   // shown in the palette; also the in-world art for "glyph" render
-  price: number;   // sparqs (0 = free starter)
-  scale?: number;  // glyph size multiplier (default 1)
-  // in-world render: "glyph" (emoji, default) or a pixel prop. path = walkable ground;
-  // stone/fence = solid pixel props you build with (the start of "2D-Minecraft" building).
-  render?: "glyph" | "path" | "stone" | "fence";
+  glyph: string;             // palette icon; also the in-world art when render = "glyph"
+  price: number;             // sparqs (0 = free starter)
+  category: DecorCategory;
+  render?: DecorRender;      // default "glyph"
+  scale?: number;            // glyph size multiplier
+  big?: boolean;             // larger tree / rock / crystal
+  accent?: string;           // tint for flower / lantern / crystal
 }
 
+export const CATEGORIES: { key: DecorCategory; label: string; icon: string }[] = [
+  { key: "nature", label: "Nature", icon: "🌿" },
+  { key: "paths", label: "Paths", icon: "🧱" },
+  { key: "structures", label: "Build", icon: "🚧" },
+  { key: "furniture", label: "Decor", icon: "🪑" },
+  { key: "lights", label: "Lights", icon: "🏮" },
+  { key: "special", label: "Special", icon: "✨" },
+];
+
 export const DECOR: DecorDef[] = [
-  // building blocks (cheap, buy many) — the start of "build your world" (2D-Minecraft)
-  { id: "pathbrick", name: "Path Bricks",   glyph: "🧱", price: 2, render: "path" },   // walkable ground
-  { id: "stone",     name: "Stepping Stone", glyph: "🪨", price: 3, render: "stone" },  // solid
-  { id: "fence",     name: "Fence",         glyph: "🚧", price: 3, render: "fence" },   // solid
-  { id: "bench",    name: "Garden Bench",   glyph: "🪑", price: 0 },
-  { id: "planter",  name: "Flower Planter", glyph: "🪴", price: 6 },
-  { id: "toadstool", name: "Toadstools",    glyph: "🍄", price: 6 },
-  { id: "lantern",  name: "Lantern Post",   glyph: "🏮", price: 8 },
-  { id: "banner",   name: "Bright Banner",  glyph: "🚩", price: 8, scale: 1.1 },
-  { id: "topiary",  name: "Topiary Tree",   glyph: "🌳", price: 10, scale: 1.2 },
-  { id: "campfire", name: "Campfire",       glyph: "🔥", price: 10 },
-  { id: "birdhouse", name: "Birdhouse",     glyph: "🐦", price: 12 },
-  { id: "crystal",  name: "Wishing Crystal", glyph: "💎", price: 14 },
-  { id: "arch",     name: "Rose Arch",      glyph: "⛩️", price: 16, scale: 1.2 },
-  { id: "statue",   name: "Stone Statue",   glyph: "🗿", price: 18, scale: 1.2 },
-  { id: "fountain", name: "Fountain",       glyph: "⛲", price: 24, scale: 1.3 },
+  // ---- Nature (real pixel props) ----
+  { id: "tree",      name: "Tree",           glyph: "🌳", price: 8,  category: "nature", render: "tree" },
+  { id: "bigtree",   name: "Great Tree",     glyph: "🌲", price: 12, category: "nature", render: "tree", big: true },
+  { id: "bush",      name: "Bush",           glyph: "🌿", price: 5,  category: "nature", render: "bush" },
+  { id: "boulder",   name: "Boulder",        glyph: "🪨", price: 6,  category: "nature", render: "stone", big: true },
+  { id: "stone",     name: "Stone",          glyph: "🪨", price: 3,  category: "nature", render: "stone" },   // (kept id — building block)
+  { id: "pond",      name: "Pond",           glyph: "💧", price: 20, category: "nature", render: "pond" },
+  { id: "flower",    name: "Pink Flowers",   glyph: "🌸", price: 4,  category: "nature", render: "flower", accent: "#ff8fbf" },
+  { id: "flower-gold", name: "Gold Flowers", glyph: "🌼", price: 4,  category: "nature", render: "flower", accent: "#ffd24a" },
+  { id: "flower-blue", name: "Blue Flowers", glyph: "🪻", price: 4,  category: "nature", render: "flower", accent: "#8fd0ff" },
+  { id: "toadstool", name: "Toadstools",     glyph: "🍄", price: 5,  category: "nature", render: "glyph" },
+  { id: "topiary",   name: "Topiary",        glyph: "🌳", price: 10, category: "nature", render: "glyph", scale: 1.2 },
+
+  // ---- Paths & ground (walkable) ----
+  { id: "pathbrick", name: "Path Bricks",    glyph: "🧱", price: 2,  category: "paths", render: "path" },
+
+  // ---- Structures (solid build pieces) ----
+  { id: "fence",     name: "Fence",          glyph: "🚧", price: 3,  category: "structures", render: "fence" },
+  { id: "arch",      name: "Rose Arch",      glyph: "⛩️", price: 16, category: "structures", render: "glyph", scale: 1.2 },
+  { id: "bridge",    name: "Bridge",         glyph: "🌉", price: 18, category: "structures", render: "glyph", scale: 1.3 },
+  { id: "gate",      name: "Garden Gate",    glyph: "🚪", price: 10, category: "structures", render: "glyph" },
+  { id: "tower",     name: "Little Tower",   glyph: "🏰", price: 30, category: "structures", render: "glyph", scale: 1.4 },
+  { id: "windmill",  name: "Windmill",       glyph: "🌾", price: 26, category: "structures", render: "glyph", scale: 1.3 },
+
+  // ---- Furniture & décor ----
+  { id: "bench",     name: "Garden Bench",   glyph: "🪑", price: 0,  category: "furniture", render: "glyph" },
+  { id: "planter",   name: "Flower Planter", glyph: "🪴", price: 6,  category: "furniture", render: "glyph" },
+  { id: "picnic",    name: "Picnic Set",     glyph: "🧺", price: 8,  category: "furniture", render: "glyph" },
+  { id: "birdhouse", name: "Birdhouse",      glyph: "🐦", price: 12, category: "furniture", render: "glyph" },
+  { id: "banner",    name: "Bright Banner",  glyph: "🚩", price: 8,  category: "furniture", render: "glyph", scale: 1.1 },
+  { id: "statue",    name: "Stone Statue",   glyph: "🗿", price: 18, category: "furniture", render: "glyph", scale: 1.2 },
+  { id: "fountain",  name: "Fountain",       glyph: "⛲", price: 24, category: "furniture", render: "glyph", scale: 1.3 },
+  { id: "mailbox",   name: "Mailbox",        glyph: "📮", price: 6,  category: "furniture", render: "glyph" },
+
+  // ---- Lights ----
+  { id: "lantern",   name: "Lantern Post",   glyph: "🏮", price: 8,  category: "lights", render: "lantern", accent: "#ffc46b" },
+  { id: "campfire",  name: "Campfire",       glyph: "🔥", price: 10, category: "lights", render: "glyph" },
+  { id: "fairylights", name: "Fairy Lights", glyph: "✨", price: 8,  category: "lights", render: "glyph" },
+  { id: "torch",     name: "Torch",          glyph: "🕯️", price: 4,  category: "lights", render: "glyph" },
+
+  // ---- Special (fun SPARQS sinks) ----
+  { id: "crystal",   name: "Wishing Crystal", glyph: "💎", price: 14, category: "special", render: "crystal", accent: "#b26cff" },
+  { id: "rainbow",   name: "Rainbow",        glyph: "🌈", price: 40, category: "special", render: "glyph", scale: 1.5 },
+  { id: "star",      name: "Fallen Star",    glyph: "⭐", price: 30, category: "special", render: "glyph", scale: 1.3 },
+  { id: "portal-deco", name: "Mystic Ring",  glyph: "🌀", price: 35, category: "special", render: "glyph", scale: 1.3 },
 ];
 
 export const decorById: Record<string, DecorDef> = Object.fromEntries(DECOR.map((d) => [d.id, d]));
 export const decorPriceKey = (id: string) => `decor:${id}`;   // owned-key namespace (shares the `owned` set)
+// solid render kinds (walked around); the rest are walk-through / ground
+export const DECOR_SOLID: Record<string, boolean> = { stone: true, fence: true, tree: true, bush: true, pond: true };

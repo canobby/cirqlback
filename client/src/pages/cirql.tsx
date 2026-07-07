@@ -13,7 +13,7 @@ import { dailyForDate, activeEvent, todayStr, type DailyTask, type CirqlEvent } 
 import { ringName } from "@/game/cirql-ring-gen";
 import { EMOTES } from "@/game/cirql-emotes";
 import { WAKE_CUTSCENE, campaignCutscene, worldEnergyCutscene } from "@/game/cirql-cutscenes";
-import { DECOR, decorById, decorPriceKey } from "@/game/cirql-decor";
+import { DECOR, decorById, decorPriceKey, CATEGORIES, type DecorCategory } from "@/game/cirql-decor";
 
 const SPARK_PER_PLAY = 2;
 const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
@@ -55,6 +55,8 @@ export default function Cirql() {
   const [showInventory, setShowInventory] = useState(false);  // Inventory: stock + SPARQS + how-to (CHR-270)
   const [showDecor, setShowDecor] = useState(false);       // CIRQLSPACE build palette (CHR-259)
   const [decorTool, setDecorTool] = useState<string>("");  // selected décor id, "remove", or ""
+  const [decorCat, setDecorCat] = useState<DecorCategory>("nature");   // active build category (CHR-272)
+  const [snapOn, setSnapOn] = useState(false);             // grid-snap placement (CHR-273)
   const [decorCount, setDecorCount] = useState(0);         // placed-piece count (reactive)
   const [visiting, setVisiting] = useState<string | null>(null);   // name of the Hearth you're visiting (CHR-259)
   const [members, setMembers] = useState(0);               // mirror of membersRef for the panel
@@ -689,29 +691,39 @@ export default function Cirql() {
         );
       })()}
 
-      {/* CIRQLSPACE build palette (CHR-259) — pick a piece then tap to place; world stays tappable */}
+      {/* CIRQLSPACE build palette (CHR-259/272/273) — category tabs + grid snap; tap to place */}
       {showDecor && !visiting && (
-        <div className="pointer-events-auto absolute inset-x-0 top-12 z-[15] mx-auto max-w-[560px] px-3" data-testid="decor-palette">
+        <div className="pointer-events-auto absolute inset-x-0 top-12 z-[15] mx-auto max-w-[580px] px-3" data-testid="decor-palette">
           <div className="rounded-2xl border p-2" style={{ borderColor: "rgba(255,196,107,.4)", background: "rgba(10,12,28,.96)", boxShadow: "0 10px 34px rgba(0,0,0,.55)" }}>
             <div className="mb-1.5 flex items-center gap-2 px-1">
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">Decorate</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">Build</span>
               <span className="hidden text-[10px] text-slate-400 sm:inline">{decorTool === "remove" ? "tap a piece to remove" : decorTool ? "tap to place" : "pick a piece"}</span>
-              <span className="ml-auto text-[11px] font-bold text-amber-200" data-testid="decor-sparqs">✦ {sparksUi}</span>
+              <button onClick={() => { const on = !snapOn; setSnapOn(on); engineRef.current?.setSnap(on); }} data-testid="decor-grid"
+                className="ml-auto rounded-lg border px-2 py-0.5 text-[10px] font-bold" style={snapOn ? { borderColor: "#35e0d0", color: "#0a1220", background: "#7ff5e8" } : { borderColor: "#2a3a66", color: "#9fb0d0" }}># Grid</button>
+              <span className="text-[11px] font-bold text-amber-200" data-testid="decor-sparqs">✦ {sparksUi}</span>
               <button onClick={closeDecorate} data-testid="decor-done" className="rounded-lg px-2.5 py-1 text-[12px] font-bold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>Done</button>
             </div>
+            {/* category tabs + remove tool */}
+            <div className="mb-1.5 flex gap-1 overflow-x-auto pb-0.5">
+              {CATEGORIES.map((c) => (
+                <button key={c.key} onClick={() => setDecorCat(c.key)} data-testid={`decor-cat-${c.key}`}
+                  className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold"
+                  style={decorCat === c.key ? { borderColor: "#ffc46b", color: "#0a1220", background: "#ffd98a" } : { borderColor: "#2a3a66", color: "#a9c2e6" }}>
+                  <span>{c.icon}</span> {c.label}
+                </button>
+              ))}
+              <button onClick={pickRemove} data-testid="decor-remove" className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold"
+                style={decorTool === "remove" ? { borderColor: "#ff5d7d", color: "#ffb3c3", background: "rgba(255,93,125,.14)" } : { borderColor: "#3a2a72", color: "#c9a0d0" }}>🗑 Remove</button>
+            </div>
             <div className="flex gap-1.5 overflow-x-auto pb-1">
-              <button onClick={pickRemove} data-testid="decor-remove" className="flex h-16 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border text-[9px] font-bold"
-                style={decorTool === "remove" ? { borderColor: "#ff5d7d", color: "#ffb3c3", background: "rgba(255,93,125,.14)" } : { borderColor: "#2a3a66", color: "#9fb0d0" }}>
-                <span className="text-[20px] leading-none">🗑</span> Remove
-              </button>
-              {DECOR.map((d) => {
+              {DECOR.filter((d) => d.category === decorCat).map((d) => {
                 const owned = decorOwned(d.id); const sel = decorTool === d.id;
                 return (
                   <button key={d.id} onClick={() => pickDecor(d.id)} data-testid={`decor-${d.id}`} title={d.name}
                     className="flex h-16 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border text-[9px] font-semibold"
                     style={sel ? { borderColor: "#ffc46b", color: "#0a1220", background: "#ffd98a" } : { borderColor: owned ? "rgba(255,196,107,.35)" : "rgba(150,130,255,.2)", color: owned ? "#ffd98a" : "#b9a8e6", background: "rgba(255,255,255,.03)" }}>
                     <span className="text-[22px] leading-none">{d.glyph}</span>
-                    {owned ? <span className={sel ? "text-slate-900" : ""}>{d.name.split(" ")[0]}</span> : <span>✦{d.price}</span>}
+                    {owned ? <span className={`truncate max-w-[52px] ${sel ? "text-slate-900" : ""}`}>{d.name.split(" ")[0]}</span> : <span>✦{d.price}</span>}
                   </button>
                 );
               })}

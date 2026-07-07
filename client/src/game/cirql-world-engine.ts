@@ -19,7 +19,7 @@ import {
 import { generateRingQuest } from "./cirql-quest-gen";
 import { EMOTE_BY_ID, EMOTE_SECONDS } from "./cirql-emotes";
 import { arrivalCutscene, BEAT_SECONDS, type Cutscene, type CutsceneBeat, type CutsceneFx } from "./cirql-cutscenes";
-import { decorById } from "./cirql-decor";
+import { decorById, DECOR_SOLID } from "./cirql-decor";
 
 export type InteractKind = "wonders" | "npc" | "dock";
 export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; energy: number; }
@@ -62,6 +62,7 @@ export class CirqlWorldEngine extends RetroEngine {
   // Hearth décor (CHR-259): your placed decorations, an edit mode, and a "visiting" overlay
   private decor: { item: string; x: number; y: number }[] = [];
   private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
+  private snapGrid = false;                             // snap placement to a grid (CHR-273)
   private visiting: { name: string; decor: { item: string; x: number; y: number }[] } | null = null;
   private camX = 0; private camY = 0;
   private t = 0;
@@ -161,6 +162,7 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Enter décor edit mode; `itemId` is the piece to place, or "" to remove-on-tap. */
   beginDecorEdit(itemId: string) { if (this.ringIdx !== 0 || this.visiting) return; this.editDecor = true; this.editSel = decorById[itemId] ? itemId : ""; }
   setDecorTool(itemId: string) { this.editSel = decorById[itemId] ? itemId : ""; }
+  setSnap(on: boolean) { this.snapGrid = !!on; }
   endDecorEdit() { this.editDecor = false; }
   decorEditing() { return this.editDecor; }
   clearDecor() { if (this.decor.length) { this.decor = []; this.onDecorChange?.(); } }
@@ -433,8 +435,13 @@ export class CirqlWorldEngine extends RetroEngine {
       else if (p.t === "theater") out.push({ x: p.x, y: p.y - 4, r: 20 });
       else if (p.t === "gathering") out.push({ x: p.x, y: p.y - 2, r: 11 });
     }
-    // solid décor building blocks (fences/stones) you've placed on CIRQLSPACE (CHR-259)
-    if (this.ringIdx === 0 && !this.visiting) for (const d of this.decor) { const r = decorById[d.item]?.render; if (r === "fence") out.push({ x: d.x, y: d.y, r: 9 }); else if (r === "stone") out.push({ x: d.x, y: d.y, r: 7 }); }
+    // solid décor you've placed on CIRQLSPACE — trees/rocks/bushes/fences/ponds (Phase B)
+    if (this.ringIdx === 0 && !this.visiting) for (const d of this.decor) {
+      const def = decorById[d.item]; const r = def?.render;
+      if (!r || !DECOR_SOLID[r]) continue;
+      const rad = r === "tree" ? (def!.big ? 13 : 10) : r === "stone" ? (def!.big ? 12 : 7) : r === "pond" ? 20 : r === "bush" ? 7 : 9;
+      out.push({ x: d.x, y: d.y, r: rad });
+    }
     return out;
   }
   private doInteract() {
@@ -606,8 +613,9 @@ export class CirqlWorldEngine extends RetroEngine {
       const wx = this.pointer.x + this.camX, wy = this.pointer.y + this.camY;
       if (this.editSel) {
         const rr = Math.hypot(wx, wy), lim = this.curRing.radius * 0.82;
-        const px = rr > lim ? (wx / rr) * lim : wx, py = rr > lim ? (wy / rr) * lim : wy;
-        if (this.decor.length < 80) { this.decor.push({ item: this.editSel, x: Math.round(px), y: Math.round(py) }); this.onDecorChange?.(); }
+        let px = rr > lim ? (wx / rr) * lim : wx, py = rr > lim ? (wy / rr) * lim : wy;
+        if (this.snapGrid) { px = Math.round(px / 20) * 20; py = Math.round(py / 20) * 20; }   // grid snap (CHR-273)
+        if (this.decor.length < 120) { this.decor.push({ item: this.editSel, x: Math.round(px), y: Math.round(py) }); this.onDecorChange?.(); }
       } else {
         let bi = -1, bd = 22 * 22;
         for (let i = 0; i < this.decor.length; i++) { const dd = (this.decor[i].x - wx) ** 2 + (this.decor[i].y - wy) ** 2; if (dd < bd) { bd = dd; bi = i; } }
@@ -751,8 +759,12 @@ export class CirqlWorldEngine extends RetroEngine {
     // ground decoration — paths + ponds, under the depth-sorted props
     for (const p of this.curRing.props) if (p.t === "path") this.drawPath(p.x - camX, p.y - camY);
     for (const p of this.curRing.props) if (p.t === "pond") this.drawPond(p.x - camX, p.y - camY, p.r ?? 22);
-    // path-brick décor is walkable ground too (CHR-259 building blocks; CIRQLSPACE only)
-    if (this.ringIdx === 0) for (const d of (this.visiting ? this.visiting.decor : this.decor)) if (decorById[d.item]?.render === "path") this.drawPath(d.x - camX, d.y - camY);
+    // ground-layer décor (paths walk on, ponds walk around) — CIRQLSPACE only (Phase B)
+    if (this.ringIdx === 0) for (const d of (this.visiting ? this.visiting.decor : this.decor)) {
+      const r = decorById[d.item]?.render;
+      if (r === "path") this.drawPath(d.x - camX, d.y - camY);
+      else if (r === "pond") this.drawPond(d.x - camX, d.y - camY, 22);
+    }
 
     // ---- collect drawables (depth sorted by feet-y) ----
     const draws: { y: number; f: () => void }[] = [];
@@ -793,12 +805,18 @@ export class CirqlWorldEngine extends RetroEngine {
     // Hearth décor (CHR-259) — your placed pieces, or the host's while visiting (Hearth only)
     if (this.ringIdx === 0) {
       const list = this.visiting ? this.visiting.decor : this.decor;
+      const pacc = this.curRing.palette.accent;
       for (const d of list) {
         const def = decorById[d.item]; if (!def) continue;
-        const sx = d.x - camX, sy = d.y - camY;
-        if (def.render === "path") continue;                                                    // drawn in the ground pass
-        else if (def.render === "stone") draws.push({ y: d.y, f: () => this.drawRock(sx, sy, false) });
-        else if (def.render === "fence") draws.push({ y: d.y, f: () => this.drawFence(sx, sy, false) });
+        const sx = d.x - camX, sy = d.y - camY, r = def.render ?? "glyph";
+        if (r === "path" || r === "pond") continue;                                             // ground pass
+        else if (r === "stone") draws.push({ y: d.y, f: () => this.drawRock(sx, sy, def.big) });
+        else if (r === "fence") draws.push({ y: d.y, f: () => this.drawFence(sx, sy, false) });
+        else if (r === "tree") draws.push({ y: d.y, f: () => this.drawTree(sx, sy, def.big, this.treeKind(d.x, d.y)) });
+        else if (r === "bush") draws.push({ y: d.y, f: () => this.drawBush(sx, sy) });
+        else if (r === "flower") draws.push({ y: d.y, f: () => this.drawFlower(sx, sy, def.accent || "#ff8fbf") });
+        else if (r === "lantern") draws.push({ y: d.y, f: () => this.drawLantern(sx, sy, def.accent || pacc, true) });
+        else if (r === "crystal") draws.push({ y: d.y, f: () => this.drawCrystal(sx, sy, def.big, def.accent || pacc) });
         else draws.push({ y: d.y, f: () => this.drawDecor(sx, sy, def.glyph, def.scale ?? 1) });
       }
     }
