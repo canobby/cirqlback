@@ -126,6 +126,15 @@ export class CirqlWorldEngine extends RetroEngine {
   private minimapCx() { return this.LW - 26; }
   private minimapCy() { return this.itop() + 34; }
   private inMinimap(x: number, y: number) { return Math.hypot(x - this.minimapCx(), y - this.minimapCy()) < 24; }
+  private inOnline(x: number, y: number) { const it = this.itop(); return x < 48 && y > it && y < it + 16; }   // top-left online badge tap zone
+  /** Settings (page-driven): screen brightness + a manual reduced-motion override. */
+  setBrightness(v: number) { this.brightness = Math.max(0.5, Math.min(1.5, v)); }
+  setReduceMotion(v: boolean) { this.reduce = v; }
+  getReduceMotion() { return this.reduce; }
+  /** Settings: "smoother animation" softens the pixel upscale (antialiased) vs crisp retro pixels. */
+  setSmoothScale(on: boolean) { this.smooth = on; }
+  /** Settings: pixel size — the base logical resolution (bigger = chunkier retro pixels). Re-lays out. */
+  setPixelSize(v: number) { const nv = Math.max(1.15, Math.min(2.2, v)); if (Math.abs(nv - this.fitPx) < 0.001) return; this.fitPx = nv; this.resize(); }
 
   // ---- hooks the host page wires ----
   /** Fired when the player interacts (E / on-screen action) with a target. */
@@ -154,6 +163,9 @@ export class CirqlWorldEngine extends RetroEngine {
   onShareLight?: (id: string) => void;
   /** Fired when the nearby traveller changes (null when none) — the page shows the "Together" panel. */
   onNearPlayer?: (p: { id: string; name: string } | null) => void;
+  /** Fired when the player taps the online-count badge (top-left) — the page shows "who's here". */
+  onOnlineTap?: () => void;
+  private brightness = 1;   // player brightness pref (Settings): <1 dims, >1 brightens the world
   /** Fired when the player offers a paired social gesture — the host relays it to both (Phase I4). */
   onPairGesture?: (id: string, g: string) => void;
   /** Fired when the local player plays an emote (broadcast over the presence socket). */
@@ -800,6 +812,9 @@ export class CirqlWorldEngine extends RetroEngine {
     // tapping the corner minimap opens the chart (consumes the tap — not a move)
     const tapMap = justDown && !this.dialog && this.inMinimap(this.pointer.x, this.pointer.y);
     if (tapMap) { this.mapOpen = true; this.moveTarget = null; }
+    // tapping the online badge (top-left) → the page shows who's here (consumes the tap)
+    const tapOnline = justDown && !this.dialog && !this.editDecor && !this.editPaint && this.inOnline(this.pointer.x, this.pointer.y);
+    if (tapOnline) { this.onOnlineTap?.(); this.moveTarget = null; }
 
     // décor edit (CHR-259): a tap places the selected item / removes the nearest one
     const tapEdit = this.editDecor && justDown && !tapMap && !this.dialog;
@@ -826,8 +841,8 @@ export class CirqlWorldEngine extends RetroEngine {
     if (this.paintStroke && !this.pointer.down) { this.paintStroke = false; this.onDecorChange?.(); }
 
     // movement is frozen while a dialog is open or the chart is up
-    if (!this.dialog && !tapMap) {
-      if (this.pointer.down && !this.inMinimap(this.pointer.x, this.pointer.y) && !this.editDecor && !this.editPaint) this.moveTarget = this.screenToWorld(this.pointer.x, this.pointer.y);
+    if (!this.dialog && !tapMap && !tapOnline) {
+      if (this.pointer.down && !this.inMinimap(this.pointer.x, this.pointer.y) && !this.inOnline(this.pointer.x, this.pointer.y) && !this.editDecor && !this.editPaint) this.moveTarget = this.screenToWorld(this.pointer.x, this.pointer.y);
       let dx = (this.btn.right ? 1 : 0) - (this.btn.left ? 1 : 0);
       let dy = (this.btn.down ? 1 : 0) - (this.btn.up ? 1 : 0);
       if (dx || dy) this.moveTarget = null;
@@ -1134,6 +1149,9 @@ export class CirqlWorldEngine extends RetroEngine {
       if (dn.night > 0.01) { b.fillStyle = hexA("#141c40", Math.min(0.42, 0.42 * dn.night) * soft); b.fillRect(0, 0, W, H); }
       if (dn.twilight > 0.01) { b.fillStyle = hexA("#ff8a4a", 0.22 * dn.twilight * soft); b.fillRect(0, 0, W, H); }
     }
+    // brightness pref (Settings) — dim or lift the world; HUD text stays crisp (drawn after)
+    if (this.brightness < 0.995) { b.fillStyle = hexA("#000000", (1 - this.brightness) * 0.85); b.fillRect(0, 0, W, H); }
+    else if (this.brightness > 1.005) { b.fillStyle = hexA("#ffffff", (this.brightness - 1) * 0.4); b.fillRect(0, 0, W, H); }
     if (this.mapOpen) this.drawChart(); else if (!this.cs) this.drawHud();
     if (this.cs) this.drawCutscene();
   }
@@ -2183,8 +2201,9 @@ export class CirqlWorldEngine extends RetroEngine {
   }
   private drawHud() {
     const it = this.itop(), ib = this.ibot();
-    // top row (below the floating header): online (left) · sparks (right)
+    // top row (below the floating header): online (left, tap → who's here) · sparks (right)
     this.ring(9, it + 6, 3, "#33e650", 1.3); this.q(15, it + 2, `${this.stats.online}`, "#c2fbe0", 1, "l");
+    this.q(15 + this.textWidth(`${this.stats.online}`, 1) + 3, it + 2, "▾", "#7fe0b0", 0.8, "l", false, 0.7);
     this.q(this.LW - 4, it + 2, `${this.stats.sparks} SPARQS`, "#ffc46b", 1, "r", true);
 
     this.drawQuestTracker(it);

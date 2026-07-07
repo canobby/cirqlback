@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile, ChevronsUp, Backpack, Hammer, Armchair, ZoomIn, ZoomOut, Camera, Share2 } from "lucide-react";
+import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile, ChevronsUp, Backpack, Hammer, Armchair, ZoomIn, ZoomOut, Camera, Share2, SlidersHorizontal, Sun, Music, Volume2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlWorldEngine, LAND_TIERS, type QuestLogRow } from "@/game/cirql-world-engine";
 import type { Btn } from "@/game/retro-engine";
@@ -35,7 +35,9 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 const INTRO_LS = "cirql_intro_v1";
 
 type StartDest = "home" | "last" | "arcade";
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; }
+interface GameSettings { brightness: number; music: number; sfx: number; reduce: boolean; smooth: boolean; pixel: number; }
+const DEFAULT_SETTINGS: GameSettings = { brightness: 1, music: 0.7, sfx: 0.8, reduce: false, smooth: false, pixel: 1.5 };
 const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export default function Cirql() {
@@ -64,6 +66,10 @@ export default function Cirql() {
   const [hallOpen, setHallOpen] = useState(false);         // CirqlCade hall (the in-world arcade)
   const [playRoute, setPlayRoute] = useState<string | null>(null); // a cabinet embedded over the world
   const [startPick, setStartPick] = useState<{ canArcade: boolean } | null>(null);   // startup location picker
+  const [showPeers, setShowPeers] = useState(false);                                  // "who's here" popup (online badge tap)
+  const [showSettings, setShowSettings] = useState(false);                            // game settings panel
+  const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+  const settingsRef = useRef<GameSettings>(DEFAULT_SETTINGS);
   const [startRemember, setStartRemember] = useState(true);
   const arcadeVisitedRef = useRef(false);                  // has the player reached CirqlCade before? (gates the arcade shortcut)
   const startPrefRef = useRef<StartDest | "ask">("ask");   // remembered startup default
@@ -266,7 +272,16 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current };
+  };
+  // Apply game settings to the engine (brightness + reduced motion) and remember them.
+  const applySettings = (s: GameSettings, persistNow = false) => {
+    settingsRef.current = s; setSettings(s);
+    engineRef.current?.setBrightness(s.brightness);
+    engineRef.current?.setReduceMotion(s.reduce);
+    engineRef.current?.setSmoothScale(s.smooth);
+    engineRef.current?.setPixelSize(s.pixel);
+    if (persistNow) persist();
   };
   // Apply a startup destination (from the picker) + sync the ring-dependent UI.
   const applyStart = (dest: StartDest) => {
@@ -329,6 +344,7 @@ export default function Cirql() {
     eng.onShareLight = (id) => shareLight(id);
     eng.onEmote = (emote) => wsSend({ t: "emote", emote });
     eng.onNearPlayer = (p) => setNearPlayer(p);                        // show/hide the "Together" panel (I4)
+    eng.onOnlineTap = () => { setShowPeers((v) => !v); setShowSettings(false); };   // tap online badge → who's here
     eng.onPairGesture = (id, g) => wsSend({ t: "pair", to: id, g });   // offer a paired social gesture
     // light gathered while sailing → sparqs (CHR-262), capped small so it can't be farmed
     eng.onVoyageReward = (light) => {
@@ -419,6 +435,7 @@ export default function Cirql() {
       energyRef.current = st?.worldEnergy ?? 0; membersRef.current = st?.cirqlMembers ?? 0; setMembers(membersRef.current);
       playsRef.current = { day: st?.playDay ?? "", n: st?.playsToday ?? 0 };
       arcadeVisitedRef.current = !!st?.arcadeVisited; startPrefRef.current = st?.startPref ?? "ask";
+      applySettings({ ...DEFAULT_SETTINGS, ...(st?.settings || {}) });   // brightness + reduced-motion prefs
       ownedRef.current = Array.isArray(st?.owned) ? st!.owned! : []; setOwned(ownedRef.current); setSparksUi(sparksRef.current);
       maxRingRef.current = st?.maxRing ?? 0; setCurRingUi(st?.ring ?? 0);
       doneCampaignsRef.current = new Set(Array.isArray(st?.doneCampaigns) ? st!.doneCampaigns! : []);
@@ -674,6 +691,10 @@ export default function Cirql() {
         <button onClick={() => { setStartRemember(startPrefRef.current !== "ask"); setStartPick({ canArcade: arcadeVisitedRef.current && maxRingRef.current >= 1 }); }} data-testid="btn-startloc" title="Start location"
           className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-cyan-200/90" style={{ borderColor: "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
           <MapPin className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={() => { setShowSettings((v) => !v); setShowPeers(false); }} data-testid="btn-settings" title="Settings"
+          className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-cyan-200/90" style={{ borderColor: showSettings ? "rgba(53,224,208,.65)" : "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
+          <SlidersHorizontal className="h-3.5 w-3.5" />
         </button>
         <button onClick={() => { setCreatorMode("edit"); setShowCreator(true); }} data-testid="btn-edit-look" title="Edit look"
           className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-cyan-200/90" style={{ borderColor: "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
@@ -1302,6 +1323,77 @@ export default function Cirql() {
           </div>
         );
       })()}
+
+      {/* "who's here" — tap the online badge (top-left) to see who's on this ring */}
+      {showPeers && (
+        <div className="pointer-events-auto absolute left-3 top-12 z-[17] w-[188px] rounded-xl border p-2.5" data-testid="peers-popup"
+          style={{ borderColor: "rgba(53,224,208,.4)", background: "rgba(10,14,30,.97)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }}>
+          <div className="mb-1.5 flex items-center px-0.5">
+            <span className="text-[10px] font-black uppercase tracking-widest text-teal-300/80">Here now · {online}</span>
+            <button onClick={() => setShowPeers(false)} className="ml-auto text-slate-400 hover:text-slate-200"><X className="h-3 w-3" /></button>
+          </div>
+          <div className="flex max-h-[220px] flex-col gap-1 overflow-y-auto">
+            <div className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-bold text-amber-200" style={{ background: "rgba(255,196,107,.08)" }}>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#ffd24a" }} /> {nameRef.current || "You"} <span className="text-[9px] font-normal text-slate-500">(you)</span>
+            </div>
+            {peers.map((p) => (
+              <div key={p.id} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] text-slate-200">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#35e0d0" }} /> {p.name}
+              </div>
+            ))}
+            {peers.length === 0 && <div className="px-2 py-1 text-[11px] italic text-slate-500">No other travellers here yet.</div>}
+          </div>
+        </div>
+      )}
+
+      {/* game settings — brightness, music/SFX mix, reduced motion */}
+      {showSettings && (
+        <div className="pointer-events-auto absolute inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(5,6,15,.8)" }} data-testid="settings-panel"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSettings(false); }}>
+          <div className="w-full max-w-[360px] rounded-2xl border p-4" style={{ borderColor: "rgba(53,224,208,.35)", background: "rgba(10,14,30,.98)", boxShadow: "0 18px 52px rgba(0,0,0,.6)" }}>
+            <div className="mb-3 flex items-center">
+              <span className="text-[14px] font-black tracking-wide text-cyan-100">Settings</span>
+              <button onClick={() => setShowSettings(false)} className="ml-auto text-slate-400 hover:text-slate-200"><X className="h-4 w-4" /></button>
+            </div>
+            {([
+              { key: "brightness", icon: <Sun className="h-3.5 w-3.5" />, label: "Brightness", min: 0.5, max: 1.5, step: 0.05, fmt: (v: number) => `${Math.round(v * 100)}%` },
+              { key: "music", icon: <Music className="h-3.5 w-3.5" />, label: "Music", min: 0, max: 1, step: 0.05, fmt: (v: number) => `${Math.round(v * 100)}%`, soon: true },
+              { key: "sfx", icon: <Volume2 className="h-3.5 w-3.5" />, label: "Sound FX", min: 0, max: 1, step: 0.05, fmt: (v: number) => `${Math.round(v * 100)}%`, soon: true },
+            ] as const).map((row) => (
+              <div key={row.key} className="mb-3">
+                <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold text-slate-200">
+                  <span className="text-cyan-300/80">{row.icon}</span> {row.label}
+                  {(row as any).soon && <span className="rounded bg-slate-700/60 px-1 text-[8px] font-normal uppercase tracking-wide text-slate-400">soon</span>}
+                  <span className="ml-auto tabular-nums text-slate-400">{row.fmt(settings[row.key])}</span>
+                </div>
+                <input type="range" min={row.min} max={row.max} step={row.step} value={settings[row.key]} data-testid={`set-${row.key}`}
+                  onChange={(e) => applySettings({ ...settingsRef.current, [row.key]: parseFloat(e.target.value) }, true)}
+                  className="h-1.5 w-full cursor-pointer accent-cyan-400" />
+              </div>
+            ))}
+            <div className="mb-3">
+              <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold text-slate-200">
+                <span className="text-cyan-300/80"><Hammer className="h-3.5 w-3.5" /></span> Pixel size
+                <span className="ml-auto tabular-nums text-slate-400">{settings.pixel <= 1.3 ? "Fine" : settings.pixel >= 1.9 ? "Chunky" : "Medium"}</span>
+              </div>
+              <input type="range" min={1.15} max={2.2} step={0.05} value={settings.pixel} data-testid="set-pixel"
+                onChange={(e) => applySettings({ ...settingsRef.current, pixel: parseFloat(e.target.value) }, true)}
+                className="h-1.5 w-full cursor-pointer accent-cyan-400" />
+            </div>
+            <label className="flex items-center gap-2 rounded-lg px-1 py-1.5 text-[12px] text-slate-200">
+              <input type="checkbox" checked={settings.smooth} data-testid="set-smooth" className="h-3.5 w-3.5 accent-cyan-400"
+                onChange={(e) => applySettings({ ...settingsRef.current, smooth: e.target.checked }, true)} />
+              Smoother animation <span className="text-[10px] text-slate-500">(soften the pixels)</span>
+            </label>
+            <label className="flex items-center gap-2 rounded-lg px-1 py-1.5 text-[12px] text-slate-200">
+              <input type="checkbox" checked={settings.reduce} data-testid="set-reduce" className="h-3.5 w-3.5 accent-cyan-400"
+                onChange={(e) => applySettings({ ...settingsRef.current, reduce: e.target.checked }, true)} />
+              Reduced motion <span className="text-[10px] text-slate-500">(calmer animation)</span>
+            </label>
+            <p className="mt-2 text-[9.5px] leading-snug text-slate-500">Music &amp; Sound FX levels are saved now and take effect once the world's soundtrack ships.</p>
+          </div>
+        </div>
+      )}
 
       {/* startup location picker — Home / Last spot / Arcade (Phase-I polish) */}
       {startPick && (

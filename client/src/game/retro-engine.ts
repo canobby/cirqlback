@@ -66,6 +66,7 @@ export abstract class RetroEngine {
   // display — so round shapes read finer / less chunky while games keep drawing in logical
   // coords. A subclass can set SS in its constructor BEFORE super()… n/a; it's fixed here.
   protected SS = 1.5;
+  protected smooth = false;   // when true, the pixel buffer is upscaled with smoothing (softer look) — Settings toggle
   private buf: HTMLCanvasElement;
   /** Buffer draw context — the kit draws here in logical pixels. */
   protected b: CanvasRenderingContext2D;
@@ -212,7 +213,7 @@ export abstract class RetroEngine {
   /** Scale the pixel buffer up to the screen and apply the CRT pass. */
   private blit() {
     const { sctx } = this;
-    sctx.imageSmoothingEnabled = false;
+    sctx.imageSmoothingEnabled = this.smooth;   // Settings "smoother animation" softens the pixel upscale
     sctx.clearRect(0, 0, this.dispW, this.dispH);
     let ox = 0, oy = 0;
     if (this.shake > 0.2 && !this.reduce) { const s = this.shake * (this.dispW / this.LW); ox = (Math.random() - 0.5) * s; oy = (Math.random() - 0.5) * s; }
