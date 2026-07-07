@@ -1,6 +1,6 @@
 # CIRQLSPACE — Your Sandbox · Linear Register
 
-Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 10). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H COMPLETE. Chapter 2 added (I/J/K — the living world); recommended order I → J → K → F → G. 3 decisions pending owner.**
+Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 11). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H COMPLETE. Chapter 2 (I/J/K — the living world) locked; confirmed order I → J → K → F → G. Decisions locked: new Renown + World Energy · tap-ready/wire-later · fully cozy. Next up: Phase I.**
 
 **Legend:** ☑ Done · ◐ In progress · ☐ Todo · ⧗ *not yet a Linear issue (free-tier issue cap) — tracked in the plan.*
 
@@ -22,7 +22,7 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 
 **Note:** Linear's free-tier **issue limit** was reached while seeding — milestones **A & B** have real issues (**CHR-266–275**); the rest exist as **milestones** in Linear with their scope, but their granular issues (⧗) live in the plan doc until the workspace is upgraded.
 
-**Recommended sequence (pending owner confirm):** **I → J → K → F → G.** I (movement) is cheap, engine-side, independent, and elevates everything → do it first. J (population) builds the landmarks that K's quests anchor to. K1 builds the NPC framework that **F consumes** → F moves after K. G (music/SFX) is last so it scores all the new content.
+**Confirmed sequence (owner, 2026-07-07):** **I → J → K → F → G.** I (movement) is cheap, engine-side, independent, and elevates everything → first. J (population) builds the landmarks that K's quests anchor to. K1 builds the NPC framework that **F consumes** → F after K. G (music/SFX) last so it scores all the new content. **Locked:** new **Renown** currency (personal, earned-not-spent) + keep shared **World Energy**; **tap-ready but wire real taps later**; **fully cozy — no combat.**
 
 ## A · Restructure — blank CIRQLSPACE + Town
 - [x] **CHR-266** — Strip CIRQLSPACE to a blank buildable canvas *(commit 4c08acf)*
