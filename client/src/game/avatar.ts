@@ -62,6 +62,16 @@ export const AURAS: Opt<AvatarAura>[] = [
   { k: "rose", label: "Rose" }, { k: "mint", label: "Mint" }, { k: "sky", label: "Sky" },
 ];
 
+// Spark prices for the premium cosmetics (CHR-246). Keys are `${category}:${optionId}`.
+// Anything not listed is FREE at character creation (skin/eyes/hat-colour/body are
+// always free — identity, not flair). "none"/first options stay free too.
+export const COSMETIC_PRICES: Record<string, number> = {
+  "aura:violet": 20, "aura:gold": 25, "aura:rose": 20, "aura:mint": 20, "aura:sky": 20,
+  "hat:beanie": 15, "hat:band": 15, "hat:crown": 40,
+  "companion:cat": 20, "companion:bot": 30, "companion:moth": 25, "companion:sprite": 30, "companion:donut": 20, "companion:vinyl": 25, "companion:taco": 20,
+};
+export const cosmeticCost = (id: string): number => COSMETIC_PRICES[id] ?? 0; // 0 = free
+
 // Per-shop outfit overrides — the same figure, re-skinned as the cabinet's hero.
 // Keeps the player's skin/eye; swaps hat/body/apron/tool. Unlocked by playing.
 export const SHOP_OUTFITS: Record<string, Partial<AvatarConfig>> = {

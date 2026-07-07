@@ -17,7 +17,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 // get a character-creation step first; everyone can re-edit their look.
 const INTRO_LS = "cirql_intro_v1";
 
-interface CirqlState { ring: number; x: number; y: number; quests?: any; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; }
+interface CirqlState { ring: number; x: number; y: number; quests?: any; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; }
 const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export default function Cirql() {
@@ -47,13 +47,16 @@ export default function Cirql() {
   const [playRoute, setPlayRoute] = useState<string | null>(null); // a cabinet embedded over the world
   const [showCirql, setShowCirql] = useState(false);       // your Cirql / invite panel
   const [members, setMembers] = useState(0);               // mirror of membersRef for the panel
+  const [sparksUi, setSparksUi] = useState(0);             // reactive spark balance (for the shop)
+  const [owned, setOwned] = useState<string[]>([]);        // purchased cosmetics
+  const ownedRef = useRef<string[]>([]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const loggedIn = !!(user as any)?.id;
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, x: s.x, y: s.y, quests: (s as any).quests, avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day };
+    return { ring: s.ring, x: s.x, y: s.y, quests: (s as any).quests, avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current };
   };
   const persist = () => {
     const st = buildState();
@@ -94,6 +97,7 @@ export default function Cirql() {
       avatarRef.current = avatar; nameRef.current = name; seenIntroRef.current = !!seen; sparksRef.current = st?.sparks ?? 0;
       energyRef.current = st?.worldEnergy ?? 0; membersRef.current = st?.cirqlMembers ?? 0; setMembers(membersRef.current);
       playsRef.current = { day: st?.playDay ?? "", n: st?.playsToday ?? 0 };
+      ownedRef.current = Array.isArray(st?.owned) ? st!.owned! : []; setOwned(ownedRef.current); setSparksUi(sparksRef.current);
       eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: membersRef.current, cirqlTotal: 12, online: 1, energy: energyRef.current });
       eng.applyState({ ring: st?.ring ?? 0, x: st?.x, y: st?.y, quests: st?.quests });
       if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
@@ -151,6 +155,7 @@ export default function Cirql() {
         let msg = `+${earned} spark${earned > 1 ? "s" : ""}`;
         if (energyRef.current >= 1) { energyRef.current = 0.06; msg = "✦ You've fed the world — it stirs."; }
         engineRef.current?.setStats({ sparks: sparksRef.current, energy: energyRef.current });
+        setSparksUi(sparksRef.current);
         engineRef.current?.toast(msg);
       } else {
         engineRef.current?.toast("Rest a while — more sparks tomorrow.");
@@ -158,6 +163,17 @@ export default function Cirql() {
       persist();
     }
     setPlayRoute(null);
+  };
+
+  // Spend sparks to unlock a cosmetic (CHR-246). Returns false if you can't afford it.
+  const buyCosmetic = (id: string, cost: number): boolean => {
+    if (ownedRef.current.includes(id)) return true;
+    if (sparksRef.current < cost) return false;
+    sparksRef.current -= cost; setSparksUi(sparksRef.current);
+    ownedRef.current = [...ownedRef.current, id]; setOwned(ownedRef.current);
+    engineRef.current?.setStats({ sparks: sparksRef.current });
+    persist();
+    return true;
   };
 
   // Invite a friend to your Cirql (reuses the platform referral idea; lantern lights on real join, later).
@@ -303,6 +319,9 @@ export default function Cirql() {
           mode={creatorMode}
           initial={avatarRef.current}
           initialName={nameRef.current === "Traveller" ? "" : nameRef.current}
+          sparks={sparksUi}
+          owned={owned}
+          onBuy={buyCosmetic}
           onConfirm={onConfirm}
           onCancel={creatorMode === "edit" ? () => setShowCreator(false) : undefined}
         />

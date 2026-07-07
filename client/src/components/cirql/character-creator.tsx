@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  type AvatarConfig, DEFAULT_AVATAR, drawAvatarToCanvas,
+  type AvatarConfig, DEFAULT_AVATAR, drawAvatarToCanvas, cosmeticCost,
   SKINS, EYES, HAT_COLORS, HAT_STYLES, BODY_COLORS, SIDEKICKS, AURAS, AURA_COLORS,
 } from "@/game/avatar";
 
@@ -14,6 +14,9 @@ interface Props {
   initial?: AvatarConfig;
   initialName?: string;
   mode?: Mode;
+  sparks?: number;                                   // current balance (for buying looks)
+  owned?: string[];                                  // purchased cosmetic ids
+  onBuy?: (id: string, cost: number) => boolean;     // spend sparks; returns true if bought
   onConfirm: (cfg: AvatarConfig, name: string) => void;
   onCancel?: () => void;
 }
@@ -24,7 +27,7 @@ const CATS: { id: CatId; label: string }[] = [
   { id: "hatStyle", label: "Shape" }, { id: "body", label: "Outfit" }, { id: "aura", label: "Aura" }, { id: "companion", label: "Friend" },
 ];
 
-export function CharacterCreator({ initial, initialName, mode = "create", onConfirm, onCancel }: Props) {
+export function CharacterCreator({ initial, initialName, mode = "create", sparks = 0, owned = [], onBuy, onConfirm, onCancel }: Props) {
   const [cfg, setCfg] = useState<AvatarConfig>({ ...DEFAULT_AVATAR, ...(initial || {}) });
   const [name, setName] = useState((initialName || "").slice(0, 16));
   const [cat, setCat] = useState<CatId>("skin");
@@ -62,16 +65,25 @@ export function CharacterCreator({ initial, initialName, mode = "create", onConf
       ); })}
     </div>
   );
-  const chips = <T extends string>(opts: { k: T; label: string }[], cur: T | undefined, on: (k: T) => void, tint?: (k: T) => string | null) => (
+  const chips = <T extends string>(opts: { k: T; label: string }[], cur: T | undefined, on: (k: T) => void, tint?: (k: T) => string | null, pricePrefix?: string) => (
     <div className="flex flex-wrap gap-2">
-      {opts.map((o) => { const active = cur === o.k; const dot = tint?.(o.k); return (
-        <button key={o.k} onClick={() => on(o.k)} data-testid={`chip-${o.k}`}
-          className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-95"
-          style={{ borderColor: active ? "#35e0d0" : "rgba(255,255,255,.14)", color: active ? "#eaf6ff" : "#9fb0d0", background: active ? "rgba(53,224,208,.12)" : "transparent" }}>
-          {dot && <span className="h-2.5 w-2.5 rounded-full" style={{ background: dot, boxShadow: `0 0 6px ${dot}` }} />}
-          {o.label}
-        </button>
-      ); })}
+      {opts.map((o) => {
+        const active = cur === o.k; const dot = tint?.(o.k);
+        const id = pricePrefix ? `${pricePrefix}:${o.k}` : "";
+        const cost = id ? cosmeticCost(id) : 0;
+        const locked = cost > 0 && !owned.includes(id);
+        const afford = sparks >= cost;
+        const handle = () => { if (locked) { if (onBuy && onBuy(id, cost)) on(o.k); } else on(o.k); };
+        return (
+          <button key={o.k} onClick={handle} data-testid={`chip-${o.k}`}
+            className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-95"
+            style={{ borderColor: active ? "#35e0d0" : "rgba(255,255,255,.14)", color: active ? "#eaf6ff" : (locked && !afford ? "#6b7690" : "#9fb0d0"), background: active ? "rgba(53,224,208,.12)" : "transparent", opacity: locked && !afford ? 0.75 : 1 }}>
+            {dot && <span className="h-2.5 w-2.5 rounded-full" style={{ background: dot, boxShadow: `0 0 6px ${dot}` }} />}
+            {o.label}
+            {locked && <span className="ml-0.5 rounded px-1 text-[9px] font-bold" style={{ background: "rgba(255,196,107,.15)", color: "#ffc46b" }}>✦{cost}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 
@@ -80,12 +92,12 @@ export function CharacterCreator({ initial, initialName, mode = "create", onConf
       case "skin": return swatches(SKINS, "skin", cfg.skin);
       case "eye": return swatches(EYES, "eye", cfg.eye);
       case "hatColor": return swatches(HAT_COLORS, "hat", cfg.hat);
-      case "hatStyle": return chips(HAT_STYLES, cfg.hatStyle ?? "cap", (k) => set({ hatStyle: k }));
+      case "hatStyle": return chips(HAT_STYLES, cfg.hatStyle ?? "cap", (k) => set({ hatStyle: k }), undefined, "hat");
       case "body": return swatches(BODY_COLORS, "body", cfg.body);
-      case "aura": return chips(AURAS, cfg.aura ?? "none", (k) => set({ aura: k }), (k) => AURA_COLORS[k]);
-      case "companion": return chips(SIDEKICKS, cfg.sidekick ?? "none", (k) => set({ sidekick: k }));
+      case "aura": return chips(AURAS, cfg.aura ?? "none", (k) => set({ aura: k }), (k) => AURA_COLORS[k], "aura");
+      case "companion": return chips(SIDEKICKS, cfg.sidekick ?? "none", (k) => set({ sidekick: k }), undefined, "companion");
     }
-  }, [cat, cfg]);
+  }, [cat, cfg, sparks, owned]);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(4,7,16,.88)", backdropFilter: "blur(3px)" }}>
@@ -103,7 +115,7 @@ export function CharacterCreator({ initial, initialName, mode = "create", onConf
             <label className="text-[10px] uppercase tracking-widest text-cyan-300/60">Name</label>
             <input value={name} onChange={(e) => setName(e.target.value.slice(0, 16))} maxLength={16} placeholder="Traveller" data-testid="creator-name"
               className="w-36 rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: "rgba(255,255,255,.14)", background: "rgba(255,255,255,.04)", color: "#fff" }} />
-            <p className="w-36 text-[10px] leading-snug text-slate-400">More looks unlock with <span className="text-amber-300">sparks</span> as you play.</p>
+            <p className="w-36 text-[10px] leading-snug text-slate-400">You have <span className="font-bold text-amber-300">✦ {sparks}</span> sparks. Tap a locked look to buy it.</p>
           </div>
         </div>
 
