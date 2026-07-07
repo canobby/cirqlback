@@ -9,8 +9,10 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - **M2 · Identity & Persistence — DONE & LIVE** (commit `b09c79c`). Save/resume via the `cirql` game_progress key; first-run character creator (avatar moved into CIRQL) + "Look" re-edit; expanded avatar (hat styles, aura glow, companions, bigger palettes).
 - **M3 · Quest System (backbone) — DONE & LIVE** (commit `32e4d9e`). Reusable registry (defs in code, progress in the `cirql` blob — no migration), objective model + chain, reward→sparks hook, objective tracker HUD, waypoint chevron + minimap dot, NPC give-via-dialog, quest-log panel.
 - **Feel/UX polish — DONE & LIVE:** smooth-text overlay (readable UI on phones, `e3905ee`), full-bleed responsive viewport + 4-direction facing (`d9e2b27`), full-screen immersive layout + tap-absorbing control tray (`a2e69e4`), and the **full-screen sea chart** (tap the minimap; `3dd6f46`, CHR-250).
-- **M4 · First Quest Chain (onboarding) — DONE & LIVE** (commit `677bf40`). Find Your Feet → The Lantern Path (light 3 lanterns, teaches interact) → The Wonders Door (enter), auto-chaining; first-run auto-accepts quest 1. Verified end-to-end (0 errors, tsc clean).
-- **Next up: M5 · The Wonders (embed the 50 games in-world).**
+- **M4 · First Quest Chain (onboarding) — DONE & LIVE** (commit `677bf40`). Find Your Feet → The Lantern Path → The CirqlCade Door, auto-chaining; first-run auto-accepts quest 1.
+- **Brand:** flagship wordmark **CIRQLVERSE** (CIRQL white + VERSE half-size violet); the in-world arcade building renamed **CirqlCade** with a cosmic mystery-dome roof.
+- **M5 · CirqlCade (in-world arcade) — DONE & LIVE** (commit `26eead2`). Enter CirqlCade → a hall of all ~57 live cabinets (from the registry); tap one → it plays **embedded in an iframe over `/cirql`** (never leaves CIRQLVERSE); "← CirqlCade" exits to the hall and the game's own /arcade back-link is caught + routed back; **a spark a play** on exit. Verified end-to-end (0 errors, tsc clean).
+- **Next up: M6 · Sparks Economy & Your Cirql.**
 - **Roadmap grew (owner brainstorm):** added **M8 Social/chat**, **M9 Campaigns & Party Finder**, **M10 Endless content engines** (procedural rings, quest templates, daily/seasonal, Myst-style puzzles), **M11 Depth & Delight wishlist** (Hearth décor+visiting, emotes, tapped-shops→landmarks, sailing-as-journey, jump). Positioning: **Balanced**.
 
 ## Locked decisions (owner, 2026-07-06 — "ALL IN")
@@ -55,11 +57,11 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - [x] Quest 3 — "The Wonders Door" (find + enter the arcade) *(CHR-230)*
 - [x] First-run onboarding scripting hook *(CHR-231)*
 
-## M5 · The Wonders (in-world arcade)
-- [ ] Wonders interior + cabinet props from registry (all 50) *(CHR-232)*
-- [ ] Press-E launches cabinet as in-world overlay (embed) *(CHR-233)*
-- [ ] Return-to-world flow (no hardcoded `/arcade` back) *(CHR-234)*
-- [ ] Score → sparks reward bridge *(CHR-235)*
+## M5 · CirqlCade (in-world arcade) — DONE
+- [x] CirqlCade hall — all live cabinets from the registry *(CHR-232)*
+- [x] Press-E launches a cabinet embedded over `/cirql` (iframe) *(CHR-233)*
+- [x] Return-to-world flow (catches the game's `/arcade` back) *(CHR-234)*
+- [x] Score → sparks (spark-a-play MVP; full normalization in M6) *(CHR-235)*
 
 ## M6 · Sparks Economy & Your Cirql
 - [ ] Sparks currency + World Energy meter *(CHR-236)*

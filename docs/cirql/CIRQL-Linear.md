@@ -12,7 +12,7 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 | M2 · Identity & Persistence | 4 | 4 |
 | M3 · Quest System (backbone) | 4 | 4 |
 | M4 · First Quest Chain (onboarding) | 4 | 4 |
-| M5 · The Wonders (in-world arcade) | 4 | 0 |
+| M5 · CirqlCade (in-world arcade) | 4 | 4 |
 | M6 · Sparks Economy & Your Cirql | 6 | 0 |
 | M7 · Playable Slice Hardening | 3 | 0 |
 | M8 · Social — presence & chat channels | 3 | 0 |
@@ -54,11 +54,11 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 - [x] **CHR-230** — Quest 3 — "The Wonders Door" (find + enter the arcade)
 - [x] **CHR-231** — First-run onboarding scripting hook
 
-## M5 · The Wonders (in-world arcade)
-- [ ] **CHR-232** — Wonders arcade interior + cabinet props from registry
-- [ ] **CHR-233** — Press-E launches cabinet as in-world overlay (embed)
-- [ ] **CHR-234** — Return-to-world flow (no hardcoded /arcade back)
-- [ ] **CHR-235** — Score → sparks reward bridge
+## M5 · CirqlCade (in-world arcade) — DONE (commit 26eead2, live)
+- [x] **CHR-232** — CirqlCade hall: all live cabinets from the registry
+- [x] **CHR-233** — Press-E launches a cabinet embedded over /cirql (iframe)
+- [x] **CHR-234** — Return-to-world flow (catches the game's /arcade back-link)
+- [x] **CHR-235** — Score → sparks (spark-a-play MVP; full normalization M6)
 
 ## M6 · Sparks Economy & Your Cirql
 - [ ] **CHR-236** — Sparks currency + World Energy meter
