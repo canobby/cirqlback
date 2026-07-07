@@ -12,7 +12,7 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 | C · Terrain paint | 3 ⧗ | ✅ **DONE (3/3)** |
 | D · Land growth (cozy → estate) | 3 ⧗ | ✅ **DONE (3/3)** |
 | E · Live parties | 4 ⧗ | ✅ **DONE (4/4)** |
-| ✨ H · Sit, Zoom & Diorama | 4 ⧗ | **Next up** |
+| ✨ H · Sit, Zoom & Diorama | 4 ⧗ | ◐ **In progress (2/4)** |
 | F · Town stores (NPC shops) | 4 ⧗ | Todo |
 | G · Music & SFX | 3 ⧗ | Todo |
 
@@ -53,8 +53,8 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 
 ## ✨ H · Sit, Zoom & Diorama  *(owner-added 2026-07-07, pulled ahead of F/G · ⧗ issues pending — Linear cap)*
 Gather + show off your CIRQLSPACE. Locked: **free-sit** (social only) · **both** zooms · **tilted 3/4 diorama** · **shareable postcard**.
-- [ ] **H1** — Sit: free-sit toggle pose (anywhere; movement cancels); room-scoped `pose` on presence → seated render for self + remotes
-- [ ] **H2** — Live zoom: continuous pinch/scroll+buttons `zoom` on the world camera (clamped), doubles as tap-to-travel when zoomed out
+- [x] **H1** — Sit: free-sit toggle pose (anywhere; movement cancels); room-scoped `pose` on presence → seated render for self + remotes *(commit 8e8d5ce)*
+- [x] **H2** — Live zoom: continuous pinch/scroll+buttons `zoom` on the world camera (0.42–1.3, clamped), doubles as tap-to-travel when zoomed out; builds snap to 1:1 *(commit 5ea4896)*
 - [ ] **H3** — Diorama beauty shot: one-tap sweep to **tilted 3/4** — ground-plane squash + billboarded props/avatars + island thickness band + slow orbit + vignette/float-shadow/clouds/golden light + postcard label
 - [ ] **H4** — Postcard share: capture the diorama frame → shareable card (label baked in) + SPARQS frames/filters
 
