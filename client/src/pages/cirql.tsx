@@ -16,6 +16,7 @@ import { ringName } from "@/game/cirql-ring-gen";
 import { EMOTES, PAIR_GESTURES } from "@/game/cirql-emotes";
 import { WAKE_CUTSCENE, campaignCutscene, worldEnergyCutscene } from "@/game/cirql-cutscenes";
 import { DECOR, decorById, decorPriceKey, CATEGORIES, type DecorCategory } from "@/game/cirql-decor";
+import { SHOPS, SHOP_OF, shopStock, gateCheck, type ShopId } from "@/game/cirql-shops";
 
 const SPARK_PER_PLAY = 2;
 // CIRQLSPACE land-growth tiers (Phase D) — cozy → estate. First two are free (a gift + a
@@ -83,6 +84,7 @@ export default function Cirql() {
   const startPrefRef = useRef<StartDest | "ask">("ask");   // remembered startup default
   const [showCirql, setShowCirql] = useState(false);       // your Cirql / invite panel
   const [showInventory, setShowInventory] = useState(false);  // Inventory: stock + SPARQS + how-to (CHR-270)
+  const [shopOpen, setShopOpen] = useState<ShopId | null>(null);   // open shop's store panel (Milestone F)
   const [showDecor, setShowDecor] = useState(false);       // CIRQLSPACE build palette (CHR-259)
   const [decorTool, setDecorTool] = useState<string>("");  // selected décor id, "remove", or ""
   const [decorCat, setDecorCat] = useState<DecorCategory>("nature");   // active build category (CHR-272)
@@ -362,7 +364,14 @@ export default function Cirql() {
     const eng = new CirqlWorldEngine(canvasRef.current);
     engineRef.current = eng;
     if (import.meta.env.DEV) (window as any).__cirql = eng;
-    eng.onInteract = (kind) => { if (kind === "wonders") openHall(); };   // step into CirqlCade
+    eng.onInteract = (kind, p) => {   // step into CirqlCade / a shop keeper opens the store (F)
+      if (kind === "wonders") openHall();
+      else if (kind === "shopkeeper" && p?.shopId) {
+        const id = p.shopId as ShopId; const s = SHOPS[id]; if (!s) return;
+        if (s.opensCreator) { setCreatorMode("edit"); setShowCreator(true); }   // Boutique → the mirror (avatar cosmetics)
+        else setShopOpen(id);
+      }
+    };
     eng.onLocalMove = (ring, x, y) => { posRef.current = { ring, x, y }; scheduleSave(); };
     eng.onSail = (ring, maxRing) => { const st = eng.getState(); posRef.current = { ring, x: st.x, y: st.y }; setCurRingUi(ring); if (maxRing > maxRingRef.current) { maxRingRef.current = maxRing; progressDaily("voyage"); checkJourneys(); } persist(); };   // reaching a new ring is a big save point
     // quests: grant the sparks reward on completion, persist progress on any change
@@ -633,6 +642,15 @@ export default function Cirql() {
 
   // ---- Hearth décor (CHR-259) ----
   const decorOwned = (id: string) => { const def = decorById[id]; return !!def && (def.price === 0 || ownedRef.current.includes(decorPriceKey(id))); };
+  // ---- Milestone F: buy a shop item (Renown-gated for Curios showpieces) ----
+  const buyShopItem = (itemId: string) => {
+    const def = decorById[itemId]; const eng = engineRef.current; if (!def || !eng) return;
+    if (decorOwned(itemId)) { eng.toast(`You already own the ${def.name}`); return; }
+    const g = gateCheck(itemId, renownRef.current);
+    if (!g.ok) { eng.toast(`★ The ${def.name} needs Renown rank ${g.needRank}`); return; }
+    if (!buyCosmetic(decorPriceKey(itemId), def.price)) { eng.toast(`Need ${def.price} sparqs for the ${def.name}`); return; }
+    eng.toast(`✦ ${def.name} bought — place it on your CIRQLSPACE`);
+  };
   // Share your whole CIRQLSPACE build (décor + terrain + land tier) so friends can drop in live (Phase E).
   const broadcastBuild = () => { const e = engineRef.current; if (e) wsSend({ t: "build", decor: e.getDecor(), terrain: e.getTerrain(), landTier: e.getLandTier() }); };
   const openDecorate = () => {
@@ -647,7 +665,8 @@ export default function Cirql() {
   const pickBrush = (n: number) => { setBrushSize(n); engineRef.current?.setBrush(n); };
   const pickDecor = (id: string) => {
     const def = decorById[id]; if (!def) return;
-    if (!decorOwned(id)) { if (!buyCosmetic(decorPriceKey(id), def.price)) { engineRef.current?.toast(`Need ${def.price} sparqs for the ${def.name}`); return; } engineRef.current?.toast(`✦ ${def.name} unlocked`); }
+    // Milestone F: you buy from shopkeepers now — the palette only PLACES what you own.
+    if (!decorOwned(id)) { const sid = SHOP_OF[id]; engineRef.current?.toast(`Buy the ${def.name} at ${sid ? SHOPS[sid].name : "a Town shop"} first`); return; }
     setDecorTool(id); engineRef.current?.setDecorTool(id);
   };
   const pickRemove = () => { setDecorTool("remove"); engineRef.current?.setDecorTool(""); };
@@ -906,6 +925,53 @@ export default function Cirql() {
         </div>
       )}
 
+      {/* Milestone F: a shop's STORE panel — the keeper's inventory (replaces menu-buying) */}
+      {shopOpen && (() => {
+        const s = SHOPS[shopOpen]; const stock = shopStock(shopOpen); const ac = s.accent;
+        return (
+          <div className="absolute inset-0 z-[60] flex items-center justify-center p-3" data-testid="shop-panel" style={{ background: "rgba(6,8,18,.72)" }}>
+            <div className="flex max-h-[86%] w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border" style={{ borderColor: ac + "88", background: "rgba(12,16,30,.98)", boxShadow: `0 16px 44px rgba(0,0,0,.6), 0 0 24px ${ac}33` }}>
+              {/* header */}
+              <div className="flex items-center gap-2 px-4 py-3" style={{ background: `linear-gradient(90deg, ${ac}22, transparent)` }}>
+                <span className="text-[22px]">{s.glyph}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[15px] font-black text-white">{s.name}</div>
+                  <div className="text-[10px] uppercase tracking-wider" style={{ color: ac }}>{s.keeper.label} · the keeper</div>
+                </div>
+                <span className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-black text-white" style={{ background: "rgba(255,196,107,.14)" }}>✦ {sparksUi.toLocaleString()}</span>
+                <button onClick={() => setShopOpen(null)} data-testid="shop-close" className="text-slate-400 hover:text-slate-200"><X className="h-5 w-5" /></button>
+              </div>
+              {/* keeper greeting */}
+              <div className="mx-4 mt-2 rounded-xl border px-3 py-2 text-[12px] italic leading-snug text-slate-200" style={{ borderColor: ac + "44", background: ac + "0f" }}>
+                “{s.greeting.join(" ")}”
+              </div>
+              {/* stock grid */}
+              <div className="grid grid-cols-3 gap-2 overflow-y-auto p-4 sm:grid-cols-4">
+                {stock.map((d) => {
+                  const owned = decorOwned(d.id); const g = gateCheck(d.id, renownUi); const locked = !owned && !g.ok;
+                  const afford = sparksUi >= d.price;
+                  return (
+                    <button key={d.id} onClick={() => buyShopItem(d.id)} disabled={owned || locked} data-testid={`shop-item-${d.id}`} title={d.name}
+                      className="flex flex-col items-center gap-1 rounded-xl border px-1.5 py-2 text-center disabled:cursor-default"
+                      style={{ borderColor: owned ? "rgba(126,231,135,.5)" : locked ? "rgba(255,120,120,.3)" : afford ? ac + "55" : "rgba(120,130,160,.2)", background: owned ? "rgba(126,231,135,.08)" : "rgba(255,255,255,.03)" }}>
+                      <span className="text-[22px] leading-none">{d.glyph}</span>
+                      <span className="w-full truncate text-[10px] font-semibold text-slate-200">{d.name}</span>
+                      {owned ? <span className="text-[10px] font-bold text-emerald-300">✓ Owned</span>
+                        : locked ? <span className="text-[9.5px] font-bold text-rose-300">★ {g.needRank}</span>
+                          : <span className="text-[11px] font-black" style={{ color: afford ? ac : "#8a94ac" }}>✦{d.price}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* footer hint */}
+              <div className="border-t px-4 py-2.5 text-[10.5px] text-slate-400" style={{ borderColor: "rgba(255,255,255,.07)" }}>
+                Buy here, then <b className="text-amber-200">sail home</b> and place it from <b className="text-amber-200">Build</b> on your CIRQLSPACE.
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Inventory (CHR-270) — your SPARQS, owned stock, and the how-to (always available) */}
       {showInventory && (() => {
         const ownedCount = DECOR.filter((d) => decorOwned(d.id)).length;
@@ -985,7 +1051,7 @@ export default function Cirql() {
                       className="flex h-16 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border text-[9px] font-semibold"
                       style={sel ? { borderColor: "#ffc46b", color: "#0a1220", background: "#ffd98a" } : { borderColor: owned ? "rgba(255,196,107,.35)" : "rgba(150,130,255,.2)", color: owned ? "#ffd98a" : "#b9a8e6", background: "rgba(255,255,255,.03)" }}>
                       <span className="text-[22px] leading-none">{d.glyph}</span>
-                      {owned ? <span className={`truncate max-w-[52px] ${sel ? "text-slate-900" : ""}`}>{d.name.split(" ")[0]}</span> : <span>✦{d.price}</span>}
+                      {owned ? <span className={`truncate max-w-[52px] ${sel ? "text-slate-900" : ""}`}>{d.name.split(" ")[0]}</span> : <span className="opacity-70">🔒</span>}
                     </button>
                   );
                 })}

@@ -82,6 +82,24 @@ export const DECOR: DecorDef[] = [
   { id: "rainbow",   name: "Rainbow",        glyph: "🌈", price: 40, category: "special", render: "glyph", scale: 1.5 },
   { id: "star",      name: "Fallen Star",    glyph: "⭐", price: 30, category: "special", render: "glyph", scale: 1.3 },
   { id: "portal-deco", name: "Mystic Ring",  glyph: "🌀", price: 35, category: "special", render: "glyph", scale: 1.3 },
+
+  // ---- Milestone F: per-shop EXCLUSIVES (sold only by their shopkeeper) ----
+  // Garden & Grove
+  { id: "sunflower", name: "Sunflowers",     glyph: "🌻", price: 6,  category: "nature", render: "glyph", scale: 1.1 },
+  { id: "beehive",   name: "Bee Skep",       glyph: "🐝", price: 18, category: "nature", render: "glyph", scale: 1.1 },
+  // Timber & Stone
+  { id: "signpost",  name: "Signpost",       glyph: "🪧", price: 8,  category: "structures", render: "glyph" },
+  { id: "watchtower", name: "Watchtower",    glyph: "🗼", price: 34, category: "structures", render: "glyph", scale: 1.5 },
+  // The General Store
+  { id: "clock",     name: "Town Clock",     glyph: "🕰️", price: 22, category: "furniture", render: "glyph", scale: 1.2 },
+  { id: "streetlamp", name: "Street Lamp",   glyph: "💡", price: 12, category: "lights", render: "glyph" },
+  // Curios & Wonders (rare; some Renown-gated — see cirql-shops SHOP_GATE)
+  { id: "moon",      name: "Crescent Moon",  glyph: "🌙", price: 45, category: "special", render: "glyph", scale: 1.4 },
+  { id: "comet",     name: "Comet",          glyph: "☄️", price: 50, category: "special", render: "glyph", scale: 1.4 },
+  { id: "hourglass", name: "Hourglass",      glyph: "⏳", price: 28, category: "special", render: "glyph", scale: 1.1 },
+  { id: "snowglobe", name: "Snow Globe",     glyph: "🔮", price: 24, category: "special", render: "glyph", scale: 1.2 },
+  { id: "wishlantern", name: "Wish Lantern", glyph: "🏮", price: 20, category: "special", render: "lantern", accent: "#ff8fbf" },
+  { id: "royalcrown", name: "Royal Crown",   glyph: "👑", price: 80, category: "special", render: "glyph", scale: 1.3 },
 ];
 
 export const decorById: Record<string, DecorDef> = Object.fromEntries(DECOR.map((d) => [d.id, d]));

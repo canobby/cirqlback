@@ -30,6 +30,7 @@ export type PropType =
   | "fence"     // a short fence segment (solid — walk around)
   | "path"      // a dirt/stone trail patch (ground decoration — walk over)
   | "landmark"  // a focal set-piece (Great Tree, stone circle, lighthouse…) — quest home + meeting spot (Phase J4)
+  | "shop"      // a Town storefront — walk in to enter the shop interior (Milestone F)
   | "portal";   // a cave/hollow-tree/cloud-stair — travel to a sub-map (CHR-265)
 
 export type LandmarkKind = "greattree" | "stonecircle" | "lighthouse" | "crystal" | "waterfall" | "ruin";
@@ -47,6 +48,7 @@ export interface Prop {
   vert?: boolean;       // fence: draw the segment vertically (for corral sides)
   sub?: "cave" | "tree" | "cloud" | "up";   // portal kind (CHR-265)
   lm?: LandmarkKind;    // landmark set-piece kind (Phase J4)
+  shopId?: string;      // shop storefront/keeper this prop belongs to (Milestone F)
 }
 
 export interface RingPalette {
@@ -150,6 +152,13 @@ const TOWN: Ring = {
     { t: "gathering", x: 130, y: 185, id: "commons", label: "The Commons" },
     // a cave mouth → The Undervault (sub-map of ring 1 = index 100001)
     { t: "portal", x: -340, y: -40, to: 100001, sub: "cave", label: "cave" },
+    // ── Milestone F: the Town shops. Walk into a storefront → its interior (quick fade).
+    // `to` = SHOP_BASE(400000) + slot; ids/order live in cirql-shops.ts (SHOP_ORDER).
+    { t: "shop", x: -250, y: 10,  to: 400001, shopId: "general",  id: "shop-general",  label: "General Store",   accent: "#ffd98a" },
+    { t: "shop", x: -340, y: 250, to: 400002, shopId: "boutique", id: "shop-boutique", label: "The Looking Glass", accent: "#ff9dd6" },
+    { t: "shop", x: 330,  y: -40, to: 400003, shopId: "garden",   id: "shop-garden",   label: "Garden & Grove",  accent: "#8fe6a0" },
+    { t: "shop", x: 360,  y: 250, to: 400004, shopId: "curios",   id: "shop-curios",   label: "Curios & Wonders", accent: "#c79dff" },
+    { t: "shop", x: -160, y: 330, to: 400005, shopId: "building", id: "shop-building", label: "Timber & Stone",  accent: "#ffb877" },
   ],
   puzzleTarget: ["rn0", "rn2", "rn3"],
   ambient: "butterfly",

@@ -8,6 +8,7 @@
 // seeding idea: pure function of the index → the same land for everyone, every time.
 
 import { RINGS, type Ring, type Prop, type RingPalette, type LandmarkKind } from "./cirql-world";
+import { isShop, shopIdAt, shopInterior } from "./cirql-shops";
 
 // deterministic RNG seeded from an integer (mulberry32)
 function rngFrom(seed: number) {
@@ -271,6 +272,7 @@ function generateSubMap(kind: SubKind, parent: number, index: number): Ring {
 export function getRing(index: number): Ring {
   if (index <= 0) return RINGS[0];
   if (index === 1) return RINGS[1];   // the authored Town hub
+  if (isShop(index)) return shopInterior(shopIdAt(index)!);   // Milestone F: authored shop interior
   if (isSubMap(index)) { const k = subKindOf(index)!; return generateSubMap(k, parentOf(index), index); }
   return generateRing(index);
 }

@@ -11,6 +11,7 @@ import { RetroEngine, shade, mix, type RetroHooks } from "./retro-engine";
 import { loadAvatarLS, DEFAULT_AVATAR, AURA_COLORS, type AvatarConfig } from "./avatar";
 import { RINGS, MINIMAP_RINGS, type Ring, type Prop, type RingPalette } from "./cirql-world";
 import { getRing, ringName, isSubMap, parentOf, subKindOf } from "./cirql-ring-gen";
+import { isShop } from "./cirql-shops";
 import { MOVIES, REEL_SECONDS } from "./cirql-theater";
 import {
   allQuests, questById, offerableQuest, repeatableQuest, questStatusList, registerQuest,
@@ -24,7 +25,7 @@ import { npcLook, type NpcLook } from "./cirql-npc-looks";
 import { simpleDialog, npcConversation, type DialogTree, type DialogChoice } from "./cirql-dialog";
 import { npcProfile } from "./cirql-npc-cast";
 
-export type InteractKind = "wonders" | "npc" | "dock";
+export type InteractKind = "wonders" | "npc" | "dock" | "shop" | "shopkeeper";
 export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; energy: number; }
 export interface QuestLogRow { id: string; name: string; status: QuestStatus; objective: string; tier?: number; reward?: number; renownReward?: number; steps?: number; }
 
@@ -367,8 +368,8 @@ export class CirqlWorldEngine extends RetroEngine {
     if (!wasFT && this.fastTravelReady()) this.toast("✦ Fast travel unlocked! Tap a ring on your sea chart to leap there.");   // reward for reaching ring 5
     this.ensureRingQuest();
     const r = this.curRing.radius;
-    // arrive at the dock/portal that leads back to where we came from
-    const back = this.curRing.props.find((p) => (p.t === "dock" || p.t === "portal") && p.to === from);
+    // arrive at the dock/portal/storefront that leads back to where we came from
+    const back = this.curRing.props.find((p) => (p.t === "dock" || p.t === "portal" || p.t === "shop") && p.to === from);
     if (back) { this.posX = back.x; this.posY = back.y + (back.t === "portal" ? 26 : 30); }
     else { const outward = dest > from; this.posX = 0; this.posY = outward ? -r * 0.68 : r * 0.7; }
     this.vx = this.vy = 0; this.facing = "down";
@@ -603,6 +604,7 @@ export class CirqlWorldEngine extends RetroEngine {
     for (const p of this.curRing.props) {
       if (p.t === "hearth") out.push({ x: p.x, y: p.y, r: 40 });
       else if (p.t === "wonders") out.push({ x: p.x, y: p.y, r: 34 });
+      else if (p.t === "shop") out.push({ x: p.x, y: p.y, r: 28 });   // walk around the storefront (F)
       else if (p.t === "tree") out.push({ x: p.x, y: p.y + 2, r: p.big ? 13 : 10 });
       else if (p.t === "bush") out.push({ x: p.x, y: p.y, r: 7 });
       else if (p.t === "rock") out.push({ x: p.x, y: p.y, r: p.big ? 12 : 8 });
@@ -668,6 +670,8 @@ export class CirqlWorldEngine extends RetroEngine {
     if (p.t === "theater") { const m = this.nowShowing(); this.setDialog("Cirql Drive-In", "#7fd0ff", simpleDialog([`Now showing: "${m.title}"`, m.tagline, "Pull up a bench and stay a while."])); return; }
     if (p.t === "lantern" && p.id) { if (this.currentObjKind() === "lightLanterns" && !this.litForQuest.has(p.id)) { this.litForQuest.add(p.id); this.advanceObjective("lightLanterns"); this.onQuestChange?.(); } }
     else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.enterWithWave(() => this.onInteract?.("wonders", p)); }   // wave/knock at the arcade doors (I6)
+    else if (p.t === "shop") { if (typeof p.to === "number") { const to = p.to; this.enterWithWave(() => this.sailTo(to)); } }   // walk into a storefront → its interior (F)
+    else if (p.t === "npc" && p.shopId) { this.onInteract?.("shopkeeper", p); }   // shop keeper → open the store (F)
     else if (p.t === "npc") { this.openNpcDialog(p); this.onInteract?.("npc", p); }
     else if (p.t === "dock") {
       const to = p.to ?? -1;
@@ -955,7 +959,7 @@ export class CirqlWorldEngine extends RetroEngine {
         const isQL = this.isQuestLantern(p);
         const puzzle = p.t === "rune" || p.t === "tablet" || p.t === "shrine";
         const social = p.t === "gathering" || p.t === "theater" || p.t === "landmark";
-        if (p.t !== "wonders" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social) continue;
+        if (p.t !== "wonders" && p.t !== "shop" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social) continue;
         const d = Math.hypot(this.posX - p.x, this.posY - p.y);
         const range = p.t === "landmark" ? 52 : p.r ?? (isQL || p.t === "rune" ? 26 : 40);
         if (d < range && d < best) { best = d; this.near = p; }
@@ -1110,6 +1114,7 @@ export class CirqlWorldEngine extends RetroEngine {
       switch (p.t) {
         case "hearth": draws.push({ y: p.y + 28, f: () => this.drawHearth(sxp, syp, p) }); break;
         case "wonders": draws.push({ y: p.y + 30, f: () => this.drawWonders(sxp, syp, p) }); break;
+        case "shop": draws.push({ y: p.y + 22, f: () => this.drawShop(sxp, syp, p) }); break;
         case "npc": draws.push({ y: p.y, f: () => this.drawNpc(sxp, syp, p) }); break;
         case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big, this.treeKind(p.x, p.y)) }); break;
         case "bush": draws.push({ y: p.y, f: () => this.drawBush(sxp, syp) }); break;
@@ -1721,6 +1726,31 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(cx - 5, cy + 9, 10, 7, "#0b0a1e");
     this.labelPill(cx, cy - 46, p.label || "CirqlCade", ac);
   }
+  // A Town storefront (Milestone F) — a cozy shop you walk into: warm walls, a striped
+  // awning + sign in the shop's accent, glowing windows and a lit doorway. `p.accent`
+  // tints the awning/sign so the five shops read apart at a glance.
+  private drawShop(cx: number, cy: number, p: Prop) {
+    const ac = p.accent || "#ffd98a";
+    const near = this.near === p;
+    this.glow(cx, cy - 6, 54, ac, 0.16 + (near ? 0.16 : 0));
+    this.rect(cx - 24, cy + 14, 48, 6, "#0a071450");                 // ground shadow
+    // walls
+    this.rect(cx - 22, cy - 10, 44, 26, "#e7d8bd");
+    this.rect(cx - 22, cy - 10, 44, 2, shade(ac, -0.2));        // eave line
+    this.rectLine(cx - 22, cy - 10, 44, 26, shade(ac, -0.35));
+    // pitched roof
+    for (let i = 0; i < 12; i++) this.rect(cx - 26 + i, cy - 10 - i, (26 - i) * 2, 1, shade(ac, -0.15));
+    // striped awning over the front
+    for (let i = 0; i < 11; i++) this.rect(cx - 22 + i * 4, cy - 1, 4, 4, i % 2 ? ac : "#fff6e8");
+    this.rect(cx - 22, cy + 3, 44, 1, shade(ac, -0.3));
+    // sign board above the awning
+    this.rect(cx - 14, cy - 20, 28, 6, shade(ac, -0.1)); this.rectLine(cx - 14, cy - 20, 28, 6, "#0a0714");
+    // glowing windows + lit door
+    this.disc(cx - 13, cy + 8, 3, "#ffe6a8"); this.disc(cx + 13, cy + 8, 3, "#ffe6a8");
+    this.rect(cx - 5, cy + 4, 10, 12, shade(ac, 0.1)); this.rect(cx - 4, cy + 6, 8, 10, "#7a4a1e");
+    this.px(cx + 2, cy + 11, "#ffd98a");                             // door knob
+    this.labelPill(cx, cy - 30, p.label || "Shop", ac);
+  }
   private drawNpc(cx: number, cy: number, p: Prop) {
     const ac = p.accent || "#7fffe6";
     const L = npcLook(p.id, ac);
@@ -2294,7 +2324,9 @@ export class CirqlWorldEngine extends RetroEngine {
     let promptTxt = "", promptAcc = "#35e0d0";
     if (this.nearPlayer && !this.dialog) { promptTxt = `E · Share a light with ${this.nearPlayer.name}`; promptAcc = "#ffc46b"; }
     else if (this.near && !this.dialog) {
-      const label = this.near.t === "wonders" ? "Enter CirqlCade"
+      const label = this.near.t === "shop" ? `Enter ${this.near.label || "the shop"}`
+        : this.near.t === "npc" && this.near.shopId ? `Browse ${this.near.label || "the"}'s wares`
+        : this.near.t === "wonders" ? "Enter CirqlCade"
         : this.near.t === "npc" ? `Talk to ${this.near.label || ""}`
           : this.near.t === "lantern" ? "Light the lantern"
             : this.near.t === "dock" ? (this.near.label || "Set sail")
@@ -2304,7 +2336,7 @@ export class CirqlWorldEngine extends RetroEngine {
                     : this.near.t === "theater" ? "Watch the show"
                       : this.near.t === "gathering" ? "Rest a while"
                         : this.near.t === "landmark" ? `Visit ${this.near.label || "the landmark"}`
-                        : this.near.t === "portal" ? (this.near.sub === "up" ? "Return to the surface" : this.near.sub === "cave" ? "Descend into the cave" : this.near.sub === "tree" ? "Climb the great tree" : "Ascend the cloud stair")
+                        : this.near.t === "portal" ? (this.near.sub === "up" ? (isShop(this.ringIdx) ? "Leave the shop" : "Return to the surface") : this.near.sub === "cave" ? "Descend into the cave" : this.near.sub === "tree" ? "Climb the great tree" : "Ascend the cloud stair")
                           : "Set sail";
       promptTxt = `E · ${label}`; promptAcc = this.near.accent || "#35e0d0";
     }
@@ -2388,7 +2420,7 @@ export class CirqlWorldEngine extends RetroEngine {
       b.fillStyle = "#ffffff"; b.beginPath(); b.arc((cx + Math.cos(ang) * dr) * s, (cy + Math.sin(ang) * dr) * s, 1.8 * s, 0, TAU); b.fill();
     }
     // current place name + tappable hint under the minimap
-    const subHint = inSub ? (subKindOf(this.ringIdx) === "cave" ? "underground" : subKindOf(this.ringIdx) === "tree" ? "in the trees" : "in the clouds") : "tap · chart";
+    const subHint = isShop(this.ringIdx) ? "inside · tap to leave" : inSub ? (subKindOf(this.ringIdx) === "cave" ? "underground" : subKindOf(this.ringIdx) === "tree" ? "in the trees" : "in the clouds") : "tap · chart";
     if (this.ringIdx === 0) {   // CIRQLSPACE — styled like the logo (CIRQL big + SPACE small)
       this.q(cx - 1, cy + R + 1, "CIRQL", "#ffffff", 1.05, "r", true);
       this.q(cx + 1, cy + R + 3, "SPACE", this.curRing.palette.accent, 0.7, "l", true);
