@@ -57,6 +57,11 @@ export class CirqlWorldEngine extends RetroEngine {
   private insetTopCss = 0; private insetBotCss = 0;
   private itop() { return this.dispW > 0 ? this.insetTopCss * this.LW / this.dispW : 0; }
   private ibot() { return this.dispW > 0 ? this.insetBotCss * this.LW / this.dispW : 0; }
+  private mapOpen = false;      // full-screen sea chart
+  private pDownPrev = false;    // pointer edge for tap detection
+  private minimapCx() { return this.LW - 26; }
+  private minimapCy() { return this.itop() + 34; }
+  private inMinimap(x: number, y: number) { return Math.hypot(x - this.minimapCx(), y - this.minimapCy()) < 24; }
 
   // ---- hooks the host page wires ----
   /** Fired when the player interacts (E / on-screen action) with a target. */
@@ -201,12 +206,27 @@ export class CirqlWorldEngine extends RetroEngine {
     this.t += dt;
     this.msgT = Math.max(0, this.msgT - dt);
 
+    // pointer-down edge (tap detection, for the minimap → chart)
+    const justDown = this.pointer.down && !this.pDownPrev; this.pDownPrev = this.pointer.down;
+
+    // full-screen sea chart: a fresh tap (or E) closes it; nothing else runs
+    if (this.mapOpen) {
+      if (justDown || this.pressed.a) this.mapOpen = false;
+      this.camX += ((this.posX - this.LW / 2) - this.camX) * Math.min(1, dt * 8);
+      this.camY += ((this.posY - this.LH / 2) - this.camY) * Math.min(1, dt * 8);
+      return;
+    }
+
     // interact edge (Space / E map to "a"); also used to advance dialog
     if (this.pressed.a) this.doInteract();
 
-    // movement is frozen while a dialog is open
-    if (!this.dialog) {
-      if (this.pointer.down) this.moveTarget = { x: this.pointer.x + this.camX, y: this.pointer.y + this.camY };
+    // tapping the corner minimap opens the chart (consumes the tap — not a move)
+    const tapMap = justDown && !this.dialog && this.inMinimap(this.pointer.x, this.pointer.y);
+    if (tapMap) { this.mapOpen = true; this.moveTarget = null; }
+
+    // movement is frozen while a dialog is open or the chart is up
+    if (!this.dialog && !tapMap) {
+      if (this.pointer.down && !this.inMinimap(this.pointer.x, this.pointer.y)) this.moveTarget = { x: this.pointer.x + this.camX, y: this.pointer.y + this.camY };
       let dx = (this.btn.right ? 1 : 0) - (this.btn.left ? 1 : 0);
       let dy = (this.btn.down ? 1 : 0) - (this.btn.up ? 1 : 0);
       if (dx || dy) this.moveTarget = null;
@@ -357,7 +377,7 @@ export class CirqlWorldEngine extends RetroEngine {
     }
 
     this.drawFx();
-    this.drawHud();
+    if (this.mapOpen) this.drawChart(); else this.drawHud();
   }
 
   // ---------- props ----------
@@ -532,6 +552,40 @@ export class CirqlWorldEngine extends RetroEngine {
     // player dot at their angle on the current ring
     const ang = Math.atan2(this.posY, this.posX);
     b.fillStyle = "#ffffff"; b.beginPath(); b.arc((cx + Math.cos(ang) * dr) * s, (cy + Math.sin(ang) * dr) * s, 1.8 * s, 0, TAU); b.fill();
+    // tappable hint
+    this.q(cx, cy + R + 2, "MAP", "#8fa6c6", 0.8, "c", true);
+  }
+  private drawChart() {
+    const b = this.b, s = this.SS, W = this.LW, H = this.LH;
+    const it = this.itop();
+    this.ui.length = 0;   // drop any world labels queued this frame — chart only
+    b.fillStyle = "rgba(4,7,16,0.93)"; b.fillRect(0, 0, W * s, H * s);
+    this.q(W / 2, it + 6, "The Endless Ocean", "#eaf6ff", 1.3, "c", true);
+    this.q(W / 2, it + 20, "your chart of the rings", "#7fa0c8", 0.9, "c");
+    const cx = W / 2, cy = H / 2 + 4, maxR = Math.min(W, H) * 0.40, step = maxR / MINIMAP_RINGS;
+    this.glow(cx, cy, maxR + 10, "#16264d", 0.55);
+    for (let i = MINIMAP_RINGS - 1; i >= 0; i--) {
+      const rad = step * (i + 1); const known = i < KNOWN_RINGS;
+      b.beginPath(); b.arc(cx * s, cy * s, rad * s, 0, TAU);
+      if (known) { b.strokeStyle = i === this.ringIdx ? "#ffffff" : "rgba(120,200,255,0.55)"; b.lineWidth = (i === this.ringIdx ? 2 : 1.2) * s; b.setLineDash([]); }
+      else { b.strokeStyle = "rgba(120,140,180,0.28)"; b.lineWidth = 1 * s; b.setLineDash([4 * s, 6 * s]); }
+      b.stroke();
+    }
+    b.setLineDash([]);
+    // land labels (known named; the first fogged ring marked uncharted)
+    for (let i = 0; i < MINIMAP_RINGS; i++) {
+      const rad = step * (i + 1);
+      if (i < KNOWN_RINGS) this.q(cx, cy - rad - 7, RINGS[i]?.name || "", i === this.ringIdx ? "#ffd24a" : "#bfe0ff", 1, "c", true);
+      else if (i === KNOWN_RINGS) { this.q(cx, cy - rad - 7, "? uncharted ?", "#6f86ad", 0.9, "c"); break; }
+    }
+    // objective (gold) + you (teal/white) on the current ring
+    const pr = step * (this.ringIdx + 1);
+    const tgt = this.objTargetProp();
+    if (tgt) { const ta = Math.atan2(tgt.y, tgt.x), tx = cx + Math.cos(ta) * pr, ty = cy + Math.sin(ta) * pr; this.glow(tx, ty, 9, "#ffd24a", 0.6); this.disc(tx, ty, 2, "#ffd24a"); }
+    const pa = Math.atan2(this.posY, this.posX), pxp = cx + Math.cos(pa) * pr, pyp = cy + Math.sin(pa) * pr;
+    this.glow(pxp, pyp, 9, "#35e0d0", 0.7); this.disc(pxp, pyp, 2.2, "#ffffff"); this.ring(pxp, pyp, 4, "#35e0d0", 1);
+    this.q(pxp, pyp - 11, "You", "#ffffff", 0.85, "c", true);
+    this.q(W / 2, H - this.ibot() - 12, "tap anywhere to close", "#8fa6c6", 0.95, "c");
   }
   private drawDialog() {
     if (!this.dialog) return;
