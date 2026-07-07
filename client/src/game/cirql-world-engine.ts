@@ -21,6 +21,7 @@ import { EMOTE_BY_ID, EMOTE_SECONDS, PAIR_BY_ID } from "./cirql-emotes";
 import { arrivalCutscene, BEAT_SECONDS, type Cutscene, type CutsceneBeat, type CutsceneFx } from "./cirql-cutscenes";
 import { decorById, DECOR_SOLID } from "./cirql-decor";
 import { npcLook, type NpcLook } from "./cirql-npc-looks";
+import { simpleDialog, npcConversation, type DialogTree, type DialogChoice } from "./cirql-dialog";
 
 export type InteractKind = "wonders" | "npc" | "dock";
 export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; energy: number; }
@@ -40,7 +41,8 @@ function hexA(hex: string, a: number): string {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-interface Dialog { name: string; accent: string; lines: string[]; i: number; acceptOnClose?: string; }
+// A live conversation: a DialogTree (K1) + which node we're on + the line within it.
+interface Dialog { name: string; accent: string; tree: DialogTree; nodeId: string; i: number; }
 
 // M8 — a live remote traveller on your ring (presence + chat). Position eases from
 // x/y toward the last-received tx/ty for smooth movement between throttled updates.
@@ -101,6 +103,7 @@ export class CirqlWorldEngine extends RetroEngine {
 
   private near: Prop | null = null;       // nearest interactable in range
   private dialog: Dialog | null = null;
+  private dialogChoiceRects: { x: number; y: number; w: number; h: number }[] = [];   // tap targets for branching choices (K1)
   private msg = ""; private msgT = 0;      // transient toast
 
   private stats: CirqlStats = { sparks: 0, cirqlLit: 0, cirqlTotal: 12, online: 1, energy: 0 };
@@ -616,11 +619,24 @@ export class CirqlWorldEngine extends RetroEngine {
     }
     return out;
   }
+  // ---- branching dialog framework (K1) ----
+  private setDialog(name: string, accent: string, tree: DialogTree) { this.dialog = { name, accent, tree, nodeId: tree.start, i: 0 }; }
+  private dialogNode() { return this.dialog ? this.dialog.tree.nodes[this.dialog.nodeId] : null; }
+  /** Play a choice at the current node: accept a quest, jump to another node, or close. */
+  private pickChoice(idx: number) {
+    const d = this.dialog, node = this.dialogNode(); if (!d || !node?.choices) return;
+    const c: DialogChoice | undefined = node.choices[idx]; if (!c) return;
+    if (c.accept) { const id = c.accept; this.dialog = null; this.acceptQuest(id); }
+    else if (c.goto && d.tree.nodes[c.goto]) { d.nodeId = c.goto; d.i = 0; }
+    else this.dialog = null;   // plain choice → end the chat
+  }
+  private hitChoice(x: number, y: number) { return this.dialogChoiceRects.findIndex((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); }
   private doInteract() {
     if (this.dialog) {
-      this.dialog.i++;
-      if (this.dialog.i >= this.dialog.lines.length) { const acc = this.dialog.acceptOnClose; this.dialog = null; if (acc) this.acceptQuest(acc); }
-      return;
+      const node = this.dialogNode();
+      if (node && this.dialog.i < node.lines.length - 1) { this.dialog.i++; return; }   // read the next line
+      if (node && node.choices && node.choices.length) return;                          // wait for a choice pick (tap)
+      this.dialog = null; return;                                                       // a plain node ends on E
     }
     if (this.nearPlayer) { this.onShareLight?.(this.nearPlayer.id); return; }   // share a light with a traveller
     const p = this.near; if (!p) return;
@@ -646,7 +662,7 @@ export class CirqlWorldEngine extends RetroEngine {
       this.toast(`${p.label || "A landmark"} · ${flavor[p.lm || ""] || "A memorable place."}`);
       return;
     }
-    if (p.t === "theater") { const m = this.nowShowing(); this.dialog = { name: "Cirql Drive-In", accent: "#7fd0ff", i: 0, lines: [`Now showing: "${m.title}"`, m.tagline, "Pull up a bench and stay a while."] }; return; }
+    if (p.t === "theater") { const m = this.nowShowing(); this.setDialog("Cirql Drive-In", "#7fd0ff", simpleDialog([`Now showing: "${m.title}"`, m.tagline, "Pull up a bench and stay a while."])); return; }
     if (p.t === "lantern" && p.id) { if (this.currentObjKind() === "lightLanterns" && !this.litForQuest.has(p.id)) { this.litForQuest.add(p.id); this.advanceObjective("lightLanterns"); this.onQuestChange?.(); } }
     else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.enterWithWave(() => this.onInteract?.("wonders", p)); }   // wave/knock at the arcade doors (I6)
     else if (p.t === "npc") { this.openNpcDialog(p); this.onInteract?.("npc", p); }
@@ -670,37 +686,31 @@ export class CirqlWorldEngine extends RetroEngine {
   private openTablet(p: Prop) {
     const q = questById("sunken-runes");
     const notTaken = !this.quests["sunken-runes"];
-    this.dialog = {
-      name: p.label || "Runestone", accent: "#b26cff", i: 0,
-      lines: q ? q.intro : ["The carving has worn away."],
-      acceptOnClose: notTaken ? "sunken-runes" : undefined,
-    };
+    this.setDialog(p.label || "Runestone", "#b26cff", simpleDialog(q ? q.intro : ["The carving has worn away."], notTaken ? "sunken-runes" : undefined));
   }
   private openNpcDialog(p: Prop) {
     const npcId = p.id || "";
     const accent = p.accent || this.curRing.palette.accent;
+    const name = p.label || "Ferra";
     // an "interact" objective aimed at this NPC advances on talk
     this.advanceObjective("interact", npcId);
-    // offer a fresh quest, or re-offer a finished one for a smaller reward (repeatable)
+    // a quest this keeper can offer (fresh, or a repeatable re-offer for a slighter reward)
     const fresh = offerableQuest(npcId, this.quests);
     const offer = fresh || repeatableQuest(npcId, this.quests);
-    if (offer) {
-      const repeat = !fresh;
-      this.dialog = { name: p.label || "Ferra", accent, i: 0, lines: repeat ? [...offer.intro, "— though you've done this before; the reward will be slighter."] : offer.intro, acceptOnClose: offer.id };
-      return;
-    }
-    // otherwise a contextual greeting
     const active = this.activeQuest();
     const guide = npcId === "guide";           // Cirqla, on your CIRQLSPACE (CHR-269)
     const town = this.ringIdx === 1;
-    const lines = guide
-      ? ["Welcome to your CIRQLSPACE — this whole island is yours.", "Open your Inventory to build: place things, paint the ground, make it your own.", "When you're ready for quests, the arcade and the shops, sail south to the Town."]
-      : active
-        ? [`Off you go — ${active.name.toLowerCase()} awaits.`, "The glimmer marks your way."]
-        : town
-          ? ["Welcome to the Town, traveller.", "CirqlCade waits east; the onward dock lies south to the wilds."]
-          : [`Safe travels on ${this.curRing.name}.`, "The onward dock lies to the south — the fog thins the farther you sail."];
-    this.dialog = { name: p.label || "Ferra", accent, i: 0, lines };
+    // greeting + lore vary by who + where — the conversation hub
+    const greeting = guide
+      ? ["Welcome to your CIRQLSPACE — this whole island is yours."]
+      : town ? ["Welcome to the Town, traveller."]
+        : active && active.giver === npcId ? [`You're still on the trail — ${active.name.toLowerCase()}.`]
+          : [`Well met on ${this.curRing.name}.`];
+    const lore = guide
+      ? ["Open your Inventory to build — place things, paint the ground, make it your own.", "When you're ready for quests, the arcade and the shops, sail south to the Town."]
+      : town ? ["CirqlCade waits to the east — every Wonder within.", "The onward dock lies south, into the widening wilds."]
+        : ["The onward dock lies to the south; the fog thins the farther you sail.", "Each ring out is older, stranger — and pays a wanderer more."];
+    this.setDialog(name, accent, npcConversation({ greeting, lore, questIntro: offer?.intro, questId: offer?.id, repeat: offer ? !fresh : false }));
   }
 
   // ---------- update ----------
@@ -840,6 +850,14 @@ export class CirqlWorldEngine extends RetroEngine {
 
     // interact edge (Space / E map to "a"); also used to advance dialog
     if (this.pressed.a) this.doInteract();
+
+    // dialog taps (K1): tap a branching choice to pick it; tap elsewhere advances/closes lines
+    if (this.dialog && justDown) {
+      const node = this.dialogNode(), atEnd = !node || this.dialog.i >= node.lines.length - 1;
+      if (atEnd && node?.choices?.length) { const idx = this.hitChoice(this.pointer.x, this.pointer.y); if (idx >= 0) this.pickChoice(idx); }
+      else if (node) { if (this.dialog.i < node.lines.length - 1) this.dialog.i++; else this.dialog = null; }
+      return;
+    }
 
     // tapping the corner minimap opens the chart (consumes the tap — not a move)
     const tapMap = justDown && !this.dialog && this.inMinimap(this.pointer.x, this.pointer.y);
@@ -2430,20 +2448,33 @@ export class CirqlWorldEngine extends RetroEngine {
     }
   }
   private drawDialog() {
+    this.dialogChoiceRects = [];
     if (!this.dialog) return;
-    const d = this.dialog;
+    const d = this.dialog, node = this.dialogNode(); if (!node) return;
     const boxH = 40, boxY = this.LH - this.ibot() - boxH - 6;
+    const atEnd = d.i >= node.lines.length - 1;
+    const showChoices = atEnd && !!node.choices?.length;
+    // branching choices (K1): tappable buttons stacked above the dialog box at the last line
+    if (showChoices) {
+      const ch = node.choices!;
+      const cw = Math.min(this.LW - 12, 190), cx = 6, chH = 13;
+      let cy = boxY - 4 - ch.length * (chH + 3);
+      for (let i = 0; i < ch.length; i++) {
+        const ry = cy + i * (chH + 3);
+        this.rect(cx, ry, cw, chH, "#12172ef2"); this.rectLine(cx, ry, cw, chH, d.accent);
+        this.q(cx + 6, ry + 3, ch[i].label, "#eaf6ff", 0.95, "l", true);
+        this.dialogChoiceRects.push({ x: cx, y: ry, w: cw, h: chH });
+      }
+    }
     this.rect(6, boxY, this.LW - 12, boxH, "#0a0714ee");
     this.rectLine(6, boxY, this.LW - 12, boxH, d.accent);
     this.q(11, boxY + 4, d.name, d.accent, 1, "l", true);
-    const line = d.lines[d.i] || "";
-    // wrap to width (measured in the smooth font at overlay time is ideal, but the
-    // pixel-width estimate leaves margin, so smooth text always fits inside it)
+    const line = node.lines[d.i] || "";
     const words = line.split(" "); const rows: string[] = []; let cur = "";
     for (const w of words) { const tryn = cur ? cur + " " + w : w; if (this.textWidth(tryn, 1) > this.LW - 34 && cur) { rows.push(cur); cur = w; } else cur = tryn; }
     if (cur) rows.push(cur);
     for (let i = 0; i < Math.min(3, rows.length); i++) this.q(11, boxY + 15 + i * 9, rows[i], "#eaf6ff", 1, "l");
-    const hint = d.i < d.lines.length - 1 ? "E ▸" : "E ✕";
+    const hint = !atEnd ? "E ▸" : showChoices ? "▲ pick" : "E ✕";
     this.q(this.LW - 11, boxY + boxH - 10, hint, "#9fb0d0", 1, "r");
   }
 
