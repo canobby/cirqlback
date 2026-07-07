@@ -12,6 +12,7 @@ import { CAMPAIGNS, campaignById, MATCH_TAGS, difficultyMeta } from "@/game/cirq
 import { dailyForDate, activeEvent, todayStr, type DailyTask, type CirqlEvent } from "@/game/cirql-daily";
 import { ringName } from "@/game/cirql-ring-gen";
 import { EMOTES } from "@/game/cirql-emotes";
+import { WAKE_CUTSCENE, campaignCutscene, worldEnergyCutscene } from "@/game/cirql-cutscenes";
 
 const SPARK_PER_PLAY = 2;
 const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
@@ -253,7 +254,7 @@ export default function Cirql() {
         sparksRef.current += rw; energyRef.current = Math.min(1, energyRef.current + rw * 0.01);
         eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current);
         applyParty(null);
-        eng.toast(first ? `✦ ${camp?.title || "Campaign"} complete — +${rw} sparqs!` : `✦ ${camp?.title || "Campaign"} again — +${rw} sparqs!`);
+        eng.playCutscene(campaignCutscene(camp?.title || "Campaign", rw));   // celebration sting (CHR-264)
         persist();
       }
     };
@@ -316,8 +317,9 @@ export default function Cirql() {
     const firstRun = !seenIntroRef.current;
     avatarRef.current = cfg; nameRef.current = name || nameRef.current || "Traveller"; seenIntroRef.current = true;
     engineRef.current?.setAvatar(cfg); engineRef.current?.setLocal(nameRef.current, cfg);
-    // first-run onboarding: auto-start the quest chain so a waypoint guides them (CHR-231)
-    if (firstRun) engineRef.current?.acceptQuest("find-your-feet");
+    // first-run onboarding: a short "waking at the Hearth" cutscene (CHR-264), then
+    // auto-start the quest chain so a waypoint guides them (CHR-231)
+    if (firstRun) { engineRef.current?.acceptQuest("find-your-feet"); engineRef.current?.playCutscene(WAKE_CUTSCENE); }
     setShowCreator(false); persist();
     presenceReadyRef.current = true; tryJoin();   // now safe to appear to other travellers
   };
@@ -336,11 +338,12 @@ export default function Cirql() {
       if (earned > 0) {
         sparksRef.current += earned;
         energyRef.current += earned * 0.015;                 // sparks feed the World Energy meter
-        let msg = `+${earned} sparq${earned > 1 ? "s" : ""}`;
-        if (energyRef.current >= 1) { energyRef.current = 0.06; msg = "✦ You've fed the world — it stirs."; }
+        const filled = energyRef.current >= 1;
+        if (filled) energyRef.current = 0.06;
         engineRef.current?.setStats({ sparks: sparksRef.current, energy: energyRef.current });
         setSparksUi(sparksRef.current);
-        engineRef.current?.toast(msg);
+        if (filled) engineRef.current?.playCutscene(worldEnergyCutscene());   // milestone cinematic (CHR-264)
+        else engineRef.current?.toast(`+${earned} sparq${earned > 1 ? "s" : ""}`);
       } else {
         engineRef.current?.toast("Rest a while — more sparqs tomorrow.");
       }

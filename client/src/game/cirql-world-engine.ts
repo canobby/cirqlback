@@ -18,6 +18,7 @@ import {
 } from "./cirql-quests";
 import { generateRingQuest } from "./cirql-quest-gen";
 import { EMOTE_BY_ID, EMOTE_SECONDS } from "./cirql-emotes";
+import { arrivalCutscene, BEAT_SECONDS, type Cutscene, type CutsceneBeat, type CutsceneFx } from "./cirql-cutscenes";
 
 export type InteractKind = "wonders" | "npc" | "dock";
 export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; energy: number; }
@@ -42,6 +43,10 @@ export class CirqlWorldEngine extends RetroEngine {
   private curRing: Ring = RINGS[0];
   private maxRing = 0;                          // furthest ring reached (lifts the fog)
   private arriveT = 0; private arriveName = ""; private arriveSub = "";   // arrival name-card flourish
+  // cutscene player (CHR-264): a skippable, letterboxed sequence of timed beats
+  private cs: Cutscene | null = null;
+  private csBeat = 0; private csT = 0; private csAge = 0; private csClosing = 0;
+  private csOnDone: (() => void) | undefined;
   private posX = 0; private posY = 0;         // player world position
   private vx = 0; private vy = 0; private facing: "up" | "down" | "left" | "right" = "down"; private walk = 0;
   private camX = 0; private camY = 0;
@@ -135,7 +140,7 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Full-screen safe-area: keep the HUD below the floating header + above the controls (CSS px). */
   setHudInsets(topCss: number, botCss: number) { this.insetTopCss = Math.max(0, topCss); this.insetBotCss = Math.max(0, botCss); }
   /** The on-screen action button + the quest system call this to interact. */
-  interact() { this.doInteract(); }
+  interact() { if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
   getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce) }; }
   applyState(s: any) {
     if (!s) return;
@@ -154,6 +159,8 @@ export class CirqlWorldEngine extends RetroEngine {
   private sailTo(dest: number) {
     if (dest < 0 || dest === this.ringIdx) return;
     const from = this.ringIdx;
+    // a brand-new outer shore (not a sub-map, never reached before) earns a full arrival cutscene
+    const firstShore = !isSubMap(dest) && dest > this.maxRing;
     this.ringIdx = dest;
     this.curRing = getRing(dest);
     if (!isSubMap(dest)) this.maxRing = Math.max(this.maxRing, dest);   // sub-maps don't lift the fog
@@ -167,10 +174,21 @@ export class CirqlWorldEngine extends RetroEngine {
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
     this.near = null; this.dialog = null; this.moveTarget = null;
     this.resolvePartyWp();   // re-point the shared waypoint for the new ring
-    this.arriveT = 3.0; this.arriveName = this.curRing.name; this.arriveSub = this.curRing.sub;
+    if (firstShore) this.playCutscene(arrivalCutscene(this.curRing.name, this.curRing.sub, this.curRing.palette.accent));
+    else { this.arriveT = 3.0; this.arriveName = this.curRing.name; this.arriveSub = this.curRing.sub; }   // quick card on revisits
     this.onSail?.(this.ringIdx, this.maxRing);
   }
   toast(text: string) { this.msg = text; this.msgT = 4.6; }
+  /** Play a skippable, letterboxed cutscene (CHR-264). `onDone` fires when it finishes/skips. */
+  playCutscene(cs: Cutscene, onDone?: () => void) {
+    if (!cs || !cs.beats.length) { onDone?.(); return; }
+    this.cs = cs; this.csBeat = 0; this.csT = 0; this.csAge = 0; this.csClosing = 0; this.csOnDone = onDone;
+    this.vx = this.vy = 0; this.moveTarget = null; this.dialog = null; this.mapOpen = false;   // settle the world under the scene
+  }
+  /** Is a cutscene currently playing (the world is frozen)? */
+  cutsceneActive() { return !!this.cs; }
+  private csBeatDef(): CutsceneBeat | null { return this.cs ? this.cs.beats[this.csBeat] ?? null : null; }
+  private endCutscene() { const cb = this.csOnDone; this.cs = null; this.csOnDone = undefined; cb?.(); }
   /** Current interact target's kind (host may use to theme the action button). */
   nearKind(): InteractKind | null { return (this.near?.t as InteractKind) ?? null; }
 
@@ -445,6 +463,26 @@ export class CirqlWorldEngine extends RetroEngine {
     // pointer-down edge (tap detection, for the minimap → chart)
     const justDown = this.pointer.down && !this.pDownPrev; this.pDownPrev = this.pointer.down;
 
+    // cutscene (CHR-264): freezes the world; a tap / E skips to the end. Remotes keep
+    // animating (handled above) but the local player stays put.
+    if (this.cs) {
+      this.csAge += dt;
+      if (this.csClosing > 0) {
+        this.csClosing = Math.max(0, this.csClosing - dt);
+        if (this.csClosing <= 0) this.endCutscene();
+      } else if (justDown || this.pressed.a) {
+        this.csClosing = 0.35;                 // skip → retract the letterbox, then end
+      } else {
+        this.csT += dt;
+        const hold = this.csBeatDef()?.hold ?? BEAT_SECONDS;
+        if (this.csT >= hold) {
+          if (this.csBeat < this.cs.beats.length - 1) { this.csBeat++; this.csT = 0; }
+          else this.csClosing = 0.45;          // last beat done → close
+        }
+      }
+      return;
+    }
+
     // full-screen sea chart: a fresh tap (or E) closes it; nothing else runs
     if (this.mapOpen) {
       if (justDown || this.pressed.a) this.mapOpen = false;
@@ -662,7 +700,71 @@ export class CirqlWorldEngine extends RetroEngine {
 
     this.drawFx();
     this.drawAmbient();
-    if (this.mapOpen) this.drawChart(); else this.drawHud();
+    if (this.mapOpen) this.drawChart(); else if (!this.cs) this.drawHud();
+    if (this.cs) this.drawCutscene();
+  }
+
+  // ---------- cutscene (CHR-264) ----------
+  // A letterboxed, skippable set-piece: bars slide in, a soft per-beat effect plays
+  // behind smooth-text (title / sub / body) that fades in and out, and a "tap to skip"
+  // hint sits in the lower bar. All drawn over the frozen world.
+  private drawCutscene() {
+    const b = this.cs?.beats[this.csBeat]; if (!b) return;
+    this.ui.length = 0;                        // drop world labels queued this frame — scene text only
+    const W = this.LW, H = this.LH;
+    // letterbox envelope: opens over ~0.45s, retracts while closing
+    const env = this.csClosing > 0 ? Math.min(1, this.csClosing / 0.4) : Math.min(1, this.csAge / 0.45);
+    const barH = Math.round(H * 0.15 * env);
+    // dim the world a touch under the scene
+    this.b.globalAlpha = 0.42 * env; this.rect(0, 0, W, H, "#05060f"); this.b.globalAlpha = 1;
+    // per-beat text fade (in over 0.4s, out over the last 0.4s of the beat; gone while closing)
+    const hold = b.hold ?? BEAT_SECONDS;
+    const tf = this.csClosing > 0 ? Math.min(1, this.csClosing / 0.3)
+      : Math.min(1, this.csT / 0.4) * Math.min(1, (hold - this.csT) / 0.4 + 0.001);
+    const textA = Math.max(0, Math.min(1, tf));
+    const accent = b.accent || this.curRing.palette.accent;
+    if (barH > 0) this.drawCutsceneFx(b.fx ?? "none", accent, textA);
+    // cinematic bars
+    this.rect(0, 0, W, barH, "#05060f");
+    this.rect(0, H - barH, W, barH, "#05060f");
+    this.rect(0, barH, W, 1, hexA(accent, 0.5 * env));
+    this.rect(0, H - barH - 1, W, 1, hexA(accent, 0.5 * env));
+    // text block, centred
+    let cy = Math.round(H * 0.44);
+    if (b.title) { this.q(W / 2, cy, b.title, "#f4f9ff", 1.7, "c", true, textA); cy += 15; }
+    if (b.sub) { this.q(W / 2, cy, b.sub, accent, 0.95, "c", false, textA); cy += 12; }
+    if (b.body) { for (const ln of this.wrapText(b.body, 30).slice(0, 3)) { this.q(W / 2, cy, ln, "#d7e4f5", 1.0, "c", false, textA); cy += 10; } }
+    // beat progress pips + skip hint in the lower bar
+    if (env > 0.6 && (this.cs?.beats.length ?? 0) > 1) {
+      const n = this.cs!.beats.length, pw = 5, gap = 3, tot = n * pw + (n - 1) * gap, x0 = Math.round((W - tot) / 2), py = H - Math.round(barH / 2);
+      for (let i = 0; i < n; i++) this.rect(x0 + i * (pw + gap), py, pw, 1.5, hexA(i <= this.csBeat ? accent : "#6a7590", 0.9));
+    }
+    if (env > 0.8 && this.csClosing <= 0) this.q(W - 6, H - 8, "tap to skip", "#7d88a8", 0.82, "r", false, 0.75);
+  }
+  private drawCutsceneFx(fx: CutsceneFx, accent: string, a: number) {
+    if (this.reduce || a <= 0 || fx === "none") return;
+    const W = this.LW, H = this.LH, cx = W / 2, cy = H * 0.42, t = this.t;
+    switch (fx) {
+      case "fog": {   // pale bands drifting sideways then thinning away
+        for (let i = 0; i < 5; i++) { const fy = H * (0.2 + i * 0.14), off = ((t * (10 + i * 4)) % (W + 80)) - 40; this.b.globalAlpha = a * 0.14; this.disc((off + cx * 0.2) % W, fy, 26 - i * 2, "#cdd8ec"); }
+        this.b.globalAlpha = 1; break;
+      }
+      case "bloom": {   // a swelling ring of light behind the name
+        const r = 10 + (t * 18) % 60; this.b.globalAlpha = a * 0.5; this.ring(cx, cy, r, accent, 1.4); this.glow(cx, cy, 46, accent, a * 0.22); this.b.globalAlpha = 1; break;
+      }
+      case "sparks": {   // slow rising motes
+        for (let i = 0; i < 16; i++) { const sx = cx + Math.sin(i * 2.3) * W * 0.4, sy = H - ((t * 22 + i * 40) % (H * 0.9)); this.b.globalAlpha = a * (0.3 + 0.3 * Math.sin(t * 2 + i)); this.disc(sx, sy, 1 + (i % 2), accent); } this.b.globalAlpha = 1; break;
+      }
+      case "aurora": {   // a soft violet/teal sweep across the top third
+        for (let i = 0; i < 3; i++) { const ay = H * 0.24 + Math.sin(t * 0.8 + i) * 8; this.b.globalAlpha = a * 0.12; this.rect(0, ay + i * 4, W, 3, i === 1 ? "#8be0d6" : accent); } this.b.globalAlpha = 1; break;
+      }
+      case "celebrate": {   // confetti of accent + gold falling
+        for (let i = 0; i < 22; i++) { const px = (i * 53 + (t * 30 % W)) % W, py = ((t * (34 + i % 5 * 6) + i * 30) % H); this.b.globalAlpha = a * 0.85; this.rect(px, py, 2, 2, i % 3 === 0 ? "#ffd98a" : i % 3 === 1 ? accent : "#7ff5e8"); } this.b.globalAlpha = 1; break;
+      }
+      case "dawn": {   // a warm horizon glow rising
+        this.b.globalAlpha = a * 0.3; this.glow(cx, H * 0.62, 70, "#ffb765", a * 0.28); this.rect(0, H * 0.6, W, 1, hexA("#ffd98a", a * 0.4)); this.b.globalAlpha = 1; break;
+      }
+    }
   }
 
   // ---------- props ----------
