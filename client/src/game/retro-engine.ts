@@ -74,8 +74,8 @@ export abstract class RetroEngine {
   protected cv: HTMLCanvasElement;
   private sctx: CanvasRenderingContext2D;
   protected DPR = 1;
-  private dispW = 0;
-  private dispH = 0;
+  protected dispW = 0;
+  protected dispH = 0;
 
   // palette
   protected pal = RETRO_PALETTE;
@@ -163,6 +163,13 @@ export abstract class RetroEngine {
   protected abstract update(dt: number): void;
   /** Paint the buffer with the draw kit. Called every animation frame. */
   protected abstract render(): void;
+  /**
+   * Optional crisp overlay pass, called each frame AFTER the pixel buffer is
+   * scaled up (and CRT applied). Draw here — on the display context, in CSS px —
+   * for smooth, high-res UI text/vector chrome that shouldn't be pixelated.
+   * Logical→display scale is `this.dispW / this.LW`.
+   */
+  protected onOverlay(_g: CanvasRenderingContext2D): void { /* override */ }
   /** Optional hook after resize (subclasses caching geometry). */
   protected onResize(): void { /* override */ }
   /** Optional teardown. */
@@ -191,6 +198,7 @@ export abstract class RetroEngine {
       }
       this.render();
       this.blit();
+      this.onOverlay(this.sctx);   // crisp, full-res pass (smooth UI text) on top of the pixel scene
     }
     this.raf = requestAnimationFrame(this.frame);
   };

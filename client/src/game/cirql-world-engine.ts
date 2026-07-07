@@ -45,6 +45,14 @@ export class CirqlWorldEngine extends RetroEngine {
   private stats: CirqlStats = { sparks: 0, cirqlLit: 3, cirqlTotal: 12, online: 1 };
   private quests: QuestProgress = {};
 
+  // Smooth-text overlay queue: UI/labels are enqueued in logical coords during
+  // render() and painted crisply (system sans) in onOverlay(), so words stay
+  // readable on small phones while the world keeps its 16-bit pixel look.
+  private ui: { x: number; y: number; s: string; c: string; sc: number; align: "l" | "c" | "r"; bold?: boolean; alpha?: number }[] = [];
+  private q(x: number, y: number, s: string, c: string, sc = 1, align: "l" | "c" | "r" = "l", bold = false, alpha = 1) {
+    this.ui.push({ x, y, s, c, sc, align, bold, alpha });
+  }
+
   // ---- hooks the host page wires ----
   /** Fired when the player interacts (E / on-screen action) with a target. */
   onInteract?: (kind: InteractKind, prop: Prop) => void;
@@ -255,6 +263,7 @@ export class CirqlWorldEngine extends RetroEngine {
 
   // ---------- render ----------
   protected render() {
+    this.ui.length = 0;   // reset the smooth-text queue for this frame
     const b = this.b, s = this.SS, W = this.LW * s, H = this.LH * s, pal = this.curRing.palette;
     // sky/sea backdrop
     const g = b.createLinearGradient(0, 0, 0, H);
@@ -431,50 +440,50 @@ export class CirqlWorldEngine extends RetroEngine {
 
   // ---------- HUD ----------
   private nameTag(cx: number, feet: number, name: string, c: string) {
-    const w = this.textWidth(name, 1);
-    this.rect(cx - w / 2 - 1, feet - 26, w + 2, 7, "#0a0714aa");
-    this.text(Math.round(cx - w / 2), feet - 25, name, c, 1, false);
+    const w = Math.max(this.textWidth(name, 1), name.length * 3.4);
+    this.rect(cx - w / 2 - 2, feet - 27, w + 4, 9, "#0a0714b8");
+    this.q(cx, feet - 26, name, c, 0.92, "c", true);
   }
   private labelPill(cx: number, y: number, s: string, c: string) {
-    const w = this.textWidth(s, 1);
-    this.rect(cx - w / 2 - 3, y - 1, w + 6, 8, "#0a0714cc");
-    this.text(Math.round(cx - w / 2), y, s, c, 1, false);
+    const w = Math.max(this.textWidth(s, 1), s.length * 3.4);
+    this.rect(cx - w / 2 - 3, y - 1, w + 6, 9, "#0a0714cc");
+    this.q(cx, y, s, c, 0.95, "c", true);
   }
   private drawHud() {
     // top strip
     this.rect(0, 0, this.LW, 13, "#0a0714b0");
-    this.textCenter(3, "CIRQL", "#ffffff", 1);
-    this.ring(9, 7, 3, "#33e650", 1.3); this.text(15, 3, `${this.stats.online}`, "#c2fbe0", 1, false);
-    const sp = `${this.stats.sparks} SPARKS`;
-    this.text(this.LW - this.textWidth(sp, 1) - 4, 3, sp, "#ffc46b", 1, false);
+    this.q(this.LW / 2, 3, "CIRQL", "#ffffff", 1.25, "c", true);
+    this.ring(9, 7, 3, "#33e650", 1.3); this.q(15, 3, `${this.stats.online}`, "#c2fbe0", 1, "l");
+    this.q(this.LW - 4, 3, `${this.stats.sparks} SPARKS`, "#ffc46b", 1, "r", true);
     // your cirql (bottom-left card)
     const lit = `CIRQL ${this.stats.cirqlLit}/${this.stats.cirqlTotal}`;
     this.rect(3, this.LH - 12, this.textWidth(lit, 1) + 6, 10, "#0a0714aa");
-    this.text(6, this.LH - 10, lit, "#ffc46b", 1, false);
+    this.q(6, this.LH - 11, lit, "#ffc46b", 1, "l", true);
 
     this.drawQuestTracker();
     this.drawMinimap();
 
     // interact prompt
     if (this.near && !this.dialog) {
-      const label = this.near.t === "wonders" ? "ENTER THE WONDERS"
-        : this.near.t === "npc" ? `TALK TO ${(this.near.label || "").toUpperCase()}`
-          : "SET SAIL";
-      const txt = `[E] ${label}`;
-      const w = this.textWidth(txt, 1);
+      const label = this.near.t === "wonders" ? "Enter the Wonders"
+        : this.near.t === "npc" ? `Talk to ${this.near.label || ""}`
+          : "Set sail";
+      const txt = `E · ${label}`;
+      const w = Math.max(this.textWidth(txt, 1), txt.length * 3.6);
       const x = Math.round((this.LW - w) / 2), y = this.LH - 26;
       this.rect(x - 5, y - 3, w + 10, 12, "#0a0714dd");
       this.rectLine(x - 5, y - 3, w + 10, 12, this.near.accent || "#35e0d0");
-      this.text(x, y, txt, "#eaf6ff", 1, false);
+      this.q(this.LW / 2, y, txt, "#eaf6ff", 1, "c", true);
     }
 
     // toast
     if (this.msgT > 0) {
-      const w = this.textWidth(this.msg, 1); const x = Math.round((this.LW - w) / 2);
-      this.b.globalAlpha = Math.min(1, this.msgT * 1.5);
+      const w = Math.max(this.textWidth(this.msg, 1), this.msg.length * 3.4); const x = Math.round((this.LW - w) / 2);
+      const a = Math.min(1, this.msgT * 1.5);
+      this.b.globalAlpha = a;
       this.rect(x - 5, 16, w + 10, 11, "#0a0714e0"); this.rectLine(x - 5, 16, w + 10, 11, "#b26cff");
-      this.text(x, 18, this.msg, "#e6d8ff", 1, false);
       this.b.globalAlpha = 1;
+      this.q(this.LW / 2, 18, this.msg, "#e6d8ff", 1, "c", false, a);
     }
 
     // dialog
@@ -487,12 +496,12 @@ export class CirqlWorldEngine extends RetroEngine {
     const cnt = o.count ?? 1; const have = this.quests[q.id]?.obj[oi] ?? 0;
     const prog = cnt > 1 ? `  ${have}/${cnt}` : "";
     const line = `${o.label}${prog}`;
-    const w = Math.max(this.textWidth(q.name.toUpperCase(), 1), this.textWidth(line, 1)) + 8;
+    const w = Math.max(q.name.length, line.length) * 4.4 + 12;
     const x = 3, y = 15;
-    this.rect(x, y, w, 20, "#0a0714c0");
-    this.rect(x, y, 2, 20, "#ffd24a");
-    this.text(x + 5, y + 3, q.name.toUpperCase(), "#ffd24a", 1, false);
-    this.text(x + 5, y + 12, line, "#eaf6ff", 1, false);
+    this.rect(x, y, w, 21, "#0a0714c0");
+    this.rect(x, y, 2, 21, "#ffd24a");
+    this.q(x + 5, y + 3, q.name, "#ffd24a", 1, "l", true);
+    this.q(x + 5, y + 12, line, "#eaf6ff", 0.95, "l");
   }
   private drawMinimap() {
     const b = this.b, s = this.SS;
@@ -507,6 +516,7 @@ export class CirqlWorldEngine extends RetroEngine {
       b.stroke();
     }
     b.setLineDash([]);
+    this.q(cx, cy - R + 1, "?", "#b4bedc", 1, "c");
     const dr = step * (this.ringIdx + 1);
     // quest objective target (gold, pulsing) at its angle on the current ring
     const tgt = this.objTargetProp();
@@ -514,8 +524,6 @@ export class CirqlWorldEngine extends RetroEngine {
     // player dot at their angle on the current ring
     const ang = Math.atan2(this.posY, this.posX);
     b.fillStyle = "#ffffff"; b.beginPath(); b.arc((cx + Math.cos(ang) * dr) * s, (cy + Math.sin(ang) * dr) * s, 1.8 * s, 0, TAU); b.fill();
-    // "the endless ocean" fog "?"
-    this.text(cx - this.textWidth("?", 1) / 2, cy - R + 1, "?", "rgba(180,190,220,0.6)", 1, false);
   }
   private drawDialog() {
     if (!this.dialog) return;
@@ -523,14 +531,33 @@ export class CirqlWorldEngine extends RetroEngine {
     const boxY = this.LH - 46, boxH = 40;
     this.rect(6, boxY, this.LW - 12, boxH, "#0a0714ee");
     this.rectLine(6, boxY, this.LW - 12, boxH, d.accent);
-    this.text(11, boxY + 4, d.name.toUpperCase(), d.accent, 1, false);
+    this.q(11, boxY + 4, d.name, d.accent, 1, "l", true);
     const line = d.lines[d.i] || "";
-    // wrap to width
-    const words = line.toUpperCase().split(" "); const rows: string[] = []; let cur = "";
-    for (const w of words) { const tryn = cur ? cur + " " + w : w; if (this.textWidth(tryn, 1) > this.LW - 26 && cur) { rows.push(cur); cur = w; } else cur = tryn; }
+    // wrap to width (measured in the smooth font at overlay time is ideal, but the
+    // pixel-width estimate leaves margin, so smooth text always fits inside it)
+    const words = line.split(" "); const rows: string[] = []; let cur = "";
+    for (const w of words) { const tryn = cur ? cur + " " + w : w; if (this.textWidth(tryn, 1) > this.LW - 34 && cur) { rows.push(cur); cur = w; } else cur = tryn; }
     if (cur) rows.push(cur);
-    for (let i = 0; i < Math.min(2, rows.length); i++) this.text(11, boxY + 15 + i * 9, rows[i], "#eaf6ff", 1, false);
-    const hint = d.i < d.lines.length - 1 ? "[E] ▸" : "[E] ✕";
-    this.text(this.LW - this.textWidth(hint, 1) - 11, boxY + boxH - 10, hint, "#9fb0d0", 1, false);
+    for (let i = 0; i < Math.min(3, rows.length); i++) this.q(11, boxY + 15 + i * 9, rows[i], "#eaf6ff", 1, "l");
+    const hint = d.i < d.lines.length - 1 ? "E ▸" : "E ✕";
+    this.q(this.LW - 11, boxY + boxH - 10, hint, "#9fb0d0", 1, "r");
+  }
+
+  // ---------- smooth-text overlay (crisp UI at full display resolution) ----------
+  protected onOverlay(g: CanvasRenderingContext2D) {
+    if (!this.ui.length) return;
+    const sc = this.dispW / this.LW;                       // logical → CSS px
+    g.textBaseline = "top";
+    g.shadowColor = "rgba(0,0,0,0.85)"; g.shadowOffsetX = 0; g.shadowOffsetY = Math.max(1, sc);
+    for (const it of this.ui) {
+      const fs = Math.max(9, Math.round(it.sc * 7.4 * sc));
+      g.font = `${it.bold ? 700 : 600} ${fs}px "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif`;
+      g.textAlign = it.align === "c" ? "center" : it.align === "r" ? "right" : "left";
+      g.globalAlpha = it.alpha ?? 1;
+      g.shadowBlur = 2 * sc;
+      g.fillStyle = it.c;
+      g.fillText(it.s, it.x * sc, it.y * sc);
+    }
+    g.globalAlpha = 1; g.shadowBlur = 0; g.shadowOffsetY = 0; g.textAlign = "left";
   }
 }
