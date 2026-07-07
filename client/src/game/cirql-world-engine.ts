@@ -122,7 +122,10 @@ export class CirqlWorldEngine extends RetroEngine {
   private itop() { return this.dispW > 0 ? this.insetTopCss * this.LW / this.dispW : 0; }
   private ibot() { return this.dispW > 0 ? this.insetBotCss * this.LW / this.dispW : 0; }
   private mapOpen = false;      // full-screen sea chart
+  private chartGeom: { cx: number; cy: number; step: number; rings: number } | null = null;   // sea-chart layout for tap-to-travel
   private pDownPrev = false;    // pointer edge for tap detection
+  /** Fast travel (tap a chart ring to leap there) unlocks once you've sailed out to ring 5. */
+  fastTravelReady() { return this.maxRing >= 5; }
   private minimapCx() { return this.LW - 26; }
   private minimapCy() { return this.itop() + 34; }
   private inMinimap(x: number, y: number) { return Math.hypot(x - this.minimapCx(), y - this.minimapCy()) < 24; }
@@ -347,9 +350,11 @@ export class CirqlWorldEngine extends RetroEngine {
     const from = this.ringIdx;
     // a brand-new outer shore (not a sub-map, never reached before) earns a full arrival cutscene
     const firstShore = !isSubMap(dest) && dest > this.maxRing;
+    const wasFT = this.fastTravelReady();
     this.ringIdx = dest;
     this.curRing = getRing(dest);
     if (!isSubMap(dest)) this.maxRing = Math.max(this.maxRing, dest);   // sub-maps don't lift the fog
+    if (!wasFT && this.fastTravelReady()) this.toast("✦ Fast travel unlocked! Tap a ring on your sea chart to leap there.");   // reward for reaching ring 5
     this.ensureRingQuest();
     const r = this.curRing.radius;
     // arrive at the dock/portal that leads back to where we came from
@@ -798,9 +803,20 @@ export class CirqlWorldEngine extends RetroEngine {
       return;
     }
 
-    // full-screen sea chart: a fresh tap (or E) closes it; nothing else runs
+    // full-screen sea chart: once fast travel is unlocked (reached ring 5), a tap on a
+    // charted ring leaps you there; any other tap (or E) closes it.
     if (this.mapOpen) {
-      if (justDown || this.pressed.a) this.mapOpen = false;
+      if (justDown) {
+        const g = this.chartGeom, here = isSubMap(this.ringIdx) ? parentOf(this.ringIdx) : this.ringIdx;
+        let travelled = false;
+        if (g && this.fastTravelReady()) {
+          const d = Math.hypot(this.pointer.x - g.cx, this.pointer.y - g.cy), i = Math.round(d / g.step) - 1;
+          if (i >= 0 && i < this.knownRings() && i !== here && Math.abs(d - g.step * (i + 1)) < g.step * 0.62) {
+            this.mapOpen = false; this.moveTarget = null; this.doSail(i); travelled = true;
+          }
+        }
+        if (!travelled) this.mapOpen = false;
+      } else if (this.pressed.a) this.mapOpen = false;
       this.camX += ((this.posX - this.LW / 2) - this.camX) * Math.min(1, dt * 8);
       this.camY += ((this.posY - this.LH / 2) - this.camY) * Math.min(1, dt * 8);
       return;
@@ -2336,6 +2352,7 @@ export class CirqlWorldEngine extends RetroEngine {
     const rings = Math.max(MINIMAP_RINGS, this.maxRing + 2), known0 = this.knownRings();
     const homeRing = isSubMap(this.ringIdx) ? parentOf(this.ringIdx) : this.ringIdx;
     const cx = W / 2, cy = H / 2 + 4, maxR = Math.min(W, H) * 0.40, step = maxR / rings;
+    this.chartGeom = { cx, cy, step, rings };   // remember the layout so a tap can fast-travel (once unlocked)
     this.glow(cx, cy, maxR + 10, "#16264d", 0.55);
     for (let i = rings - 1; i >= 0; i--) {
       const rad = step * (i + 1); const known = i < known0;
@@ -2361,7 +2378,14 @@ export class CirqlWorldEngine extends RetroEngine {
     const pa = Math.atan2(this.posY, this.posX), pxp = cx + Math.cos(pa) * pr, pyp = cy + Math.sin(pa) * pr;
     this.glow(pxp, pyp, 9, "#35e0d0", 0.7); this.disc(pxp, pyp, 2.2, "#ffffff"); this.ring(pxp, pyp, 4, "#35e0d0", 1);
     this.q(pxp, pyp - 11, "You", "#ffffff", 0.85, "c", true);
-    this.q(W / 2, H - this.ibot() - 12, "tap anywhere to close", "#8fa6c6", 0.95, "c");
+    // fast-travel affordance: mark charted rings tappable once unlocked (reached ring 5)
+    if (this.fastTravelReady()) {
+      for (let i = 0; i < this.knownRings(); i++) { if (i === homeRing) continue; const rad = step * (i + 1); this.disc(cx, cy + rad, 1.6, "rgba(127,224,208,0.8)"); }
+      this.q(W / 2, H - this.ibot() - 12, "tap a ring to sail there · tap outside to close", "#7be0d0", 0.95, "c", true);
+    } else {
+      this.q(W / 2, H - this.ibot() - 20, "tap anywhere to close", "#8fa6c6", 0.95, "c");
+      this.q(W / 2, H - this.ibot() - 10, "reach the 5th ring to unlock fast travel", "#6f86ad", 0.82, "c");
+    }
   }
   private drawDialog() {
     if (!this.dialog) return;
