@@ -20,6 +20,7 @@ import { generateRingQuest } from "./cirql-quest-gen";
 import { EMOTE_BY_ID, EMOTE_SECONDS, PAIR_BY_ID } from "./cirql-emotes";
 import { arrivalCutscene, BEAT_SECONDS, type Cutscene, type CutsceneBeat, type CutsceneFx } from "./cirql-cutscenes";
 import { decorById, DECOR_SOLID } from "./cirql-decor";
+import { npcLook, type NpcLook } from "./cirql-npc-looks";
 
 export type InteractKind = "wonders" | "npc" | "dock";
 export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; energy: number; }
@@ -1553,15 +1554,83 @@ export class CirqlWorldEngine extends RetroEngine {
   }
   private drawNpc(cx: number, cy: number, p: Prop) {
     const ac = p.accent || "#7fffe6";
+    const L = npcLook(p.id, ac);
+    const idle = this.reduce ? 0 : Math.round(Math.sin(this.t * 1.6 + cx * 0.05) * 0.6);   // gentle breathing
+    if (L.aura && !this.reduce) this.glow(cx, cy - 12, 20, L.aura, 0.28 + 0.08 * Math.sin(this.t * 2.3));
     if (this.near === p) this.glow(cx, cy, 26, ac, 0.3);
-    this.disc(cx, cy + 2, 3, "#0a071460");
-    // simple robed keeper
-    this.rect(cx - 5, cy - 8, 10, 16, ac);
-    this.disc(cx, cy - 12, 5, "#ffe0bd");
-    this.rect(cx - 5, cy - 16, 10, 3, "#2a1c12");
-    // quest spark above head
-    if (!this.reduce) { const yb = cy - 26 + Math.sin(this.t * 3) * 1.5; this.disc(cx, yb, 2, "#ffd24a"); this.ring(cx, yb, 4, "#ffd24a", 1); }
+    this.disc(cx, cy + 3, 4, "#0a071455");                              // grounding shadow
+    const cyb = cy + idle;
+    this.drawNpcFigure(cx, cyb, L);
+    // a floating "talk to me" spark so NPCs read as interactable
+    if (!this.reduce) { const yb = cy - 30 + Math.sin(this.t * 3) * 1.5; this.disc(cx, yb, 1.6, "#ffd24a"); this.ring(cx, yb, 3.5, "#ffd24a", 1); }
     this.nameTag(cx, cy, p.label || "Ferra", ac);
+  }
+  // A characterful little townsperson: outfit + trim, hair/headwear, and a signature
+  // accessory — all from the NPC's stable look (cirql-npc-looks). Feet at (cx, cy).
+  private drawNpcFigure(cx: number, cy: number, L: NpcLook) {
+    const rimC = shade(L.robe, -0.5), hemC = shade(L.robe, -0.28), hiC = shade(L.robe, 0.26);
+    // legs peek under the coat
+    this.rect(cx - 3, cy - 4, 2, 4, "#38302a"); this.rect(cx + 1, cy - 4, 2, 4, "#38302a");
+    // body/robe — dark rim silhouette, coloured coat, hem + sash trim, a lit edge
+    this.rect(cx - 6, cy - 17, 12, 15, rimC);                           // rim
+    this.rect(cx - 5, cy - 16, 10, 13, L.robe);                         // coat
+    this.rect(cx - 5, cy - 16, 10, 1, hiC);                             // top light
+    this.rect(cx - 5, cy - 4, 10, 1, hemC);                            // hem shadow
+    this.rect(cx - 1, cy - 16, 2, 13, L.trim);                          // centre sash
+    this.rect(cx - 5, cy - 12, 10, 1, L.trim);                          // belt
+    // arms
+    this.rect(cx - 7, cy - 15, 2, 8, L.robe); this.rect(cx + 5, cy - 15, 2, 8, L.robe);
+    this.px(cx - 6, cy - 7, L.skin); this.px(cx + 6, cy - 7, L.skin);   // hands
+    // head + hair + face
+    this.drawNpcHead(cx, cy, L);
+    // accessory
+    this.drawNpcAccessory(cx, cy, L);
+  }
+  private drawNpcHead(cx: number, cy: number, L: NpcLook) {
+    const hy = cy - 20;
+    if (L.hat === "hood") this.disc(cx, hy - 1, 6, L.hatColor);          // hood drapes behind the head
+    // hair behind the head (skipped under a full hood or when bald)
+    if (L.hat !== "hood" && L.hairStyle !== "bald") {
+      if (L.hairStyle === "long") { this.rect(cx - 5, hy - 2, 2, 8, L.hair); this.rect(cx + 3, hy - 2, 2, 8, L.hair); }
+    }
+    this.disc(cx, hy, 4, L.skin);
+    this.px(cx - 4, hy + 1, shade(L.skin, -0.25)); this.px(cx + 4, hy + 1, shade(L.skin, -0.25));
+    // face
+    this.px(cx - 2, hy, "#1a1226"); this.px(cx + 2, hy, "#1a1226");
+    this.rect(cx - 1, hy + 2, 3, 1, "#c26a58");
+    // hair on top + headwear
+    if (L.hat !== "hood" && L.hairStyle !== "bald") {
+      this.rect(cx - 4, hy - 4, 8, 3, L.hair);
+      if (L.hairStyle === "bun") this.disc(cx, hy - 6, 2, L.hair);
+    }
+    switch (L.hat) {
+      case "wideBrim": this.rect(cx - 6, hy - 3, 12, 1.5, L.hatColor); this.rect(cx - 3, hy - 6, 6, 3, L.hatColor); this.px(cx, hy - 7, shade(L.hatColor, 0.4)); break;
+      case "band": this.rect(cx - 4, hy - 3, 8, 1.5, L.hatColor); this.px(cx, hy - 4, "#fff1e8"); break;
+      case "cap": this.rect(cx - 4, hy - 5, 8, 2, L.hatColor); this.rect(cx - 6, hy - 4, 4, 1, shade(L.hatColor, -0.25)); this.px(cx, hy - 6, "#ffd24a"); break;
+      case "hood": this.rect(cx - 5, hy - 4, 10, 3, L.hatColor); this.px(cx - 4, hy - 2, shade(L.hatColor, 0.3)); break;
+      default: break;
+    }
+  }
+  private drawNpcAccessory(cx: number, cy: number, L: NpcLook) {
+    switch (L.accessory) {
+      case "staff": {
+        this.rect(cx + 6, cy - 24, 1.5, 24, "#6b4b2c");                 // pole
+        if (!this.reduce) this.glow(cx + 6.75, cy - 24, 9, L.accColor, 0.3 + 0.12 * Math.sin(this.t * 2.4));
+        this.disc(cx + 6.75, cy - 24, 2.4, L.accColor); this.px(cx + 6, cy - 25, "#ffffff");
+        break;
+      }
+      case "lantern": {
+        this.rect(cx + 6, cy - 12, 1, 4, "#3a2a1e");                    // handle arm
+        if (!this.reduce) this.glow(cx + 7, cy - 7, 7, "#ffcf6b", 0.35);
+        this.rect(cx + 5.5, cy - 8, 3, 4, "#caa24a"); this.px(cx + 7, cy - 6, "#fff1c0");
+        break;
+      }
+      case "book": this.rect(cx - 3, cy - 10, 6, 5, L.accColor); this.rect(cx, cy - 10, 1, 5, shade(L.accColor, -0.35)); this.px(cx - 2, cy - 9, "#fff"); break;
+      case "satchel": this.rect(cx - 6, cy - 14, 12, 1, "#5a4028"); this.rect(cx + 3, cy - 8, 4, 4, L.accColor); this.px(cx + 4, cy - 7, shade(L.accColor, 0.3)); break;
+      case "orb": if (!this.reduce) this.glow(cx + 7, cy - 15, 8, L.accColor, 0.35 + 0.12 * Math.sin(this.t * 3)); this.ball(cx + 7, cy - 15, 2.4, L.accColor); break;
+      case "flower": this.rect(cx + 6, cy - 12, 1, 6, "#3a6a34"); for (let i = 0; i < 5; i++) { const a = i * (TAU / 5); this.px(cx + 6 + Math.cos(a) * 1.6, cy - 13 + Math.sin(a) * 1.6, L.accColor); } this.px(cx + 6, cy - 13, "#ffe58a"); break;
+      default: break;
+    }
   }
   // tree kind from a stable hash of world position → a mix of shapes per ring (CHR-259)
   private treeKind(x: number, y: number): "round" | "pine" {
