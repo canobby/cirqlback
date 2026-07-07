@@ -1,6 +1,8 @@
 # CIRQLSPACE — Your Sandbox · Linear Register
 
-Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 14). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H COMPLETE. Chapter 2 (I/J/K — the living world) locked; order I → J → K → F → G. Decisions: new Renown + World Energy · tap-ready/wire-later · fully cozy. **▶ BUILDING Phase I — I1 (idle life) + I2 (movement juice) + I3 (body-gesture emotes) + I4 (paired social gestures) + I5 (biome movement flavor) DONE; next I6 (world interactions) — last of Phase I.**
+Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 15). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H COMPLETE. Chapter 2 (I/J/K — the living world) locked; order I → J → K → F → G. Decisions: new Renown + World Energy · tap-ready/wire-later · fully cozy. **▶ BUILDING Phase I — I1 (idle life) + I2 (movement juice) + I3 (body-gesture emotes) + I4 (paired social gestures) + I5 (biome movement flavor) DONE; next I6 (world interactions) — last of Phase I.**
+
+**Polish pass (owner-requested, 2026-07-07):** ① **prop contrast** — trees + bushes no longer blend into same-colour ground: foliage is a deepened biome-grass with a **dark rim silhouette** + a lit top highlight, so they always read; ② **zoom range widened** — 40%→**25%** min (whole island in view) and 130%→**150%** max; ③ **name tags cleaned** — removed the dark box behind character/NPC names; names now draw as **crisp outlined text** lifted clear of the head + emotes.
 
 **Legend:** ☑ Done · ◐ In progress · ☐ Todo · ⧗ *not yet a Linear issue (free-tier issue cap) — tracked in the plan.*
 

@@ -108,9 +108,9 @@ export class CirqlWorldEngine extends RetroEngine {
   // Smooth-text overlay queue: UI/labels are enqueued in logical coords during
   // render() and painted crisply (system sans) in onOverlay(), so words stay
   // readable on small phones while the world keeps its 16-bit pixel look.
-  private ui: { x: number; y: number; s: string; c: string; sc: number; align: "l" | "c" | "r"; bold?: boolean; alpha?: number }[] = [];
-  private q(x: number, y: number, s: string, c: string, sc = 1, align: "l" | "c" | "r" = "l", bold = false, alpha = 1) {
-    this.ui.push({ x, y, s, c, sc, align, bold, alpha });
+  private ui: { x: number; y: number; s: string; c: string; sc: number; align: "l" | "c" | "r"; bold?: boolean; alpha?: number; halo?: boolean }[] = [];
+  private q(x: number, y: number, s: string, c: string, sc = 1, align: "l" | "c" | "r" = "l", bold = false, alpha = 1, halo = false) {
+    this.ui.push({ x, y, s, c, sc, align, bold, alpha, halo });
   }
   // Safe-area insets (CSS px) so the HUD clears the floating header + controls in
   // full-screen mode; converted to logical px on use.
@@ -267,9 +267,9 @@ export class CirqlWorldEngine extends RetroEngine {
   toggleSit() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.seated = !this.seated; this.poseDirty = true; this.dozing = false; this.idleT = 0; if (this.seated) { this.vx = 0; this.vy = 0; this.moveTarget = null; } this.onSeatChange?.(this.seated); }
   private standUp() { this.dozing = false; this.idleT = 0; if (this.seated) { this.seated = false; this.poseDirty = true; this.onSeatChange?.(false); } }
   isSeated() { return this.seated; }
-  // ---- live zoom (Phase H2) — 0.42 (whole island) … 1.3 (close). Building happens at 1:1. ----
+  // ---- live zoom (Phase H2) — 0.25 (whole ocean) … 1.5 (close). Building happens at 1:1. ----
   onZoomChange?: (z: number) => void;
-  setZoomTarget(z: number) { if (this.editDecor || this.editPaint) z = 1; this.zoomTarget = Math.max(0.42, Math.min(1.3, z)); this.onZoomChange?.(this.zoomTarget); }
+  setZoomTarget(z: number) { if (this.editDecor || this.editPaint) z = 1; this.zoomTarget = Math.max(0.25, Math.min(1.5, z)); this.onZoomChange?.(this.zoomTarget); }
   zoomBy(mult: number) { this.setZoomTarget(this.zoomTarget * mult); }
   getZoom() { return this.zoomTarget; }
   /** Convert a logical screen point to world coords, accounting for the current zoom. */
@@ -1573,15 +1573,20 @@ export class CirqlWorldEngine extends RetroEngine {
     b.moveTo(cx * s, apexY * s); b.lineTo((cx - halfW) * s, (apexY + h) * s); b.lineTo((cx + halfW) * s, (apexY + h) * s); b.closePath(); b.fill();
   }
   private drawTree(cx: number, cy: number, big?: boolean, kind: "round" | "pine" = "round") {
-    const s = big ? 1.4 : 1, pal = this.curRing.palette;
-    this.disc(cx, cy + 2, 6 * s, "#0a071440");
+    const s = big ? 1.4 : 1;
+    // Foliage keyed to the ring's grass but pushed to READ against same-colour ground:
+    // a deeper fill, a dark rim that outlines the silhouette, and a lit top (I-polish).
+    const g = this.curRing.palette.grass, fill = shade(g, -0.18), rim = shade(g, -0.6), hi = shade(g, 0.34);
+    this.disc(cx, cy + 3, 6 * s, "#0a071452");   // grounding contact shadow
     if (kind === "pine") {
       this.rect(cx - 1.5, cy - 6 * s, 3, 8 * s, "#4a3420");                        // trunk
-      for (let i = 0; i < 3; i++) this.triY(cx, cy - 12 * s - i * 6 * s, (9 - i * 2.5) * s, 9 * s, i === 2 ? "#3e6d52" : pal.grass);
+      for (let i = 0; i < 3; i++) this.triY(cx, cy - 12 * s - i * 6 * s, (9 - i * 2.5) * s + 1, 9 * s + 1.5, rim);   // dark silhouette
+      for (let i = 0; i < 3; i++) this.triY(cx, cy - 12 * s - i * 6 * s, (9 - i * 2.5) * s, 9 * s, i === 0 ? hi : fill);   // lit foliage
     } else {
-      this.rect(cx - 2, cy - 8 * s, 4, 10 * s, "#3a2a1e");
-      for (let i = 0; i < 3; i++) this.disc(cx, cy - 14 * s - i * 5 * s, (11 - i * 2) * s, i === 0 ? "#356149" : pal.grass);
-      this.disc(cx - 3 * s, cy - 20 * s, 3 * s, "#3e6d52");                         // highlight
+      this.rect(cx - 2, cy - 8 * s, 4, 10 * s, "#3a2a1e");                          // trunk
+      for (let i = 0; i < 3; i++) this.disc(cx, cy - 14 * s - i * 5 * s, (11 - i * 2) * s + 1.2, rim);   // dark rim silhouette
+      for (let i = 0; i < 3; i++) this.disc(cx, cy - 14 * s - i * 5 * s, (11 - i * 2) * s, fill);        // foliage fill
+      this.disc(cx - 3 * s, cy - 20 * s, 3.2 * s, hi);                              // top-left highlight (lit)
     }
   }
   private drawCrystal(cx: number, cy: number, big: boolean | undefined, c: string) {
@@ -1614,11 +1619,12 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx, cy - 5, 1.3, "#ffe58a");                  // centre
   }
   private drawBush(cx: number, cy: number) {
-    const g = this.curRing.palette.grass;
-    this.disc(cx, cy + 2, 7, "#0a071438");
-    this.disc(cx - 3.5, cy - 1, 4.2, "#2e5638"); this.disc(cx + 3.5, cy - 1, 4.2, "#2e5638");
-    this.disc(cx, cy - 3.5, 5, g); this.disc(cx - 3, cy - 1, 3.4, g); this.disc(cx + 3, cy - 1, 3.4, g);
-    this.disc(cx - 1.5, cy - 4.5, 1.6, "#6fbf7a");          // highlight
+    const g = this.curRing.palette.grass, fill = shade(g, -0.14), rim = shade(g, -0.56), hi = shade(g, 0.32);
+    this.disc(cx, cy + 2, 7, "#0a071448");
+    // dark rim silhouette (so the bush separates from same-colour grass), then lit foliage
+    this.disc(cx, cy - 3.5, 6, rim); this.disc(cx - 3, cy - 1, 4.4, rim); this.disc(cx + 3, cy - 1, 4.4, rim);
+    this.disc(cx, cy - 3.5, 5, fill); this.disc(cx - 3, cy - 1, 3.4, fill); this.disc(cx + 3, cy - 1, 3.4, fill);
+    this.disc(cx - 1.5, cy - 4.5, 1.6, hi);                 // highlight
   }
   private drawFence(cx: number, cy: number, vert: boolean) {
     this.disc(cx, cy + 2, 5, "#0a071430");
@@ -1890,10 +1896,10 @@ export class CirqlWorldEngine extends RetroEngine {
   }
 
   // ---------- HUD ----------
+  // A floating name, drawn crisp with a dark outline (no box) and lifted clear of the
+  // head + emotes so it never obscures the character (polish pass).
   private nameTag(cx: number, feet: number, name: string, c: string) {
-    const w = Math.max(this.textWidth(name, 1), name.length * 3.4);
-    this.rect(cx - w / 2 - 2, feet - 27, w + 4, 9, "#0a0714b8");
-    this.q(cx, feet - 26, name, c, 0.92, "c", true);
+    this.q(cx, feet - 34, name, c, 0.92, "c", true, 1, true);
   }
   private labelPill(cx: number, y: number, s: string, c: string) {
     const w = Math.max(this.textWidth(s, 1), s.length * 3.4);
@@ -2091,7 +2097,13 @@ export class CirqlWorldEngine extends RetroEngine {
       g.font = `${it.bold ? 700 : 600} ${fs}px "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif`;
       g.textAlign = it.align === "c" ? "center" : it.align === "r" ? "right" : "left";
       g.globalAlpha = it.alpha ?? 1;
-      g.shadowBlur = 2 * sc;
+      // haloed text (names) reads on ANY background via a thin dark outline instead of a box
+      if (it.halo) {
+        g.shadowBlur = 0;
+        g.strokeStyle = "rgba(6,6,16,0.9)"; g.lineJoin = "round"; g.lineWidth = Math.max(1.5, fs * 0.18);
+        g.strokeText(it.s, it.x * sc, it.y * sc);
+        g.shadowColor = "rgba(0,0,0,0.9)"; g.shadowBlur = 3;
+      } else g.shadowBlur = 2 * sc;
       g.fillStyle = it.c;
       g.fillText(it.s, it.x * sc, it.y * sc);
     }
