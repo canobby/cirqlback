@@ -578,6 +578,7 @@ export class CirqlWorldEngine extends RetroEngine {
       else if (p.t === "shrine") out.push({ x: p.x, y: p.y, r: 16 });
       else if (p.t === "theater") out.push({ x: p.x, y: p.y - 4, r: 20 });
       else if (p.t === "gathering") out.push({ x: p.x, y: p.y - 2, r: 11 });
+      else if (p.t === "landmark") out.push({ x: p.x, y: p.y, r: p.lm === "waterfall" || p.lm === "stonecircle" ? 20 : 12 });   // walk around the set-piece base (J4)
     }
     // solid décor on CIRQLSPACE — yours, or the host's while you visit (Phase B / E)
     if (this.ringIdx === 0) for (const d of (this.visiting ? this.visiting.decor : this.decor)) {
@@ -613,6 +614,11 @@ export class CirqlWorldEngine extends RetroEngine {
       return;
     }
     if (p.t === "gathering") { this.toast("A good place to rest and meet fellow travellers."); return; }
+    if (p.t === "landmark") {   // a focal set-piece — a meeting spot + (later) a quest home (J4)
+      const flavor: Record<string, string> = { greattree: "The Great Tree — older than the ring itself.", stonecircle: "The Stone Circle hums with a quiet, ancient charge.", lighthouse: "The Lighthouse sweeps the dark water for wanderers.", crystal: "The Great Crystal glows from somewhere deep within.", waterfall: "The Falls thunder into a cool, misted pool.", ruin: "The Old Ruin keeps the secrets of who built it." };
+      this.toast(`${p.label || "A landmark"} · ${flavor[p.lm || ""] || "A memorable place."}`);
+      return;
+    }
     if (p.t === "theater") { const m = this.nowShowing(); this.dialog = { name: "Cirql Drive-In", accent: "#7fd0ff", i: 0, lines: [`Now showing: "${m.title}"`, m.tagline, "Pull up a bench and stay a while."] }; return; }
     if (p.t === "lantern" && p.id) { if (this.currentObjKind() === "lightLanterns" && !this.litForQuest.has(p.id)) { this.litForQuest.add(p.id); this.advanceObjective("lightLanterns"); this.onQuestChange?.(); } }
     else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.enterWithWave(() => this.onInteract?.("wonders", p)); }   // wave/knock at the arcade doors (I6)
@@ -884,10 +890,10 @@ export class CirqlWorldEngine extends RetroEngine {
       for (const p of this.curRing.props) {
         const isQL = this.isQuestLantern(p);
         const puzzle = p.t === "rune" || p.t === "tablet" || p.t === "shrine";
-        const social = p.t === "gathering" || p.t === "theater";
+        const social = p.t === "gathering" || p.t === "theater" || p.t === "landmark";
         if (p.t !== "wonders" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social) continue;
         const d = Math.hypot(this.posX - p.x, this.posY - p.y);
-        const range = p.r ?? (isQL || p.t === "rune" ? 26 : 40);
+        const range = p.t === "landmark" ? 52 : p.r ?? (isQL || p.t === "rune" ? 26 : 40);
         if (d < range && d < best) { best = d; this.near = p; }
       }
       // a nearby live traveller wins the E prompt if closer than any prop → "share a light"
@@ -1030,6 +1036,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "lantern": { const isQ = !!p.id && this.currentObjKind() === "lightLanterns"; const litState = isQ ? this.litForQuest.has(p.id!) : true; draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, litState) }); break; }
         case "dock": draws.push({ y: p.y - 40, f: () => this.drawDock(sxp, syp, p) }); break;
         case "portal": draws.push({ y: p.y, f: () => this.drawPortal(sxp, syp, p) }); break;
+        case "landmark": draws.push({ y: p.y, f: () => this.drawLandmark(sxp, syp, p) }); break;
         case "tablet": draws.push({ y: p.y, f: () => this.drawTablet(sxp, syp, this.near === p) }); break;
         case "rune": { const rl = !!p.id && this.lit.has(p.id); const rn = this.near === p; draws.push({ y: p.y, f: () => this.drawRune(sxp, syp, rl, rn) }); break; }
         case "shrine": draws.push({ y: p.y + 8, f: () => this.drawShrine(sxp, syp, this.puzzleSolved()) }); break;
@@ -1950,6 +1957,84 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rectLine(cx - 18, cy - 31, 36, 39, edge);
     this.labelPill(cx, cy - 40, open ? "The Shrine" : "Sealed Shrine", edge);
   }
+  // ---- focal landmarks (Phase J4): memorable set-pieces that anchor each biome ----
+  private drawLandmark(cx: number, cy: number, p: Prop) {
+    const near = this.near === p;
+    switch (p.lm) {
+      case "greattree": this.lmGreatTree(cx, cy); break;
+      case "stonecircle": this.lmStoneCircle(cx, cy); break;
+      case "lighthouse": this.lmLighthouse(cx, cy); break;
+      case "crystal": this.lmCrystal(cx, cy); break;
+      case "waterfall": this.lmWaterfall(cx, cy); break;
+      case "ruin": this.lmRuin(cx, cy); break;
+      default: break;
+    }
+    if (near || this.zoom < 0.6) this.labelPill(cx, cy - 74, p.label || "Landmark", p.accent || "#ffd24a");
+  }
+  private lmGreatTree(cx: number, cy: number) {
+    const g = this.curRing.palette.grass, fill = shade(g, -0.2), rim = shade(g, -0.62), hi = shade(g, 0.34);
+    this.disc(cx, cy + 4, 16, "#0a071452");
+    this.rect(cx - 5, cy - 30, 10, 32, "#3a2a1a"); this.rect(cx - 5, cy - 30, 3, 32, "#4a3624");   // trunk
+    this.rect(cx - 9, cy - 1, 4, 3, "#3a2a1a"); this.rect(cx + 5, cy - 1, 4, 3, "#3a2a1a");         // roots
+    const clumps: [number, number, number][] = [[0, -52, 22], [-16, -44, 15], [16, -44, 15], [0, -66, 16]];
+    for (const [dx, dy, r] of clumps) this.disc(cx + dx, cy + dy, r + 2, rim);
+    for (const [dx, dy, r] of clumps) this.disc(cx + dx, cy + dy, r, fill);
+    this.disc(cx - 8, cy - 62, 6, hi);
+    if (!this.reduce) { this.glow(cx - 14, cy - 36, 8, "#ffcf6b", 0.3); this.glow(cx + 14, cy - 36, 8, "#ffcf6b", 0.3); }
+    this.disc(cx - 14, cy - 36, 1.6, "#ffe0a0"); this.disc(cx + 14, cy - 36, 1.6, "#ffe0a0");        // hanging lanterns
+  }
+  private lmStoneCircle(cx: number, cy: number) {
+    this.disc(cx, cy + 4, 24, "#0a071445");
+    if (!this.reduce) this.glow(cx, cy - 6, 15, this.curRing.palette.accent, 0.18 + 0.08 * Math.sin(this.t * 1.5));
+    this.rect(cx - 6, cy - 3, 12, 5, "#4a4652"); this.rect(cx - 6, cy - 3, 12, 1, "#605c6a");        // altar
+    const n = 7, stones: [number, number][] = [];
+    for (let i = 0; i < n; i++) { const a = (i / n) * TAU; stones.push([cx + Math.cos(a) * 26, cy + Math.sin(a) * 15]); }
+    stones.sort((a, b) => a[1] - b[1]);
+    for (const [sx, sy] of stones) { this.rect(sx - 3, sy - 17, 6, 19, "#5a5560"); this.rect(sx - 3, sy - 17, 6, 2, "#6e6878"); this.rect(sx - 2, sy - 15, 1, 13, "#797286"); }
+  }
+  private lmLighthouse(cx: number, cy: number) {
+    const b = this.b, s = this.SS;
+    this.disc(cx, cy + 4, 12, "#0a071452");
+    this.rect(cx - 9, cy - 8, 18, 8, "#8a8078"); this.rect(cx - 2, cy - 6, 4, 6, "#3a3238");         // base + door
+    for (let i = 0; i < 9; i++) { const yy = cy - 8 - i * 6, w = 9 - i * 0.45; this.rect(cx - w, yy - 6, w * 2, 6, i % 2 === 0 ? "#e8e2da" : "#c0392b"); this.rect(cx - w, yy - 6, w * 2, 1, "#ffffff30"); }
+    const ly = cy - 8 - 9 * 6;
+    this.rect(cx - 7, ly - 1, 14, 2, "#5a5560"); this.rect(cx - 6, ly - 6, 12, 6, "#3a3540");        // gallery + lamp room
+    this.rect(cx - 4, ly - 4, 8, 4, "#ffe9a8"); this.triY(cx, ly - 13, 8, 7, "#b0362a");             // light + roof
+    if (!this.reduce) {
+      this.glow(cx, ly - 2, 20, "#fff0b0", 0.4 + 0.15 * Math.sin(this.t * 2));
+      const dx = Math.cos(this.t * 0.7);                                                              // sweeping beam
+      b.fillStyle = hexA("#fff0b0", 0.12); b.beginPath(); b.moveTo(cx * s, (ly - 2) * s); b.lineTo((cx + dx * 62) * s, (ly - 20) * s); b.lineTo((cx + dx * 62) * s, (ly + 16) * s); b.closePath(); b.fill();
+    }
+  }
+  private lmCrystal(cx: number, cy: number) {
+    const ac = this.curRing.palette.accent;
+    this.disc(cx, cy + 4, 14, "#0a071452");
+    if (!this.reduce) this.glow(cx, cy - 26, 40, ac, 0.26 + 0.12 * Math.sin(this.t * 1.4));
+    this.triY(cx - 12, cy - 30, 6, 28, shade(ac, -0.18)); this.triY(cx + 12, cy - 34, 7, 32, shade(ac, 0.06));   // side shards
+    this.triY(cx, cy - 54, 10, 42, ac); this.rect(cx - 8, cy - 14, 16, 14, shade(ac, -0.12));                    // main shard + base
+    this.rect(cx - 2, cy - 48, 3, 46, "#ffffff");                                                                 // highlight
+    this.triY(cx - 8, cy - 18, 5, 18, ac); this.triY(cx + 9, cy - 16, 5, 16, ac);
+    if (!this.reduce) for (let i = 0; i < 3; i++) { const yy = cy - 44 - ((this.t * 8 + i * 14) % 30); this.px(cx - 10 + i * 10, Math.round(yy), "#ffffff"); }
+  }
+  private lmWaterfall(cx: number, cy: number) {
+    const b = this.b, s = this.SS;
+    this.disc(cx, cy + 3, 20, "#0a071440");
+    this.rect(cx - 14, cy - 46, 28, 46, "#4a4652"); this.rect(cx - 14, cy - 46, 28, 3, "#5e5a68");   // cliff
+    this.rect(cx - 14, cy - 46, 4, 46, "#565260"); this.rect(cx + 10, cy - 46, 4, 46, "#3e3a48");
+    for (let i = 0; i < 3; i++) this.rect(cx - 6 + i * 6 - 1, cy - 44, 3, 42, "rgba(190,230,255,0.7)");   // water columns
+    if (!this.reduce) for (let i = 0; i < 6; i++) { const yy = cy - 44 + ((this.t * 44 + i * 8) % 44); this.px(cx - 6 + ((i * 4) % 13), Math.round(yy), "rgba(255,255,255,0.85)"); }
+    b.fillStyle = hexA("#7fd0e0", 0.5); b.beginPath(); b.ellipse(cx * s, cy * s, 16 * s, 5 * s, 0, 0, TAU); b.fill();   // pool
+    if (!this.reduce) for (let i = 0; i < 4; i++) this.disc(cx - 8 + i * 5, cy - 2 - Math.sin(this.t * 2 + i) * 2, 2, "rgba(220,245,255,0.25)");   // mist
+  }
+  private lmRuin(cx: number, cy: number) {
+    this.disc(cx, cy + 4, 18, "#0a071445");
+    const st = "#6a5a48", st2 = "#54473a", st3 = "#7e6e56";
+    const cols: [number, number][] = [[-16, -30], [0, -40], [16, -24]];
+    for (const [dx, h] of cols) { const topY = cy + h, ht = -h; this.rect(cx + dx - 4, topY, 8, ht, st); this.rect(cx + dx - 4, topY, 8, 2, st3); this.rect(cx + dx - 4, topY, 2, ht, st2); }
+    this.rect(cx - 20, cy - 42, 22, 5, st); this.rect(cx - 20, cy - 42, 22, 1, st3);                  // fallen lintel
+    if (!this.reduce) this.glow(cx, cy - 16, 16, this.curRing.palette.accent, 0.15 + 0.06 * Math.sin(this.t * 1.5));
+    this.px(cx - 1, cy - 16, this.curRing.palette.accent);
+  }
   // ---- social gathering spots ----
   private drawGathering(cx: number, cy: number, p: Prop) {
     const near = this.near === p;
@@ -2059,10 +2144,10 @@ export class CirqlWorldEngine extends RetroEngine {
   private nameTag(cx: number, feet: number, name: string, c: string) {
     this.q(cx, feet - 34, name, c, 0.92, "c", true, 1, true);
   }
+  // A place label (landmarks, docks, portals, gathering spots) — crisp outlined text, no
+  // box, matching the character name tags (readability polish).
   private labelPill(cx: number, y: number, s: string, c: string) {
-    const w = Math.max(this.textWidth(s, 1), s.length * 3.4);
-    this.rect(cx - w / 2 - 3, y - 1, w + 6, 9, "#0a0714cc");
-    this.q(cx, y, s, c, 0.95, "c", true);
+    this.q(cx, y, s, c, 0.95, "c", true, 1, true);
   }
   private drawHud() {
     const it = this.itop(), ib = this.ibot();
@@ -2096,6 +2181,7 @@ export class CirqlWorldEngine extends RetroEngine {
                   : this.near.t === "shrine" ? (this.puzzleSolved() ? "Enter the shrine" : "The shrine is sealed")
                     : this.near.t === "theater" ? "Watch the show"
                       : this.near.t === "gathering" ? "Rest a while"
+                        : this.near.t === "landmark" ? `Visit ${this.near.label || "the landmark"}`
                         : this.near.t === "portal" ? (this.near.sub === "up" ? "Return to the surface" : this.near.sub === "cave" ? "Descend into the cave" : this.near.sub === "tree" ? "Climb the great tree" : "Ascend the cloud stair")
                           : "Set sail";
       promptTxt = `E · ${label}`; promptAcc = this.near.accent || "#35e0d0";

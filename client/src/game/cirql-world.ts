@@ -28,7 +28,10 @@ export type PropType =
   | "flower"    // a decorative flower cluster (soft — walk through)
   | "fence"     // a short fence segment (solid — walk around)
   | "path"      // a dirt/stone trail patch (ground decoration — walk over)
+  | "landmark"  // a focal set-piece (Great Tree, stone circle, lighthouse…) — quest home + meeting spot (Phase J4)
   | "portal";   // a cave/hollow-tree/cloud-stair — travel to a sub-map (CHR-265)
+
+export type LandmarkKind = "greattree" | "stonecircle" | "lighthouse" | "crystal" | "waterfall" | "ruin";
 
 export interface Prop {
   t: PropType;
@@ -42,6 +45,7 @@ export interface Prop {
   r?: number;           // interaction/collision radius override (world units)
   vert?: boolean;       // fence: draw the segment vertically (for corral sides)
   sub?: "cave" | "tree" | "cloud" | "up";   // portal kind (CHR-265)
+  lm?: LandmarkKind;    // landmark set-piece kind (Phase J4)
 }
 
 export interface RingPalette {

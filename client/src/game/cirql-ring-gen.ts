@@ -7,7 +7,7 @@
 // generated ring exactly like an authored one. Reuses the CirqlBreak infinite-worlds
 // seeding idea: pure function of the index → the same land for everyone, every time.
 
-import { RINGS, type Ring, type Prop, type RingPalette } from "./cirql-world";
+import { RINGS, type Ring, type Prop, type RingPalette, type LandmarkKind } from "./cirql-world";
 
 // deterministic RNG seeded from an integer (mulberry32)
 function rngFrom(seed: number) {
@@ -32,6 +32,7 @@ interface Biome {
   fence: boolean;      // a fence segment
   path: boolean;       // a dirt/stone trail from the shore inland
   ambient: "butterfly" | "firefly" | "ember" | "snow" | "gull" | "dust" | "bee" | "dragonfly" | "grasshopper";   // signature critter
+  landmark: LandmarkKind;   // the biome's signature focal set-piece (Phase J4)
 }
 
 // Each biome is its own SCENE / season — distinct palette + landscape mix + the critter
@@ -39,28 +40,28 @@ interface Biome {
 // feels different (spring meadow, tropical lagoon, winter, dry desert, autumn wood…).
 const BIOMES: Biome[] = [
   // spring meadow — flowers galore, a fence, butterflies
-  { key: "meadow", tree: true, crystals: 0, lanterns: 3, rocks: 1, pond: true, flowers: 12, fence: false, path: true, ambient: "butterfly",
+  { key: "meadow", tree: true, crystals: 0, lanterns: 3, rocks: 1, pond: true, flowers: 12, fence: false, path: true, ambient: "butterfly", landmark: "greattree",
     palette: { sky: ["#20331f", "#12241a"], sea: "#0e2c33", land: "#2a5a30", grass: "#43884a", sand: "#cdb87a", accent: "#a6f06a", mote: "#e0ffb0" } },
   // tropical lagoon — turquoise water, palms, dragonflies
-  { key: "tropical", tree: true, crystals: 0, lanterns: 4, rocks: 2, pond: true, flowers: 7, fence: false, path: true, ambient: "dragonfly",
+  { key: "tropical", tree: true, crystals: 0, lanterns: 4, rocks: 2, pond: true, flowers: 7, fence: false, path: true, ambient: "dragonfly", landmark: "waterfall",
     palette: { sky: ["#0e3040", "#0a2233"], sea: "#0a5f70", land: "#1f5a52", grass: "#2f8a6a", sand: "#f0e0a0", accent: "#4fe0d0", mote: "#bafff0" } },
   // winter — snow, frosted trees, pale + still
-  { key: "winter", tree: true, crystals: 2, lanterns: 4, rocks: 3, pond: false, flowers: 0, fence: false, path: true, ambient: "snow",
+  { key: "winter", tree: true, crystals: 2, lanterns: 4, rocks: 3, pond: false, flowers: 0, fence: false, path: true, ambient: "snow", landmark: "crystal",
     palette: { sky: ["#1b2740", "#101a30"], sea: "#173a56", land: "#3a4a60", grass: "#5a6f88", sand: "#dfeaf6", accent: "#bfe6ff", mote: "#eef7ff" } },
   // dry desert — sand + red rock, many boulders, no trees, grasshoppers
-  { key: "desert", tree: false, crystals: 1, lanterns: 3, rocks: 9, pond: false, flowers: 1, fence: false, path: true, ambient: "grasshopper",
+  { key: "desert", tree: false, crystals: 1, lanterns: 3, rocks: 9, pond: false, flowers: 1, fence: false, path: true, ambient: "grasshopper", landmark: "ruin",
     palette: { sky: ["#3a2414", "#20140c"], sea: "#243026", land: "#6a4526", grass: "#8a6a34", sand: "#e8c485", accent: "#ffb058", mote: "#ffe0a8" } },
   // autumn wood — amber trees, a fence, bees
-  { key: "autumn", tree: true, crystals: 0, lanterns: 4, rocks: 2, pond: false, flowers: 3, fence: false, path: true, ambient: "bee",
+  { key: "autumn", tree: true, crystals: 0, lanterns: 4, rocks: 2, pond: false, flowers: 3, fence: false, path: true, ambient: "bee", landmark: "stonecircle",
     palette: { sky: ["#2e1c12", "#1a1008"], sea: "#243026", land: "#5a3a1e", grass: "#8a5a26", sand: "#d8b070", accent: "#ff9a3c", mote: "#ffd090" } },
   // deep woodland — dense trees, a pond, fireflies
-  { key: "woodland", tree: true, crystals: 1, lanterns: 4, rocks: 3, pond: true, flowers: 4, fence: false, path: true, ambient: "firefly",
+  { key: "woodland", tree: true, crystals: 1, lanterns: 4, rocks: 3, pond: true, flowers: 4, fence: false, path: true, ambient: "firefly", landmark: "greattree",
     palette: { sky: ["#12241a", "#0a160f"], sea: "#0c2036", land: "#1c3a26", grass: "#2a5a38", sand: "#a89060", accent: "#8ef0a0", mote: "#c8ffd6" } },
   // sunlit coast — beach, gulls, rocks
-  { key: "coast", tree: true, crystals: 0, lanterns: 5, rocks: 5, pond: false, flowers: 2, fence: false, path: false, ambient: "gull",
+  { key: "coast", tree: true, crystals: 0, lanterns: 5, rocks: 5, pond: false, flowers: 2, fence: false, path: false, ambient: "gull", landmark: "lighthouse",
     palette: { sky: ["#183048", "#0e1c34"], sea: "#0a5578", land: "#20464a", grass: "#2f7a6a", sand: "#f0dca0", accent: "#6fd8ff", mote: "#bff0ff" } },
   // ember reach — volcanic, rising embers
-  { key: "ember", tree: false, crystals: 2, lanterns: 3, rocks: 5, pond: false, flowers: 0, fence: false, path: true, ambient: "ember",
+  { key: "ember", tree: false, crystals: 2, lanterns: 3, rocks: 5, pond: false, flowers: 0, fence: false, path: true, ambient: "ember", landmark: "ruin",
     palette: { sky: ["#2e1622", "#1a0f16"], sea: "#241016", land: "#4a2020", grass: "#6a3028", sand: "#caa070", accent: "#ff7a4c", mote: "#ffb890" } },
 ];
 
@@ -184,6 +185,13 @@ export function generateRing(index: number): Ring {
     }
   }
 
+  // the biome's FOCAL LANDMARK (Phase J4) — a memorable set-piece that doubles as a quest
+  // home + postcard subject + meeting spot. Placed prominently to one side, off the dock lanes.
+  {
+    const lm = biome.landmark, lmSide = rng() > 0.5 ? 1 : -1;
+    const lmLabel: Record<LandmarkKind, string> = { greattree: "The Great Tree", stonecircle: "The Stone Circle", lighthouse: "The Lighthouse", crystal: "The Great Crystal", waterfall: "The Falls", ruin: "The Old Ruin" };
+    props.push({ t: "landmark", x: lmSide * radius * (0.34 + rng() * 0.12), y: (rng() - 0.5) * radius * 0.3, lm, id: `landmark-${index}`, label: lmLabel[lm], accent: biome.palette.accent, r: 46 });
+  }
   // a social gathering spot on every ring — ring 2's is the Cirql Drive-In (an outdoor
   // movie screen); the rest get a bonfire commons. Placed east/west, off the dock lanes.
   if (index === 2) {
