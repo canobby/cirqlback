@@ -63,9 +63,6 @@ export class CirqlWorldEngine extends RetroEngine {
   private decor: { item: string; x: number; y: number }[] = [];
   private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
   private visiting: { name: string; decor: { item: string; x: number; y: number }[] } | null = null;
-  // real-world tapped businesses surfaced as CIRQLSPACE landmarks (CHR-261) — clickable
-  private landmarks: { name: string; glyph: string; accent: string; visits: number; points: number; x: number; y: number }[] = [];
-  private nearLandmark = -1;   // index of the landmark in interact range (-1 = none)
   private camX = 0; private camY = 0;
   private t = 0;
   private hero: AvatarConfig;
@@ -127,8 +124,6 @@ export class CirqlWorldEngine extends RetroEngine {
   onEmote?: (emote: string) => void;
   /** Fired at the end of a sailing voyage with the light gathered (host grants sparqs). */
   onVoyageReward?: (sparqs: number) => void;
-  /** Fired when the player taps / interacts with a tapped-business landmark (CHR-261). */
-  onLandmarkTap?: (lm: { name: string; glyph: string; accent: string; visits: number; points: number }) => void;
 
   // ---- M9 party (host wires these to the campaign/party state) ----
   private partyWp: { x: number; y: number } | null = null;   // shared campaign waypoint
@@ -169,26 +164,7 @@ export class CirqlWorldEngine extends RetroEngine {
   endDecorEdit() { this.editDecor = false; }
   decorEditing() { return this.editDecor; }
   clearDecor() { if (this.decor.length) { this.decor = []; this.onDecorChange?.(); } }
-  /** Real businesses you've tapped, planted as clickable signpost landmarks scattered
-   *  around CIRQLSPACE (CHR-261). Each carries your award status (visits + points). */
-  setLandmarks(list: { name: string; glyph: string; accent: string; visits?: number; points?: number }[]) {
-    this.landmarks = Array.isArray(list) ? list.slice(0, 24).map((l, i) => {
-      const p = this.scatterLandmark(i, (l.name || "") + i);
-      return { name: (l.name || "").slice(0, 22), glyph: l.glyph || "📍", accent: l.accent || "#ffc46b", visits: +(l.visits ?? 0), points: +(l.points ?? 0), x: p.x, y: p.y };
-    }) : [];
-  }
-  /** Deterministic pseudo-random scatter around the OPEN south of CIRQLSPACE (clear of the
-   *  north cottage + the NW rune grove), so landmarks read as their own spots. */
-  private scatterLandmark(i: number, seed: string) {
-    let h = 2166136261; for (let k = 0; k < seed.length; k++) { h ^= seed.charCodeAt(k); h = Math.imul(h, 16777619); }
-    const r1 = ((h >>> 0) % 1000) / 1000, r2 = (((h >>> 10) >>> 0) % 1000) / 1000;
-    const a = i * 2.399963 + r1 * TAU;                          // golden-angle spread + hash jitter
-    const rr = 150 + r2 * 200;                                  // ring band on the green
-    return { x: Math.round(Math.cos(a) * rr), y: Math.round(Math.abs(Math.sin(a)) * rr * 0.85 + 40) };   // southern crescent
-  }
-  /** The award status for the landmark under the interact prompt (host reads on tap). */
-  landmarkAt(i: number) { return this.landmarks[i] ?? null; }
-  /** Visit another traveller's Hearth (render their décor read-only over the Hearth). */
+  /** Visit another traveller's CIRQLSPACE (render their décor read-only over it). */
   startVisit(name: string, decor: { item: string; x: number; y: number }[]) {
     this.editDecor = false;
     this.visiting = { name: (name || "Traveller").slice(0, 16), decor: (decor || []).filter((d) => d && decorById[d.item]) };
@@ -468,7 +444,6 @@ export class CirqlWorldEngine extends RetroEngine {
       return;
     }
     if (this.nearPlayer) { this.onShareLight?.(this.nearPlayer.id); return; }   // share a light with a traveller
-    if (this.nearLandmark >= 0 && !this.near) { const lm = this.landmarks[this.nearLandmark]; if (lm) this.onLandmarkTap?.(lm); return; }   // open a landmark's status (CHR-261)
     const p = this.near; if (!p) return;
     // ---- The Sunken Runes puzzle (CHR-258) ----
     if (p.t === "tablet") { this.openTablet(p); return; }
@@ -638,18 +613,9 @@ export class CirqlWorldEngine extends RetroEngine {
       this.moveTarget = null;
     }
 
-    // tapping a tapped-business landmark opens its award status (CHR-261) — consumes the tap
-    let tapLandmark = false;
-    if (this.ringIdx === 0 && !this.visiting && !this.editDecor && justDown && !tapMap && !this.dialog) {
-      for (let i = 0; i < this.landmarks.length; i++) {
-        const lm = this.landmarks[i], sx = lm.x - this.camX, sy = lm.y - 16 - this.camY;
-        if (Math.hypot(this.pointer.x - sx, this.pointer.y - sy) < 16) { this.onLandmarkTap?.(lm); this.moveTarget = null; tapLandmark = true; break; }
-      }
-    }
-
     // movement is frozen while a dialog is open or the chart is up
     if (!this.dialog && !tapMap) {
-      if (this.pointer.down && !this.inMinimap(this.pointer.x, this.pointer.y) && !this.editDecor && !tapLandmark) this.moveTarget = { x: this.pointer.x + this.camX, y: this.pointer.y + this.camY };
+      if (this.pointer.down && !this.inMinimap(this.pointer.x, this.pointer.y) && !this.editDecor) this.moveTarget = { x: this.pointer.x + this.camX, y: this.pointer.y + this.camY };
       let dx = (this.btn.right ? 1 : 0) - (this.btn.left ? 1 : 0);
       let dy = (this.btn.down ? 1 : 0) - (this.btn.up ? 1 : 0);
       if (dx || dy) this.moveTarget = null;
@@ -695,9 +661,6 @@ export class CirqlWorldEngine extends RetroEngine {
         const d = Math.hypot(this.posX - r.x, this.posY - r.y);
         if (d < 30 && d < best) { best = d; this.nearPlayer = { id, name: r.name }; this.near = null; }
       }
-      // nearest tapped-business landmark (CIRQLSPACE only) — offers an E prompt to open its status
-      this.nearLandmark = -1;
-      if (this.ringIdx === 0 && !this.visiting) { let bl = 26 * 26; for (let i = 0; i < this.landmarks.length; i++) { const lm = this.landmarks[i]; const dd = (this.posX - lm.x) ** 2 + (this.posY - (lm.y - 6)) ** 2; if (dd < bl) { bl = dd; this.nearLandmark = i; } } }
 
       // "reach" quest objectives complete automatically by walking onto the target
       const tgt = this.objTargetProp();
@@ -835,8 +798,6 @@ export class CirqlWorldEngine extends RetroEngine {
         else if (def.render === "fence") draws.push({ y: d.y, f: () => this.drawFence(sx, sy, false) });
         else draws.push({ y: d.y, f: () => this.drawDecor(sx, sy, def.glyph, def.scale ?? 1) });
       }
-      // real-world tapped businesses, as clickable signpost landmarks (your CIRQLSPACE only, CHR-261)
-      if (!this.visiting) for (let i = 0; i < this.landmarks.length; i++) { const lm = this.landmarks[i]; draws.push({ y: lm.y, f: () => this.drawLandmark(lm.x - camX, lm.y - camY, lm, i === this.nearLandmark) }); }
     }
     // the player
     draws.push({ y: this.posY, f: () => this.drawHero(this.posX - camX, this.posY - camY) });
@@ -1033,18 +994,6 @@ export class CirqlWorldEngine extends RetroEngine {
     if (m === "hop") { const j = Math.sin(this.t * 6); return j > 0 ? -Math.round(j * 5) : 0; }   // wave/celebrate/flip
     if (m === "sit") return 3;                                                  // settle down to rest
     return 0;
-  }
-  // A tapped-business landmark (CHR-261): a little glowing signpost with the shop's
-  // name — your real-world taps lighting your Hearth.
-  private drawLandmark(cx: number, cy: number, lm: { name: string; glyph: string; accent: string }, near = false) {
-    this.disc(cx, cy + 4, 4, "#0a071450");
-    if (near) this.ring(cx, cy - 16, 9, "#fff2cf", 1.2);         // highlight when in reach
-    this.rect(cx - 1, cy - 10, 2, 14, "#7a4a2a");                 // post
-    this.glow(cx, cy - 16, 16, lm.accent, this.reduce ? 0.35 : 0.28 + 0.1 * Math.sin(this.t * 2 + cx));
-    this.disc(cx, cy - 16, 6, hexA(lm.accent, 0.9));             // lantern orb
-    this.ring(cx, cy - 16, 6, "#fff2cf", 1);
-    this.q(cx, cy - 20, lm.glyph, "#ffffff", 1.1, "c");          // category glyph
-    this.labelPill(cx, cy - 34, lm.name, lm.accent);            // shop name
   }
   // A placed décor piece (CHR-259): an emoji glyph standing on a soft shadow.
   private drawDecor(cx: number, cy: number, glyph: string, scale: number, alpha = 1) {
@@ -1498,7 +1447,6 @@ export class CirqlWorldEngine extends RetroEngine {
     // interact prompt — bottom-centre, above the controls (a live traveller wins over props)
     let promptTxt = "", promptAcc = "#35e0d0";
     if (this.nearPlayer && !this.dialog) { promptTxt = `E · Share a light with ${this.nearPlayer.name}`; promptAcc = "#ffc46b"; }
-    else if (this.nearLandmark >= 0 && !this.near && !this.dialog) { const lm = this.landmarks[this.nearLandmark]; if (lm) { promptTxt = `E · ${lm.name}`; promptAcc = lm.accent; } }
     else if (this.near && !this.dialog) {
       const label = this.near.t === "wonders" ? "Enter CirqlCade"
         : this.near.t === "npc" ? `Talk to ${this.near.label || ""}`
