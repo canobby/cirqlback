@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin } from "lucide-react";
+import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlWorldEngine, type QuestLogRow } from "@/game/cirql-world-engine";
 import type { Btn } from "@/game/retro-engine";
@@ -11,6 +11,7 @@ import { ARCADE_GAMES } from "@/game/registry";
 import { CAMPAIGNS, campaignById, MATCH_TAGS, difficultyMeta } from "@/game/cirql-campaigns";
 import { dailyForDate, activeEvent, todayStr, type DailyTask, type CirqlEvent } from "@/game/cirql-daily";
 import { ringName } from "@/game/cirql-ring-gen";
+import { EMOTES } from "@/game/cirql-emotes";
 
 const SPARK_PER_PLAY = 2;
 const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
@@ -64,6 +65,7 @@ export default function Cirql() {
   const [connected, setConnected] = useState(false);
   const [online, setOnline] = useState(1);
   const [showChat, setShowChat] = useState(false);
+  const [showEmotes, setShowEmotes] = useState(false);      // emote wheel (CHR-260)
   const [chatDraft, setChatDraft] = useState("");
   const [chatScope, setChatScope] = useState<"global" | "party">("global");
   const [feed, setFeed] = useState<{ key: number; name: string; text: string; me: boolean; party: boolean }[]>([]);
@@ -152,6 +154,7 @@ export default function Cirql() {
   };
   const sendChat = () => { const t = chatDraft.trim(); if (!t) return; wsSend({ t: "chat", text: t, scope: party && chatScope === "party" ? "party" : "global" }); setChatDraft(""); };
   const shareLight = (id: string) => wsSend({ t: "light", to: id });
+  const playEmote = (id: string) => { engineRef.current?.playEmote(id); setShowEmotes(false); };
 
   // M9 board + party actions
   const postRequest = () => {
@@ -221,6 +224,7 @@ export default function Cirql() {
     wsRef.current = ws;
     eng.onPresence = (ring, x, y, facing) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: "move", ring, x, y, dir: facing })); };
     eng.onShareLight = (id) => shareLight(id);
+    eng.onEmote = (emote) => wsSend({ t: "emote", emote });
     eng.onPartyArrive = () => { const p = partyRef.current; if (p) wsSend({ t: "party:advance", step: p.step }); };
     const refreshCount = () => { const n = eng.remoteCount() + 1; setOnline(n); eng.setStats({ online: n }); };
     ws.onopen = () => { setConnected(true); tryJoin(); };
@@ -233,6 +237,7 @@ export default function Cirql() {
       else if (m.t === "leave") { eng.removeRemote(m.id); refreshCount(); }
       else if (m.t === "chat") { if (blockedRef.current.has(m.id) && m.id !== myIdRef.current) return; const isP = m.channel === "party"; if (m.id === myIdRef.current) { eng.sayLocal(m.text); pushFeed(m.name, m.text, true, isP); } else { eng.chatRemote(m.id, m.text); pushFeed(m.name, m.text, false, isP); } }
       else if (m.t === "lit") { receiveLight(m.id, m.name); }
+      else if (m.t === "emote") { if (!blockedRef.current.has(m.id)) eng.emoteRemote(m.id, m.emote); }
       // M9 board + party
       else if (m.t === "board:list") { setBoard((m.posts || []).filter((p: any) => !blockedRef.current.has(p.byId))); }
       else if (m.t === "party:state") { applyParty({ id: m.id, campaignId: m.campaignId, hostId: m.hostId, step: m.step, steps: m.steps, max: m.max, members: m.members || [] }); }
@@ -457,11 +462,38 @@ export default function Cirql() {
         </div>
       )}
 
+      {/* emote wheel (CHR-260) — a grid of chat-free expressions; tap to play + broadcast */}
+      {showEmotes && (
+        <div className="pointer-events-auto absolute inset-x-0 bottom-[128px] z-[15] mx-auto max-w-[340px] px-4" data-testid="emote-wheel">
+          <div className="rounded-2xl border p-2.5" style={{ borderColor: "rgba(178,108,255,.4)", background: "rgba(10,12,28,.96)", boxShadow: "0 10px 34px rgba(0,0,0,.55)" }}>
+            <div className="mb-1.5 flex items-center px-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-violet-300/80">Emotes</span>
+              <button onClick={() => setShowEmotes(false)} className="ml-auto text-slate-400 hover:text-slate-200"><X className="h-3.5 w-3.5" /></button>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {EMOTES.map((e) => (
+                <button key={e.id} onClick={() => playEmote(e.id)} data-testid={`emote-${e.id}`}
+                  className="flex flex-col items-center justify-center gap-0.5 rounded-xl border py-2 transition active:scale-90"
+                  style={{ borderColor: "rgba(178,108,255,.25)", background: "rgba(178,108,255,.06)" }}>
+                  <span className="text-[22px] leading-none">{e.glyph}</span>
+                  <span className="text-[9px] font-semibold text-violet-200/80">{e.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* controls tray — captures all taps in this band so only the controls move the character */}
       <div ref={controlsRef} className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-w-[680px] items-end justify-between gap-4 px-5 pb-[calc(14px+env(safe-area-inset-bottom))] pt-6"
         style={{ background: "linear-gradient(0deg, rgba(6,11,26,.78) 40%, rgba(6,11,26,0))", touchAction: "none" }}>
         <Joystick press={(b) => engineRef.current?.press(b)} release={(b) => engineRef.current?.release(b)} color="#35e0d0" size={128} />
         <div className="mb-1 flex items-end gap-3">
+          <button onPointerDown={(e) => { e.preventDefault(); setShowEmotes((v) => !v); }} data-testid="btn-emotes" title="Emotes"
+            className="flex h-12 w-12 flex-col items-center justify-center rounded-full border-[1.5px] text-[8px] font-extrabold active:scale-90"
+            style={{ borderColor: showEmotes ? "#b26cff" : "rgba(178,108,255,.55)", color: "#d9c2ff", background: "rgba(178,108,255,.12)", boxShadow: "0 0 14px rgba(178,108,255,.18) inset", touchAction: "none" }}>
+            <Smile className="h-5 w-5" />
+          </button>
           <button onPointerDown={(e) => { e.preventDefault(); engineRef.current?.interact(); }} data-testid="btn-interact"
             className="flex h-16 w-16 flex-col items-center justify-center rounded-full border-[1.5px] text-[9px] font-extrabold active:scale-90"
             style={{ borderColor: "#ffc46b", color: "#ffd98a", background: "rgba(255,196,107,.12)", boxShadow: "0 0 16px rgba(255,196,107,.2) inset", touchAction: "none" }}>

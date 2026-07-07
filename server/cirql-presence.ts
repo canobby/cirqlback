@@ -17,7 +17,7 @@
 // freeform text) for safety (possible minors — CHR-254).
 import { WebSocketServer, WebSocket } from "ws";
 
-interface Traveller { ws: WebSocket; id: string; name: string; avatar: unknown; ring: number; x: number; y: number; dir: string; partyId?: string; lastAsk?: number; lastPost?: number; }
+interface Traveller { ws: WebSocket; id: string; name: string; avatar: unknown; ring: number; x: number; y: number; dir: string; partyId?: string; lastAsk?: number; lastPost?: number; lastEmote?: number; }
 interface Party { id: string; campaignId: string; steps: number; max: number; hostId: string; members: string[]; step: number; }
 interface Post { id: string; dir: "host" | "seeker"; byId: string; byName: string; campaignId: string; steps: number; max: number; tags: string[]; newbie: boolean; partyId: string | null; }
 
@@ -99,6 +99,11 @@ export function setupCirqlPresence() {
         } else {
           toRing(me.ring, { t: "chat", id: me.id, name: me.name, text, channel: "global" });   // to the ring incl. sender
         }
+      }
+      else if (m.t === "emote") {   // chat-free expression relayed to the ring (CHR-260)
+        const now = Date.now(); if (me.lastEmote && now - me.lastEmote < 450) return; me.lastEmote = now;
+        const emote = clip(m.emote, 24); if (!emote) return;
+        toRing(me.ring, { t: "emote", id: me.id, emote }, me.id);   // to others on the ring (sender shows it locally)
       }
       else if (m.t === "light") {
         const other = players.get(String(m.to));

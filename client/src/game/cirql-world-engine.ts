@@ -17,6 +17,7 @@ import {
   type QuestDef, type QuestProgress, type ObjectiveKind, type QuestStatus,
 } from "./cirql-quests";
 import { generateRingQuest } from "./cirql-quest-gen";
+import { EMOTE_BY_ID, EMOTE_SECONDS } from "./cirql-emotes";
 
 export type InteractKind = "wonders" | "npc" | "dock";
 export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; energy: number; }
@@ -33,7 +34,7 @@ interface Dialog { name: string; accent: string; lines: string[]; i: number; acc
 // M8 — a live remote traveller on your ring (presence + chat). Position eases from
 // x/y toward the last-received tx/ty for smooth movement between throttled updates.
 type Facing = "up" | "down" | "left" | "right";
-interface RemotePlayer { x: number; y: number; tx: number; ty: number; facing: Facing; name: string; avatar: AvatarConfig; chat: string; chatT: number; walk: number; }
+interface RemotePlayer { x: number; y: number; tx: number; ty: number; facing: Facing; name: string; avatar: AvatarConfig; chat: string; chatT: number; walk: number; emote: string; emoteT: number; }
 export interface RemoteState { id: string; x: number; y: number; dir: string; name: string; avatar: AvatarConfig; ring?: number; }
 
 export class CirqlWorldEngine extends RetroEngine {
@@ -93,12 +94,15 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---- M8 live presence (host wires these to the /ws/cirql socket) ----
   private remotes = new Map<string, RemotePlayer>();
   private myChat = ""; private myChatT = 0;                 // your own chat bubble
+  private myEmote = ""; private myEmoteT = 0;               // your own active emote (CHR-260)
   private nearPlayer: { id: string; name: string } | null = null;  // remote in "share a light" range
   private lastPresence = 0; private lastPx = 1e9; private lastPy = 1e9;
   /** Fired often (throttled) with the live position, for the presence socket. */
   onPresence?: (ring: number, x: number, y: number, facing: Facing) => void;
   /** Fired when the player presses E next to another traveller (share a light). */
   onShareLight?: (id: string) => void;
+  /** Fired when the local player plays an emote (broadcast over the presence socket). */
+  onEmote?: (emote: string) => void;
 
   // ---- M9 party (host wires these to the campaign/party state) ----
   private partyWp: { x: number; y: number } | null = null;   // shared campaign waypoint
@@ -173,13 +177,17 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- M8 live presence host API ----------
   private facingOf(d: string): Facing { return d === "up" || d === "left" || d === "right" ? d : "down"; }
   addRemote(s: RemoteState) {
-    this.remotes.set(s.id, { x: s.x, y: s.y, tx: s.x, ty: s.y, facing: this.facingOf(s.dir), name: (s.name || "Traveller").slice(0, 16), avatar: s.avatar || DEFAULT_AVATAR, chat: "", chatT: 0, walk: 0 });
+    this.remotes.set(s.id, { x: s.x, y: s.y, tx: s.x, ty: s.y, facing: this.facingOf(s.dir), name: (s.name || "Traveller").slice(0, 16), avatar: s.avatar || DEFAULT_AVATAR, chat: "", chatT: 0, walk: 0, emote: "", emoteT: 0 });
   }
   moveRemote(id: string, x: number, y: number, dir: string) { const r = this.remotes.get(id); if (r) { r.tx = x; r.ty = y; r.facing = this.facingOf(dir); } }
   removeRemote(id: string) { this.remotes.delete(id); }
   chatRemote(id: string, text: string) { const r = this.remotes.get(id); if (r) { r.chat = text; r.chatT = 5.5; } }
+  /** A remote traveller played an emote — show its glyph (+ motion) over them (CHR-260). */
+  emoteRemote(id: string, emote: string) { const r = this.remotes.get(id); const def = EMOTE_BY_ID[emote]; if (r && def) { r.emote = emote; r.emoteT = def.hold ?? EMOTE_SECONDS; } }
   /** Show your own chat bubble over your avatar. */
   sayLocal(text: string) { this.myChat = text; this.myChatT = 5.5; }
+  /** Play an emote locally + broadcast it (called by the emote wheel). */
+  playEmote(emote: string) { const def = EMOTE_BY_ID[emote]; if (!def) return; this.myEmote = emote; this.myEmoteT = def.hold ?? EMOTE_SECONDS; this.onEmote?.(emote); }
   remoteCount() { return this.remotes.size; }
   clearRemotes() { this.remotes.clear(); }
 
@@ -424,11 +432,13 @@ export class CirqlWorldEngine extends RetroEngine {
     // live remotes ease toward their last-known position + decay chat bubbles (runs
     // unconditionally so other travellers keep moving during your dialog / chart)
     this.myChatT = Math.max(0, this.myChatT - dt);
+    this.myEmoteT = Math.max(0, this.myEmoteT - dt);
     for (const r of Array.from(this.remotes.values())) {
       const px = r.x, py = r.y;
       r.x += (r.tx - r.x) * Math.min(1, dt * 10);
       r.y += (r.ty - r.y) * Math.min(1, dt * 10);
       r.chatT = Math.max(0, r.chatT - dt);
+      r.emoteT = Math.max(0, r.emoteT - dt);
       r.walk = (Math.abs(r.x - px) + Math.abs(r.y - py)) > 0.15 ? r.walk + dt * 10 : 0;
     }
 
@@ -657,7 +667,8 @@ export class CirqlWorldEngine extends RetroEngine {
 
   // ---------- props ----------
   private drawHero(cx: number, cy: number) {
-    const bob = this.walk > 0 ? Math.round(Math.sin(this.walk)) : 0;
+    const walkBob = this.walk > 0 ? Math.round(Math.sin(this.walk)) : 0;
+    const bob = walkBob + this.emoteBob(this.myEmoteT > 0 ? this.myEmote : "");
     // aura glow (cosmetic) behind the figure
     const aura = this.hero.aura && AURA_COLORS[this.hero.aura];
     if (aura) this.glow(cx, cy - 12, 20, aura, this.reduce ? 0.4 : 0.32 + 0.1 * Math.sin(this.t * 2.5));
@@ -665,10 +676,11 @@ export class CirqlWorldEngine extends RetroEngine {
     this.ring(cx, cy + 2, 6, "#35e0d0", 1.1);       // gentle "you" ring
     this.avatar(cx, cy + bob, this.hero, this.facing);
     this.nameTag(cx, cy, this.myName, "#ffd24a");
+    if (this.myEmoteT > 0 && this.myEmote) this.drawEmote(cx, cy, this.myEmote, this.myEmoteT);
     if (this.myChatT > 0 && this.myChat) this.drawBubble(cx, cy, this.myChat, this.myChatT);
   }
   private drawRemote(cx: number, cy: number, r: RemotePlayer, inParty = false) {
-    const bob = r.walk > 0 ? Math.round(Math.sin(r.walk)) : 0;
+    const bob = (r.walk > 0 ? Math.round(Math.sin(r.walk)) : 0) + this.emoteBob(r.emoteT > 0 ? r.emote : "");
     const aura = r.avatar.aura && AURA_COLORS[r.avatar.aura];
     if (aura) this.glow(cx, cy - 12, 18, aura, this.reduce ? 0.34 : 0.26);
     this.disc(cx, cy + 2, 4, "#0a071460");
@@ -677,7 +689,31 @@ export class CirqlWorldEngine extends RetroEngine {
     if (share) this.ring(cx, cy + 2, 6, "#ffc46b", 1.1);          // highlight the "share a light" target
     this.avatar(cx, cy + bob, r.avatar, r.facing);
     this.nameTag(cx, cy, r.name, inParty ? "#a8f5ea" : "#dfe6ff");
+    if (r.emoteT > 0 && r.emote) this.drawEmote(cx, cy, r.emote, r.emoteT);
     if (r.chatT > 0 && r.chat) this.drawBubble(cx, cy, r.chat, r.chatT);
+  }
+  // A small avatar movement while an emote plays: a dance bounce, a settle-to-sit, or a
+  // celebratory hop. Glyph-only emotes return 0. Reduced-motion keeps everyone still.
+  private emoteBob(emote: string): number {
+    if (!emote || this.reduce) return 0;
+    const m = EMOTE_BY_ID[emote]?.motion;
+    if (m === "bob") return -Math.abs(Math.round(Math.sin(this.t * 9) * 2));   // dance/sing bounce
+    if (m === "hop") { const j = Math.sin(this.t * 6); return j > 0 ? -Math.round(j * 5) : 0; }   // wave/celebrate/flip
+    if (m === "sit") return 3;                                                  // settle down to rest
+    return 0;
+  }
+  // A timed emote glyph that pops in, drifts up and fades over the avatar (CHR-260).
+  private drawEmote(cx: number, feet: number, emote: string, life: number) {
+    const def = EMOTE_BY_ID[emote]; if (!def) return;
+    const total = def.hold ?? EMOTE_SECONDS;
+    const age = total - life;
+    const rise = this.reduce ? 8 : Math.min(11, age * 7);
+    const a = life < 0.6 ? life / 0.6 : (age < 0.22 ? age / 0.22 : 1);   // fade in then out
+    const y = feet - 44 - rise;
+    this.b.globalAlpha = a * 0.85;
+    this.disc(cx, y + 5, 8, "#0a0714");           // soft backing so the glyph reads over any scene
+    this.b.globalAlpha = 1;
+    this.q(cx, y - 4, def.glyph, "#ffffff", 1.95, "c", false, a);
   }
   // a small dark speech bubble above an avatar's head (smooth text via the overlay)
   private drawBubble(cx: number, feet: number, text: string, life: number) {
