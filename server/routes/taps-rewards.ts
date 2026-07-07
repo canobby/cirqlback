@@ -144,6 +144,19 @@ export function registerTapsRewardsRoutes(app: Express, deps: RouteDeps) {
     }
   });
 
+  // CIRQL landmarks (CHR-261): the businesses you've tapped in the real world, surfaced
+  // so they can be planted as signpost landmarks on your Hearth (loyalty ↔ world).
+  app.get("/api/cirql/landmarks", isAuthenticated, async (req, res) => {
+    try {
+      const u = req.user as any;
+      let email = u?.email;
+      if (!email && u?.id) email = (await storage.getUser(u.id))?.email;
+      if (!email) return res.json({ landmarks: [] });
+      const biz = await storage.getCustomerVisitedBusinesses(email, 24);
+      res.json({ landmarks: biz.map((b) => ({ name: b.name, type: (b.establishmentType?.[0] || "").toLowerCase() })) });
+    } catch (err) { console.error("cirql landmarks error:", err); res.status(500).json({ error: "Failed to load landmarks" }); }
+  });
+
   // Customer reward routes
   app.get("/api/rewards", async (req, res) => {
     try {

@@ -373,7 +373,7 @@ export default function Cirql() {
       loadedRef.current = true;
       fetch("/api/game/progress?gameId=cirql", { credentials: "include" })
         .then((r) => (r.ok ? r.json() : null))
-        .then((d) => { applyIdentity(d?.state || null); claimArcadeSparqs(); })   // sweep up sparqs earned in the arcade
+        .then((d) => { applyIdentity(d?.state || null); claimArcadeSparqs(); loadLandmarks(); })   // sweep arcade sparqs + plant tapped-business landmarks
         .catch(() => applyIdentity(null));
     } else if (!loadedRef.current) {
       loadedRef.current = true;
@@ -441,6 +441,31 @@ export default function Cirql() {
       claimArcadeSparqs();        // sweep up any sparqs that cabinet's Daily just banked
     }
     setPlayRoute(null);
+  };
+
+  // Real tapped businesses → Hearth landmarks (CHR-261). Category → glyph/accent.
+  const landmarkVisual = (b: { name: string; type?: string }) => {
+    const t = `${b.type || ""} ${b.name || ""}`.toLowerCase();   // category type + name (names often reveal the kind)
+    const has = (...k: string[]) => k.some((x) => t.includes(x));
+    let glyph = "📍", accent = "#ffc46b";
+    if (has("cafe", "coffee")) { glyph = "☕"; accent = "#c99a5b"; }
+    else if (has("bakery", "pastry")) { glyph = "🥐"; accent = "#ffb765"; }
+    else if (has("brew", "beer", "bar", "pub", "tap")) { glyph = "🍺"; accent = "#ffcf5b"; }
+    else if (has("win", "vine")) { glyph = "🍷"; accent = "#b26cff"; }
+    else if (has("restaur", "food", "grill", "kitchen", "eat", "diner")) { glyph = "🍽️"; accent = "#ff8f6b"; }
+    else if (has("park", "garden", "farm", "outdoor")) { glyph = "🌳"; accent = "#7ee787"; }
+    else if (has("shop", "store", "retail", "market", "boutique", "gift")) { glyph = "🛍️"; accent = "#7fd0ff"; }
+    else if (has("gym", "fitness", "yoga", "studio")) { glyph = "🏋️"; accent = "#7fd0ff"; }
+    else if (has("salon", "spa", "beauty", "hair", "nail")) { glyph = "💇"; accent = "#ff8fbf"; }
+    else if (has("book")) { glyph = "📚"; accent = "#c99a5b"; }
+    return { name: b.name, glyph, accent };
+  };
+  const loadLandmarks = () => {
+    if (!loggedIn) return;
+    fetch("/api/cirql/landmarks", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => engineRef.current?.setLandmarks((d?.landmarks || []).map(landmarkVisual)))
+      .catch(() => { /* best-effort */ });
   };
 
   // Spend sparks to unlock a cosmetic (CHR-246). Returns false if you can't afford it.

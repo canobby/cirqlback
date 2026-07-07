@@ -63,6 +63,8 @@ export class CirqlWorldEngine extends RetroEngine {
   private decor: { item: string; x: number; y: number }[] = [];
   private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
   private visiting: { name: string; decor: { item: string; x: number; y: number }[] } | null = null;
+  // real-world tapped businesses surfaced as Hearth landmarks (CHR-261)
+  private landmarks: { name: string; glyph: string; accent: string }[] = [];
   private camX = 0; private camY = 0;
   private t = 0;
   private hero: AvatarConfig;
@@ -164,6 +166,10 @@ export class CirqlWorldEngine extends RetroEngine {
   endDecorEdit() { this.editDecor = false; }
   decorEditing() { return this.editDecor; }
   clearDecor() { if (this.decor.length) { this.decor = []; this.onDecorChange?.(); } }
+  /** Real businesses you've tapped, planted as signpost landmarks on your Hearth (CHR-261). */
+  setLandmarks(list: { name: string; glyph: string; accent: string }[]) { this.landmarks = Array.isArray(list) ? list.slice(0, 24).map((l) => ({ name: (l.name || "").slice(0, 22), glyph: l.glyph || "📍", accent: l.accent || "#ffc46b" })) : []; }
+  /** Deterministic landmark position: a tidy grid south of the Hearth cottage. */
+  private landmarkPos(i: number, n: number) { const per = 6, col = i % per, row = Math.floor(i / per), inRow = Math.min(n - row * per, per); return { x: (col - (inRow - 1) / 2) * 66, y: 232 + row * 58 }; }
   /** Visit another traveller's Hearth (render their décor read-only over the Hearth). */
   startVisit(name: string, decor: { item: string; x: number; y: number }[]) {
     this.editDecor = false;
@@ -785,6 +791,8 @@ export class CirqlWorldEngine extends RetroEngine {
     if (this.ringIdx === 0) {
       const list = this.visiting ? this.visiting.decor : this.decor;
       for (const d of list) { const def = decorById[d.item]; if (def) draws.push({ y: d.y, f: () => this.drawDecor(d.x - camX, d.y - camY, def.glyph, def.scale ?? 1) }); }
+      // real-world tapped businesses, as signpost landmarks (your own Hearth only, CHR-261)
+      if (!this.visiting) for (let i = 0; i < this.landmarks.length; i++) { const p = this.landmarkPos(i, this.landmarks.length), lm = this.landmarks[i]; draws.push({ y: p.y, f: () => this.drawLandmark(p.x - camX, p.y - camY, lm) }); }
     }
     // the player
     draws.push({ y: this.posY, f: () => this.drawHero(this.posX - camX, this.posY - camY) });
@@ -981,6 +989,17 @@ export class CirqlWorldEngine extends RetroEngine {
     if (m === "hop") { const j = Math.sin(this.t * 6); return j > 0 ? -Math.round(j * 5) : 0; }   // wave/celebrate/flip
     if (m === "sit") return 3;                                                  // settle down to rest
     return 0;
+  }
+  // A tapped-business landmark (CHR-261): a little glowing signpost with the shop's
+  // name — your real-world taps lighting your Hearth.
+  private drawLandmark(cx: number, cy: number, lm: { name: string; glyph: string; accent: string }) {
+    this.disc(cx, cy + 4, 4, "#0a071450");
+    this.rect(cx - 1, cy - 10, 2, 14, "#7a4a2a");                 // post
+    this.glow(cx, cy - 16, 16, lm.accent, this.reduce ? 0.35 : 0.28 + 0.1 * Math.sin(this.t * 2 + cx));
+    this.disc(cx, cy - 16, 6, hexA(lm.accent, 0.9));             // lantern orb
+    this.ring(cx, cy - 16, 6, "#fff2cf", 1);
+    this.q(cx, cy - 20, lm.glyph, "#ffffff", 1.1, "c");          // category glyph
+    this.labelPill(cx, cy - 34, lm.name, lm.accent);            // shop name
   }
   // A placed décor piece (CHR-259): an emoji glyph standing on a soft shadow.
   private drawDecor(cx: number, cy: number, glyph: string, scale: number, alpha = 1) {
