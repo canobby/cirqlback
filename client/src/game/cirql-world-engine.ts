@@ -74,8 +74,10 @@ export class CirqlWorldEngine extends RetroEngine {
   private idleT = 0; private blinkT = 1.5; private blinking = 0; private dozing = false;
   private fidget: { kind: "lookL" | "lookR" | "lookU" | "stretch"; t: number } | null = null; private nextFidget = 4;
   // movement juice (Phase I2): world-space ground FX + step cadence + land squash + collision bump
-  private groundFx: { x: number; y: number; life: number; max: number; kind: "dust" | "splash" | "print"; foot: number }[] = [];
+  // (Phase I5 adds biome-flavoured kinds: pale "snow" prints, dark "ash" puffs, rising "puff" breath)
+  private groundFx: { x: number; y: number; life: number; max: number; kind: "dust" | "splash" | "print" | "snow" | "ash" | "puff"; foot: number }[] = [];
   private stepT = 0; private stepFoot = 1; private squashT = 0; private wasAir = false; private bumpT = 0;
+  private breathT = 2;   // cold-biome breath-puff cadence (Phase I5)
   // Hearth décor (CHR-259): your placed decorations, an edit mode, and a "visiting" overlay
   private decor: { item: string; x: number; y: number }[] = [];
   private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
@@ -655,6 +657,14 @@ export class CirqlWorldEngine extends RetroEngine {
     this.squashT = Math.max(0, this.squashT - dt); this.bumpT = Math.max(0, this.bumpT - dt);
     // paired social gesture (I4) — ends on its timer, or if your partner drifts away
     if (this.pair) { this.pair.t -= dt; const r = this.remotes.get(this.pair.withId); if (this.pair.t <= 0 || !r || Math.hypot(this.posX - r.x, this.posY - r.y) > 64) this.pair = null; }
+    // cold-biome breath puff (I5) — a little cloud drifts from the face every couple of seconds
+    if (this.isCold() && !this.reduce && !this.dialog && !this.cs) {
+      if ((this.breathT -= dt) <= 0) {
+        this.breathT = 1.7 + Math.random() * 1.3;
+        const fdx = this.facing === "left" ? -4 : this.facing === "right" ? 4 : 0, fdy = this.facing === "up" ? -2 : 2;
+        this.spawnGroundFx(this.posX + fdx, this.posY - 18 + fdy, "puff");
+      }
+    }
     if (this.groundFx.length) { for (const f of this.groundFx) f.life -= dt; if (this.groundFx.some((f) => f.life <= 0)) this.groundFx = this.groundFx.filter((f) => f.life > 0); }
     // live-zoom easing (Phase H2)
     if (Math.abs(this.zoom - this.zoomTarget) > 0.001) this.zoom += (this.zoomTarget - this.zoom) * Math.min(1, dt * 10); else this.zoom = this.zoomTarget;
@@ -791,8 +801,10 @@ export class CirqlWorldEngine extends RetroEngine {
       if (moving && this.seated) this.standUp();   // any movement input stands you up (Phase H1)
       const spd = this.btn.b ? 118 : 80;
       const tvx = moving ? dx * spd : 0, tvy = moving ? dy * spd : 0;
-      this.vx += (tvx - this.vx) * Math.min(1, dt * 16);
-      this.vy += (tvy - this.vy) * Math.min(1, dt * 16);
+      // ice-slide (I5): a winter ring is slippery — you build up + glide out of speed (low friction)
+      const fr = this.isCold() ? (moving ? 7 : 2.2) : 16;
+      this.vx += (tvx - this.vx) * Math.min(1, dt * fr);
+      this.vy += (tvy - this.vy) * Math.min(1, dt * fr);
       if (moving) this.facing = Math.abs(dy) > Math.abs(dx) ? (dy > 0 ? "down" : "up") : (dx > 0 ? "right" : "left");
       const preX = this.posX, preY = this.posY;
       this.posX += this.vx * dt; this.posY += this.vy * dt;
@@ -823,10 +835,14 @@ export class CirqlWorldEngine extends RetroEngine {
       if (moving && !this.seated && this.walk > 0) {
         if ((this.stepT -= dt) <= 0) {
           this.stepFoot = -this.stepFoot; this.stepT = this.btn.b ? 0.17 : 0.26;
-          const t = this.ringIdx === 0 ? this.tileAtWorld(this.posX, this.posY) : "g";
-          const kind = t === "w" ? "splash" : t === "s" ? "print" : "dust";
+          // ground the step marks: ring-0 uses painted tiles; other rings use the biome ground (I5)
+          let kind: "dust" | "splash" | "print" | "snow" | "ash";
+          if (this.ringIdx === 0) { const t = this.tileAtWorld(this.posX, this.posY); kind = t === "w" ? "splash" : t === "s" ? "print" : "dust"; }
+          else { const g = this.groundKind(); kind = g === "snow" ? "snow" : g === "sand" ? "print" : g === "ash" ? "ash" : "dust"; }
+          // coast/tropical shallows: near the shore, a wading splash instead of a footprint (I5)
+          if (this.ringIdx > 0 && (this.curRing.ambient === "gull" || this.curRing.ambient === "dragonfly") && Math.hypot(this.posX, this.posY) > this.effR() * 0.74) kind = "splash";
           const off = this.facing === "left" || this.facing === "right" ? 0 : this.stepFoot * 3;
-          if (kind === "print" || !this.reduce) this.spawnGroundFx(this.posX + off, this.posY + 1, kind, this.stepFoot);
+          if (kind === "print" || kind === "snow" || !this.reduce) this.spawnGroundFx(this.posX + off, this.posY + 1, kind, this.stepFoot);
         }
       } else this.stepT = 0;
 
@@ -1189,16 +1205,19 @@ export class CirqlWorldEngine extends RetroEngine {
     const stretch = this.fidget?.kind === "stretch" ? -Math.round(Math.sin((1 - Math.max(0, this.fidget.t) / 0.55) * Math.PI) * 2) : 0;
     const face: Facing = this.fidget?.kind === "lookL" ? "left" : this.fidget?.kind === "lookR" ? "right" : this.fidget?.kind === "lookU" ? "up" : this.facing;
     const bob = walkBob + this.emoteBob(this.myEmoteT > 0 ? this.myEmote : "") - z + sit + breath + stretch;
-    // aura glow (cosmetic) behind the figure
+    // biome movement flavor (I5): a shiver in the cold; an aura that flutters on the biome wind
+    const shiver = (this.isCold() && !this.reduce && this.walk <= 0) ? Math.round(Math.sin(this.t * 22) * 0.5) : 0;
+    const wind = this.windAmt();
+    // aura glow (cosmetic) behind the figure — drifts downwind (I5)
     const aura = this.hero.aura && AURA_COLORS[this.hero.aura];
-    if (aura) this.glow(cx, cy - 12 - z, 20, aura, this.reduce ? 0.4 : 0.32 + 0.1 * Math.sin(this.t * 2.5));
+    if (aura) this.glow(cx + wind, cy - 12 - z, 20, aura, this.reduce ? 0.4 : 0.32 + 0.1 * Math.sin(this.t * 2.5));
     this.disc(cx, cy + 2, this.seated ? 6 : Math.max(2, 4 - this.jumpZ * 0.16), "#0a071460");   // wider contact seated; shrinks as you rise
     this.ring(cx, cy + 2, 6, "#35e0d0", 1.1);       // gentle "you" ring (grounded)
     if (this.seated) this.seatLegs(cx, cy);
     // land squash + collision bump (I2)
     const sq = this.squashT > 0 ? this.squashT / 0.18 : 0;
     const bump = this.bumpT > 0 ? Math.round((this.bumpT / 0.16) * 2) : 0;
-    const bdx = bump * (this.facing === "left" ? 1 : this.facing === "right" ? -1 : 0);
+    const bdx = bump * (this.facing === "left" ? 1 : this.facing === "right" ? -1 : 0) + shiver;
     const bdy = bump * (this.facing === "up" ? 1 : this.facing === "down" ? -1 : 0);
     // body-gesture transform (I3): bow/twirl/dance-sway tip or spin the whole sprite
     const gx = this.myEmoteT > 0 ? this.emoteXform(this.myEmote, this.myEmoteT) : null;
@@ -1215,16 +1234,38 @@ export class CirqlWorldEngine extends RetroEngine {
     const a = (this.t * 0.5) % 1;
     for (let i = 0; i < 3; i++) { const p = (a + i / 3) % 1; this.q(cx + p * 7, top - p * 14, "z", "#cfe6ff", 0.8 + p * 0.7, "c", true, (1 - p) * 0.9); }
   }
-  // World-space ground FX (I2): footstep dust/splash/prints + hop-land puffs (scroll + zoom with the world).
-  private spawnGroundFx(x: number, y: number, kind: "dust" | "splash" | "print", foot = 1) {
+  // ---- biome movement profile (Phase I5) — derived from the current ring's signature critter ----
+  /** Is this a cold, snowy scene? (winter → breath-puffs, shiver, slippery ice-slide) */
+  private isCold() { return this.curRing.ambient === "snow"; }
+  /** The ground a footstep marks on this ring: pale snow, tan sand, dark ash, or soft dust. */
+  private groundKind(): "snow" | "sand" | "ash" | "grass" {
+    const a = this.curRing.ambient;
+    if (a === "snow") return "snow";
+    if (a === "grasshopper" || a === "gull") return "sand";   // desert + coast
+    if (a === "ember") return "ash";
+    return "grass";
+  }
+  /** A gentle horizontal biome wind (px) that flutters the aura; stronger on open/hot scenes. */
+  private windAmt(): number {
+    if (this.reduce) return 0;
+    const a = this.curRing.ambient;
+    const amp = a === "ember" || a === "gull" || a === "grasshopper" ? 2.4 : 1.2;   // ember/coast/desert breezier
+    return Math.round(Math.sin(this.t * 1.3) * amp);
+  }
+  // World-space ground FX (I2/I5): footstep dust/splash/prints/snow/ash + hop-land puffs + cold breath
+  // (all scroll + zoom with the world).
+  private spawnGroundFx(x: number, y: number, kind: "dust" | "splash" | "print" | "snow" | "ash" | "puff", foot = 1) {
     if (this.groundFx.length > 40) this.groundFx.shift();
-    const max = kind === "print" ? 1.5 : kind === "splash" ? 0.5 : 0.4;
+    const max = kind === "snow" ? 2.4 : kind === "print" ? 1.5 : kind === "puff" ? 0.9 : kind === "splash" ? 0.5 : 0.4;
     this.groundFx.push({ x, y, life: max, max, kind, foot });
   }
   private drawGroundFx(camX: number, camY: number) {
     for (const f of this.groundFx) {
       const sx = f.x - camX, sy = f.y - camY, age = 1 - f.life / f.max;
       if (f.kind === "print") this.disc(sx, sy, 1.6, hexA("#5a3d22", Math.min(1, f.life / f.max) * 0.5));
+      else if (f.kind === "snow") this.disc(sx, sy, 1.9, hexA("#e6f0ff", Math.min(1, f.life / f.max) * 0.65));   // pressed-snow print, lingers
+      else if (f.kind === "ash") this.disc(sx, sy - age * 3, 1.4 + age * 2.6, hexA("#403833", (1 - age) * 0.5));   // dark volcanic dust
+      else if (f.kind === "puff") this.disc(sx, sy - age * 11, 1.4 + age * 2, hexA("#dbe8ff", (1 - age) * 0.5));    // rising cold breath
       else if (f.kind === "splash") this.ring(sx, sy, 2 + age * 6, hexA("#bfe6ff", (1 - age) * 0.7), 1);
       else this.disc(sx, sy - age * 3, 1.5 + age * 3, hexA("#d8cdb8", (1 - age) * 0.4));
     }

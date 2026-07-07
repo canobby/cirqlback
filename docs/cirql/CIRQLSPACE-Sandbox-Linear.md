@@ -1,6 +1,6 @@
 # CIRQLSPACE — Your Sandbox · Linear Register
 
-Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 13). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H COMPLETE. Chapter 2 (I/J/K — the living world) locked; order I → J → K → F → G. Decisions: new Renown + World Energy · tap-ready/wire-later · fully cozy. **▶ BUILDING Phase I — I1 (idle life) + I2 (movement juice) + I3 (body-gesture emotes) + I4 (paired social gestures) DONE; next I5 (biome movement flavor).**
+Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 14). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E + ✅ H COMPLETE. Chapter 2 (I/J/K — the living world) locked; order I → J → K → F → G. Decisions: new Renown + World Energy · tap-ready/wire-later · fully cozy. **▶ BUILDING Phase I — I1 (idle life) + I2 (movement juice) + I3 (body-gesture emotes) + I4 (paired social gestures) + I5 (biome movement flavor) DONE; next I6 (world interactions) — last of Phase I.**
 
 **Legend:** ☑ Done · ◐ In progress · ☐ Todo · ⧗ *not yet a Linear issue (free-tier issue cap) — tracked in the plan.*
 
@@ -73,7 +73,7 @@ Guiding idea: **population, quests, and movement are one system.** Fully cozy �
 - [x] **I2** — Movement juice: footstep FX (dust/splash/footprints, world-space) · land squash · collision bump *(turn-in-place folded into I1's look fidget)* *(commit 1a34b1b)*
 - [x] **I3** — Body-gesture emotes: grew the wheel to 16 (4×4) with real body motions — wave (waving hand), bow (tip+squash), clap (meeting hands + spark), cheer (both arms up), twirl (spin via scaleX), blow-a-kiss (hand + drifting heart), dance (side-to-side sway); shared by hero + remotes, reduced-motion aware *(commit pending)*
 - [x] **I4** — Paired social gestures: a contextual **"Together with {name}"** panel when you stand by a traveller → High-Five / Hug / Dance / Sit. One request relays to BOTH (same room-scoped handshake as share-a-light, new `pair`→`paired`), each side turns to face the other + plays the synced I3 motion + a shared flourish blooms between them (spark / hearts / notes). Raw two-socket + in-browser verified *(commit pending)*
-- [ ] **I5** — Biome movement flavor: wade+splash · ice-slide · snow/sand footprints · shiver+breath-puff · aura/cape wind flutter
+- [x] **I5** — Biome movement flavor: footsteps now read the ring's biome — pale lingering **snow** prints (winter), tan **sand** prints (desert/coast), dark **ash** puffs (ember), soft dust elsewhere; coast/tropical **shore-wading splash** near the edge; **ice-slide** (winter = slippery low-friction glide); **breath-puff + shiver** in the cold; **aura flutters on a per-biome wind**. All client-side, reduced-motion aware. Verified across winter/desert/coast/ember rings *(commit pending; literal cape flutter deferred — no cape asset; remotes stay simple like I1/I2)*
 - [ ] **I6** — World interactions: pet a critter (heart) · hold/present an item · knock/wave entering a shop or sub-map
   - *(Deferred/bigger: dodge-roll · real swim · glide in cloud sub-maps · rideable companion.)*
 
