@@ -1,6 +1,6 @@
 # CIRQLSPACE — Your Sandbox · Linear Register
 
-Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 3). **Status: BUILDING — ✅ Phase A COMPLETE (6/6); next up Phase B (building objects).**
+Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 4). **Status: BUILDING — ✅ Phase A + ✅ Phase B COMPLETE; next up Phase C (terrain paint).**
 
 **Legend:** ☑ Done · ◐ In progress · ☐ Todo · ⧗ *not yet a Linear issue (free-tier issue cap) — tracked in the plan.*
 
@@ -8,7 +8,7 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 | Milestone | Issues | Status |
 |---|---|---|
 | A · Restructure — blank CIRQLSPACE + Town | 6 | ✅ **DONE (6/6)** |
-| B · Building v1 (objects) | 4 | Todo |
+| B · Building v1 (objects) | 4 | ✅ **DONE (4/4)** |
 | C · Terrain paint | 3 ⧗ | Todo |
 | D · Land growth (cozy → estate) | 3 ⧗ | Todo |
 | E · Live parties | 4 ⧗ | Todo |
@@ -26,10 +26,11 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 - [x] **CHR-271** — Remove tapped-business landmarks + enforce CIRQLSPACE-only placement *(963abbf)*
 
 ## B · Building v1 (objects)
-- [ ] **CHR-272** — Big placeable object catalog (nature / structures / furniture)
-- [ ] **CHR-273** — Placement: free-form + optional grid snap; move / rotate / remove
-- [ ] **CHR-274** — SPARQS buy→place economy + Inventory stock
-- [ ] **CHR-275** — Object caps + compact save encoding
+- [x] **CHR-272** — Big placeable object catalog (~35 items, 6 categories; nature/structures/lights render as real pixel props) *(commit eb7b392)*
+- [x] **CHR-273** — Placement: free-form + optional grid snap (# Grid) + Remove; category tabs *(eb7b392)*
+- [x] **CHR-274** — SPARQS buy→place economy + Inventory stock *(eb7b392)*
+- [x] **CHR-275** — Object cap 120 + compact {item,x,y} save encoding *(eb7b392)*
+  - *(deferred within B: move/rotate placed objects — remove+re-place works for now)*
 
 ## C · Terrain paint  *(⧗ issues pending — Linear cap)*
 - [ ] **C1** — Ground tilemap model + compact save encoding
