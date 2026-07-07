@@ -91,6 +91,13 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Fired when the player presses E next to another traveller (share a light). */
   onShareLight?: (id: string) => void;
 
+  // ---- M9 party (host wires these to the campaign/party state) ----
+  private partyWp: { x: number; y: number } | null = null;   // shared campaign waypoint
+  private partyArrived = false;                                // local-arrival latch (per step)
+  private partyIds = new Set<string>();                        // remote ids in my party (highlighted)
+  /** Fired once when the local player reaches the shared party waypoint. */
+  onPartyArrive?: () => void;
+
   constructor(canvas: HTMLCanvasElement, hooks: RetroHooks = {}) {
     super(canvas, hooks, 264, 200);
     // responsive full-bleed world viewport (fills the screen, shows more world)
@@ -135,6 +142,16 @@ export class CirqlWorldEngine extends RetroEngine {
   sayLocal(text: string) { this.myChat = text; this.myChatT = 5.5; }
   remoteCount() { return this.remotes.size; }
   clearRemotes() { this.remotes.clear(); }
+
+  // ---------- M9 party host API ----------
+  /** Set the shared campaign waypoint (null = none). Resets the local-arrival latch when it moves. */
+  setPartyWaypoint(wp: { x: number; y: number } | null) {
+    const changed = (!!wp !== !!this.partyWp) || (wp && this.partyWp && (wp.x !== this.partyWp.x || wp.y !== this.partyWp.y));
+    this.partyWp = wp ? { x: wp.x, y: wp.y } : null;
+    if (changed) this.partyArrived = false;
+  }
+  /** Highlight which remote travellers are in my party. */
+  setPartyMembers(ids: string[]) { this.partyIds = new Set(ids); }
 
   // ---------- quests ----------
   /** Accept a quest (offered by an NPC or auto-started on first run). */
@@ -346,6 +363,11 @@ export class CirqlWorldEngine extends RetroEngine {
       }
       this.lastPresence = this.t;
     }
+
+    // party shared-waypoint arrival — fires once per step (server is idempotent per step)
+    if (this.partyWp && !this.partyArrived && Math.hypot(this.posX - this.partyWp.x, this.posY - this.partyWp.y) < 26) {
+      this.partyArrived = true; this.onPartyArrive?.();
+    }
   }
 
   // ---------- native-canvas helpers (fast big shapes + glows) ----------
@@ -427,13 +449,21 @@ export class CirqlWorldEngine extends RetroEngine {
     // the player
     draws.push({ y: this.posY, f: () => this.drawHero(this.posX - camX, this.posY - camY) });
     // live remote travellers (depth-sorted in with everything else)
-    for (const r of Array.from(this.remotes.values())) draws.push({ y: r.y, f: () => this.drawRemote(r.x - camX, r.y - camY, r) });
+    for (const [rid, r] of Array.from(this.remotes.entries())) draws.push({ y: r.y, f: () => this.drawRemote(r.x - camX, r.y - camY, r, this.partyIds.has(rid)) });
     draws.sort((a, c) => a.y - c.y);
     for (const d of draws) d.f();
 
     // quest waypoint — a bouncing chevron over the current objective target
     const wp = this.objTargetProp();
     if (wp) { const bob = this.reduce ? 0 : Math.round(Math.sin(this.t * 4) * 2); this.drawWaypoint(wp.x - camX, wp.y - camY - 22 + bob); }
+    // party shared waypoint — a teal beacon the whole crew moves toward
+    if (this.partyWp) {
+      const bob = this.reduce ? 0 : Math.round(Math.sin(this.t * 3.5) * 2);
+      const px = this.partyWp.x - camX, py = this.partyWp.y - camY;
+      this.glow(px, py, 16, "#35e0d0", this.reduce ? 0.3 : 0.24 + 0.12 * Math.sin(this.t * 3));
+      this.ring(px, py, this.reduce ? 8 : 7 + Math.sin(this.t * 3) * 1.5, "#35e0d0", 1.3);
+      this.drawPartyWaypoint(px, py - 24 + bob);
+    }
 
     // floating motes
     if (!this.reduce) {
@@ -462,15 +492,16 @@ export class CirqlWorldEngine extends RetroEngine {
     this.nameTag(cx, cy, this.myName, "#ffd24a");
     if (this.myChatT > 0 && this.myChat) this.drawBubble(cx, cy, this.myChat, this.myChatT);
   }
-  private drawRemote(cx: number, cy: number, r: RemotePlayer) {
+  private drawRemote(cx: number, cy: number, r: RemotePlayer, inParty = false) {
     const bob = r.walk > 0 ? Math.round(Math.sin(r.walk)) : 0;
     const aura = r.avatar.aura && AURA_COLORS[r.avatar.aura];
     if (aura) this.glow(cx, cy - 12, 18, aura, this.reduce ? 0.34 : 0.26);
     this.disc(cx, cy + 2, 4, "#0a071460");
+    if (inParty) { this.glow(cx, cy + 2, 12, "#35e0d0", 0.3); this.ring(cx, cy + 2, 7, "#35e0d0", 1.2); }  // party-mate
     const share = this.nearPlayer?.id && this.remotes.get(this.nearPlayer.id) === r;
     if (share) this.ring(cx, cy + 2, 6, "#ffc46b", 1.1);          // highlight the "share a light" target
     this.avatar(cx, cy + bob, r.avatar, r.facing);
-    this.nameTag(cx, cy, r.name, "#dfe6ff");
+    this.nameTag(cx, cy, r.name, inParty ? "#a8f5ea" : "#dfe6ff");
     if (r.chatT > 0 && r.chat) this.drawBubble(cx, cy, r.chat, r.chatT);
   }
   // a small dark speech bubble above an avatar's head (smooth text via the overlay)
@@ -573,6 +604,13 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(cx - 3, cy - 4, 6, 2, "#ffd24a");
     this.rect(cx - 2, cy - 2, 4, 2, "#ffd24a");
     this.rect(cx - 1, cy, 2, 2, "#ffd24a");
+  }
+  private drawPartyWaypoint(cx: number, cy: number) {
+    // a teal chevron distinguishing the shared party goal from solo quests
+    this.glow(cx, cy - 2, 10, "#35e0d0", 0.45);
+    this.rect(cx - 3, cy - 4, 6, 2, "#7ff5e8");
+    this.rect(cx - 2, cy - 2, 4, 2, "#7ff5e8");
+    this.rect(cx - 1, cy, 2, 2, "#7ff5e8");
   }
   private drawDock(cx: number, cy: number, p: Prop) {
     // planks pointing outward (downward on the south dock)
@@ -679,6 +717,8 @@ export class CirqlWorldEngine extends RetroEngine {
     // quest objective target (gold, pulsing) at its angle on the current ring
     const tgt = this.objTargetProp();
     if (tgt) { const ta = Math.atan2(tgt.y, tgt.x); const pr = this.reduce ? 2 : 1.6 + Math.abs(Math.sin(this.t * 3)) * 1.2; b.fillStyle = "#ffd24a"; b.beginPath(); b.arc((cx + Math.cos(ta) * dr) * s, (cy + Math.sin(ta) * dr) * s, pr * s, 0, TAU); b.fill(); }
+    // party shared waypoint (teal) at its angle on the current ring
+    if (this.partyWp) { const wa = Math.atan2(this.partyWp.y, this.partyWp.x); const pr = this.reduce ? 2 : 1.6 + Math.abs(Math.sin(this.t * 3.5)) * 1.2; b.fillStyle = "#35e0d0"; b.beginPath(); b.arc((cx + Math.cos(wa) * dr) * s, (cy + Math.sin(wa) * dr) * s, pr * s, 0, TAU); b.fill(); }
     // player dot at their angle on the current ring
     const ang = Math.atan2(this.posY, this.posX);
     b.fillStyle = "#ffffff"; b.beginPath(); b.arc((cx + Math.cos(ang) * dr) * s, (cy + Math.sin(ang) * dr) * s, 1.8 * s, 0, TAU); b.fill();

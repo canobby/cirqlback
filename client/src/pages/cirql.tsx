@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send } from "lucide-react";
+import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlWorldEngine, type QuestLogRow } from "@/game/cirql-world-engine";
 import type { Btn } from "@/game/retro-engine";
@@ -8,6 +8,7 @@ import { loadAvatarLS, saveAvatarLS, DEFAULT_AVATAR, type AvatarConfig } from "@
 import { Joystick } from "@/components/joystick";
 import { CharacterCreator } from "@/components/cirql/character-creator";
 import { ARCADE_GAMES } from "@/game/registry";
+import { CAMPAIGNS, campaignById, MATCH_TAGS, difficultyMeta } from "@/game/cirql-campaigns";
 
 const SPARK_PER_PLAY = 2;
 const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
@@ -62,12 +63,41 @@ export default function Cirql() {
   const [online, setOnline] = useState(1);
   const [showChat, setShowChat] = useState(false);
   const [chatDraft, setChatDraft] = useState("");
-  const [feed, setFeed] = useState<{ key: number; name: string; text: string; me: boolean }[]>([]);
+  const [chatScope, setChatScope] = useState<"global" | "party">("global");
+  const [feed, setFeed] = useState<{ key: number; name: string; text: string; me: boolean; party: boolean }[]>([]);
   const feedKey = useRef(0);
+
+  // M9 — campaigns, board, parties
+  interface Party { id: string; campaignId: string; hostId: string; step: number; steps: number; max: number; members: { id: string; name: string }[]; }
+  const [party, setParty] = useState<Party | null>(null);
+  const partyRef = useRef<Party | null>(null);
+  const [board, setBoard] = useState<any[]>([]);
+  const [showBoard, setShowBoard] = useState(false);
+  const [showParty, setShowParty] = useState(false);
+  const [asks, setAsks] = useState<{ fromId: string; fromName: string }[]>([]);       // join requests to me (host)
+  const [invites, setInvites] = useState<{ fromId: string; fromName: string; partyId: string; campaignId: string }[]>([]);
+  const blockedRef = useRef<Set<string>>(new Set());
+  // post form
+  const [postDir, setPostDir] = useState<"host" | "seeker">("host");
+  const [postCampaign, setPostCampaign] = useState<string>(CAMPAIGNS[0].id);
+  const [postTags, setPostTags] = useState<string[]>([]);
+  const [postNewbie, setPostNewbie] = useState(true);
 
   const loggedIn = !!(user as any)?.id;
 
-  const pushFeed = (name: string, text: string, me = false) => setFeed((f) => [...f.slice(-6), { key: feedKey.current++, name, text, me }]);
+  const myId = () => myIdRef.current;
+  // Reflect the current party into the engine (shared waypoint + member highlight).
+  const syncPartyToEngine = (p: Party | null) => {
+    const eng = engineRef.current; if (!eng) return;
+    if (!p) { eng.setPartyWaypoint(null); eng.setPartyMembers([]); return; }
+    const camp = campaignById(p.campaignId); const step = camp?.steps[p.step];
+    eng.setPartyWaypoint(step && step.tx != null && step.ty != null ? { x: step.tx, y: step.ty } : null);
+    eng.setPartyMembers(p.members.map((m) => m.id).filter((id) => id !== myId()));
+  };
+  const applyParty = (p: Party | null) => { partyRef.current = p; setParty(p); syncPartyToEngine(p); if (p) setShowParty(true); else { setShowParty(false); setChatScope("global"); } };
+
+  const pushFeed = (name: string, text: string, me = false, isParty = false) => setFeed((f) => [...f.slice(-6), { key: feedKey.current++, name, text, me, party: isParty }]);
+  const wsSend = (msg: any) => { const ws = wsRef.current; if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg)); };
 
   // Attempt the presence join — fires once the socket is open AND identity is ready
   // (returning players join immediately; first-run players join after they finish the
@@ -79,8 +109,23 @@ export default function Cirql() {
     ws.send(JSON.stringify({ t: "join", name: nameRef.current, avatar: avatarRef.current, ring: st.ring, x: st.x, y: st.y, dir: "down" }));
     joinedRef.current = true;
   };
-  const sendChat = () => { const t = chatDraft.trim(); if (!t) return; wsRef.current?.send(JSON.stringify({ t: "chat", text: t })); setChatDraft(""); };
-  const shareLight = (id: string) => { const ws = wsRef.current; if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: "light", to: id })); };
+  const sendChat = () => { const t = chatDraft.trim(); if (!t) return; wsSend({ t: "chat", text: t, scope: party && chatScope === "party" ? "party" : "global" }); setChatDraft(""); };
+  const shareLight = (id: string) => wsSend({ t: "light", to: id });
+
+  // M9 board + party actions
+  const postRequest = () => {
+    const camp = campaignById(postCampaign);
+    wsSend({ t: "board:post", dir: postDir, campaignId: postDir === "host" ? postCampaign : "", steps: camp?.steps.length ?? 1, max: camp?.maxParty ?? 4, tags: postTags, newbie: postNewbie });
+    engineRef.current?.toast(postDir === "host" ? "Posted — travellers can join your run" : "Posted — hosts can invite you along");
+  };
+  const cancelPost = () => wsSend({ t: "board:cancel" });
+  const askToJoin = (postId: string) => { wsSend({ t: "party:ask", postId }); engineRef.current?.toast("Asked to join — waiting for the host"); };
+  const inviteSeeker = (postId: string) => { wsSend({ t: "party:invite", postId }); engineRef.current?.toast("Invite sent"); };
+  const respondAsk = (askerId: string, accept: boolean) => { wsSend({ t: accept ? "party:accept" : "party:decline", askerId }); setAsks((a) => a.filter((x) => x.fromId !== askerId)); };
+  const acceptInvite = (partyId: string) => { wsSend({ t: "party:acceptInvite", partyId }); setInvites((v) => v.filter((x) => x.partyId !== partyId)); };
+  const leaveParty = () => { wsSend({ t: "party:leave" }); applyParty(null); };
+  const advanceStep = () => { const p = partyRef.current; if (p) wsSend({ t: "party:advance", step: p.step }); };
+  const blockPlayer = (id: string) => { blockedRef.current.add(id); wsSend({ t: "party:report", targetId: id }); setBoard((b) => b.filter((x) => x.byId !== id)); setAsks((a) => a.filter((x) => x.fromId !== id)); setInvites((v) => v.filter((x) => x.fromId !== id)); engineRef.current?.toast("Player hidden & reported"); };
   // A "share a light" landed (from someone near you): light a lantern on your Hearth,
   // once per distinct traveller, capped at your Cirql's 12.
   const receiveLight = (id: string, name: string) => {
@@ -128,6 +173,7 @@ export default function Cirql() {
     wsRef.current = ws;
     eng.onPresence = (ring, x, y, facing) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: "move", ring, x, y, dir: facing })); };
     eng.onShareLight = (id) => shareLight(id);
+    eng.onPartyArrive = () => { const p = partyRef.current; if (p) wsSend({ t: "party:advance", step: p.step }); };
     const refreshCount = () => { const n = eng.remoteCount() + 1; setOnline(n); eng.setStats({ online: n }); };
     ws.onopen = () => { setConnected(true); tryJoin(); };
     ws.onclose = () => { setConnected(false); joinedRef.current = false; };
@@ -137,8 +183,16 @@ export default function Cirql() {
       else if (m.t === "join") { eng.addRemote(m); refreshCount(); pushFeed("", `${m.name} arrived`); }
       else if (m.t === "move") { eng.moveRemote(m.id, m.x, m.y, m.dir); }
       else if (m.t === "leave") { eng.removeRemote(m.id); refreshCount(); }
-      else if (m.t === "chat") { if (m.id === myIdRef.current) { eng.sayLocal(m.text); pushFeed(m.name, m.text, true); } else { eng.chatRemote(m.id, m.text); pushFeed(m.name, m.text); } }
+      else if (m.t === "chat") { if (blockedRef.current.has(m.id) && m.id !== myIdRef.current) return; const isP = m.channel === "party"; if (m.id === myIdRef.current) { eng.sayLocal(m.text); pushFeed(m.name, m.text, true, isP); } else { eng.chatRemote(m.id, m.text); pushFeed(m.name, m.text, false, isP); } }
       else if (m.t === "lit") { receiveLight(m.id, m.name); }
+      // M9 board + party
+      else if (m.t === "board:list") { setBoard((m.posts || []).filter((p: any) => !blockedRef.current.has(p.byId))); }
+      else if (m.t === "party:state") { applyParty({ id: m.id, campaignId: m.campaignId, hostId: m.hostId, step: m.step, steps: m.steps, max: m.max, members: m.members || [] }); }
+      else if (m.t === "party:ask") { if (!blockedRef.current.has(m.fromId)) { setAsks((a) => a.some((x) => x.fromId === m.fromId) ? a : [...a, { fromId: m.fromId, fromName: m.fromName }]); eng.toast(`${m.fromName} wants to join your party`); } }
+      else if (m.t === "party:invite") { if (!blockedRef.current.has(m.fromId)) { setInvites((v) => v.some((x) => x.partyId === m.partyId) ? v : [...v, { fromId: m.fromId, fromName: m.fromName, partyId: m.partyId, campaignId: m.campaignId }]); eng.toast(`${m.fromName} invited you to a campaign`); } }
+      else if (m.t === "party:declined") { eng.toast(`${m.byName} can't take you right now`); }
+      else if (m.t === "party:disband") { applyParty(null); eng.toast(m.reason || "The party disbanded"); }
+      else if (m.t === "party:complete") { const camp = campaignById(m.campaignId); const rw = camp?.reward ?? 0; sparksRef.current += rw; energyRef.current = Math.min(1, energyRef.current + rw * 0.01); eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current); applyParty(null); eng.toast(`✦ ${camp?.title || "Campaign"} complete — +${rw} sparks!`); persist(); }
     };
 
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); persist(); try { ws.close(); } catch { /* ignore */ } eng.destroy(); engineRef.current = null; };
@@ -270,8 +324,19 @@ export default function Cirql() {
           <span className="tracking-[0.35em]" style={{ fontSize: "1.05rem", color: "#fff", textShadow: "0 0 10px rgba(53,224,208,.6), 0 0 22px rgba(178,108,255,.35)" }}>CIRQL</span>
           <span className="tracking-[0.15em]" style={{ fontSize: "0.63rem", color: "#b26cff", textShadow: "0 0 9px rgba(178,108,255,.8)" }}>VERSE</span>
         </div>
+        <button onClick={() => { setShowBoard((v) => { if (!v) wsSend({ t: "board:get" }); return !v; }); }} data-testid="btn-board" title="Campaign Board"
+          className="pointer-events-auto relative ml-auto flex h-7 w-7 items-center justify-center rounded-full border text-teal-200/90" style={{ borderColor: party ? "rgba(53,224,208,.7)" : "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
+          <Compass className="h-3.5 w-3.5" />
+          {(asks.length + invites.length) > 0 && <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-black text-slate-900" style={{ background: "#ffc46b" }}>{asks.length + invites.length}</span>}
+        </button>
+        {party && (
+          <button onClick={() => setShowParty((v) => !v)} data-testid="btn-party" title="Your party"
+            className="pointer-events-auto flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-bold text-teal-200/90" style={{ borderColor: "rgba(53,224,208,.55)", background: "rgba(10,18,38,.5)" }}>
+            <Flag className="h-3 w-3" /> {party.members.length}
+          </button>
+        )}
         <button onClick={() => setShowChat((v) => !v)} data-testid="btn-chat" title="Chat"
-          className="pointer-events-auto ml-auto flex h-7 w-7 items-center justify-center rounded-full border" style={{ borderColor: showChat ? "rgba(53,224,208,.65)" : "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)", color: connected ? "#7be0ff" : "#7a8bb0" }}>
+          className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border" style={{ borderColor: showChat ? "rgba(53,224,208,.65)" : "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)", color: connected ? "#7be0ff" : "#7a8bb0" }}>
           <MessageCircle className="h-3.5 w-3.5" />
         </button>
         <button onClick={() => { setQuestRows(engineRef.current?.getQuestLog() ?? []); setShowQuests((v) => !v); }} data-testid="btn-quests" title="Quests"
@@ -293,16 +358,24 @@ export default function Cirql() {
       {showChat && (
         <>
           <div className="pointer-events-auto absolute inset-x-0 top-12 z-[14] mx-auto flex max-w-[520px] items-center gap-2 px-4">
+            {party && (
+              <button onClick={() => setChatScope((s) => (s === "party" ? "global" : "party"))} data-testid="cirql-chat-scope"
+                className="flex h-10 shrink-0 items-center rounded-xl border px-2.5 text-[10px] font-extrabold uppercase tracking-wide"
+                style={chatScope === "party" ? { borderColor: "#35e0d0", color: "#7ff5e8", background: "rgba(53,224,208,.12)" } : { borderColor: "#3a2a72", color: "#c9b8ff", background: "rgba(178,108,255,.08)" }}>
+                {chatScope === "party" ? "Party" : "Global"}
+              </button>
+            )}
             <input value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }} maxLength={120}
-              placeholder={connected ? "Say something to the ring…" : "connecting…"} data-testid="cirql-chat-input"
+              placeholder={connected ? (party && chatScope === "party" ? "Message your party…" : "Say something to the ring…") : "connecting…"} data-testid="cirql-chat-input"
               className="min-w-0 flex-1 rounded-xl border px-3 py-2 text-[13px] outline-none" style={{ borderColor: "#2a3a66", background: "rgba(6,11,26,.92)", color: "#fff", touchAction: "auto" }} />
-            <button onClick={sendChat} data-testid="cirql-chat-send" className="flex h-10 w-10 items-center justify-center rounded-xl border-[1.5px] active:scale-90" style={{ borderColor: "#35e0d0", color: "#35e0d0", background: "rgba(53,224,208,.08)" }}><Send className="h-5 w-5" /></button>
+            <button onClick={sendChat} data-testid="cirql-chat-send" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[1.5px] active:scale-90" style={{ borderColor: "#35e0d0", color: "#35e0d0", background: "rgba(53,224,208,.08)" }}><Send className="h-5 w-5" /></button>
           </div>
           {feed.length > 0 && (
             <div className="pointer-events-none absolute left-3 top-[86px] z-[12] flex max-w-[62%] flex-col gap-1">
               {feed.slice(-5).map((mm) => (
-                <div key={mm.key} className="w-fit rounded-md px-2 py-1 text-[11px] leading-tight" style={{ background: "rgba(6,11,26,.72)", border: `1px solid ${mm.me ? "#ffc46b55" : mm.name ? "#b26cff44" : "#35e0d044"}` }}>
-                  {mm.name ? <><span className="font-bold" style={{ color: mm.me ? "#ffd98a" : "#c9b8ff" }}>{mm.name}:</span> <span className="text-cyan-50/90">{mm.text}</span></> : <span className="italic text-cyan-300/80">{mm.text}</span>}
+                <div key={mm.key} className="w-fit rounded-md px-2 py-1 text-[11px] leading-tight" style={{ background: "rgba(6,11,26,.72)", border: `1px solid ${mm.party ? "#35e0d066" : mm.me ? "#ffc46b55" : mm.name ? "#b26cff44" : "#35e0d044"}` }}>
+                  {mm.party && <span className="mr-1 text-[8px] font-black uppercase tracking-wider text-teal-300/80">party</span>}
+                  {mm.name ? <><span className="font-bold" style={{ color: mm.me ? "#ffd98a" : mm.party ? "#7ff5e8" : "#c9b8ff" }}>{mm.name}:</span> <span className="text-cyan-50/90">{mm.text}</span></> : <span className="italic text-cyan-300/80">{mm.text}</span>}
                 </div>
               ))}
             </div>
@@ -405,6 +478,172 @@ export default function Cirql() {
           </p>
         </div>
       )}
+
+      {/* pending matchmaking prompts — accept/decline cards, top-centre; above the board
+          so a host can act on an ask even with the board open */}
+      {(asks.length > 0 || invites.length > 0) && (
+        <div className="pointer-events-auto absolute inset-x-0 top-12 z-[60] mx-auto flex max-w-[360px] flex-col gap-2 px-4">
+          {asks.map((a) => (
+            <div key={"ask" + a.fromId} data-testid={`ask-${a.fromId}`} className="flex items-center gap-2 rounded-xl border px-3 py-2" style={{ borderColor: "rgba(53,224,208,.5)", background: "rgba(8,14,30,.97)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }}>
+              <span className="min-w-0 flex-1 text-[12px] text-slate-200"><b className="text-teal-200">{a.fromName}</b> wants to join your party</span>
+              <button onClick={() => respondAsk(a.fromId, true)} data-testid={`ask-accept-${a.fromId}`} className="rounded-lg px-2.5 py-1.5 text-[12px] font-bold text-slate-900" style={{ background: "#35e0d0" }}>Accept</button>
+              <button onClick={() => respondAsk(a.fromId, false)} className="rounded-lg border px-2 py-1.5 text-[12px] text-slate-300" style={{ borderColor: "#3a2a72" }}>No</button>
+            </div>
+          ))}
+          {invites.map((v) => (
+            <div key={"inv" + v.partyId} data-testid={`invite-${v.partyId}`} className="flex items-center gap-2 rounded-xl border px-3 py-2" style={{ borderColor: "rgba(255,196,107,.5)", background: "rgba(8,14,30,.97)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }}>
+              <span className="min-w-0 flex-1 text-[12px] text-slate-200"><b className="text-amber-200">{v.fromName}</b> invites you to <b className="text-white">{campaignById(v.campaignId)?.title || "a campaign"}</b></span>
+              <button onClick={() => acceptInvite(v.partyId)} data-testid={`invite-accept-${v.partyId}`} className="rounded-lg px-2.5 py-1.5 text-[12px] font-bold text-slate-900" style={{ background: "#ffc46b" }}>Join</button>
+              <button onClick={() => setInvites((x) => x.filter((i) => i.partyId !== v.partyId))} className="rounded-lg border px-2 py-1.5 text-[12px] text-slate-300" style={{ borderColor: "#3a2a72" }}>No</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Campaign Board — post / browse / join co-op campaigns (structured, PII-free) */}
+      {showBoard && (
+        <div className="absolute inset-0 z-[57] flex flex-col" data-testid="campaign-board"
+          style={{ background: "radial-gradient(130% 80% at 50% -10%, rgba(12,34,54,.98), rgba(6,8,20,.99))" }}>
+          <div className="flex items-center gap-2 px-4 pb-1 pt-3">
+            <button onClick={() => setShowBoard(false)} data-testid="board-close" className="flex items-center gap-1 text-xs text-cyan-300/80 hover:text-cyan-200"><ArrowLeft className="h-4 w-4" /> Back</button>
+            <div className="ml-1 flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-teal-200"><Compass className="h-4 w-4" /> Campaign Board</div>
+            <span className="ml-auto text-[10px] uppercase tracking-widest text-teal-300/50">{board.length} open</span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
+            {/* post form (hidden while you're already on a campaign) */}
+            {!party ? (
+              <div className="mb-4 rounded-2xl border p-3" style={{ borderColor: "rgba(53,224,208,.25)", background: "rgba(8,16,32,.7)" }}>
+                <div className="mb-2 flex gap-2">
+                  {(["host", "seeker"] as const).map((d) => (
+                    <button key={d} onClick={() => setPostDir(d)} data-testid={`post-dir-${d}`} className="flex-1 rounded-lg border py-1.5 text-[12px] font-bold"
+                      style={postDir === d ? { borderColor: "#35e0d0", color: "#0a1220", background: "#7ff5e8" } : { borderColor: "#2a3a66", color: "#a9c2e6", background: "transparent" }}>
+                      {d === "host" ? "Host a run" : "Looking to join"}
+                    </button>
+                  ))}
+                </div>
+                {postDir === "host" && (
+                  <div className="mb-2 flex flex-col gap-1.5">
+                    {CAMPAIGNS.map((c) => {
+                      const dm = difficultyMeta[c.difficulty];
+                      return (
+                        <button key={c.id} onClick={() => setPostCampaign(c.id)} data-testid={`post-campaign-${c.id}`} className="rounded-lg border p-2 text-left"
+                          style={postCampaign === c.id ? { borderColor: "#35e0d0", background: "rgba(53,224,208,.08)" } : { borderColor: "#233152", background: "transparent" }}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[13px] font-bold text-white">{c.title}</span>
+                            <span className="rounded px-1.5 py-0.5 text-[9px] font-black uppercase" style={{ color: dm.color, background: dm.color + "22" }}>{dm.label}</span>
+                            {c.newbie && <span className="rounded px-1.5 py-0.5 text-[9px] font-black uppercase text-emerald-300" style={{ background: "rgba(91,232,154,.14)" }}>New-friendly</span>}
+                            <span className="ml-auto text-[10px] text-slate-400">{c.minParty}-{c.maxParty} · {c.steps.length} steps</span>
+                          </div>
+                          <p className="mt-0.5 text-[11px] leading-snug text-slate-400">{c.blurb}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {MATCH_TAGS.map((tg) => {
+                    const on = postTags.includes(tg);
+                    return <button key={tg} onClick={() => setPostTags((t) => on ? t.filter((x) => x !== tg) : [...t, tg])} data-testid={`post-tag-${tg}`}
+                      className="rounded-full border px-2.5 py-1 text-[10px] font-bold" style={on ? { borderColor: "#b26cff", color: "#e6d8ff", background: "rgba(178,108,255,.15)" } : { borderColor: "#2a3a66", color: "#8ba0c4" }}>{tg}</button>;
+                  })}
+                </div>
+                <label className="mb-2 flex items-center gap-2 text-[12px] text-slate-300">
+                  <input type="checkbox" checked={postNewbie} onChange={(e) => setPostNewbie(e.target.checked)} data-testid="post-newbie" /> New players welcome
+                </label>
+                <button onClick={postRequest} data-testid="board-post" className="w-full rounded-xl py-2.5 text-[13px] font-extrabold text-slate-900" style={{ background: "linear-gradient(90deg,#35e0d0,#7ff5e8)" }}>
+                  Post to the board
+                </button>
+              </div>
+            ) : (
+              <div className="mb-4 flex items-center gap-2 rounded-2xl border p-3 text-[12px]" style={{ borderColor: "rgba(53,224,208,.35)", background: "rgba(8,16,32,.7)" }}>
+                <Flag className="h-4 w-4 text-teal-300" />
+                <span className="flex-1 text-slate-200">You're on <b className="text-white">{campaignById(party.campaignId)?.title}</b> with {party.members.length}.</span>
+                <button onClick={() => { setShowBoard(false); setShowParty(true); }} className="rounded-lg px-2.5 py-1.5 text-[12px] font-bold text-slate-900" style={{ background: "#35e0d0" }}>Open party</button>
+              </div>
+            )}
+
+            {/* open requests */}
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-widest text-teal-300/70">Open requests</div>
+            {board.length === 0 && <p className="py-6 text-center text-[12px] text-slate-500">No open requests yet. Post one above and a traveller can join you.</p>}
+            <div className="flex flex-col gap-2">
+              {board.map((b) => {
+                const mine = b.byId === myId();
+                const camp = b.dir === "host" ? campaignById(b.campaignId) : null;
+                const dm = camp ? difficultyMeta[camp.difficulty] : null;
+                const full = b.size >= b.max;
+                return (
+                  <div key={b.id} data-testid={`post-${b.id}`} className="rounded-xl border p-2.5" style={{ borderColor: mine ? "rgba(255,196,107,.5)" : "rgba(53,224,208,.22)", background: "rgba(8,16,32,.6)" }}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13px] font-bold text-white">{b.byName}</span>
+                      {mine && <span className="rounded px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-300" style={{ background: "rgba(255,196,107,.14)" }}>You</span>}
+                      <span className="ml-auto text-[10px] text-slate-400">{b.dir === "host" ? `${b.size}/${b.max}` : "seeking"}</span>
+                    </div>
+                    <p className="mt-0.5 text-[12px] text-teal-100/90">
+                      {b.dir === "host"
+                        ? <>Hosting <b className="text-white">{camp?.title || "a campaign"}</b>{dm && <span className="ml-1.5 rounded px-1.5 py-0.5 text-[9px] font-black uppercase" style={{ color: dm.color, background: dm.color + "22" }}>{dm.label}</span>}</>
+                        : <span className="text-slate-300">Looking to join any campaign</span>}
+                    </p>
+                    {(b.newbie || (b.tags && b.tags.length > 0)) && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {b.newbie && <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-300" style={{ background: "rgba(91,232,154,.14)" }}>New-friendly</span>}
+                        {(b.tags || []).map((tg: string) => <span key={tg} className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-violet-200/90" style={{ background: "rgba(178,108,255,.13)" }}>{tg}</span>)}
+                      </div>
+                    )}
+                    <div className="mt-2 flex items-center gap-2">
+                      {mine ? (
+                        <button onClick={cancelPost} data-testid={`post-cancel-${b.id}`} className="rounded-lg border px-3 py-1.5 text-[12px] font-bold text-rose-300" style={{ borderColor: "rgba(255,93,125,.4)" }}>Cancel post</button>
+                      ) : b.dir === "host" ? (
+                        <button onClick={() => askToJoin(b.id)} disabled={full} data-testid={`post-ask-${b.id}`} className="rounded-lg px-3 py-1.5 text-[12px] font-bold text-slate-900 disabled:opacity-40" style={{ background: "#35e0d0" }}>{full ? "Full" : "Ask to join"}</button>
+                      ) : (
+                        <button onClick={() => inviteSeeker(b.id)} disabled={!party || (party as any)?.hostId !== myId()} data-testid={`post-invite-${b.id}`} className="rounded-lg px-3 py-1.5 text-[12px] font-bold text-slate-900 disabled:opacity-40" style={{ background: "#ffc46b" }} title={!party ? "Host a run first, then you can invite" : ""}>Invite along</button>
+                      )}
+                      {!mine && <button onClick={() => blockPlayer(b.byId)} data-testid={`post-block-${b.id}`} className="ml-auto text-[10px] text-slate-500 hover:text-rose-300">Hide</button>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Party panel — shared campaign progress + members + advance/leave */}
+      {showParty && party && (() => {
+        const camp = campaignById(party.campaignId);
+        const stepLabel = camp?.steps[party.step]?.label ?? "Wrapping up";
+        return (
+          <div className="absolute right-3 top-14 z-[55] w-[260px] rounded-xl border p-3" style={{ borderColor: "rgba(53,224,208,.4)", background: "rgba(8,16,32,.97)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }} data-testid="party-panel">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-teal-300"><Flag className="h-3.5 w-3.5" /> Party</span>
+              <button onClick={() => setShowParty(false)} className="text-slate-400 hover:text-slate-200"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="text-[13px] font-bold text-white">{camp?.title || "Campaign"}</div>
+            <div className="mt-1 flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,.1)" }}>
+                <div className="h-full rounded-full" style={{ width: `${Math.round((party.step / party.steps) * 100)}%`, background: "linear-gradient(90deg,#35e0d0,#7ff5e8)" }} />
+              </div>
+              <span className="text-[10px] font-bold text-teal-200">{party.step}/{party.steps}</span>
+            </div>
+            <div className="mt-2 flex items-start gap-1.5 rounded-lg px-2 py-1.5 text-[12px] text-teal-100" style={{ background: "rgba(53,224,208,.08)" }}>
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-300" /> <span>{stepLabel}</span>
+            </div>
+            <button onClick={advanceStep} data-testid="party-advance" className="mt-2 w-full rounded-lg py-2 text-[12px] font-extrabold text-slate-900" style={{ background: "linear-gradient(90deg,#35e0d0,#7ff5e8)" }}>We're here → next step</button>
+            <div className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Crew ({party.members.length})</div>
+            <div className="mt-1 flex flex-col gap-1">
+              {party.members.map((mm) => (
+                <div key={mm.id} className="flex items-center gap-1.5 text-[12px] text-slate-200">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#35e0d0" }} />
+                  {mm.name}{mm.id === party.hostId && <span className="text-[9px] font-bold uppercase text-amber-300">host</span>}{mm.id === myId() && <span className="text-[9px] text-slate-500">(you)</span>}
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 flex gap-2">
+              <button onClick={() => { setShowChat(true); setChatScope("party"); setShowParty(false); }} className="flex-1 rounded-lg border py-1.5 text-[11px] font-bold text-teal-200" style={{ borderColor: "rgba(53,224,208,.4)" }}>Party chat</button>
+              <button onClick={leaveParty} data-testid="party-leave" className="flex-1 rounded-lg border py-1.5 text-[11px] font-bold text-rose-300" style={{ borderColor: "rgba(255,93,125,.4)" }}>Leave</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {showCreator && (
         <CharacterCreator
