@@ -1,6 +1,6 @@
 # CIRQLSPACE — Your Sandbox · Linear Register
 
-Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 7). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E COMPLETE; next up Phase F (Town stores).**
+Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 8). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E COMPLETE; ✨ Phase H (Sit, Zoom & Diorama) pulled ahead as the next build; F + G still queued.**
 
 **Legend:** ☑ Done · ◐ In progress · ☐ Todo · ⧗ *not yet a Linear issue (free-tier issue cap) — tracked in the plan.*
 
@@ -12,6 +12,7 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 | C · Terrain paint | 3 ⧗ | ✅ **DONE (3/3)** |
 | D · Land growth (cozy → estate) | 3 ⧗ | ✅ **DONE (3/3)** |
 | E · Live parties | 4 ⧗ | ✅ **DONE (4/4)** |
+| ✨ H · Sit, Zoom & Diorama | 4 ⧗ | **Next up** |
 | F · Town stores (NPC shops) | 4 ⧗ | Todo |
 | G · Music & SFX | 3 ⧗ | Todo |
 
@@ -49,6 +50,13 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 - [x] **E3** — Open↔invite-only toggle (`space:mode`) + invites (`space:invite`/`space:invited`) + cap 8 + host-only edit (guarded by the `visiting` flag)
 - [x] **E4** — Live presence in a space (room-scoped move/chat/emote/light) + `space:home` return; host disconnect evicts visitors
   - *(deferred: visitor land-milestones / party rewards — a later economy pass)*
+
+## ✨ H · Sit, Zoom & Diorama  *(owner-added 2026-07-07, pulled ahead of F/G · ⧗ issues pending — Linear cap)*
+Gather + show off your CIRQLSPACE. Locked: **free-sit** (social only) · **both** zooms · **tilted 3/4 diorama** · **shareable postcard**.
+- [ ] **H1** — Sit: free-sit toggle pose (anywhere; movement cancels); room-scoped `pose` on presence → seated render for self + remotes
+- [ ] **H2** — Live zoom: continuous pinch/scroll+buttons `zoom` on the world camera (clamped), doubles as tap-to-travel when zoomed out
+- [ ] **H3** — Diorama beauty shot: one-tap sweep to **tilted 3/4** — ground-plane squash + billboarded props/avatars + island thickness band + slow orbit + vignette/float-shadow/clouds/golden light + postcard label
+- [ ] **H4** — Postcard share: capture the diorama frame → shareable card (label baked in) + SPARQS frames/filters
 
 ## F · Town stores (NPC shops)  *(⧗ issues pending — Linear cap)*
 - [ ] **F1** — Shop buildings → interiors + shopkeeper NPCs

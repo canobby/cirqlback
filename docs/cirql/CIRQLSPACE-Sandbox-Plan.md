@@ -6,7 +6,7 @@ A major new chapter for the CIRQL flagship. **CIRQLSPACE (ring 0) is reinvented 
 
 > **ring 0 = you · ring 1 = the community (Town) · ring 2+ = the endless wilds.**
 
-Status (2026-07-07): **BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E complete; next up Phase F (Town stores).** Owner approved the vision + the phase plan below; build proceeds phase by phase. Phase E shipped CIRQLSPACE live parties (personal space rooms, host-build streaming to visitors, open↔invite toggle + cap 8 + host-only edit; commit 395dc6a). This plan mirrors the Linear project **"CIRQLSPACE — Your Sandbox"** (team CHR). Regenerate the PDF whenever this plan or the Linear register changes (owner standing request).
+Status (2026-07-07): **BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E complete; owner pulled ✨ Phase H (Sit, Zoom & Diorama) ahead as the next build; F (Town stores) + G (Music) still queued.** Owner approved the vision + the phase plan below; build proceeds phase by phase. Phase E shipped CIRQLSPACE live parties (personal space rooms, host-build streaming to visitors, open↔invite toggle + cap 8 + host-only edit; commit 395dc6a). This plan mirrors the Linear project **"CIRQLSPACE — Your Sandbox"** (team CHR). Regenerate the PDF whenever this plan or the Linear register changes (owner standing request).
 
 ---
 
@@ -81,10 +81,19 @@ Foundations already shipped in "CIRQL — Flagship World": the `sparqbank` walle
 - **G2 — Action + movement SFX.** place / paint / buy / sail / jump / emote / quest / party. Procedural, no audio files.
 - **G3 — Mix/mute controls + integration.**
 
+### H · Sit, Zoom & Diorama — gather + show off your CIRQLSPACE  *(owner-added 2026-07-07; pulled ahead of F/G · Linear issues pending — cap)*
+A distinct theme from F/G — it touches the engine camera, presence (a new `pose` field), and the UI. Turns CIRQLSPACE from a place you *walk across* into a place you *linger in and show off*. All four locked with the owner (see below).
+- **H1 — Sit (free-sit pose).** A toggle button drops your avatar into a seated pose **anywhere**; any movement input stands you back up. Add a room-scoped **`pose`** field to `/ws/cirql` presence (rides on the Phase E rooms) so everyone in the space sees you seated; remote avatars render the seated pose. **Purely social** — the "gather round the campfire" fantasy, best friends with live parties (E).
+- **H2 — Live zoom (continuous).** Pinch (mobile) / scroll + buttons (desktop) smoothly scale the world camera from character-level all the way out to the whole island. A clamped **`zoom`** factor on the `CirqlWorldEngine` world→screen transform; the existing view-cull handles the wider frame. **Doubles as tap-to-travel** when zoomed out (reuse `moveTarget`).
+- **H3 — Diorama beauty shot (tilted 3/4).** One tap **sweeps** the camera up and back into a framed **tilted 3/4 "physical model"** view of your whole CIRQLSPACE. Technique = *tilt only the ground, keep everything on it standing up*: **vertical-squash the ground plane** (island disc + terrain tiles + shadows, ~0.6× Y), **billboard** props + avatars upright from their projected base (no skew — flatters the flat art, Don't-Starve-style), a **dark thickness band** under the disc rim (a floating *chunk* of land, not a decal), a **slow auto-orbit** around center (the wow — thickness catches light from changing angles), plus **vignette + float-shadow + drifting clouds + golden-hour light**. Painter's-order draw by projected depth. A **postcard label** ("<name>'s CIRQLSPACE · Tier N · P pieces").
+- **H4 — Postcard share.** Capture a diorama frame → a shareable **postcard** image with the label baked in; **SPARQS-bought frames/filters** as cosmetic sinks. Folds into the party loop (host zooms out to "give the tour"; the postcard is the thing friends want to make too).
+
+**Locked decisions (owner, 2026-07-07):** free-sit anywhere (social only, no perk) · **both** zooms (continuous *and* the one-tap beauty shot) · beauty shot = **tilted 3/4 diorama** (not top-down glam) · **shareable postcard** designed in from the start.
+
 ---
 
 ## Sequence & shippability
-**A** is the foundation everything sits on and ships first. Then **B** (objects) → **C** (terrain) → **D** (growth) → **E** (parties) → **F** (stores) → **G** (music). Each phase ships on its own and is verified in-browser. Build begins per phase on the owner's "go".
+**A** is the foundation everything sits on and ships first. Then **B** (objects) → **C** (terrain) → **D** (growth) → **E** (parties) → ✨**H** (sit/zoom/diorama — owner pulled ahead) → **F** (stores) → **G** (music). Each phase ships on its own and is verified in-browser. Build begins per phase on the owner's "go".
 
 ## Open threads (to settle as we reach each phase)
 - Terrain **grid resolution** vs save/stream size; **object cap** number.
