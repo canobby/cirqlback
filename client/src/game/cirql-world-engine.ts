@@ -507,12 +507,15 @@ export class CirqlWorldEngine extends RetroEngine {
     }
     // otherwise a contextual greeting
     const active = this.activeQuest();
-    const home = this.ringIdx === 0;
-    const lines = active
-      ? [`Off you go — ${active.name.toLowerCase()} awaits.`, "The glimmer marks your way."]
-      : home
-        ? ["Well met again, traveller.", "CirqlCade waits east, past the lanterns."]
-        : [`Safe travels on ${this.curRing.name}.`, "The onward dock lies to the south — the fog thins the farther you sail."];
+    const guide = npcId === "guide";           // Cirqla, on your CIRQLSPACE (CHR-269)
+    const town = this.ringIdx === 1;
+    const lines = guide
+      ? ["Welcome to your CIRQLSPACE — this whole island is yours.", "Open your Inventory to build: place things, paint the ground, make it your own.", "When you're ready for quests, the arcade and the shops, sail south to the Town."]
+      : active
+        ? [`Off you go — ${active.name.toLowerCase()} awaits.`, "The glimmer marks your way."]
+        : town
+          ? ["Welcome to the Town, traveller.", "CirqlCade waits east; the onward dock lies south to the wilds."]
+          : [`Safe travels on ${this.curRing.name}.`, "The onward dock lies to the south — the fog thins the farther you sail."];
     this.dialog = { name: p.label || "Ferra", accent, i: 0, lines };
   }
 

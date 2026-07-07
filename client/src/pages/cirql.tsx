@@ -406,9 +406,9 @@ export default function Cirql() {
     const firstRun = !seenIntroRef.current;
     avatarRef.current = cfg; nameRef.current = name || nameRef.current || "Traveller"; seenIntroRef.current = true;
     engineRef.current?.setAvatar(cfg); engineRef.current?.setLocal(nameRef.current, cfg);
-    // first-run onboarding: a short "waking at the Hearth" cutscene (CHR-264), then
-    // auto-start the quest chain so a waypoint guides them (CHR-231)
-    if (firstRun) { engineRef.current?.acceptQuest("find-your-feet"); engineRef.current?.playCutscene(WAKE_CUTSCENE); }
+    // first-run onboarding (CHR-269): a short "welcome to your CIRQLSPACE" cutscene. The
+    // guide NPC (Cirqla) teaches building; the world tutorials wait for Ferra in the Town.
+    if (firstRun) engineRef.current?.playCutscene(WAKE_CUTSCENE);
     setShowCreator(false); persist();
     presenceReadyRef.current = true; tryJoin();   // now safe to appear to other travellers
   };

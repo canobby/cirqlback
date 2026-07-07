@@ -36,13 +36,13 @@ const VIOLET = "#b26cff";
 
 // ---- authored cutscenes ---------------------------------------------------
 
-/** First-run onboarding: waking at the Hearth. Played after the character creator. */
+/** First-run onboarding: arriving on your own CIRQLSPACE. Played after the creator. */
 export const WAKE_CUTSCENE: Cutscene = {
   id: "wake",
   beats: [
     { fx: "dawn", body: "You drift ashore on a circle of light…", accent: GOLD, hold: 3.0 },
-    { fx: "bloom", title: "CIRQLSPACE", sub: "your home in the endless ocean", accent: GOLD, hold: 3.2 },
-    { fx: "sparks", body: "A lantern waits nearby. Light it, and the world begins.", accent: TEAL, hold: 3.2 },
+    { fx: "bloom", title: "CIRQLSPACE", sub: "your own island in the endless ocean", accent: GOLD, hold: 3.2 },
+    { fx: "sparks", body: "It's yours to build. Talk to Cirqla, then sail to the Town.", accent: TEAL, hold: 3.4 },
   ],
 };
 
