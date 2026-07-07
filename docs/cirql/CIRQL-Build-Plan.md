@@ -2,7 +2,7 @@
 
 **"An ocean of circles that never ends — you light it with real taps, glowing Wonders, and the friends in your Cirql."**
 
-CIRQL is the flagship: a persistent, magical, social world of concentric island-rings. You start at **The Hearth** and sail outward forever. This plan is the working guide — checkoff lists mirror the Linear project **"CIRQL — Flagship World"** (team CHR). **Scope of this pass: "through the arcade beat"** — a shippable playable slice; deeper social depth is Phase 2 at the bottom.
+CIRQL is the flagship: a persistent, magical, social world of concentric island-rings. You start at **The Hearth** and sail outward forever. This plan is the working guide — checkoff lists mirror the Linear project **"CIRQL — Flagship World"** (team CHR). **Status (2026-07-07): M0–M10 COMPLETE & LIVE + M11 underway.** The playable slice grew into a real multiplayer world — live presence + chat, co-op campaigns/party-finder, endless procedural rings + generated quests + daily/seasonal loops + a Myst puzzle, themed seasonal islands with purposeful landscape, and interactive voyages into caves/treetops/clouds. Everything is live at **`/cirql`** on `chr-5-7-phase0-run-locally` (auto-deploys to Render). Currency shows as **SPARQ/SPARQS**.
 
 ## Progress log
 - **M1 · The World & Movement — DONE & LIVE** (commit `b664883`). Walkable Hearth island: cottage, Wonders monolith, Ferra (NPC), Cirql lantern ring, movement, minimap, glow, interact → dialog/toast.
@@ -14,8 +14,13 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - **M5 · CirqlCade (in-world arcade) — DONE & LIVE** (commit `26eead2`). Enter CirqlCade → a hall of all ~57 live cabinets (from the registry); tap one → it plays **embedded in an iframe over `/cirql`** (never leaves CIRQLVERSE); "← CirqlCade" exits to the hall and the game's own /arcade back-link is caught + routed back; **a spark a play** on exit. Verified end-to-end (0 errors, tsc clean).
 - **M6 · Sparks Economy & Your Cirql — DONE & LIVE** (commits `9f4c0e4`, `df76f4a`). World Energy meter, your-Cirql lanterns + Cirql panel (Invite + "share a light"), capped spark-a-play, and **spend-sparks cosmetics** (buy-in-place in the creator; owned persists). **Only CHR-245 (retire the platform-wide arcade reward system) remains — intentionally deferred** to its own careful pass (big blast radius).
 - **M7 · Playable Slice Hardening — DONE & LIVE** (commit `6b52ba9`). Full-loop smoke (arcade banner → world → create → quests → CirqlCade → play → sparks → spend → resume) verified; tsc clean + mobile pass; **CIRQLVERSE surfaced via a flagship banner on `/arcade`**; beta-test checklist doc created.
-- **🎉 THE PLAYABLE SLICE (M0–M7) IS COMPLETE & LIVE.** Remaining: deferred **CHR-245** + the deeper roadmap **M8** (social/chat) · **M9** (campaigns/party-finder) · **M10** (endless engines) · **M11** (wishlist).
-- **Roadmap grew (owner brainstorm):** added **M8 Social/chat**, **M9 Campaigns & Party Finder**, **M10 Endless content engines** (procedural rings, quest templates, daily/seasonal, Myst-style puzzles), **M11 Depth & Delight wishlist** (Hearth décor+visiting, emotes, tapped-shops→landmarks, sailing-as-journey, jump). Positioning: **Balanced**.
+- **🎉 THE PLAYABLE SLICE (M0–M7) COMPLETE & LIVE.** Then the deeper roadmap shipped:
+- **M8 · Social — presence + chat — CORE DONE & LIVE** (commit `d23d975`). New `server/cirql-presence.ts` = a ring-scoped live room at **`/ws/cirql`** (grown from `/ws/town`): real travellers walk the Hearth together (avatars, name tags, chat bubbles, smooth interpolation), a header chat bar, live online count, and **"share a light"** (walk up + E → both Hearths light a lantern — the locked social payoff). *DM channel + full channel-switcher/moderation (CHR-248/249) are deferred; global + party chat ship.*
+- **M9 · Campaigns & Party Finder — DONE & LIVE** (commit `a5ee3b3`, CHR-251/252/253/254). Co-op **campaigns** (`cirql-campaigns.ts`), a **Campaign Board** with **structured, PII-free** matchmaking posts (pick a campaign + preset tags + new-player-friendly — no freeform, kid-safe), host/seeker directions, ask→accept + invite→accept handshakes, **parties** with a shared teal waypoint + synced step progress + a members-only **party chat channel** + rewards; leave/disband/late-join; rate limits + minimal block/report.
+- **M10 · Endless content engines — DONE & LIVE** (commits `bff0024`→`89cfbcb`, CHR-255/256/257/258). **Procedural rings** (`cirql-ring-gen.ts`: sail outward forever — seeded biomes/props/docks, growing radius, arrival cinematic, resume); **quest-template generator** (each ring's keeper offers a deterministic kindle/discover/wayfind quest via a dynamic registry); **daily + weekend loops** (`cirql-daily.ts`: rotating daily task, streak, a weekend Lantern-Festival ×2); a **Myst rune puzzle** on the Hearth (read the runestone clue → light the runes → the sealed shrine opens).
+- **World polish (owner feedback):** themed **seasonal islands** (meadow/tropical/winter/desert/autumn/woodland/coast/ember — biome stride so every shore differs), **world-space ambient critters** with per-creature motion (butterflies/bees/dragonflies/grasshopper-hops/fireflies/gulls/snow/embers), **purposeful landscape** (fence corrals + rows, flower beds, tree groves, rock cairns, paths), **solid collision** (walk around trees/rocks/ponds/fences), **cross-ring quests + campaigns** (objectives/steps span rings; off-ring the waypoint points to the dock), **repeatable quests/campaigns** (redo for ~¼ reward), and a robust **lantern-quest fix** (per-quest `litForQuest`).
+- **M11 · Depth & Delight — STARTED:** **CHR-265 Interactive voyages — DONE & LIVE** (commit `be24ce3`): a `portal` prop (cave/hollow-tree/cloud-stair) travels to a **sub-map** (The Undervault cavern / The High Canopy / The Cloud Reach) and back — reusing the sailing primitive (a portal is a dock to an off-index ring). Emotes (CHR-260, roster ready) + cutscenes (CHR-264) + more wishlist remain.
+- **Currency rename:** flagship display is now **SPARQ/SPARQS** (code identifiers stay `sparks`).
 
 ## Locked decisions (owner, 2026-07-06 — "ALL IN")
 - **The Wonders** = the 50 arcade cabinets folded IN-WORLD as enchanted monoliths you *attune* to (press E → the cabinet opens as an in-world overlay; you never leave CIRQL). Found on the first quest, which is the movement tutorial.
@@ -78,47 +83,55 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - [x] tsc clean + mobile pass + perf *(CHR-240)*
 - [x] Beta-test checklist + deploy + surface `/cirql` in nav *(CHR-241)*
 
-## M8 · Social — presence & chat channels
-- [ ] Live presence in-world (`/ws/cirql`, room per ring) *(CHR-247)*
-- [ ] Chat channel model: Global / Party / DM *(CHR-248)*
-- [ ] Channel switcher UI + safety/moderation *(CHR-249)*
+## M8 · Social — presence & chat channels — CORE DONE
+- [x] Live presence in-world (`/ws/cirql`, room per ring) *(CHR-247)*
+- [ ] Chat channel model: Global / Party / DM *(CHR-248)* — **◑ global + party chat done; DM deferred**
+- [ ] Channel switcher UI + safety/moderation *(CHR-249)* — **◑ Global/Party toggle + structured tags + rate limits + minimal block shipped; full switcher/DM/profanity-filter/persistent report-block deferred**
 
-## M9 · Campaigns & Party Finder (co-op)
-- [ ] Campaign model: co-op multi-step quests (party-scoped) *(CHR-251)*
-- [ ] Campaign Board: post / browse / join (+ new-player-friendly) *(CHR-252)*
-- [ ] Party formation + shared waypoint + shared progress *(CHR-253)*
-- [ ] Matchmaking requests + safety (tags, report/block) *(CHR-254)*
+## M9 · Campaigns & Party Finder (co-op) — DONE
+- [x] Campaign model: co-op multi-step quests (party-scoped) *(CHR-251)*
+- [x] Campaign Board: post / browse / join (+ new-player-friendly) *(CHR-252)*
+- [x] Party formation + shared waypoint + shared progress *(CHR-253)*
+- [x] Matchmaking requests + safety (tags, report/block) *(CHR-254)*
 
-## M10 · Endless content engines
-- [ ] Procedural rings (infinite outward biomes) *(CHR-255)*
-- [ ] Quest-template generator (infinite authored-feeling quests) *(CHR-256)*
-- [ ] Daily + seasonal loops (rotating dailies, events, drops) *(CHR-257)*
-- [ ] Myst-style puzzle quests / campaigns *(CHR-258)*
+## M10 · Endless content engines — DONE
+- [x] Procedural rings (infinite outward biomes) *(CHR-255)*
+- [x] Quest-template generator (infinite authored-feeling quests) *(CHR-256)*
+- [x] Daily + seasonal loops (rotating dailies, events, drops) *(CHR-257)*
+- [x] Myst-style puzzle quests / campaigns *(CHR-258)*
 
-## M11 · Depth & Delight (wishlist — owner-approved, unscheduled)
+## M11 · Depth & Delight (wishlist — owner-approved) — STARTED
 Positioning decision: **Balanced** (family-friendly / chat-free-first defaults + cosmetic-only + kindness mechanics, with fuller chat + competitive edges for older players).
+- [x] **Interactive voyages: tunnels/underground, treetops & clouds** *(CHR-265)* — DONE & LIVE
 - [ ] Hearth décor + visiting friends' Hearths *(CHR-259)*
-- [ ] Emotes + chat-free expression *(CHR-260)*
+- [ ] Emotes + chat-free expression *(CHR-260)* — full roster drafted, not built
 - [ ] Tapped businesses become in-world landmarks (loyalty ↔ world) *(CHR-261)*
 - [ ] Sailing as a mini-journey (interactive voyages) *(CHR-262)*
 - [ ] Jump / hop movement (traversal + expression) *(CHR-263)*
+- [ ] More mini-journeys & cutscenes (expand) *(CHR-264)* — brainstorm captured
 
-## Architecture notes (as built in M1)
-- `client/src/game/cirql-world.ts` — declarative rings/props. **Add a ring = add a config here.** Ring 0 = The Hearth; outer rings stubbed (minimap fog) until Phase 2.
-- `client/src/game/cirql-world-engine.ts` — `CirqlWorldEngine extends RetroEngine`. Host hooks for later milestones: `onInteract(kind,prop)`, `onLocalMove(ring,x,y)` (autosave), `getState()/applyState()` (persistence), `setStats()` (sparks / your-Cirql HUD), `toast()`. Interact key = **E** (and Space).
-- `client/src/pages/cirql.tsx` — host page + joystick + E/run controls. In DEV the engine is on `window.__cirql`.
+## Architecture notes (as built through M11)
+- `client/src/game/cirql-world.ts` — declarative rings/props + PropTypes. **The authored Hearth (ring 0) + every prop type live here.** Prop types now include hearth/wonders/npc/tree/lantern/crystal/dock/marker/tablet/rune/shrine/gathering/theater/rock/pond/flower/fence/path/**portal**.
+- `client/src/game/cirql-ring-gen.ts` — **procedural rings + sub-maps** (CHR-255/265). `generateRing(index)` seeds biome/palette/props/docks; radius grows with index; landscape uses **formations** (`placeGrove/placeFlowerBed/placeRockCairn/placeCorral/placeFenceRow`). **Sub-maps:** `getRing(i)` returns the Hearth for 0, a surface ring below `SUB_BASE`, or a **sub-map** (`generateSubMap` cave/tree/cloud) for big indices; `isSubMap/parentOf/subKindOf/subIndex` encode `kind*offset + parentIndex`. A **portal is a dock** to an off-index ring.
+- `client/src/game/cirql-quests.ts` + `cirql-quest-gen.ts` — quest registry (authored chain + `registerQuest`/`allQuests` **dynamic** ring quests). Objectives carry an optional **`ring`** (cross-ring) + kinds reach/interact/enterWonders/lightLanterns/solvePuzzle. Repeatable via `doneOnce`; lightLanterns uses a **per-quest `litForQuest`** set (never blocked by stale global lit).
+- `client/src/game/cirql-campaigns.ts` — co-op campaigns; steps carry `ring`+`at` (a prop id resolved on that ring) for **cross-ring** party voyages.
+- `client/src/game/cirql-daily.ts` — daily task + seasonal/weekend event (deterministic per UTC day).
+- `client/src/game/cirql-theater.ts` — the Cirql Drive-In's fake movie posters.
+- `client/src/game/cirql-world-engine.ts` — `CirqlWorldEngine extends RetroEngine`. Hooks: `onInteract`, `onLocalMove` (autosave), `onSail(ring,maxRing)`, `onQuestComplete(q,firstTime)`, `onQuestChange`, `onPresence`/`onShareLight` (multiplayer), `onPartyArrive`; `setStats`/`setPartyTarget`/`setPartyMembers`/`addRemote…`/`toast`. Interact key = **E**. In DEV the engine is on `window.__cirql` (TS `private` fields are runtime-readable — used for smoke tests).
+- `server/cirql-presence.ts` — the `/ws/cirql` room: ring-scoped presence + move + chat (global/party channels) + share-a-light + the M9 **party/campaign-board state machine** (in-memory, no DB). Wired into the `noServer` upgrade router in `server/routes.ts` beside `/ws/town` + `/ws/mp`.
 
 ## Gotchas to respect
-- **DB migrations:** `db:migrate` is broken on the shared Neon DB; `db:push` truncates. Apply additive DDL via a guarded script (quest tables, M3).
-- **Dev server:** `tsx` does not hot-reload server code — restart after server edits (kill the port-5000 PID if stuck). Client hot-reloads via Vite.
-- **`apiRequest` returns a raw `Response`** — always `.json()` it.
-- **Cabinet back-buttons hardcode `/arcade`** — override when a Wonder launches inside CIRQL (M5).
+- **DB migrations:** `db:migrate` is broken on the shared Neon DB; `db:push` truncates. All CIRQL state rides in the `game_progress` `cirql` blob — **no new tables**; the whole multiplayer/party layer is in-memory.
+- **Persist everything through the blob:** `buildState`/`applyState` in `cirql.tsx` must list each field (ring/maxRing/x/y/quests/lit/litForQuest/doneOnce/doneCampaigns/…) — a field left out silently isn't saved.
+- **Lantern quests:** never gate quest-lantern lighting on the shared persistent `lit` set — use the per-quest `litForQuest` (reset on accept). (This was the "3 lights on, can't light another" bug.)
+- **Dev server:** `tsx` does not hot-reload server code — restart after server edits (kill the port-5000 PID). Client hot-reloads via Vite. **Rapid full page reloads trip the express rate-limiter** (`max 1000/15min`, `server/index.ts`) → 429s/blank page → restart the dev server to reset; prefer HMR while testing.
+- **`apiRequest` returns a raw `Response`** — the cirql page uses raw `fetch`.
 - **Don't shadow RetroEngine base methods/fields** (`px`, `ring`, `last`) — world fields are `posX/posY/curRing`.
-- **Deploy:** push to `chr-5-7-phase0-run-locally` → Render auto-deploys (~2–4 min); confirm the new `/assets/*.js` bundle hash.
+- **Test-account state:** a saved `seenIntro:false` shows the first-run creator (gates presence join) — set it true in the `cirql` save to smoke multiplayer.
+- **Deploy:** push to `chr-5-7-phase0-run-locally` → Render auto-deploys (~2–4 min) at `cirqlback.onrender.com/cirql`; confirm the new `/assets/*.js` bundle hash.
 
-## Phase 2 — deferred (after the arcade beat)
-- Real-world tap → sparks bridge (the moat: a café tap widens the shared sea).
-- Friends/parties depth — party up, sail together, co-op ring unlocks.
-- Trading + inventories (both-confirm, anti-scam).
-- More rings/biomes (Whisperwood, Glimmer Bazaar, outward forever) + docks/portals.
-- Depth — quests beyond onboarding, light combat/monsters, seasonal drops.
+## Phase 2 — deferred / next
+- **CHR-245** — retire the platform-wide arcade reward system → unify on sparqs (big blast radius; own pass, owner sign-off).
+- **M8 remainder** — DM channel + full channel switcher + profanity filter + persistent report/block (CHR-248/249).
+- **M11 wishlist** — emotes (CHR-260, roster ready), cutscenes/mini-journeys (CHR-264/262), Hearth décor + visiting (CHR-259), tapped-shops→landmarks (CHR-261), jump/hop (CHR-263).
+- Real-world tap → sparqs bridge (the moat: a café tap widens the shared sea).

@@ -1,8 +1,8 @@
 # CIRQL — Flagship World · Linear Register
 
-Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of every milestone + issue with its status. Live board: linear.app → CIRQL — Flagship World. Generated 2026-07-06.
+Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of every milestone + issue with its status. Live board: linear.app → CIRQL — Flagship World. Generated 2026-07-07. **M0–M10 complete + M11 started.**
 
-**Legend:** ☑ = Done · ☐ = Todo.
+**Legend:** ☑ = Done · ◑ = Partial · ☐ = Todo.
 
 ## Summary
 | Milestone | Issues | Done |
@@ -15,10 +15,12 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 | M5 · CirqlCade (in-world arcade) | 4 | 4 |
 | M6 · Sparks Economy & Your Cirql | 6 | 5 |
 | M7 · Playable Slice Hardening | 3 | 3 |
-| M8 · Social — presence & chat channels | 3 | 0 |
-| M9 · Campaigns & Party Finder | 4 | 0 |
-| M10 · Endless content engines | 4 | 0 |
-| M11 · Depth & Delight (wishlist) | 5 | 0 |
+| M8 · Social — presence & chat channels | 3 | 1 (+ core of 2 more) |
+| M9 · Campaigns & Party Finder | 4 | 4 |
+| M10 · Endless content engines | 4 | 4 |
+| M11 · Depth & Delight (wishlist) | 7 | 1 |
+
+**Overall:** 46 of the 55 issues done. Remaining: **CHR-245** (retire platform-wide arcade rewards, deferred), the **M8 chat remainder** (CHR-248 DM / CHR-249 switcher+moderation — cores shipped), and the **M11 wishlist** (CHR-259/260/261/262/263/264).
 
 ## M0 · Foundations (reused) — DONE
 - [x] **CHR-211** — Reuse: /town websocket presence prototype
@@ -73,27 +75,29 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 - [x] **CHR-240** — tsc clean + mobile pass + perf
 - [x] **CHR-241** — Beta-test checklist + deploy + `/cirql` surfaced on the arcade lobby
 
-## M8 · Social — presence & chat channels
-- [ ] **CHR-247** — Live presence in-world (/ws/cirql, room per ring)
-- [ ] **CHR-248** — Chat channel model: Global / Party / DM
-- [ ] **CHR-249** — Channel switcher UI + safety/moderation
+## M8 · Social — presence & chat channels — CORE DONE (commit d23d975, live)
+- [x] **CHR-247** — Live presence in-world (/ws/cirql, room per ring)
+- [ ] **CHR-248** — Chat channel model: Global / Party / DM — **◑ global + party done; DM deferred**
+- [ ] **CHR-249** — Channel switcher UI + safety/moderation — **◑ Global/Party toggle + structured tags + rate limits + minimal block shipped; full switcher/DM/profanity-filter/persistent report-block deferred**
 
-## M9 · Campaigns & Party Finder
-- [ ] **CHR-251** — Campaign model: co-op multi-step quests (party-scoped)
-- [ ] **CHR-252** — Campaign Board: post / browse / join (+ new-player-friendly)
-- [ ] **CHR-253** — Party formation + shared waypoint + shared progress
-- [ ] **CHR-254** — Matchmaking requests + safety (tags, report/block)
+## M9 · Campaigns & Party Finder — DONE (commit a5ee3b3, live)
+- [x] **CHR-251** — Campaign model: co-op multi-step quests (party-scoped)
+- [x] **CHR-252** — Campaign Board: post / browse / join (+ new-player-friendly)
+- [x] **CHR-253** — Party formation + shared waypoint + shared progress
+- [x] **CHR-254** — Matchmaking requests + safety (tags, report/block)
 
-## M10 · Endless content engines
-- [ ] **CHR-255** — Procedural rings (infinite outward biomes)
-- [ ] **CHR-256** — Quest-template generator (infinite authored-feeling quests)
-- [ ] **CHR-257** — Daily + seasonal loops (rotating dailies, events, drops)
-- [ ] **CHR-258** — Myst-style puzzle quests / campaigns
+## M10 · Endless content engines — DONE (commits bff0024→89cfbcb, live)
+- [x] **CHR-255** — Procedural rings (infinite outward biomes)
+- [x] **CHR-256** — Quest-template generator (infinite authored-feeling quests)
+- [x] **CHR-257** — Daily + seasonal loops (rotating dailies, events, drops)
+- [x] **CHR-258** — Myst-style puzzle quests / campaigns
 
-## M11 · Depth & Delight (wishlist — owner-approved, unscheduled)
+## M11 · Depth & Delight (wishlist — owner-approved) — STARTED
 Positioning: **Balanced** (family-friendly / chat-free-first defaults + cosmetic-only + kindness mechanics, with fuller chat + competitive edges for older players).
+- [x] **CHR-265** — Interactive voyages: tunnels/underground, treetops & clouds (commit be24ce3, live)
 - [ ] **CHR-259** — Hearth décor + visiting friends' Hearths
-- [ ] **CHR-260** — Emotes + chat-free expression
+- [ ] **CHR-260** — Emotes + chat-free expression *(full roster drafted)*
 - [ ] **CHR-261** — Tapped businesses become in-world landmarks (loyalty ↔ world)
 - [ ] **CHR-262** — Sailing as a mini-journey (interactive voyages)
 - [ ] **CHR-263** — Jump / hop movement (traversal + expression)
+- [ ] **CHR-264** — More mini-journeys & cutscenes (expand) *(brainstorm captured)*
