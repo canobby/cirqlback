@@ -164,8 +164,8 @@ export function generateRing(index: number): Ring {
   if (biome.flowers > 0) { const beds = Math.max(1, Math.round(scaled(biome.flowers) / 5)); for (let b = 0; b < beds; b++) { const c = clearSpot(); placeFlowerBed(props, c.x, c.y, 5, rng); } }
   for (let i = 0; i < scaled(biome.crystals); i++) place("crystal", { big: rng() > 0.5, accent: biome.palette.accent });
   for (let i = 0; i < scaled(biome.lanterns); i++) place("lantern");
-  // fences: a CORRAL (enclosure, open on one side) or a straight field ROW — purposeful
-  if (biome.fence) { const c = clearSpot(); if (rng() > 0.5) placeCorral(props, c.x, c.y, 34, 22, rng); else placeFenceRow(props, c.x, c.y, 70, rng() > 0.5); }
+  // bushes: a little clump — scenery + reusable as maze/labyrinth walls for quests (CHR-259)
+  { const c = clearSpot(); const bn = scaled(biome.tree ? 4 : 2); for (let i = 0; i < bn; i++) props.push({ t: "bush", x: c.x + (rng() - 0.5) * 44, y: c.y + (rng() - 0.5) * 44 }); }
   // larger rings get extra pockets of a DIFFERENT feel (a little grove + flowerbed — an
   // oasis even on a desert ring) so a big island isn't one uniform scene throughout
   if (radius > 620) { const g = clearSpot(); placeGrove(props, g.x, g.y, 3 + Math.floor(rng() * 2), rng); const f = clearSpot(); placeFlowerBed(props, f.x, f.y, 6, rng); if (rng() > 0.5) { const p = clearSpot(); props.push({ t: "pond", x: p.x, y: p.y, r: 20 + Math.floor(rng() * 10) }); } }

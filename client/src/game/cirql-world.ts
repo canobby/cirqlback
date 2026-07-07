@@ -13,6 +13,7 @@ export type PropType =
   | "wonders"   // the in-world arcade building (doorway → the 50 Wonders)
   | "npc"       // a quest-giver / townsperson
   | "tree"
+  | "bush"      // a leafy bush (solid) — scatter + maze/labyrinth walls (CHR-259)
   | "lantern"   // a plain path lantern
   | "crystal"
   | "dock"      // sail outward to another ring
@@ -104,6 +105,9 @@ const HEARTH: Ring = {
     { t: "tree", x: 55, y: -255 },
     { t: "tree", x: 350, y: 60 },
     { t: "tree", x: -210, y: 210, big: true },
+    // leafy bushes scattered about (solid — walk around; the maze/labyrinth primitive)
+    { t: "bush", x: -110, y: 200 }, { t: "bush", x: -86, y: 214 }, { t: "bush", x: 240, y: -140 },
+    { t: "bush", x: 315, y: 175 }, { t: "bush", x: -300, y: 0 },
     // boulders + a little pond for an outdoor feel (all solid — walk around them)
     { t: "rock", x: 285, y: 130 },
     { t: "rock", x: -285, y: 200, big: true },

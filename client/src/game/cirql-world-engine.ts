@@ -431,6 +431,7 @@ export class CirqlWorldEngine extends RetroEngine {
       if (p.t === "hearth") out.push({ x: p.x, y: p.y, r: 40 });
       else if (p.t === "wonders") out.push({ x: p.x, y: p.y, r: 34 });
       else if (p.t === "tree") out.push({ x: p.x, y: p.y + 2, r: p.big ? 13 : 10 });
+      else if (p.t === "bush") out.push({ x: p.x, y: p.y, r: 7 });
       else if (p.t === "rock") out.push({ x: p.x, y: p.y, r: p.big ? 12 : 8 });
       else if (p.t === "pond") out.push({ x: p.x, y: p.y, r: (p.r ?? 20) - 2 });
       else if (p.t === "fence") out.push({ x: p.x, y: p.y, r: 9 });
@@ -774,7 +775,8 @@ export class CirqlWorldEngine extends RetroEngine {
         case "hearth": draws.push({ y: p.y + 28, f: () => this.drawHearth(sxp, syp, p) }); break;
         case "wonders": draws.push({ y: p.y + 30, f: () => this.drawWonders(sxp, syp, p) }); break;
         case "npc": draws.push({ y: p.y, f: () => this.drawNpc(sxp, syp, p) }); break;
-        case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big) }); break;
+        case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big, this.treeKind(p.x, p.y)) }); break;
+        case "bush": draws.push({ y: p.y, f: () => this.drawBush(sxp, syp) }); break;
         case "crystal": draws.push({ y: p.y, f: () => this.drawCrystal(sxp, syp, p.big, p.accent || pal.accent) }); break;
         case "rock": draws.push({ y: p.y, f: () => this.drawRock(sxp, syp, p.big) }); break;
         case "flower": draws.push({ y: p.y, f: () => this.drawFlower(sxp, syp, p.accent || "#ff8fbf") }); break;
@@ -1105,12 +1107,26 @@ export class CirqlWorldEngine extends RetroEngine {
     if (!this.reduce) { const yb = cy - 26 + Math.sin(this.t * 3) * 1.5; this.disc(cx, yb, 2, "#ffd24a"); this.ring(cx, yb, 4, "#ffd24a", 1); }
     this.nameTag(cx, cy, p.label || "Ferra", ac);
   }
-  private drawTree(cx: number, cy: number, big?: boolean) {
-    const s = big ? 1.4 : 1;
+  // tree kind from a stable hash of world position → a mix of shapes per ring (CHR-259)
+  private treeKind(x: number, y: number): "round" | "pine" {
+    return ((Math.abs(x * 3 + y * 7) | 0) % 10) < 3 ? "pine" : "round";
+  }
+  private triY(cx: number, apexY: number, halfW: number, h: number, color: string) {
+    const b = this.b, s = this.SS;
+    b.fillStyle = color; b.beginPath();
+    b.moveTo(cx * s, apexY * s); b.lineTo((cx - halfW) * s, (apexY + h) * s); b.lineTo((cx + halfW) * s, (apexY + h) * s); b.closePath(); b.fill();
+  }
+  private drawTree(cx: number, cy: number, big?: boolean, kind: "round" | "pine" = "round") {
+    const s = big ? 1.4 : 1, pal = this.curRing.palette;
     this.disc(cx, cy + 2, 6 * s, "#0a071440");
-    this.rect(cx - 2, cy - 8 * s, 4, 10 * s, "#3a2a1e");
-    for (let i = 0; i < 3; i++) this.disc(cx, cy - 14 * s - i * 5 * s, (11 - i * 2) * s, i === 0 ? "#356149" : this.curRing.palette.grass);
-    this.disc(cx - 3 * s, cy - 20 * s, 3 * s, "#3e6d52");
+    if (kind === "pine") {
+      this.rect(cx - 1.5, cy - 6 * s, 3, 8 * s, "#4a3420");                        // trunk
+      for (let i = 0; i < 3; i++) this.triY(cx, cy - 12 * s - i * 6 * s, (9 - i * 2.5) * s, 9 * s, i === 2 ? "#3e6d52" : pal.grass);
+    } else {
+      this.rect(cx - 2, cy - 8 * s, 4, 10 * s, "#3a2a1e");
+      for (let i = 0; i < 3; i++) this.disc(cx, cy - 14 * s - i * 5 * s, (11 - i * 2) * s, i === 0 ? "#356149" : pal.grass);
+      this.disc(cx - 3 * s, cy - 20 * s, 3 * s, "#3e6d52");                         // highlight
+    }
   }
   private drawCrystal(cx: number, cy: number, big: boolean | undefined, c: string) {
     const s = big ? 1.35 : 1;
@@ -1133,10 +1149,20 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx - 2 * s, cy - 4 * s, 1.5 * s, "#8a8a97");   // highlight
   }
   private drawFlower(cx: number, cy: number, c: string) {
-    this.rect(cx, cy - 3, 1, 4, "#3a6a34");                 // stem
-    this.disc(cx - 2, cy - 4, 1.4, c); this.disc(cx + 2, cy - 4, 1.4, c);   // petals
-    this.disc(cx, cy - 6, 1.4, c); this.disc(cx, cy - 2, 1.4, c);
-    this.disc(cx, cy - 4, 1.2, "#ffe58a");                  // centre
+    // stem + a little leaf, then a rounded 5-petal bloom + centre (reads as a flower,
+    // not a jewel — CHR-259 landscape pass)
+    this.rect(cx, cy - 4, 1, 5, "#3a6a34");
+    this.disc(cx - 1.5, cy - 1, 1.1, "#4c8a46");            // leaf
+    const R = 2.1;
+    for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * (TAU / 5); this.disc(cx + Math.cos(a) * R, cy - 5 + Math.sin(a) * R, 1.5, c); }
+    this.disc(cx, cy - 5, 1.3, "#ffe58a");                  // centre
+  }
+  private drawBush(cx: number, cy: number) {
+    const g = this.curRing.palette.grass;
+    this.disc(cx, cy + 2, 7, "#0a071438");
+    this.disc(cx - 3.5, cy - 1, 4.2, "#2e5638"); this.disc(cx + 3.5, cy - 1, 4.2, "#2e5638");
+    this.disc(cx, cy - 3.5, 5, g); this.disc(cx - 3, cy - 1, 3.4, g); this.disc(cx + 3, cy - 1, 3.4, g);
+    this.disc(cx - 1.5, cy - 4.5, 1.6, "#6fbf7a");          // highlight
   }
   private drawFence(cx: number, cy: number, vert: boolean) {
     this.disc(cx, cy + 2, 5, "#0a071430");
@@ -1160,6 +1186,16 @@ export class CirqlWorldEngine extends RetroEngine {
     this.fillCirc(cx, cy, r - 3, sea);                        // deeper centre
     if (!this.reduce) for (let i = 0; i < 3; i++) { const yy = cy - r * 0.4 + i * r * 0.4; this.rect(cx - r * 0.4, yy + Math.sin(this.t * 2 + i) * 1, r * 0.8, 1, "rgba(255,255,255,0.14)"); }  // shimmer
     for (let i = 0; i < 8; i++) { const a = i * (TAU / 8); this.disc(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.9, 1.6, "#4a4a52"); }   // rim stones
+    // water's edge: reeds, grass tufts + the odd flower fringe the rim (CHR-259)
+    const g = this.curRing.palette.grass;
+    for (let i = 0; i < 11; i++) {
+      const a = i * (TAU / 11) + (Math.abs(cx) % 5) * 0.13;
+      const ex = cx + Math.cos(a) * (r + 1), ey = cy + Math.sin(a) * (r * 0.9 + 1);
+      const k = (i * 7 + (Math.abs(cx) | 0)) % 5;
+      if (k === 0) { this.rect(ex, ey - 7, 1, 7, "#3f6f36"); this.rect(ex - 0.5, ey - 8, 2, 2, "#8a6a2e"); }      // cattail reed
+      else if (k === 1) this.drawFlower(ex, ey, i % 2 ? "#ff8fbf" : "#ffd24a");                                    // a bloom
+      else { this.rect(ex - 1, ey - 3, 1, 4, g); this.rect(ex + 1, ey - 2, 1, 3, g); this.rect(ex, ey - 4, 1, 5, g); }   // grass tuft
+    }
   }
 
   // ---- drifting ambient life, per biome (WORLD-space — stays put in the world, each
