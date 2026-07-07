@@ -7,6 +7,10 @@ import type { Btn } from "@/game/retro-engine";
 import { loadAvatarLS, saveAvatarLS, DEFAULT_AVATAR, type AvatarConfig } from "@/game/avatar";
 import { Joystick } from "@/components/joystick";
 import { CharacterCreator } from "@/components/cirql/character-creator";
+import { ARCADE_GAMES } from "@/game/registry";
+
+const SPARK_PER_PLAY = 2;
+const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 
 // CIRQL — the flagship world (M1 world + M2 identity/persistence).
 // Walk The Hearth; your character + position resume across sessions. New players
@@ -35,6 +39,9 @@ export default function Cirql() {
   const [creatorMode, setCreatorMode] = useState<"create" | "edit">("create");
   const [showQuests, setShowQuests] = useState(false);
   const [questRows, setQuestRows] = useState<QuestLogRow[]>([]);
+  const [hallOpen, setHallOpen] = useState(false);         // CirqlCade hall (the in-world arcade)
+  const [playRoute, setPlayRoute] = useState<string | null>(null); // a cabinet embedded over the world
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const loggedIn = !!(user as any)?.id;
 
@@ -61,7 +68,7 @@ export default function Cirql() {
     const eng = new CirqlWorldEngine(canvasRef.current);
     engineRef.current = eng;
     if (import.meta.env.DEV) (window as any).__cirql = eng;
-    eng.onInteract = (kind) => { if (kind === "wonders") eng.toast("CirqlCade opens here soon — 50 games, in-world."); };
+    eng.onInteract = (kind) => { if (kind === "wonders") setHallOpen(true); };   // step into CirqlCade
     eng.onLocalMove = (ring, x, y) => { posRef.current = { ring, x, y }; scheduleSave(); };
     // quests: grant the sparks reward on completion, persist progress on any change
     eng.onQuestComplete = (q) => { sparksRef.current += q.reward.sparks; eng.setStats({ sparks: sparksRef.current }); persist(); };
@@ -119,6 +126,19 @@ export default function Cirql() {
     setShowCreator(false); persist();
   };
 
+  // Leaving a cabinet → back to the CirqlCade hall + a spark a play (CHR-235; full
+  // score→sparks normalization is M6). Also fires if the game's own back-button
+  // navigates the iframe away from /play.
+  const closeGame = () => {
+    if (playRoute) {
+      sparksRef.current += SPARK_PER_PLAY;
+      engineRef.current?.setStats({ sparks: sparksRef.current });
+      engineRef.current?.toast(`+${SPARK_PER_PLAY} sparks`);
+      persist();
+    }
+    setPlayRoute(null);
+  };
+
   const hold = (b: Btn) => ({
     onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ } engineRef.current?.press(b); },
     onPointerUp: () => engineRef.current?.release(b),
@@ -166,6 +186,41 @@ export default function Cirql() {
           </button>
         </div>
       </div>
+
+      {/* CirqlCade — the in-world arcade hall: pick a cosmic cabinet to play */}
+      {hallOpen && (
+        <div className="absolute inset-0 z-[58] flex flex-col" data-testid="cirqlcade-hall"
+          style={{ background: "radial-gradient(130% 80% at 50% -10%, rgba(40,20,74,.98), rgba(6,8,20,.99))" }}>
+          <div className="flex items-center gap-3 px-4 pb-1 pt-3">
+            <button onClick={() => setHallOpen(false)} data-testid="cade-leave" className="flex items-center gap-1 text-xs text-cyan-300/80 hover:text-cyan-200"><ArrowLeft className="h-4 w-4" /> Leave</button>
+            <div className="ml-1 text-base font-extrabold uppercase tracking-[0.22em] text-white" style={{ textShadow: "0 0 12px rgba(178,108,255,.65)" }}>CirqlCade</div>
+            <span className="ml-auto text-[10px] uppercase tracking-widest text-violet-300/60">{CADE_GAMES.length} wonders</span>
+          </div>
+          <p className="px-4 pb-2 text-[12px] leading-snug text-violet-200/60">Attune to a Wonder — every run earns you <span className="text-amber-300">sparks</span>.</p>
+          <div className="grid min-h-0 flex-1 grid-cols-3 gap-2 overflow-y-auto px-3 pb-[calc(16px+env(safe-area-inset-bottom))] sm:grid-cols-4">
+            {CADE_GAMES.map((g) => (
+              <button key={g.id} onClick={() => setPlayRoute(g.route)} data-testid={`cade-${g.id}`}
+                className="flex flex-col items-center justify-center gap-1 rounded-xl border p-2 transition active:scale-95"
+                style={{ borderColor: g.accent + "55", background: "linear-gradient(180deg, rgba(22,15,44,.75), rgba(10,8,24,.75))", minHeight: 86 }}>
+                <span className="text-[26px] leading-none" style={{ filter: `drop-shadow(0 0 6px ${g.accent})` }}>{g.glyph}</span>
+                <span className="text-center text-[11px] font-bold leading-tight text-white">{g.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* an embedded cabinet — plays over the world, no leaving CIRQLVERSE */}
+      {playRoute && (
+        <div className="absolute inset-0 z-[59] flex flex-col bg-black" data-testid="cirqlcade-game">
+          <div className="flex items-center gap-3 px-4 py-2" style={{ background: "rgba(6,8,20,.96)" }}>
+            <button onClick={closeGame} data-testid="cade-back" className="flex items-center gap-1 text-xs font-bold text-cyan-300/90 hover:text-cyan-200"><ArrowLeft className="h-4 w-4" /> CirqlCade</button>
+            <span className="ml-auto text-[10px] uppercase tracking-widest text-violet-300/50">playing in-world</span>
+          </div>
+          <iframe ref={iframeRef} src={playRoute} title="CirqlCade cabinet" className="w-full min-h-0 flex-1 border-0"
+            onLoad={() => { try { const p = iframeRef.current?.contentWindow?.location?.pathname; if (p && !p.startsWith("/play")) closeGame(); } catch { /* cross-origin: ignore */ } }} />
+        </div>
+      )}
 
       {showQuests && (
         <div className="absolute right-3 top-14 z-[55] w-[240px] rounded-xl border p-3" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.94)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }} data-testid="quest-log">
