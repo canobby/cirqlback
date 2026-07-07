@@ -120,6 +120,9 @@ const TOWN: Ring = {
     { t: "wonders", x: 250, y: 40, id: "wonders", label: "CirqlCade", accent: "#b26cff", r: 46 },
     // Ferra — the quest-giver (the world tutorials give here now)
     { t: "npc", x: -60, y: 120, id: "keeper", label: "Ferra", accent: "#7fffe6", r: 34 },
+    // the named Town cast (Phase K2) — each teaches one system with their own voice
+    { t: "npc", x: 150, y: -110, id: "cartographer", label: "Marin", accent: "#6fd8ff", r: 30 },
+    { t: "npc", x: 60, y: 210, id: "bard", label: "Lio", accent: "#ff9d5c", r: 30 },
     // scenery — a leafy town green
     { t: "tree", x: 190, y: -220, big: true }, { t: "tree", x: -230, y: -180 }, { t: "tree", x: 330, y: -120, big: true },
     { t: "tree", x: -340, y: 120 }, { t: "tree", x: 120, y: 250 }, { t: "tree", x: -150, y: 280, big: true },

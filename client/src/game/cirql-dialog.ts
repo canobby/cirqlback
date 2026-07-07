@@ -36,9 +36,12 @@ export function npcConversation(opts: {
   questIntro?: string[];    // the giver's pitch for an available (or repeatable) quest
   questId?: string;
   repeat?: boolean;         // a repeatable re-offer (slighter reward)
+  loreLabel?: string;       // override the "Tell me about this place" hub label
+  topics?: { label: string; lines: string[] }[];   // extra personality topics (K2 named cast)
 }): DialogTree {
   const nodes: Record<string, DialogNode> = {};
-  const hubChoices: DialogChoice[] = [{ label: "Tell me about this place", goto: "lore" }];
+  const hubChoices: DialogChoice[] = [{ label: opts.loreLabel ?? "Tell me about this place", goto: "lore" }];
+  (opts.topics ?? []).forEach((t, i) => { hubChoices.push({ label: t.label, goto: `topic${i}` }); nodes[`topic${i}`] = { lines: t.lines, choices: [{ label: "◂ Back", goto: "start" }, { label: "Farewell" }] }; });
   if (opts.questId && opts.questIntro) hubChoices.push({ label: "Any work for me?", goto: "work" });
   hubChoices.push({ label: "Farewell" });
 

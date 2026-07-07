@@ -22,6 +22,7 @@ import { arrivalCutscene, BEAT_SECONDS, type Cutscene, type CutsceneBeat, type C
 import { decorById, DECOR_SOLID } from "./cirql-decor";
 import { npcLook, type NpcLook } from "./cirql-npc-looks";
 import { simpleDialog, npcConversation, type DialogTree, type DialogChoice } from "./cirql-dialog";
+import { npcProfile } from "./cirql-npc-cast";
 
 export type InteractKind = "wonders" | "npc" | "dock";
 export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; energy: number; }
@@ -698,19 +699,15 @@ export class CirqlWorldEngine extends RetroEngine {
     const fresh = offerableQuest(npcId, this.quests);
     const offer = fresh || repeatableQuest(npcId, this.quests);
     const active = this.activeQuest();
-    const guide = npcId === "guide";           // Cirqla, on your CIRQLSPACE (CHR-269)
-    const town = this.ringIdx === 1;
-    // greeting + lore vary by who + where — the conversation hub
-    const greeting = guide
-      ? ["Welcome to your CIRQLSPACE — this whole island is yours."]
-      : town ? ["Welcome to the Town, traveller."]
-        : active && active.giver === npcId ? [`You're still on the trail — ${active.name.toLowerCase()}.`]
-          : [`Well met on ${this.curRing.name}.`];
-    const lore = guide
-      ? ["Open your Inventory to build — place things, paint the ground, make it your own.", "When you're ready for quests, the arcade and the shops, sail south to the Town."]
-      : town ? ["CirqlCade waits to the east — every Wonder within.", "The onward dock lies south, into the widening wilds."]
-        : ["The onward dock lies to the south; the fog thins the farther you sail.", "Each ring out is older, stranger — and pays a wanderer more."];
-    this.setDialog(name, accent, npcConversation({ greeting, lore, questIntro: offer?.intro, questId: offer?.id, repeat: offer ? !fresh : false }));
+    // named cast (Phase K2) speak with their own voice + system-teaching topics; unnamed
+    // wilderness keepers fall back to a generic, place-aware conversation.
+    const prof = npcProfile(npcId);
+    const greeting = prof ? prof.greeting
+      : active && active.giver === npcId ? [`You're still on the trail — ${active.name.toLowerCase()}.`]
+        : [`Well met on ${this.curRing.name}.`];
+    const lore = prof ? prof.lore
+      : ["The onward dock lies to the south; the fog thins the farther you sail.", "Each ring out is older, stranger — and pays a wanderer more."];
+    this.setDialog(name, accent, npcConversation({ greeting, lore, loreLabel: prof?.loreLabel, topics: prof?.topics, questIntro: offer?.intro, questId: offer?.id, repeat: offer ? !fresh : false }));
   }
 
   // ---------- update ----------

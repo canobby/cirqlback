@@ -53,6 +53,16 @@ const AUTHORED: Record<string, NpcLook> = {
     robe: "#b0562a", trim: "#ffd24a", skin: "#e0a878", hair: "#4a3420", hairStyle: "bun",
     hat: "band", hatColor: "#ffd24a", accessory: "book", accColor: "#f0d9a0",
   },
+  // Marin the Cartographer — a wind-blown explorer: blue coat, wide-brim hat, a rolled chart (book).
+  cartographer: {
+    robe: "#2a6a8a", trim: "#bfe6ff", skin: "#c68a5a", hair: "#3a2a1a", hairStyle: "short",
+    hat: "wideBrim", hatColor: "#3a4a5a", accessory: "book", accColor: "#e8dcc0",
+  },
+  // Lio the Bard — festive and warm: violet coat with a gold sash, a jaunty cap, a flower in hand.
+  bard: {
+    robe: "#7a4fd0", trim: "#ffd24a", skin: "#d29b6a", hair: "#2a1c12", hairStyle: "long",
+    hat: "cap", hatColor: "#ff9d5c", accessory: "flower", accColor: "#ff8fbf",
+  },
 };
 
 /** Resolve an NPC's look: hand-authored where we have one, else a stable hashed look.
