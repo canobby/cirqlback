@@ -888,7 +888,7 @@ export default function Cirql() {
       {event && !eventDismissed && !showChat && (
         <div className="pointer-events-auto absolute inset-x-0 top-12 z-[13] mx-auto flex max-w-[420px] items-center gap-2 rounded-full border px-3 py-1.5" data-testid="event-banner"
           style={{ borderColor: event.accent + "80", background: "rgba(10,18,38,.92)", boxShadow: `0 0 18px ${event.accent}44` }}>
-          <span className="text-[13px]" style={{ filter: `drop-shadow(0 0 5px ${event.accent})` }}>✦</span>
+          <span className="text-[14px]" style={{ filter: `drop-shadow(0 0 5px ${event.accent})` }}>{event.emoji ?? "✦"}</span>
           <span className="min-w-0 flex-1 truncate text-[11.5px]"><b style={{ color: event.accent }}>{event.name}</b> <span className="text-slate-300">— {event.blurb}</span></span>
           <button onClick={() => setEventDismissed(true)} className="shrink-0 text-slate-400 hover:text-slate-200"><X className="h-3.5 w-3.5" /></button>
         </div>
@@ -1186,12 +1186,12 @@ export default function Cirql() {
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: dailyUi.done ? "#5be89a" : "#ffc46b" }}>Daily</span>
                 {dailyUi.streak > 0 && <span className="text-[10px] font-bold text-amber-300">🔥 {dailyUi.streak}</span>}
-                {event && <span className="ml-auto text-[9px] font-bold uppercase" style={{ color: event.accent }}>✦ {event.name}</span>}
+                {event && <span className="ml-auto text-[9px] font-bold uppercase" style={{ color: event.accent }}>{event.emoji ?? "✦"} {event.name}</span>}
               </div>
               <div className="mt-0.5 text-[13px] font-semibold text-white">{d.title}</div>
-              <p className="text-[11px] leading-snug text-slate-300">{d.blurb}</p>
+              <p className="text-[11px] leading-snug text-slate-300">{event?.blurb ?? d.blurb}</p>
               <div className="mt-1 text-[11px] font-bold" style={{ color: dailyUi.done ? "#5be89a" : "#ffd98a" }}>
-                {dailyUi.done ? "✓ Done today — come back tomorrow" : `Reward: ${d.reward * (event?.sparkMult ?? 1)} sparqs${event ? " (doubled!)" : ""}`}
+                {dailyUi.done ? "✓ Done today — come back tomorrow" : `Reward: ${d.reward * (event?.sparkMult ?? 1)} sparqs${event ? ` (${event.sparkMult}×!)` : ""}`}
               </div>
             </div>
           ); })()}
