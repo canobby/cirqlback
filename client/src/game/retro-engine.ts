@@ -62,6 +62,10 @@ export abstract class RetroEngine {
   // logical pixel buffer (the "console" resolution)
   protected LW: number;
   protected LH: number;
+  // supersample: the buffer renders at SS× the logical resolution, then upscales to the
+  // display — so round shapes read finer / less chunky while games keep drawing in logical
+  // coords. A subclass can set SS in its constructor BEFORE super()… n/a; it's fixed here.
+  protected SS = 1.5;
   private buf: HTMLCanvasElement;
   /** Buffer draw context — the kit draws here in logical pixels. */
   protected b: CanvasRenderingContext2D;
@@ -127,7 +131,7 @@ export abstract class RetroEngine {
     this.LW = lw; this.LH = lh;
 
     this.buf = document.createElement("canvas");
-    this.buf.width = lw; this.buf.height = lh;
+    this.buf.width = Math.round(lw * this.SS); this.buf.height = Math.round(lh * this.SS);
     const b = this.buf.getContext("2d");
     if (!b) throw new Error("RetroEngine: 2D buffer context unavailable");
     this.b = b;
@@ -198,7 +202,7 @@ export abstract class RetroEngine {
     sctx.clearRect(0, 0, this.dispW, this.dispH);
     let ox = 0, oy = 0;
     if (this.shake > 0.2 && !this.reduce) { const s = this.shake * (this.dispW / this.LW); ox = (Math.random() - 0.5) * s; oy = (Math.random() - 0.5) * s; }
-    sctx.drawImage(this.buf, 0, 0, this.LW, this.LH, ox, oy, this.dispW, this.dispH);
+    sctx.drawImage(this.buf, 0, 0, this.LW * this.SS, this.LH * this.SS, ox, oy, this.dispW, this.dispH);
     if (this.crt && !this.reduce) this.drawCRT();
   }
 
@@ -277,31 +281,34 @@ export abstract class RetroEngine {
 
   // ---------- the 16-bit draw kit (operates on the buffer, in logical pixels) ----------
   private col(c: string | number): string { return typeof c === "number" ? this.pal[((c % 16) + 16) % 16] : c; }
-  protected cls(c: string | number = 0) { this.b.fillStyle = this.col(c); this.b.fillRect(0, 0, this.LW, this.LH); }
-  protected px(x: number, y: number, c: string | number) { if (x < 0 || y < 0 || x >= this.LW || y >= this.LH) return; this.b.fillStyle = this.col(c); this.b.fillRect(x | 0, y | 0, 1, 1); }
-  protected rect(x: number, y: number, w: number, h: number, c: string | number) { this.b.fillStyle = this.col(c); this.b.fillRect(x | 0, y | 0, w, h); }
+  protected cls(c: string | number = 0) { this.b.fillStyle = this.col(c); this.b.fillRect(0, 0, this.LW * this.SS, this.LH * this.SS); }
+  protected px(x: number, y: number, c: string | number) { if (x < 0 || y < 0 || x >= this.LW || y >= this.LH) return; const s = this.SS; this.b.fillStyle = this.col(c); this.b.fillRect(Math.round(x * s), Math.round(y * s), Math.ceil(s), Math.ceil(s)); }
+  protected rect(x: number, y: number, w: number, h: number, c: string | number) { const s = this.SS; this.b.fillStyle = this.col(c); this.b.fillRect(Math.round(x * s), Math.round(y * s), Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s))); }
   protected rectLine(x: number, y: number, w: number, h: number, c: string | number) { this.rect(x, y, w, 1, c); this.rect(x, y + h - 1, w, 1, c); this.rect(x, y, 1, h, c); this.rect(x + w - 1, y, 1, h, c); }
   /** Vertical gradient block — the sky/backdrop workhorse. */
   protected vgrad(x: number, y: number, w: number, h: number, c1: string, c2: string) { for (let j = 0; j < h; j++) this.rect(x, y + j, w, 1, mix(c1, c2, h <= 1 ? 0 : j / (h - 1))); }
   /** A shaded surface: light top edge, body, dark bottom edge. */
   protected shelf(x: number, y: number, w: number, h: number, base: string) { this.rect(x, y, w, 1, shade(base, 0.4)); this.rect(x, y + 1, w, Math.max(0, h - 2), base); this.rect(x, y + h - 1, w, 1, shade(base, -0.4)); }
-  protected disc(cx: number, cy: number, r: number, c: string | number) { for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r) this.px(cx + x, cy + y, c); }
-  protected ring(cx: number, cy: number, r: number, c: string | number, th = 1.6) { for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) { const d = x * x + y * y; if (d <= r * r && d > (r - th) * (r - th)) this.px(cx + x, cy + y, c); } }
+  // disc/ring/ball iterate at the SUPERSAMPLED resolution so their curves read finer.
+  protected disc(cx: number, cy: number, r: number, c: string | number) { const s = this.SS, R = r * s, X = Math.round(cx * s), Y = Math.round(cy * s); this.b.fillStyle = this.col(c); for (let y = -Math.ceil(R); y <= R; y++) for (let x = -Math.ceil(R); x <= R; x++) if (x * x + y * y <= R * R) this.b.fillRect(X + x, Y + y, 1, 1); }
+  protected ring(cx: number, cy: number, r: number, c: string | number, th = 1.6) { const s = this.SS, R = r * s, T = th * s, X = Math.round(cx * s), Y = Math.round(cy * s); this.b.fillStyle = this.col(c); for (let y = -Math.ceil(R); y <= R; y++) for (let x = -Math.ceil(R); x <= R; x++) { const d = x * x + y * y; if (d <= R * R && d > (R - T) * (R - T)) this.b.fillRect(X + x, Y + y, 1, 1); } }
   /** A spherically-lit ball — the signature round hero of every cabinet. */
   protected ball(cx: number, cy: number, r: number, base: string) {
-    for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
-      const d2 = x * x + y * y; if (d2 > r * r) continue;
-      const lx = x + r * 0.42, ly = y + r * 0.42, dl = Math.sqrt(lx * lx + ly * ly) / (r * 1.7);
+    const s = this.SS, R = r * s, X = Math.round(cx * s), Y = Math.round(cy * s);
+    for (let y = -Math.ceil(R); y <= R; y++) for (let x = -Math.ceil(R); x <= R; x++) {
+      const d2 = x * x + y * y; if (d2 > R * R) continue;
+      const lx = x + R * 0.42, ly = y + R * 0.42, dl = Math.sqrt(lx * lx + ly * ly) / (R * 1.7);
       let c = dl < 0.32 ? shade(base, 0.55) : dl < 0.62 ? shade(base, 0.2) : dl < 0.85 ? base : shade(base, -0.3);
-      if (d2 > (r - 1) * (r - 1)) c = shade(base, -0.55);
-      this.px(cx + x, cy + y, c);
+      if (d2 > (R - s) * (R - s)) c = shade(base, -0.55);
+      this.b.fillStyle = c; this.b.fillRect(X + x, Y + y, 1, 1);
     }
-    this.px(cx - Math.round(r * 0.38), cy - Math.round(r * 0.38), "#ffffff");
+    this.b.fillStyle = "#ffffff"; this.b.fillRect(X - Math.round(R * 0.38), Y - Math.round(R * 0.38), Math.ceil(s), Math.ceil(s));
   }
   protected line(x0: number, y0: number, x1: number, y1: number, c: string | number) {
-    x0 |= 0; y0 |= 0; x1 |= 0; y1 |= 0;
+    const s = this.SS, w = Math.ceil(s); x0 = Math.round(x0 * s); y0 = Math.round(y0 * s); x1 = Math.round(x1 * s); y1 = Math.round(y1 * s);
     let dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, e = dx + dy;
-    for (; ;) { this.px(x0, y0, c); if (x0 === x1 && y0 === y1) break; const e2 = 2 * e; if (e2 >= dy) { e += dy; x0 += sx; } if (e2 <= dx) { e += dx; y0 += sy; } }
+    this.b.fillStyle = this.col(c);
+    for (; ;) { this.b.fillRect(x0, y0, w, w); if (x0 === x1 && y0 === y1) break; const e2 = 2 * e; if (e2 >= dy) { e += dy; x0 += sx; } if (e2 <= dx) { e += dx; y0 += sy; } }
   }
   /** Pixel-font text at scale `sc` (font pixel = sc buffer pixels), optional drop shadow. */
   protected text(x: number, y: number, str: string, c: string | number, sc = 1, shadow = true) {
