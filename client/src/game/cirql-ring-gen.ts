@@ -167,6 +167,8 @@ export function generateRing(index: number): Ring {
   for (let i = 0; i < scaled(biome.lanterns); i++) place("lantern");
   // bushes: a little clump — scenery + reusable as maze/labyrinth walls for quests (CHR-259)
   { const c = clearSpot(); const bn = scaled(biome.tree ? 4 : 2); for (let i = 0; i < bn; i++) props.push({ t: "bush", x: c.x + (rng() - 0.5) * 44, y: c.y + (rng() - 0.5) * 44 }); }
+  // drifting collectible WISPS scattered across the ring — the "gather" quest targets (Phase K3)
+  for (let i = 0; i < Math.max(6, scaled(7)); i++) place("wisp", { accent: biome.palette.mote });
   // larger rings get extra pockets of a DIFFERENT feel (a little grove + flowerbed — an
   // oasis even on a desert ring) so a big island isn't one uniform scene throughout
   if (radius > 620) { const g = clearSpot(); placeGrove(props, g.x, g.y, 3 + Math.floor(rng() * 2), rng); const f = clearSpot(); placeFlowerBed(props, f.x, f.y, 6, rng); if (rng() > 0.5) { const p = clearSpot(); props.push({ t: "pond", x: p.x, y: p.y, r: 20 + Math.floor(rng() * 10) }); } }
@@ -203,10 +205,11 @@ export function generateRing(index: number): Ring {
 
   // stable ids so the quest-template generator (CHR-256) can target this ring's own
   // lanterns + crystals; unique per ring so the lit-set never collides across rings
-  let li = 0, ci = 0;
+  let li = 0, ci = 0, wi = 0;
   for (const p of props) {
     if (p.t === "lantern" && !p.id) p.id = `r${index}l${li++}`;
     else if (p.t === "crystal" && !p.id) p.id = `r${index}c${ci++}`;
+    else if (p.t === "wisp" && !p.id) p.id = `r${index}w${wi++}`;
   }
 
   return {

@@ -45,12 +45,14 @@ export function generateRingQuest(index: number): QuestDef | null {
 
   const lanterns = ring.props.filter((p) => p.t === "lantern" && p.id);
   const crystals = ring.props.filter((p) => p.t === "crystal" && p.id);
+  const wisps = ring.props.filter((p) => p.t === "wisp" && p.id);
   const landmark = ring.props.find((p) => p.t === "landmark");
 
   // which templates can this ring support?
   const options: string[] = [];
   if (lanterns.length >= 2) options.push("kindle");
   if (crystals.length >= 1) options.push("discover");
+  if (wisps.length >= 3) options.push("gather");
   options.push("wayfind");                            // always possible (every ring has an onward dock)
   const shape = options[Math.floor(rng() * options.length)];
 
@@ -60,6 +62,11 @@ export function generateRingQuest(index: number): QuestDef | null {
     title = `Kindle ${name}`;
     intro = [`Welcome to ${name}, traveller.`, `Our lanterns have gone dark on the long night.`, `Would you kindle ${n} of them? Press E beside each one.`];
     objectives.push({ kind: "lightLanterns", count: n, label: `Kindle ${n} lanterns of ${name}` });
+  } else if (shape === "gather") {
+    const n = Math.max(3, Math.min(wisps.length, 3 + Math.floor(tier / 1.2)));   // gather more the deeper you go
+    title = `Gather the ${name} Wisps`;
+    intro = [`Well met on ${name}.`, `Wisps of light have scattered across the shore.`, `Walk over ${n} of them to gather them back — follow the glimmer.`];
+    objectives.push({ kind: "gather", count: n, label: `Gather ${n} wisps of ${name}` });
   } else if (shape === "discover") {
     const c = crystals[Math.floor(rng() * crystals.length)];
     title = `The ${name} Shard`;

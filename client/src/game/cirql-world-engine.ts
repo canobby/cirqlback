@@ -108,6 +108,7 @@ export class CirqlWorldEngine extends RetroEngine {
   private doneOnce = new Set<string>();   // quest ids completed at least once (repeats pay less)
   private lit = new Set<string>();   // permanently-lit lanterns + puzzle rune states
   private litForQuest = new Set<string>();   // lanterns lit for the CURRENT lightLanterns quest (reset on accept — never blocked by stale global lit)
+  private gatheredWisps = new Set<string>();   // wisps collected for the CURRENT gather quest (Phase K3; reset on accept)
 
   // Smooth-text overlay queue: UI/labels are enqueued in logical coords during
   // render() and painted crisply (system sans) in onOverlay(), so words stay
@@ -320,7 +321,7 @@ export class CirqlWorldEngine extends RetroEngine {
   openDiorama() { if (this.ringIdx !== 0 || this.cs || this.voyage) return; this.diorama = true; this.dioramaT = 0; this.dioramaAng = -0.5; this.editDecor = false; this.editPaint = false; this.onDioramaChange?.(true); }
   closeDiorama() { if (!this.diorama) return; this.diorama = false; this.onDioramaChange?.(false); }
   isDiorama() { return this.diorama; }
-  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), terrain: this.getTerrain(), landTier: this.landTier }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), terrain: this.getTerrain(), landTier: this.landTier }; }
   applyState(s: any) {
     if (!s) return;
     if (Array.isArray(s.doneOnce)) this.doneOnce = new Set(s.doneOnce);
@@ -328,6 +329,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (s.terrain && typeof s.terrain === "object") this.setTerrain(s.terrain);
     if (typeof s.landTier === "number") this.landTier = Math.max(0, Math.min(LAND_TIERS.length - 1, s.landTier | 0));
     if (Array.isArray(s.litForQuest)) this.litForQuest = new Set(s.litForQuest);
+    if (Array.isArray(s.gatheredWisps)) this.gatheredWisps = new Set(s.gatheredWisps);
     if (typeof s.maxRing === "number") this.maxRing = Math.max(this.maxRing, s.maxRing);
     if (typeof s.ring === "number" && s.ring >= 0) { this.ringIdx = s.ring; this.curRing = getRing(s.ring); this.maxRing = Math.max(this.maxRing, s.ring); this.ensureRingQuest(); }
     if (typeof s.x === "number" && typeof s.y === "number") { this.posX = s.x; this.posY = s.y; }
@@ -497,6 +499,7 @@ export class CirqlWorldEngine extends RetroEngine {
     // a "light the lanterns" quest starts fresh: reset the per-quest lit set so the
     // lanterns are all dark + lightable, regardless of any permanent/global lit state
     if (q.objectives.some((o) => o.kind === "lightLanterns")) this.litForQuest = new Set();
+    if (q.objectives.some((o) => o.kind === "gather")) this.gatheredWisps = new Set();
     this.toast(`✦ New quest — ${q.name}`);
     this.onQuestChange?.();
   }
@@ -557,6 +560,11 @@ export class CirqlWorldEngine extends RetroEngine {
     if (o.kind === "lightLanterns") {   // point to the nearest lantern not yet lit this quest
       let best: Prop | null = null, bd = 1e9;
       for (const p of this.curRing.props) if (p.t === "lantern" && p.id && !this.litForQuest.has(p.id)) { const d = Math.hypot(this.posX - p.x, this.posY - p.y); if (d < bd) { bd = d; best = p; } }
+      return best;
+    }
+    if (o.kind === "gather") {   // point to the nearest wisp not yet gathered this quest
+      let best: Prop | null = null, bd = 1e9;
+      for (const p of this.curRing.props) if (p.t === "wisp" && p.id && !this.gatheredWisps.has(p.id)) { const d = Math.hypot(this.posX - p.x, this.posY - p.y); if (d < bd) { bd = d; best = p; } }
       return best;
     }
     if (o.kind === "enterWonders") return this.curRing.props.find((p) => p.t === "wonders") ?? null;
@@ -947,6 +955,16 @@ export class CirqlWorldEngine extends RetroEngine {
       // "reach" quest objectives complete automatically by walking onto the target
       const tgt = this.objTargetProp();
       if (tgt && Math.hypot(this.posX - tgt.x, this.posY - tgt.y) < (tgt.r ?? 26)) this.advanceObjective("reach", tgt.id);
+      // "gather" quest: walk over a wisp to collect it (Phase K3)
+      if (this.currentObjKind() === "gather") {
+        for (const p of this.curRing.props) {
+          if (p.t === "wisp" && p.id && !this.gatheredWisps.has(p.id) && Math.hypot(this.posX - p.x, this.posY - p.y) < 15) {
+            this.gatheredWisps.add(p.id); this.advanceObjective("gather"); this.onQuestChange?.();
+            if (!this.reduce) this.spawnGroundFx(p.x, p.y - 4, "puff");   // a little sparkle poof
+            break;   // one per frame
+          }
+        }
+      }
     }
 
     // camera easing
@@ -1081,6 +1099,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "crystal": draws.push({ y: p.y, f: () => this.drawCrystal(sxp, syp, p.big, p.accent || pal.accent) }); break;
         case "rock": draws.push({ y: p.y, f: () => this.drawRock(sxp, syp, p.big) }); break;
         case "flower": draws.push({ y: p.y, f: () => this.drawFlower(sxp, syp, p.accent || "#ff8fbf") }); break;
+        case "wisp": if (!(p.id && this.gatheredWisps.has(p.id))) draws.push({ y: p.y, f: () => this.drawWisp(sxp, syp, p.accent || "#e0ffb0") }); break;
         case "fence": draws.push({ y: p.y, f: () => this.drawFence(sxp, syp, !!p.vert) }); break;
         case "lantern": { const isQ = !!p.id && this.currentObjKind() === "lightLanterns"; const litState = isQ ? this.litForQuest.has(p.id!) : true; draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, litState) }); break; }
         case "dock": draws.push({ y: p.y - 40, f: () => this.drawDock(sxp, syp, p) }); break;
@@ -1808,6 +1827,15 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx + 2 * s, cy, 3.5 * s, "#474753");
     this.rect(cx - 6 * s, cy + 1 * s, 12 * s, 2 * s, "#38384352");
     this.disc(cx - 2 * s, cy - 4 * s, 1.5 * s, "#8a8a97");   // highlight
+  }
+  // A collectible wisp (Phase K3 gather quests): a bobbing glowing orb with a soft halo.
+  private drawWisp(cx: number, cy: number, c: string) {
+    const bob = this.reduce ? 0 : Math.sin(this.t * 2.4 + cx * 0.05) * 2;
+    const y = cy - 6 + bob;
+    this.disc(cx, cy + 2, 2.5, "#0a071440");                         // faint ground shadow
+    if (!this.reduce) this.glow(cx, y, 9, c, 0.34 + 0.12 * Math.sin(this.t * 3 + cy));
+    this.disc(cx, y, 2.2, c); this.disc(cx - 0.6, y - 0.6, 0.9, "#ffffff");
+    if (!this.reduce) { const a = (this.t + cx) % 1.4; this.q(cx + Math.sin(this.t * 2 + cy) * 3, y - 4 - a * 5, "·", c, 0.8, "c", false, (1 - a / 1.4) * 0.8); }
   }
   private drawFlower(cx: number, cy: number, c: string) {
     // stem + a little leaf, then a rounded 5-petal bloom + centre (reads as a flower,

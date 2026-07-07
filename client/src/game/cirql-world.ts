@@ -26,6 +26,7 @@ export type PropType =
   | "rock"      // a solid boulder — walk around it
   | "pond"      // a little water feature — walk around it
   | "flower"    // a decorative flower cluster (soft — walk through)
+  | "wisp"      // a collectible drifting light — walk over to gather (Phase K3 "gather" quests)
   | "fence"     // a short fence segment (solid — walk around)
   | "path"      // a dirt/stone trail patch (ground decoration — walk over)
   | "landmark"  // a focal set-piece (Great Tree, stone circle, lighthouse…) — quest home + meeting spot (Phase J4)

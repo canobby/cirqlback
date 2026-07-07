@@ -36,7 +36,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 const INTRO_LS = "cirql_intro_v1";
 
 type StartDest = "home" | "last" | "arcade";
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; renown?: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; gatheredWisps?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; renown?: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; }
 interface GameSettings { brightness: number; music: number; sfx: number; reduce: boolean; smooth: boolean; pixel: number; }
 const DEFAULT_SETTINGS: GameSettings = { brightness: 1, music: 0.7, sfx: 0.8, reduce: false, smooth: false, pixel: 1.5 };
 const todayUTC = () => new Date().toISOString().slice(0, 10);
@@ -278,7 +278,7 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current, renown: renownRef.current };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, gatheredWisps: (s as any).gatheredWisps, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current, renown: renownRef.current };
   };
   // Grant Renown (personal standing) + celebrate any rank-up. Returns the amount granted.
   const grantRenown = (amount: number) => {
@@ -460,7 +460,7 @@ export default function Cirql() {
       if (st?.daily && typeof st.daily.day === "string") dailyRef.current = { day: st.daily.day, done: !!st.daily.done, streak: +st.daily.streak || 0, lastDone: st.daily.lastDone || "" };
       refreshDaily();
       eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: membersRef.current, cirqlTotal: 12, online: 1, energy: energyRef.current });
-      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests, lit: st?.lit, litForQuest: st?.litForQuest, doneOnce: st?.doneOnce, decor: st?.decor, terrain: st?.terrain, landTier: st?.landTier });
+      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests, lit: st?.lit, litForQuest: st?.litForQuest, gatheredWisps: st?.gatheredWisps, doneOnce: st?.doneOnce, decor: st?.decor, terrain: st?.terrain, landTier: st?.landTier });
       landTierRef.current = eng.getLandTier(); setLandTierUi(landTierRef.current);
       setDecorCount(eng.getDecor().length);
       if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
