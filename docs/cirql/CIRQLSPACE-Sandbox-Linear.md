@@ -1,13 +1,13 @@
 # CIRQLSPACE — Your Sandbox · Linear Register
 
-Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07. **Status: PLANNING — nothing built yet.**
+Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 2). **Status: BUILDING — Phase A nearly done (5/6; only the Inventory panel remains).**
 
 **Legend:** ☑ Done · ◐ In progress · ☐ Todo · ⧗ *not yet a Linear issue (free-tier issue cap) — tracked in the plan.*
 
 ## Summary
 | Milestone | Issues | Status |
 |---|---|---|
-| A · Restructure — blank CIRQLSPACE + Town | 6 | Todo |
+| A · Restructure — blank CIRQLSPACE + Town | 6 | **5/6 done** (CHR-270 left) |
 | B · Building v1 (objects) | 4 | Todo |
 | C · Terrain paint | 3 ⧗ | Todo |
 | D · Land growth (cozy → estate) | 3 ⧗ | Todo |
@@ -18,12 +18,12 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 **Note:** Linear's free-tier **issue limit** was reached while seeding — milestones **A & B** have real issues (**CHR-266–275**); **C–G** exist as **milestones** in Linear with their scope, but their granular issues (⧗) live in the plan doc until the workspace is upgraded.
 
 ## A · Restructure — blank CIRQLSPACE + Town
-- [ ] **CHR-266** — Strip CIRQLSPACE to a blank buildable canvas
-- [ ] **CHR-267** — Author the Town hub at ring 1
-- [ ] **CHR-268** — Shift procedural generation to start at ring 2
-- [ ] **CHR-269** — Rework onboarding: guide NPC teaches building; tutorials move to Town
-- [ ] **CHR-270** — Inventory panel — owned stock + SPARQS balance + how-to
-- [ ] **CHR-271** — Remove tapped-business landmarks + enforce CIRQLSPACE-only placement
+- [x] **CHR-266** — Strip CIRQLSPACE to a blank buildable canvas *(commit 4c08acf)*
+- [x] **CHR-267** — Author the Town hub at ring 1 (CirqlCade = one shared entrance) *(4c08acf)*
+- [x] **CHR-268** — Shift procedural generation to start at ring 2 *(4c08acf)*
+- [x] **CHR-269** — Rework onboarding: guide NPC teaches building; tutorials move to Town *(77ed7cf)*
+- [ ] **CHR-270** — Inventory panel — owned stock + SPARQS balance + how-to  *(← next)*
+- [x] **CHR-271** — Remove tapped-business landmarks + enforce CIRQLSPACE-only placement *(963abbf)*
 
 ## B · Building v1 (objects)
 - [ ] **CHR-272** — Big placeable object catalog (nature / structures / furniture)
