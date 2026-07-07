@@ -1,6 +1,6 @@
 # CIRQLSPACE — Your Sandbox · Linear Register
 
-Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 6). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D COMPLETE; next up Phase E (live parties).**
+Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: linear.app → CIRQLSPACE — Your Sandbox. Generated 2026-07-07 (rev 7). **Status: BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E COMPLETE; next up Phase F (Town stores).**
 
 **Legend:** ☑ Done · ◐ In progress · ☐ Todo · ⧗ *not yet a Linear issue (free-tier issue cap) — tracked in the plan.*
 
@@ -11,7 +11,7 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 | B · Building v1 (objects) | 4 | ✅ **DONE (4/4)** |
 | C · Terrain paint | 3 ⧗ | ✅ **DONE (3/3)** |
 | D · Land growth (cozy → estate) | 3 ⧗ | ✅ **DONE (3/3)** |
-| E · Live parties | 4 ⧗ | Todo |
+| E · Live parties | 4 ⧗ | ✅ **DONE (4/4)** |
 | F · Town stores (NPC shops) | 4 ⧗ | Todo |
 | G · Music & SFX | 3 ⧗ | Todo |
 
@@ -43,11 +43,12 @@ Project **CIRQLSPACE — Your Sandbox** · team Chris Nobbs (CHR). Live board: l
 - [x] **D3** — "Your Land" Inventory section: current tier + progress bar + Expand (shows cost/milestone); new land blank
   - *(deferred: party/visitor milestones — arrive with Phase E)*
 
-## E · Live parties  *(⧗ issues pending — Linear cap)*
-- [ ] **E1** — Space rooms on presence (keyed by host id) + join/leave
-- [ ] **E2** — Stream the host build (terrain + objects) to visitors
-- [ ] **E3** — Open/invite toggle + cap 8 + host-only edit
-- [ ] **E4** — Live presence in a space (movement/chat/emote) + return home
+## E · Live parties  *(⧗ tracked here — Linear cap; ✅ built commit 395dc6a)*
+- [x] **E1** — Space rooms on presence: ring 0 is personal (`s:`+id), visiting joins the host's room; one `roomKey()` scopes every broadcast; join/leave via `enterRoom()`
+- [x] **E2** — `build` message caches + streams the host's décor + terrain + land tier to visitors (live `visit:build` while they watch)
+- [x] **E3** — Open↔invite-only toggle (`space:mode`) + invites (`space:invite`/`space:invited`) + cap 8 + host-only edit (guarded by the `visiting` flag)
+- [x] **E4** — Live presence in a space (room-scoped move/chat/emote/light) + `space:home` return; host disconnect evicts visitors
+  - *(deferred: visitor land-milestones / party rewards — a later economy pass)*
 
 ## F · Town stores (NPC shops)  *(⧗ issues pending — Linear cap)*
 - [ ] **F1** — Shop buildings → interiors + shopkeeper NPCs

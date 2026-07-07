@@ -6,7 +6,7 @@ A major new chapter for the CIRQL flagship. **CIRQLSPACE (ring 0) is reinvented 
 
 > **ring 0 = you · ring 1 = the community (Town) · ring 2+ = the endless wilds.**
 
-Status (2026-07-07): **PLANNING — nothing built yet.** Owner has approved the vision + the phase plan below; build begins only on the owner's "go", phase by phase. This plan mirrors the Linear project **"CIRQLSPACE — Your Sandbox"** (team CHR). Regenerate the PDF whenever this plan or the Linear register changes (owner standing request).
+Status (2026-07-07): **BUILDING — ✅ A + ✅ B + ✅ C + ✅ D + ✅ E complete; next up Phase F (Town stores).** Owner approved the vision + the phase plan below; build proceeds phase by phase. Phase E shipped CIRQLSPACE live parties (personal space rooms, host-build streaming to visitors, open↔invite toggle + cap 8 + host-only edit; commit 395dc6a). This plan mirrors the Linear project **"CIRQLSPACE — Your Sandbox"** (team CHR). Regenerate the PDF whenever this plan or the Linear register changes (owner standing request).
 
 ---
 
