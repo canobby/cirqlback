@@ -193,7 +193,10 @@ export default function Cirql() {
           style={{ background: "radial-gradient(130% 80% at 50% -10%, rgba(40,20,74,.98), rgba(6,8,20,.99))" }}>
           <div className="flex items-center gap-3 px-4 pb-1 pt-3">
             <button onClick={() => setHallOpen(false)} data-testid="cade-leave" className="flex items-center gap-1 text-xs text-cyan-300/80 hover:text-cyan-200"><ArrowLeft className="h-4 w-4" /> Leave</button>
-            <div className="ml-1 text-base font-extrabold uppercase tracking-[0.22em] text-white" style={{ textShadow: "0 0 12px rgba(178,108,255,.65)" }}>CirqlCade</div>
+            <div className="ml-1 flex items-baseline font-extrabold uppercase" data-testid="cade-wordmark">
+              <span className="tracking-[0.35em]" style={{ fontSize: "1.05rem", color: "#fff", textShadow: "0 0 10px rgba(53,224,208,.6), 0 0 22px rgba(178,108,255,.35)" }}>CIRQL</span>
+              <span className="tracking-[0.15em]" style={{ fontSize: "0.63rem", color: "#b26cff", textShadow: "0 0 9px rgba(178,108,255,.8)" }}>CADE</span>
+            </div>
             <span className="ml-auto text-[10px] uppercase tracking-widest text-violet-300/60">{CADE_GAMES.length} wonders</span>
           </div>
           <p className="px-4 pb-2 text-[12px] leading-snug text-violet-200/60">Attune to a Wonder — every run earns you <span className="text-amber-300">sparks</span>.</p>
