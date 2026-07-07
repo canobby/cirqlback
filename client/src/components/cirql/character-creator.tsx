@@ -91,7 +91,7 @@ export function CharacterCreator({ initial, initialName, mode = "create", onConf
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(4,7,16,.88)", backdropFilter: "blur(3px)" }}>
       <div className="flex w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border" style={{ borderColor: "rgba(53,224,208,.25)", background: "#0a1226", boxShadow: "0 0 60px rgba(53,224,208,.15)", maxHeight: "94vh" }}>
         <div className="px-5 pt-4 pb-2 text-center">
-          <div className="text-[11px] uppercase tracking-[0.3em] text-cyan-300/70">{mode === "create" ? "Welcome to CIRQL" : "Your Cirql identity"}</div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-cyan-300/70">{mode === "create" ? "Welcome to CIRQLVERSE" : "Your Cirql identity"}</div>
           <h2 className="mt-1 font-extrabold tracking-wide text-white" style={{ textShadow: "0 0 14px rgba(53,224,208,.5)" }}>{mode === "create" ? "Create your character" : "Edit your look"}</h2>
         </div>
 
@@ -126,7 +126,7 @@ export function CharacterCreator({ initial, initialName, mode = "create", onConf
           <button onClick={() => onConfirm(cfg, name.trim())} data-testid="creator-confirm"
             className="flex-[2] rounded-xl py-3 text-sm font-extrabold text-slate-900"
             style={{ background: "linear-gradient(90deg,#35e0d0,#7fffe6)", boxShadow: "0 0 20px rgba(53,224,208,.4)" }}>
-            {mode === "create" ? "Enter CIRQL ✦" : "Save look"}
+            {mode === "create" ? "Enter CIRQLVERSE ✦" : "Save look"}
           </button>
         </div>
       </div>

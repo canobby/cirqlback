@@ -137,7 +137,10 @@ export default function Cirql() {
       <div ref={headerRef} className="pointer-events-none absolute inset-x-0 top-0 z-10 mx-auto flex max-w-[680px] items-center gap-3 px-4 pb-2 pt-3"
         style={{ background: "linear-gradient(180deg, rgba(6,11,26,.72), rgba(6,11,26,0))" }}>
         <Link href="/arcade" className="pointer-events-auto flex items-center gap-1 text-xs text-cyan-300/80 hover:text-cyan-200" data-testid="link-back"><ArrowLeft className="h-4 w-4" /> Back</Link>
-        <div className="ml-1 text-sm font-extrabold uppercase tracking-[0.35em]" style={{ color: "#fff", textShadow: "0 0 10px rgba(53,224,208,.6), 0 0 22px rgba(178,108,255,.35)" }}>CIRQL</div>
+        <div className="ml-1 flex items-baseline font-extrabold uppercase" data-testid="wordmark">
+          <span className="text-sm tracking-[0.35em]" style={{ color: "#fff", textShadow: "0 0 10px rgba(53,224,208,.6), 0 0 22px rgba(178,108,255,.35)" }}>CIRQL</span>
+          <span className="tracking-[0.15em]" style={{ fontSize: "0.44rem", color: "#b26cff", textShadow: "0 0 8px rgba(178,108,255,.75)" }}>VERSE</span>
+        </div>
         <button onClick={() => { setQuestRows(engineRef.current?.getQuestLog() ?? []); setShowQuests((v) => !v); }} data-testid="btn-quests"
           className="pointer-events-auto ml-auto flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-200/90" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
           <ScrollText className="h-3 w-3" /> Quests
