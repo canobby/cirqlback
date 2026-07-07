@@ -41,7 +41,7 @@ export const WAKE_CUTSCENE: Cutscene = {
   id: "wake",
   beats: [
     { fx: "dawn", body: "You drift ashore on a circle of light…", accent: GOLD, hold: 3.0 },
-    { fx: "bloom", title: "The Hearth", sub: "your home in the endless ocean", accent: GOLD, hold: 3.2 },
+    { fx: "bloom", title: "CIRQLSPACE", sub: "your home in the endless ocean", accent: GOLD, hold: 3.2 },
     { fx: "sparks", body: "A lantern waits nearby. Light it, and the world begins.", accent: TEAL, hold: 3.2 },
   ],
 };

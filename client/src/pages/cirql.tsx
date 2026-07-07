@@ -226,7 +226,7 @@ export default function Cirql() {
   // once per distinct traveller, capped at your Cirql's 12.
   const receiveLight = (id: string, name: string) => {
     const eng = engineRef.current; if (!eng) return;
-    if (sharedLightsRef.current.has(id)) { eng.toast(`${name}'s light already shines on your Hearth`); return; }
+    if (sharedLightsRef.current.has(id)) { eng.toast(`${name}'s light already shines on your CIRQLSPACE`); return; }
     sharedLightsRef.current.add(id);
     if (membersRef.current < 12) { membersRef.current += 1; setMembers(membersRef.current); eng.setStats({ cirqlLit: membersRef.current }); }
     eng.toast(`✦ You and ${name} shared a light`);
@@ -483,7 +483,7 @@ export default function Cirql() {
   const decorOwned = (id: string) => { const def = decorById[id]; return !!def && (def.price === 0 || ownedRef.current.includes(decorPriceKey(id))); };
   const broadcastDecor = () => wsSend({ t: "decor", decor: engineRef.current?.getDecor() ?? [] });
   const openDecorate = () => {
-    if (curRingUi !== 0) { engineRef.current?.toast("Sail home to The Hearth to decorate"); return; }
+    if (curRingUi !== 0) { engineRef.current?.toast("Sail home to CIRQLSPACE to decorate"); return; }
     setShowDecor(true); setDecorTool(""); engineRef.current?.beginDecorEdit("");
   };
   const closeDecorate = () => { setShowDecor(false); setDecorTool(""); engineRef.current?.endDecorEdit(); };
@@ -674,7 +674,7 @@ export default function Cirql() {
         <div className="pointer-events-auto absolute inset-x-0 top-12 z-[16] mx-auto flex max-w-[380px] items-center gap-2 rounded-full border px-3 py-1.5" data-testid="visiting-banner"
           style={{ borderColor: "rgba(255,196,107,.6)", background: "rgba(10,18,38,.95)", boxShadow: "0 0 18px rgba(255,196,107,.3)" }}>
           <span className="text-[14px]">🏡</span>
-          <span className="min-w-0 flex-1 truncate text-[12px] text-slate-200">Visiting <b className="text-amber-200">{visiting}</b>'s Hearth</span>
+          <span className="min-w-0 flex-1 truncate text-[12px] text-slate-200">Visiting <b className="text-amber-200">{visiting}</b>'s CIRQLSPACE</span>
           <button onClick={leaveVisit} data-testid="visit-leave" className="rounded-full px-3 py-1 text-[12px] font-bold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>Go home</button>
         </div>
       )}
@@ -685,7 +685,7 @@ export default function Cirql() {
           <div className="rounded-2xl border p-2" style={{ borderColor: "rgba(255,196,107,.4)", background: "rgba(10,12,28,.96)", boxShadow: "0 10px 34px rgba(0,0,0,.55)" }}>
             <div className="mb-1.5 flex items-center gap-2 px-1">
               <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">Decorate</span>
-              <span className="hidden text-[10px] text-slate-400 sm:inline">{decorTool === "remove" ? "tap a piece to remove" : decorTool ? "tap the Hearth to place" : "pick a piece"}</span>
+              <span className="hidden text-[10px] text-slate-400 sm:inline">{decorTool === "remove" ? "tap a piece to remove" : decorTool ? "tap to place" : "pick a piece"}</span>
               <span className="ml-auto text-[11px] font-bold text-amber-200" data-testid="decor-sparqs">✦ {sparksUi}</span>
               <button onClick={closeDecorate} data-testid="decor-done" className="rounded-lg px-2.5 py-1 text-[12px] font-bold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>Done</button>
             </div>
@@ -816,7 +816,7 @@ export default function Cirql() {
               </div>
             </div>
           ); })()}
-          {questRows.length === 0 && <p className="text-xs text-slate-400">No quests yet. Talk to Ferra at The Hearth.</p>}
+          {questRows.length === 0 && <p className="text-xs text-slate-400">No quests yet. Talk to Ferra at CIRQLSPACE.</p>}
           <div className="flex flex-col gap-2">
             {questRows.map((q) => (
               <div key={q.id} className="rounded-lg px-2.5 py-2" style={{ background: "rgba(255,255,255,.03)" }}>
@@ -838,14 +838,14 @@ export default function Cirql() {
             <span className="text-[11px] font-bold uppercase tracking-widest text-amber-300">Your Cirql</span>
             <button onClick={() => setShowCirql(false)} className="text-slate-400 hover:text-slate-200"><X className="h-4 w-4" /></button>
           </div>
-          <p className="text-[12px] leading-snug text-slate-300"><b className="text-white">{members}</b> of 12 lanterns lit — friends light your Hearth.</p>
+          <p className="text-[12px] leading-snug text-slate-300"><b className="text-white">{members}</b> of 12 lanterns lit — friends light your CIRQLSPACE.</p>
           <div className="my-2 flex flex-wrap gap-1.5">
             {Array.from({ length: 12 }).map((_, i) => (
               <span key={i} className="h-3 w-3 rounded-full" style={{ background: i < members ? "#ffc46b" : "rgba(255,255,255,.12)", boxShadow: i < members ? "0 0 7px #ffc46b" : "none" }} />
             ))}
           </div>
           <button onClick={invite} data-testid="cirql-invite" className="mt-1 w-full rounded-lg py-2.5 text-[13px] font-extrabold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>Invite a friend ✦</button>
-          <button onClick={() => { setShowCirql(false); openDecorate(); }} data-testid="cirql-decorate" className="mt-2 w-full rounded-lg border py-2 text-[12px] font-bold text-amber-200" style={{ borderColor: "rgba(255,196,107,.4)" }}>🌷 Decorate your Hearth{decorCount > 0 ? ` · ${decorCount}` : ""}</button>
+          <button onClick={() => { setShowCirql(false); openDecorate(); }} data-testid="cirql-decorate" className="mt-2 w-full rounded-lg border py-2 text-[12px] font-bold text-amber-200" style={{ borderColor: "rgba(255,196,107,.4)" }}>🌷 Decorate CIRQLSPACE{decorCount > 0 ? ` · ${decorCount}` : ""}</button>
           <p className="mt-2 text-[10.5px] leading-snug text-slate-400">
             Or walk up to a traveller and press <b className="text-cyan-200">E</b> to <span className="text-cyan-300">share a light</span> — it lights a lantern for you both.
             {online > 1 ? <> <span className="text-emerald-300">{online} here now.</span></> : <> <span className="text-slate-500">No one else here right now.</span></>}

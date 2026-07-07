@@ -10,12 +10,19 @@
 export interface DecorDef {
   id: string;
   name: string;
-  glyph: string;
+  glyph: string;   // shown in the palette; also the in-world art for "glyph" render
   price: number;   // sparqs (0 = free starter)
   scale?: number;  // glyph size multiplier (default 1)
+  // in-world render: "glyph" (emoji, default) or a pixel prop. path = walkable ground;
+  // stone/fence = solid pixel props you build with (the start of "2D-Minecraft" building).
+  render?: "glyph" | "path" | "stone" | "fence";
 }
 
 export const DECOR: DecorDef[] = [
+  // building blocks (cheap, buy many) — the start of "build your world" (2D-Minecraft)
+  { id: "pathbrick", name: "Path Bricks",   glyph: "🧱", price: 2, render: "path" },   // walkable ground
+  { id: "stone",     name: "Stepping Stone", glyph: "🪨", price: 3, render: "stone" },  // solid
+  { id: "fence",     name: "Fence",         glyph: "🚧", price: 3, render: "fence" },   // solid
   { id: "bench",    name: "Garden Bench",   glyph: "🪑", price: 0 },
   { id: "planter",  name: "Flower Planter", glyph: "🪴", price: 6 },
   { id: "toadstool", name: "Toadstools",    glyph: "🍄", price: 6 },

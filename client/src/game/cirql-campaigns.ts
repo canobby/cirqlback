@@ -6,7 +6,7 @@
 // on the server; see server/cirql-presence.ts) and the whole party sees one shared
 // waypoint moving through the steps. Kept declarative so new campaigns are pure config.
 //
-// Steps carry an optional world target (tx,ty on the Hearth ring) so the engine can
+// Steps carry an optional world target (tx,ty on CIRQLSPACE ring) so the engine can
 // draw the shared waypoint + minimap marker. All current campaigns play out on ring 0.
 
 export interface CampaignStep {
@@ -29,7 +29,7 @@ export interface Campaign {
   steps: CampaignStep[];
 }
 
-// Landmarks on the Hearth ring (mirrors cirql-world.ts prop positions) so steps can
+// Landmarks on CIRQLSPACE ring (mirrors cirql-world.ts prop positions) so steps can
 // point the shared waypoint at real places.
 const HEARTH = { x: 0, y: -70 };
 const CADE = { x: 250, y: 40 };
@@ -45,7 +45,7 @@ export const CAMPAIGNS: Campaign[] = [
     blurb: "Kindle the path together and wake CirqlCade's glow. A gentle first run for a new crew.",
     minParty: 2, maxParty: 4, difficulty: "chill", newbie: true, reward: 12,
     steps: [
-      { label: "Gather at the Hearth", tx: HEARTH.x, ty: HEARTH.y },
+      { label: "Gather at CIRQLSPACE", tx: HEARTH.x, ty: HEARTH.y },
       { label: "Light the path lanterns", tx: LANTERNS.x, ty: LANTERNS.y },
       { label: "Attune at CirqlCade", tx: CADE.x, ty: CADE.y },
       { label: "Return to Ferra together", tx: FERRA.x, ty: FERRA.y },
@@ -59,7 +59,7 @@ export const CAMPAIGNS: Campaign[] = [
     steps: [
       { label: "Meet at CirqlCade", tx: CADE.x, ty: CADE.y },
       { label: "Each play a Wonder", tx: CADE.x, ty: CADE.y },
-      { label: "Regroup at the Hearth", tx: HEARTH.x, ty: HEARTH.y },
+      { label: "Regroup at CIRQLSPACE", tx: HEARTH.x, ty: HEARTH.y },
     ],
   },
   {
@@ -70,7 +70,7 @@ export const CAMPAIGNS: Campaign[] = [
     steps: [
       { label: "Walk to the western shore", tx: SHORE.x, ty: SHORE.y },
       { label: "Follow the coast to the dock", tx: DOCK.x, ty: DOCK.y },
-      { label: "Wander home to the Hearth", tx: HEARTH.x, ty: HEARTH.y },
+      { label: "Wander home to CIRQLSPACE", tx: HEARTH.x, ty: HEARTH.y },
     ],
   },
   {
@@ -79,19 +79,19 @@ export const CAMPAIGNS: Campaign[] = [
     blurb: "A voyage together — cross to the outer shores, catch a show at the Drive-In, and sail home. Bring a crew.",
     minParty: 2, maxParty: 5, difficulty: "epic", newbie: false, reward: 22,
     steps: [
-      { label: "Gather at the Hearth Commons", ring: 0, at: "commons" },
+      { label: "Gather at CIRQLSPACE Commons", ring: 0, at: "commons" },
       { label: "Sail to the next shore's Commons", ring: 1, at: "commons" },
       { label: "Catch a show at the Cirql Drive-In", ring: 2, at: "theater" },
-      { label: "Sail home to the Hearth", ring: 0, at: "commons" },
+      { label: "Sail home to CIRQLSPACE", ring: 0, at: "commons" },
     ],
   },
   {
     id: "wonders-marathon",
     title: "Wonders Marathon",
-    blurb: "The long haul — circle every landmark of the Hearth ring as a full crew. Bragging rights.",
+    blurb: "The long haul — circle every landmark of CIRQLSPACE ring as a full crew. Bragging rights.",
     minParty: 3, maxParty: 5, difficulty: "epic", newbie: false, reward: 20,
     steps: [
-      { label: "Rally at the Hearth", tx: HEARTH.x, ty: HEARTH.y },
+      { label: "Rally at CIRQLSPACE", tx: HEARTH.x, ty: HEARTH.y },
       { label: "March to the shore", tx: SHORE.x, ty: SHORE.y },
       { label: "On to the dock", tx: DOCK.x, ty: DOCK.y },
       { label: "Light the lantern path", tx: LANTERNS.x, ty: LANTERNS.y },

@@ -438,6 +438,8 @@ export class CirqlWorldEngine extends RetroEngine {
       else if (p.t === "theater") out.push({ x: p.x, y: p.y - 4, r: 20 });
       else if (p.t === "gathering") out.push({ x: p.x, y: p.y - 2, r: 11 });
     }
+    // solid décor building blocks (fences/stones) you've placed on CIRQLSPACE (CHR-259)
+    if (this.ringIdx === 0 && !this.visiting) for (const d of this.decor) { const r = decorById[d.item]?.render; if (r === "fence") out.push({ x: d.x, y: d.y, r: 9 }); else if (r === "stone") out.push({ x: d.x, y: d.y, r: 7 }); }
     return out;
   }
   private doInteract() {
@@ -751,6 +753,8 @@ export class CirqlWorldEngine extends RetroEngine {
     // ground decoration — paths + ponds, under the depth-sorted props
     for (const p of this.curRing.props) if (p.t === "path") this.drawPath(p.x - camX, p.y - camY);
     for (const p of this.curRing.props) if (p.t === "pond") this.drawPond(p.x - camX, p.y - camY, p.r ?? 22);
+    // path-brick décor is walkable ground too (CHR-259 building blocks; CIRQLSPACE only)
+    if (this.ringIdx === 0) for (const d of (this.visiting ? this.visiting.decor : this.decor)) if (decorById[d.item]?.render === "path") this.drawPath(d.x - camX, d.y - camY);
 
     // ---- collect drawables (depth sorted by feet-y) ----
     const draws: { y: number; f: () => void }[] = [];
@@ -790,7 +794,14 @@ export class CirqlWorldEngine extends RetroEngine {
     // Hearth décor (CHR-259) — your placed pieces, or the host's while visiting (Hearth only)
     if (this.ringIdx === 0) {
       const list = this.visiting ? this.visiting.decor : this.decor;
-      for (const d of list) { const def = decorById[d.item]; if (def) draws.push({ y: d.y, f: () => this.drawDecor(d.x - camX, d.y - camY, def.glyph, def.scale ?? 1) }); }
+      for (const d of list) {
+        const def = decorById[d.item]; if (!def) continue;
+        const sx = d.x - camX, sy = d.y - camY;
+        if (def.render === "path") continue;                                                    // drawn in the ground pass
+        else if (def.render === "stone") draws.push({ y: d.y, f: () => this.drawRock(sx, sy, false) });
+        else if (def.render === "fence") draws.push({ y: d.y, f: () => this.drawFence(sx, sy, false) });
+        else draws.push({ y: d.y, f: () => this.drawDecor(sx, sy, def.glyph, def.scale ?? 1) });
+      }
       // real-world tapped businesses, as signpost landmarks (your own Hearth only, CHR-261)
       if (!this.visiting) for (let i = 0; i < this.landmarks.length; i++) { const p = this.landmarkPos(i, this.landmarks.length), lm = this.landmarks[i]; draws.push({ y: p.y, f: () => this.drawLandmark(p.x - camX, p.y - camY, lm) }); }
     }
@@ -1514,7 +1525,12 @@ export class CirqlWorldEngine extends RetroEngine {
     }
     // current place name + tappable hint under the minimap
     const subHint = inSub ? (subKindOf(this.ringIdx) === "cave" ? "underground" : subKindOf(this.ringIdx) === "tree" ? "in the trees" : "in the clouds") : "tap · chart";
-    this.q(cx, cy + R + 2, this.curRing.name, this.curRing.palette.accent, 0.92, "c", true);
+    if (this.ringIdx === 0) {   // CIRQLSPACE — styled like the logo (CIRQL big + SPACE small)
+      this.q(cx - 1, cy + R + 1, "CIRQL", "#ffffff", 1.05, "r", true);
+      this.q(cx + 1, cy + R + 3, "SPACE", this.curRing.palette.accent, 0.7, "l", true);
+    } else {
+      this.q(cx, cy + R + 2, this.curRing.name, this.curRing.palette.accent, 0.92, "c", true);
+    }
     this.q(cx, cy + R + 11, subHint, "#8fa6c6", 0.72, "c");
   }
   private drawChart() {

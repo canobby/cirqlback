@@ -36,7 +36,7 @@ export const QUESTS: QuestDef[] = [
     name: "Find Your Feet",
     giver: "keeper",
     intro: [
-      "Ah — a new face at The Hearth!",
+      "Ah — a new face at CIRQLSPACE!",
       "Best way to learn these shores is to walk them.",
       "See that glimmer to the west? Wander over and back.",
     ],
@@ -90,7 +90,7 @@ export const QUESTS: QuestDef[] = [
     ],
     objectives: [
       { kind: "reach", ring: 1, target: "commons", label: "Visit the next shore's Commons" },
-      { kind: "reach", ring: 0, target: "marker-shore", label: "Bring word home to the Hearth" },
+      { kind: "reach", ring: 0, target: "marker-shore", label: "Bring word home to CIRQLSPACE" },
     ],
     reward: { sparks: 14 },
   },
