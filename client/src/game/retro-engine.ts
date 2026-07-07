@@ -248,7 +248,7 @@ export abstract class RetroEngine {
       case "ArrowDown": case "KeyS": return "down";
       case "ArrowLeft": case "KeyA": return "left";
       case "ArrowRight": case "KeyD": return "right";
-      case "Space": case "KeyZ": case "KeyJ": return "a";
+      case "Space": case "KeyZ": case "KeyJ": case "KeyE": return "a";
       case "KeyX": case "KeyK": return "b";
       default: return null;
     }
