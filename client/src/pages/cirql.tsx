@@ -68,12 +68,19 @@ export default function Cirql() {
   const [showChat, setShowChat] = useState(false);
   const [showEmotes, setShowEmotes] = useState(false);      // emote wheel (CHR-260)
   const [chatDraft, setChatDraft] = useState("");
-  const [chatScope, setChatScope] = useState<"global" | "party">("global");
+  const [chatScope, setChatScope] = useState<"global" | "party" | "dm">("global");
   const [feed, setFeed] = useState<{ key: number; name: string; text: string; me: boolean; party: boolean }[]>([]);
-  const [unread, setUnread] = useState<{ global: number; party: number }>({ global: 0, party: 0 });   // per-channel unread (CHR-249)
+  const [unread, setUnread] = useState<{ global: number; party: number; dm: number }>({ global: 0, party: 0, dm: 0 });   // per-channel unread (CHR-249)
   const showChatRef = useRef(false);        // live mirrors so the ws handler reads current UI focus
-  const chatScopeRef = useRef<"global" | "party">("global");
+  const chatScopeRef = useRef<"global" | "party" | "dm">("global");
   const feedKey = useRef(0);
+
+  // M8 CHR-248 — 1:1 Direct Messages (request/accept gated, session-scoped)
+  const [peers, setPeers] = useState<{ id: string; name: string }[]>([]);          // travellers online on my ring
+  const [dmReqs, setDmReqs] = useState<{ fromId: string; fromName: string }[]>([]); // incoming DM requests
+  const [dmThreads, setDmThreads] = useState<Record<string, { name: string; msgs: { key: number; mine: boolean; text: string }[] }>>({});
+  const [activeDm, setActiveDm] = useState<string | null>(null);                    // partner id whose thread is open
+  const activeDmRef = useRef<string | null>(null);
 
   // M9 — campaigns, board, parties
   interface Party { id: string; campaignId: string; hostId: string; step: number; steps: number; max: number; members: { id: string; name: string }[]; }
@@ -109,6 +116,7 @@ export default function Cirql() {
   // an incoming message is "seen" (chat open on its channel) or should mark unread.
   useEffect(() => { showChatRef.current = showChat; if (showChat) setUnread((u) => ({ ...u, [chatScope]: 0 })); }, [showChat, chatScope]);
   useEffect(() => { chatScopeRef.current = chatScope; }, [chatScope]);
+  useEffect(() => { activeDmRef.current = activeDm; }, [activeDm]);
 
   const yesterdayOf = (day: string) => { const d = new Date(day + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
   // Roll the daily to today (resetting done + breaking a lapsed streak) and refresh the event.
@@ -161,9 +169,21 @@ export default function Cirql() {
     ws.send(JSON.stringify({ t: "join", name: nameRef.current, avatar: avatarRef.current, ring: st.ring, x: st.x, y: st.y, dir: "down" }));
     joinedRef.current = true;
   };
-  const sendChat = () => { const t = chatDraft.trim(); if (!t) return; wsSend({ t: "chat", text: t, scope: party && chatScope === "party" ? "party" : "global" }); setChatDraft(""); };
+  // send routes to the active channel (Global / Party / a DM thread)
+  const sendMsg = () => {
+    const t = chatDraft.trim(); if (!t) return;
+    if (chatScope === "dm" && activeDm) wsSend({ t: "dm", toId: activeDm, text: t });
+    else wsSend({ t: "chat", text: t, scope: party && chatScope === "party" ? "party" : "global" });
+    setChatDraft("");
+  };
   const shareLight = (id: string) => wsSend({ t: "light", to: id });
   const playEmote = (id: string) => { engineRef.current?.playEmote(id); setShowEmotes(false); };
+
+  // DM request/accept handshake (CHR-248)
+  const requestDm = (id: string) => { wsSend({ t: "dm:request", toId: id }); engineRef.current?.toast("DM request sent"); };
+  const acceptDmReq = (fromId: string) => { wsSend({ t: "dm:accept", fromId }); setDmReqs((r) => r.filter((x) => x.fromId !== fromId)); };
+  const declineDmReq = (fromId: string) => { wsSend({ t: "dm:decline", fromId }); setDmReqs((r) => r.filter((x) => x.fromId !== fromId)); };
+  const openDm = (id: string) => { setChatScope("dm"); setActiveDm(id); setShowChat(true); };
 
   // M9 board + party actions
   const postRequest = () => {
@@ -178,7 +198,7 @@ export default function Cirql() {
   const acceptInvite = (partyId: string) => { wsSend({ t: "party:acceptInvite", partyId }); setInvites((v) => v.filter((x) => x.partyId !== partyId)); };
   const leaveParty = () => { wsSend({ t: "party:leave" }); applyParty(null); };
   const advanceStep = () => { const p = partyRef.current; if (p) wsSend({ t: "party:advance", step: p.step }); };
-  const blockPlayer = (id: string) => { blockedRef.current.add(id); wsSend({ t: "party:report", targetId: id }); setBoard((b) => b.filter((x) => x.byId !== id)); setAsks((a) => a.filter((x) => x.fromId !== id)); setInvites((v) => v.filter((x) => x.fromId !== id)); engineRef.current?.toast("Player hidden & reported"); };
+  const blockPlayer = (id: string) => { blockedRef.current.add(id); wsSend({ t: "party:report", targetId: id }); setBoard((b) => b.filter((x) => x.byId !== id)); setAsks((a) => a.filter((x) => x.fromId !== id)); setInvites((v) => v.filter((x) => x.fromId !== id)); setPeers((p) => p.filter((x) => x.id !== id)); setDmReqs((r) => r.filter((x) => x.fromId !== id)); setActiveDm((a) => (a === id ? null : a)); engineRef.current?.toast("Player hidden & reported"); };
   // A "share a light" landed (from someone near you): light a lantern on your Hearth,
   // once per distinct traveller, capped at your Cirql's 12.
   const receiveLight = (id: string, name: string) => {
@@ -240,10 +260,10 @@ export default function Cirql() {
     ws.onclose = () => { setConnected(false); joinedRef.current = false; };
     ws.onmessage = (e) => {
       let m: any; try { m = JSON.parse(e.data); } catch { return; }
-      if (m.t === "welcome") { myIdRef.current = m.id; eng.clearRemotes(); (m.players || []).forEach((p: any) => eng.addRemote(p)); refreshCount(); }
-      else if (m.t === "join") { eng.addRemote(m); refreshCount(); pushFeed("", `${m.name} arrived`); }
+      if (m.t === "welcome") { myIdRef.current = m.id; eng.clearRemotes(); (m.players || []).forEach((p: any) => eng.addRemote(p)); setPeers((m.players || []).map((p: any) => ({ id: p.id, name: p.name })).filter((p: any) => !blockedRef.current.has(p.id))); refreshCount(); }
+      else if (m.t === "join") { eng.addRemote(m); refreshCount(); if (!blockedRef.current.has(m.id)) { setPeers((ps) => ps.some((x) => x.id === m.id) ? ps : [...ps, { id: m.id, name: m.name }]); pushFeed("", `${m.name} arrived`); } }
       else if (m.t === "move") { eng.moveRemote(m.id, m.x, m.y, m.dir); }
-      else if (m.t === "leave") { eng.removeRemote(m.id); refreshCount(); }
+      else if (m.t === "leave") { eng.removeRemote(m.id); setPeers((ps) => ps.filter((x) => x.id !== m.id)); refreshCount(); }
       else if (m.t === "chat") {
         if (blockedRef.current.has(m.id) && m.id !== myIdRef.current) return;
         const isP = m.channel === "party"; const mine = m.id === myIdRef.current;
@@ -255,6 +275,16 @@ export default function Cirql() {
       }
       else if (m.t === "lit") { receiveLight(m.id, m.name); }
       else if (m.t === "emote") { if (!blockedRef.current.has(m.id)) eng.emoteRemote(m.id, m.emote); }
+      // ---- Direct Messages (CHR-248) ----
+      else if (m.t === "dm:request") { if (!blockedRef.current.has(m.fromId)) { setDmReqs((r) => r.some((x) => x.fromId === m.fromId) ? r : [...r, { fromId: m.fromId, fromName: m.fromName }]); if (!(showChatRef.current && chatScopeRef.current === "dm")) setUnread((u) => ({ ...u, dm: u.dm + 1 })); eng.toast(`${m.fromName} wants to message you`); } }
+      else if (m.t === "dm:open") { setDmThreads((th) => th[m.withId] ? th : { ...th, [m.withId]: { name: m.withName, msgs: [] } }); openDm(m.withId); }
+      else if (m.t === "dm:declined") { eng.toast(`${m.byName} isn't available to chat`); }
+      else if (m.t === "dm") {
+        const partner = m.from === myIdRef.current ? m.to : m.from; const mine = m.from === myIdRef.current;
+        if (blockedRef.current.has(partner)) return;
+        setDmThreads((th) => { const cur = th[partner] || { name: m.fromName, msgs: [] }; return { ...th, [partner]: { name: cur.name || m.fromName, msgs: [...cur.msgs.slice(-40), { key: feedKey.current++, mine, text: m.text }] } }; });
+        if (!mine && !(showChatRef.current && chatScopeRef.current === "dm" && activeDmRef.current === partner)) setUnread((u) => ({ ...u, dm: u.dm + 1 }));
+      }
       // M9 board + party
       else if (m.t === "board:list") { setBoard((m.posts || []).filter((p: any) => !blockedRef.current.has(p.byId))); }
       else if (m.t === "party:state") { applyParty({ id: m.id, campaignId: m.campaignId, hostId: m.hostId, step: m.step, steps: m.steps, max: m.max, members: m.members || [] }); }
@@ -425,7 +455,7 @@ export default function Cirql() {
         <button onClick={() => setShowChat((v) => !v)} data-testid="btn-chat" title="Chat"
           className="pointer-events-auto relative flex h-7 w-7 items-center justify-center rounded-full border" style={{ borderColor: showChat ? "rgba(53,224,208,.65)" : "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)", color: connected ? "#7be0ff" : "#7a8bb0" }}>
           <MessageCircle className="h-3.5 w-3.5" />
-          {(unread.global + unread.party) > 0 && !showChat && <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[8px] font-black text-slate-900" style={{ background: "#35e0d0" }} data-testid="chat-unread">{Math.min(9, unread.global + unread.party)}</span>}
+          {(unread.global + unread.party + unread.dm) > 0 && !showChat && <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[8px] font-black text-slate-900" style={{ background: "#35e0d0" }} data-testid="chat-unread">{Math.min(9, unread.global + unread.party + unread.dm)}</span>}
         </button>
         <button onClick={() => { setQuestRows(engineRef.current?.getQuestLog() ?? []); refreshDaily(); setShowQuests((v) => !v); }} data-testid="btn-quests" title="Quests & Daily"
           className="pointer-events-auto relative flex h-7 w-7 items-center justify-center rounded-full border text-amber-200/90" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
@@ -447,32 +477,79 @@ export default function Cirql() {
       {showChat && (
         <>
           <div className="pointer-events-auto absolute inset-x-0 top-12 z-[14] mx-auto flex max-w-[520px] flex-col gap-1.5 px-4">
-            {/* channel switcher (CHR-249) — Global · Party · DM, with per-channel unread dots */}
+            {/* channel switcher (CHR-249/248) — Global · Party · DM, with per-channel unread dots */}
             <div className="flex items-center gap-1.5" data-testid="chat-channels">
-              {(["global", "party"] as const).map((ch) => {
+              {(["global", "party", "dm"] as const).map((ch) => {
                 const active = chatScope === ch; const disabled = ch === "party" && !party; const dot = unread[ch] > 0 && !active;
                 return (
-                  <button key={ch} disabled={disabled} onClick={() => setChatScope(ch)} data-testid={`chat-tab-${ch}`}
+                  <button key={ch} disabled={disabled} onClick={() => { setChatScope(ch); if (ch === "dm") setActiveDm(null); }} data-testid={`chat-tab-${ch}`}
                     className="relative flex h-8 items-center rounded-lg border px-3 text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-35"
                     style={active ? { borderColor: "#35e0d0", color: "#0a1220", background: "#7ff5e8" } : { borderColor: "#2a3a66", color: "#a9c2e6", background: "rgba(10,18,38,.6)" }}>
-                    {ch === "global" ? "Global" : "Party"}
+                    {ch === "global" ? "Global" : ch === "party" ? "Party" : "DM"}
                     {dot && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full" style={{ background: "#ffc46b", boxShadow: "0 0 6px #ffc46b" }} />}
                   </button>
                 );
               })}
-              <button disabled data-testid="chat-tab-dm" title="Direct messages — coming soon"
-                className="flex h-8 items-center gap-1 rounded-lg border px-3 text-[11px] font-extrabold uppercase tracking-wide opacity-40" style={{ borderColor: "#2a3a66", color: "#8ba0c4", background: "rgba(10,18,38,.6)" }}>
-                DM <span className="text-[8px] normal-case tracking-normal text-slate-500">soon</span>
-              </button>
             </div>
-            <div className="flex items-center gap-2">
-              <input value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }} maxLength={120}
-                placeholder={connected ? (chatScope === "party" ? "Message your party…" : "Say something to the ring…") : "connecting…"} data-testid="cirql-chat-input"
-                className="min-w-0 flex-1 rounded-xl border px-3 py-2 text-[13px] outline-none" style={{ borderColor: "#2a3a66", background: "rgba(6,11,26,.92)", color: "#fff", touchAction: "auto" }} />
-              <button onClick={sendChat} data-testid="cirql-chat-send" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[1.5px] active:scale-90" style={{ borderColor: "#35e0d0", color: "#35e0d0", background: "rgba(53,224,208,.08)" }}><Send className="h-5 w-5" /></button>
-            </div>
+            {chatScope !== "dm" ? (
+              <div className="flex items-center gap-2">
+                <input value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendMsg(); }} maxLength={120}
+                  placeholder={connected ? (chatScope === "party" ? "Message your party…" : "Say something to the ring…") : "connecting…"} data-testid="cirql-chat-input"
+                  className="min-w-0 flex-1 rounded-xl border px-3 py-2 text-[13px] outline-none" style={{ borderColor: "#2a3a66", background: "rgba(6,11,26,.92)", color: "#fff", touchAction: "auto" }} />
+                <button onClick={sendMsg} data-testid="cirql-chat-send" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[1.5px] active:scale-90" style={{ borderColor: "#35e0d0", color: "#35e0d0", background: "rgba(53,224,208,.08)" }}><Send className="h-5 w-5" /></button>
+              </div>
+            ) : activeDm ? (
+              /* an open DM thread */
+              <div className="flex items-center gap-2">
+                <button onClick={() => setActiveDm(null)} data-testid="dm-back" className="flex h-10 shrink-0 items-center rounded-xl border px-2 text-cyan-200" style={{ borderColor: "#2a3a66", background: "rgba(10,18,38,.6)" }}><ArrowLeft className="h-4 w-4" /></button>
+                <input value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendMsg(); }} maxLength={120}
+                  placeholder={`Message ${dmThreads[activeDm]?.name || "traveller"}…`} data-testid="dm-input"
+                  className="min-w-0 flex-1 rounded-xl border px-3 py-2 text-[13px] outline-none" style={{ borderColor: "#3a2a72", background: "rgba(6,11,26,.92)", color: "#fff", touchAction: "auto" }} />
+                <button onClick={sendMsg} data-testid="dm-send" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-[1.5px] active:scale-90" style={{ borderColor: "#b26cff", color: "#c9b8ff", background: "rgba(178,108,255,.1)" }}><Send className="h-5 w-5" /></button>
+              </div>
+            ) : null}
           </div>
-          {(() => { const shown = feed.filter((mm) => (chatScope === "party") === mm.party).slice(-5); return shown.length > 0 && (
+
+          {/* DM directory (requests + open threads + travellers here) when no thread is open */}
+          {chatScope === "dm" && !activeDm && (
+            <div className="pointer-events-auto absolute inset-x-0 top-[104px] z-[13] mx-auto max-w-[520px] px-4">
+              <div className="max-h-[52vh] overflow-y-auto rounded-2xl border p-2.5" data-testid="dm-directory" style={{ borderColor: "rgba(178,108,255,.3)", background: "rgba(8,10,24,.96)" }}>
+                {dmReqs.length > 0 && <>
+                  <div className="mb-1 px-1 text-[10px] font-black uppercase tracking-widest text-violet-300/70">Requests</div>
+                  {dmReqs.map((r) => (
+                    <div key={r.fromId} data-testid={`dm-req-${r.fromId}`} className="mb-1 flex items-center gap-2 rounded-lg border px-2.5 py-1.5" style={{ borderColor: "rgba(178,108,255,.4)", background: "rgba(178,108,255,.07)" }}>
+                      <span className="min-w-0 flex-1 truncate text-[12px] text-slate-200"><b className="text-violet-200">{r.fromName}</b> wants to message you</span>
+                      <button onClick={() => acceptDmReq(r.fromId)} data-testid={`dm-accept-${r.fromId}`} className="rounded-lg px-2.5 py-1 text-[12px] font-bold text-slate-900" style={{ background: "#b26cff" }}>Accept</button>
+                      <button onClick={() => declineDmReq(r.fromId)} className="rounded-lg border px-2 py-1 text-[12px] text-slate-300" style={{ borderColor: "#3a2a72" }}>No</button>
+                    </div>
+                  ))}
+                </>}
+                {Object.keys(dmThreads).length > 0 && <>
+                  <div className="mb-1 mt-1.5 px-1 text-[10px] font-black uppercase tracking-widest text-teal-300/70">Conversations</div>
+                  {Object.entries(dmThreads).map(([id, th]) => (
+                    <button key={id} onClick={() => openDm(id)} data-testid={`dm-thread-${id}`} className="mb-1 flex w-full items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left" style={{ borderColor: "#233152", background: "rgba(10,18,38,.5)" }}>
+                      <MessageCircle className="h-3.5 w-3.5 text-teal-300" />
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-white">{th.name}</span>
+                      {!peers.some((p) => p.id === id) && <span className="text-[9px] uppercase text-slate-500">offline</span>}
+                      <span className="truncate text-[11px] text-slate-400">{th.msgs.at(-1)?.text ?? ""}</span>
+                    </button>
+                  ))}
+                </>}
+                <div className="mb-1 mt-1.5 px-1 text-[10px] font-black uppercase tracking-widest text-slate-400/70">Travellers here</div>
+                {peers.filter((p) => !dmThreads[p.id]).length === 0 && <p className="px-1 py-2 text-[11.5px] text-slate-500">No one else is on this island right now.</p>}
+                {peers.filter((p) => !dmThreads[p.id]).map((p) => (
+                  <div key={p.id} data-testid={`dm-peer-${p.id}`} className="mb-1 flex items-center gap-2 rounded-lg px-2.5 py-1.5" style={{ background: "rgba(255,255,255,.03)" }}>
+                    <span className="min-w-0 flex-1 truncate text-[12.5px] text-slate-200">{p.name}</span>
+                    <button onClick={() => requestDm(p.id)} data-testid={`dm-ask-${p.id}`} className="rounded-lg border px-2.5 py-1 text-[11px] font-bold text-violet-200" style={{ borderColor: "rgba(178,108,255,.5)" }}>Message</button>
+                    <button onClick={() => blockPlayer(p.id)} className="text-[10px] text-slate-500 hover:text-rose-300">Hide</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* the message feed — Global/Party (channel-filtered) or the open DM thread */}
+          {chatScope !== "dm" ? (() => { const shown = feed.filter((mm) => (chatScope === "party") === mm.party).slice(-5); return shown.length > 0 && (
             <div className="pointer-events-none absolute left-3 top-[132px] z-[12] flex max-w-[62%] flex-col gap-1" data-testid="chat-feed">
               {shown.map((mm) => (
                 <div key={mm.key} className="w-fit rounded-md px-2 py-1 text-[11px] leading-tight" style={{ background: "rgba(6,11,26,.72)", border: `1px solid ${mm.party ? "#35e0d066" : mm.me ? "#ffc46b55" : mm.name ? "#b26cff44" : "#35e0d044"}` }}>
@@ -481,7 +558,16 @@ export default function Cirql() {
                 </div>
               ))}
             </div>
-          ); })()}
+          ); })() : activeDm && dmThreads[activeDm] ? (
+            <div className="pointer-events-none absolute left-3 right-3 top-[104px] z-[12] mx-auto flex max-w-[520px] flex-col gap-1" data-testid="dm-feed">
+              <div className="px-1 text-[10px] font-bold uppercase tracking-widest text-violet-300/70">{dmThreads[activeDm].name}{!peers.some((p) => p.id === activeDm) && <span className="ml-1 text-slate-500">· offline</span>}</div>
+              {dmThreads[activeDm].msgs.slice(-6).map((mm) => (
+                <div key={mm.key} className={`w-fit max-w-[80%] rounded-md px-2 py-1 text-[11.5px] leading-tight ${mm.mine ? "self-end" : ""}`} style={{ background: mm.mine ? "rgba(178,108,255,.18)" : "rgba(6,11,26,.78)", border: `1px solid ${mm.mine ? "#b26cff66" : "#35e0d044"}` }}>
+                  <span className="text-cyan-50/95">{mm.text}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </>
       )}
 

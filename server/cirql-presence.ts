@@ -18,7 +18,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { maskProfanity } from "./chat-filter";
 
-interface Traveller { ws: WebSocket; id: string; name: string; avatar: unknown; ring: number; x: number; y: number; dir: string; partyId?: string; lastAsk?: number; lastPost?: number; lastEmote?: number; lastChat?: number; }
+interface Traveller { ws: WebSocket; id: string; name: string; avatar: unknown; ring: number; x: number; y: number; dir: string; partyId?: string; lastAsk?: number; lastPost?: number; lastEmote?: number; lastChat?: number; lastDmReq?: number; lastDm?: number; }
 interface Party { id: string; campaignId: string; steps: number; max: number; hostId: string; members: string[]; step: number; }
 interface Post { id: string; dir: "host" | "seeker"; byId: string; byName: string; campaignId: string; steps: number; max: number; tags: string[]; newbie: boolean; partyId: string | null; }
 
@@ -29,6 +29,8 @@ export function setupCirqlPresence() {
   const players = new Map<string, Traveller>();
   const parties = new Map<string, Party>();
   const board = new Map<string, Post>();
+  const dmPairs = new Set<string>();   // accepted 1:1 DM threads, key "idA|idB" (sorted) — request/accept gated (CHR-248)
+  const dmKey = (a: string, b: string) => (a < b ? a + "|" + b : b + "|" + a);
   let nextId = 1, nextParty = 1, nextPost = 1;
 
   const serialize = (p: Traveller) => ({ id: p.id, name: p.name, avatar: p.avatar, ring: p.ring, x: p.x, y: p.y, dir: p.dir });
@@ -183,12 +185,36 @@ export function setupCirqlPresence() {
       }
       else if (m.t === "party:leave") { leaveParty(me, "A traveller left the party."); broadcastBoard(); }
       else if (m.t === "party:report") { /* minimal: block is client-side; log for moderation */ console.log(`[cirql] report by ${me.id} of ${String(m.targetId)}`); }
+      // ---- 1:1 Direct Messages — request/accept gated, session-scoped (CHR-248) ----
+      else if (m.t === "dm:request") {   // ask to open a private thread; recipient must accept
+        const now = Date.now(); if (me.lastDmReq && now - me.lastDmReq < 2000) return; me.lastDmReq = now;
+        const other = players.get(String(m.toId));
+        if (other && other.id !== me.id && !dmPairs.has(dmKey(me.id, other.id))) send(other.ws, { t: "dm:request", fromId: me.id, fromName: me.name });
+      }
+      else if (m.t === "dm:accept") {   // recipient opens the thread → notify both sides
+        const other = players.get(String(m.fromId));
+        if (other && other.id !== me.id) {
+          dmPairs.add(dmKey(me.id, other.id));
+          send(me.ws, { t: "dm:open", withId: other.id, withName: other.name });
+          send(other.ws, { t: "dm:open", withId: me.id, withName: me.name });
+        }
+      }
+      else if (m.t === "dm:decline") { const other = players.get(String(m.fromId)); if (other) send(other.ws, { t: "dm:declined", byName: me.name }); }
+      else if (m.t === "dm") {   // a message on an accepted thread — masked + rate-limited, to both parties
+        const now = Date.now(); if (me.lastDm && now - me.lastDm < 700) return; me.lastDm = now;
+        const other = players.get(String(m.toId));
+        if (!other || !dmPairs.has(dmKey(me.id, other.id))) return;   // only within an accepted thread
+        const text = maskProfanity(clip(m.text, 120)); if (!text) return;
+        const msg = { t: "dm", from: me.id, fromName: me.name, to: other.id, text };
+        send(other.ws, msg); send(me.ws, msg);   // both see it (sender echo attributes to the same thread)
+      }
     });
 
     const leave = () => {
       if (!me) return;
       leaveParty(me, "A traveller left the party.");
       dropPost(me.id);
+      for (const k of Array.from(dmPairs)) if (k.split("|").includes(me.id)) dmPairs.delete(k);   // end their DM threads
       players.delete(me.id);
       toRing(me.ring, { t: "leave", id: me.id });
       broadcastBoard();
