@@ -8,7 +8,7 @@
 // "your Cirql" plug in on top of this (M2–M6) via the hooks below.
 
 import { RetroEngine, type RetroHooks } from "./retro-engine";
-import { loadAvatarLS, AURA_COLORS, type AvatarConfig } from "./avatar";
+import { loadAvatarLS, DEFAULT_AVATAR, AURA_COLORS, type AvatarConfig } from "./avatar";
 import { RINGS, MINIMAP_RINGS, KNOWN_RINGS, type Ring, type Prop } from "./cirql-world";
 import {
   QUESTS, questById, offerableQuest, questStatusList,
@@ -26,6 +26,12 @@ function hexA(hex: string, a: number): string {
 }
 
 interface Dialog { name: string; accent: string; lines: string[]; i: number; acceptOnClose?: string; }
+
+// M8 — a live remote traveller on your ring (presence + chat). Position eases from
+// x/y toward the last-received tx/ty for smooth movement between throttled updates.
+type Facing = "up" | "down" | "left" | "right";
+interface RemotePlayer { x: number; y: number; tx: number; ty: number; facing: Facing; name: string; avatar: AvatarConfig; chat: string; chatT: number; walk: number; }
+export interface RemoteState { id: string; x: number; y: number; dir: string; name: string; avatar: AvatarConfig; ring?: number; }
 
 export class CirqlWorldEngine extends RetroEngine {
   private ringIdx = 0;
@@ -75,6 +81,16 @@ export class CirqlWorldEngine extends RetroEngine {
   onQuestChange?: () => void;
   private lastSent = 0; private lastX = 1e9; private lastY = 1e9;
 
+  // ---- M8 live presence (host wires these to the /ws/cirql socket) ----
+  private remotes = new Map<string, RemotePlayer>();
+  private myChat = ""; private myChatT = 0;                 // your own chat bubble
+  private nearPlayer: { id: string; name: string } | null = null;  // remote in "share a light" range
+  private lastPresence = 0; private lastPx = 1e9; private lastPy = 1e9;
+  /** Fired often (throttled) with the live position, for the presence socket. */
+  onPresence?: (ring: number, x: number, y: number, facing: Facing) => void;
+  /** Fired when the player presses E next to another traveller (share a light). */
+  onShareLight?: (id: string) => void;
+
   constructor(canvas: HTMLCanvasElement, hooks: RetroHooks = {}) {
     super(canvas, hooks, 264, 200);
     // responsive full-bleed world viewport (fills the screen, shows more world)
@@ -106,6 +122,19 @@ export class CirqlWorldEngine extends RetroEngine {
   toast(text: string) { this.msg = text; this.msgT = 4.6; }
   /** Current interact target's kind (host may use to theme the action button). */
   nearKind(): InteractKind | null { return (this.near?.t as InteractKind) ?? null; }
+
+  // ---------- M8 live presence host API ----------
+  private facingOf(d: string): Facing { return d === "up" || d === "left" || d === "right" ? d : "down"; }
+  addRemote(s: RemoteState) {
+    this.remotes.set(s.id, { x: s.x, y: s.y, tx: s.x, ty: s.y, facing: this.facingOf(s.dir), name: (s.name || "Traveller").slice(0, 16), avatar: s.avatar || DEFAULT_AVATAR, chat: "", chatT: 0, walk: 0 });
+  }
+  moveRemote(id: string, x: number, y: number, dir: string) { const r = this.remotes.get(id); if (r) { r.tx = x; r.ty = y; r.facing = this.facingOf(dir); } }
+  removeRemote(id: string) { this.remotes.delete(id); }
+  chatRemote(id: string, text: string) { const r = this.remotes.get(id); if (r) { r.chat = text; r.chatT = 5.5; } }
+  /** Show your own chat bubble over your avatar. */
+  sayLocal(text: string) { this.myChat = text; this.myChatT = 5.5; }
+  remoteCount() { return this.remotes.size; }
+  clearRemotes() { this.remotes.clear(); }
 
   // ---------- quests ----------
   /** Accept a quest (offered by an NPC or auto-started on first run). */
@@ -186,6 +215,7 @@ export class CirqlWorldEngine extends RetroEngine {
       if (this.dialog.i >= this.dialog.lines.length) { const acc = this.dialog.acceptOnClose; this.dialog = null; if (acc) this.acceptQuest(acc); }
       return;
     }
+    if (this.nearPlayer) { this.onShareLight?.(this.nearPlayer.id); return; }   // share a light with a traveller
     const p = this.near; if (!p) return;
     if (p.t === "lantern" && p.id) { if (!this.lit.has(p.id)) { this.lit.add(p.id); this.advanceObjective("lightLanterns"); this.onQuestChange?.(); } }
     else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.onInteract?.("wonders", p); }
@@ -216,6 +246,17 @@ export class CirqlWorldEngine extends RetroEngine {
   protected update(dt: number) {
     this.t += dt;
     this.msgT = Math.max(0, this.msgT - dt);
+
+    // live remotes ease toward their last-known position + decay chat bubbles (runs
+    // unconditionally so other travellers keep moving during your dialog / chart)
+    this.myChatT = Math.max(0, this.myChatT - dt);
+    for (const r of Array.from(this.remotes.values())) {
+      const px = r.x, py = r.y;
+      r.x += (r.tx - r.x) * Math.min(1, dt * 10);
+      r.y += (r.ty - r.y) * Math.min(1, dt * 10);
+      r.chatT = Math.max(0, r.chatT - dt);
+      r.walk = (Math.abs(r.x - px) + Math.abs(r.y - py)) > 0.15 ? r.walk + dt * 10 : 0;
+    }
 
     // pointer-down edge (tap detection, for the minimap → chart)
     const justDown = this.pointer.down && !this.pDownPrev; this.pDownPrev = this.pointer.down;
@@ -275,6 +316,12 @@ export class CirqlWorldEngine extends RetroEngine {
         const range = p.r ?? (isQL ? 30 : 40);
         if (d < range && d < best) { best = d; this.near = p; }
       }
+      // a nearby live traveller wins the E prompt if closer than any prop → "share a light"
+      this.nearPlayer = null;
+      for (const [id, r] of Array.from(this.remotes.entries())) {
+        const d = Math.hypot(this.posX - r.x, this.posY - r.y);
+        if (d < 30 && d < best) { best = d; this.nearPlayer = { id, name: r.name }; this.near = null; }
+      }
 
       // "reach" quest objectives complete automatically by walking onto the target
       const tgt = this.objTargetProp();
@@ -289,6 +336,15 @@ export class CirqlWorldEngine extends RetroEngine {
     if (this.t - this.lastSent > 1.2 && (Math.abs(this.posX - this.lastX) > 3 || Math.abs(this.posY - this.lastY) > 3)) {
       this.onLocalMove?.(this.ringIdx, Math.round(this.posX), Math.round(this.posY));
       this.lastX = this.posX; this.lastY = this.posY; this.lastSent = this.t;
+    }
+
+    // fast presence broadcast — only when the position actually moved
+    if (this.t - this.lastPresence > 0.09) {
+      if (Math.abs(this.posX - this.lastPx) > 0.6 || Math.abs(this.posY - this.lastPy) > 0.6) {
+        this.onPresence?.(this.ringIdx, Math.round(this.posX), Math.round(this.posY), this.facing);
+        this.lastPx = this.posX; this.lastPy = this.posY;
+      }
+      this.lastPresence = this.t;
     }
   }
 
@@ -370,6 +426,8 @@ export class CirqlWorldEngine extends RetroEngine {
     }
     // the player
     draws.push({ y: this.posY, f: () => this.drawHero(this.posX - camX, this.posY - camY) });
+    // live remote travellers (depth-sorted in with everything else)
+    for (const r of Array.from(this.remotes.values())) draws.push({ y: r.y, f: () => this.drawRemote(r.x - camX, r.y - camY, r) });
     draws.sort((a, c) => a.y - c.y);
     for (const d of draws) d.f();
 
@@ -402,6 +460,36 @@ export class CirqlWorldEngine extends RetroEngine {
     this.ring(cx, cy + 2, 6, "#35e0d0", 1.1);       // gentle "you" ring
     this.avatar(cx, cy + bob, this.hero, this.facing);
     this.nameTag(cx, cy, this.myName, "#ffd24a");
+    if (this.myChatT > 0 && this.myChat) this.drawBubble(cx, cy, this.myChat, this.myChatT);
+  }
+  private drawRemote(cx: number, cy: number, r: RemotePlayer) {
+    const bob = r.walk > 0 ? Math.round(Math.sin(r.walk)) : 0;
+    const aura = r.avatar.aura && AURA_COLORS[r.avatar.aura];
+    if (aura) this.glow(cx, cy - 12, 18, aura, this.reduce ? 0.34 : 0.26);
+    this.disc(cx, cy + 2, 4, "#0a071460");
+    const share = this.nearPlayer?.id && this.remotes.get(this.nearPlayer.id) === r;
+    if (share) this.ring(cx, cy + 2, 6, "#ffc46b", 1.1);          // highlight the "share a light" target
+    this.avatar(cx, cy + bob, r.avatar, r.facing);
+    this.nameTag(cx, cy, r.name, "#dfe6ff");
+    if (r.chatT > 0 && r.chat) this.drawBubble(cx, cy, r.chat, r.chatT);
+  }
+  // a small dark speech bubble above an avatar's head (smooth text via the overlay)
+  private drawBubble(cx: number, feet: number, text: string, life: number) {
+    const lines = this.wrapText(text.toUpperCase(), 18).slice(0, 2);
+    const w = Math.min(98, Math.max(24, ...lines.map((l) => this.textWidth(l, 1))) + 8);
+    const h = lines.length * 8 + 5;
+    const x = Math.round(cx - w / 2), y = Math.round(feet - 40 - h);
+    const a = life < 0.6 ? life / 0.6 : 1;
+    this.b.globalAlpha = a;
+    this.rect(x, y, w, h, "#0a0714e8"); this.rectLine(x, y, w, h, "#b26cff");
+    this.rect(cx - 2, y + h, 4, 3, "#0a0714e8");
+    this.b.globalAlpha = 1;
+    for (let i = 0; i < lines.length; i++) this.q(cx, y + 3 + i * 8, lines[i], "#eaf6ff", 0.9, "c", false, a);
+  }
+  private wrapText(s: string, max: number): string[] {
+    const words = s.split(" "); const out: string[] = []; let line = "";
+    for (const w of words) { const t = line ? line + " " + w : w; if (t.length > max && line) { out.push(line); line = w; } else line = t; }
+    if (line) out.push(line); return out;
   }
   private drawHearth(cx: number, cy: number, p: Prop) {
     this.glow(cx, cy, 70, "#ffc46b", 0.22);
@@ -528,18 +616,22 @@ export class CirqlWorldEngine extends RetroEngine {
     const lit = `CIRQL ${this.stats.cirqlLit}/${this.stats.cirqlTotal}`;
     this.q(6, this.LH - ib - 11, lit, "#ffc46b", 1, "l", true);
 
-    // interact prompt — bottom-centre, above the controls
-    if (this.near && !this.dialog) {
+    // interact prompt — bottom-centre, above the controls (a live traveller wins over props)
+    let promptTxt = "", promptAcc = "#35e0d0";
+    if (this.nearPlayer && !this.dialog) { promptTxt = `E · Share a light with ${this.nearPlayer.name}`; promptAcc = "#ffc46b"; }
+    else if (this.near && !this.dialog) {
       const label = this.near.t === "wonders" ? "Enter CirqlCade"
         : this.near.t === "npc" ? `Talk to ${this.near.label || ""}`
           : this.near.t === "lantern" ? "Light the lantern"
             : "Set sail";
-      const txt = `E · ${label}`;
-      const w = Math.max(this.textWidth(txt, 1), txt.length * 3.6);
+      promptTxt = `E · ${label}`; promptAcc = this.near.accent || "#35e0d0";
+    }
+    if (promptTxt) {
+      const w = Math.max(this.textWidth(promptTxt, 1), promptTxt.length * 3.6);
       const x = Math.round((this.LW - w) / 2), y = this.LH - ib - 24;
       this.rect(x - 5, y - 3, w + 10, 12, "#0a0714dd");
-      this.rectLine(x - 5, y - 3, w + 10, 12, this.near.accent || "#35e0d0");
-      this.q(this.LW / 2, y, txt, "#eaf6ff", 1, "c", true);
+      this.rectLine(x - 5, y - 3, w + 10, 12, promptAcc);
+      this.q(this.LW / 2, y, promptTxt, "#eaf6ff", 1, "c", true);
     }
 
     // toast — top centre (below the top row)

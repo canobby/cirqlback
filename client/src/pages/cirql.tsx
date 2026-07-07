@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Pencil, ScrollText, Users, X } from "lucide-react";
+import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlWorldEngine, type QuestLogRow } from "@/game/cirql-world-engine";
 import type { Btn } from "@/game/retro-engine";
@@ -52,7 +52,45 @@ export default function Cirql() {
   const ownedRef = useRef<string[]>([]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // M8 — live presence + chat
+  const wsRef = useRef<WebSocket | null>(null);
+  const myIdRef = useRef<string>("");
+  const presenceReadyRef = useRef(false);   // identity loaded + past character creation
+  const joinedRef = useRef(false);
+  const sharedLightsRef = useRef<Set<string>>(new Set());   // travellers you've shared a light with this session
+  const [connected, setConnected] = useState(false);
+  const [online, setOnline] = useState(1);
+  const [showChat, setShowChat] = useState(false);
+  const [chatDraft, setChatDraft] = useState("");
+  const [feed, setFeed] = useState<{ key: number; name: string; text: string; me: boolean }[]>([]);
+  const feedKey = useRef(0);
+
   const loggedIn = !!(user as any)?.id;
+
+  const pushFeed = (name: string, text: string, me = false) => setFeed((f) => [...f.slice(-6), { key: feedKey.current++, name, text, me }]);
+
+  // Attempt the presence join — fires once the socket is open AND identity is ready
+  // (returning players join immediately; first-run players join after they finish the
+  // character creator, so other travellers see the avatar they actually chose).
+  const tryJoin = () => {
+    const ws = wsRef.current, eng = engineRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN || !presenceReadyRef.current || joinedRef.current || !eng) return;
+    const st = eng.getState();
+    ws.send(JSON.stringify({ t: "join", name: nameRef.current, avatar: avatarRef.current, ring: st.ring, x: st.x, y: st.y, dir: "down" }));
+    joinedRef.current = true;
+  };
+  const sendChat = () => { const t = chatDraft.trim(); if (!t) return; wsRef.current?.send(JSON.stringify({ t: "chat", text: t })); setChatDraft(""); };
+  const shareLight = (id: string) => { const ws = wsRef.current; if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: "light", to: id })); };
+  // A "share a light" landed (from someone near you): light a lantern on your Hearth,
+  // once per distinct traveller, capped at your Cirql's 12.
+  const receiveLight = (id: string, name: string) => {
+    const eng = engineRef.current; if (!eng) return;
+    if (sharedLightsRef.current.has(id)) { eng.toast(`${name}'s light already shines on your Hearth`); return; }
+    sharedLightsRef.current.add(id);
+    if (membersRef.current < 12) { membersRef.current += 1; setMembers(membersRef.current); eng.setStats({ cirqlLit: membersRef.current }); }
+    eng.toast(`✦ You and ${name} shared a light`);
+    persist();
+  };
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
@@ -82,7 +120,28 @@ export default function Cirql() {
     // quests: grant the sparks reward on completion, persist progress on any change
     eng.onQuestComplete = (q) => { sparksRef.current += q.reward.sparks; eng.setStats({ sparks: sparksRef.current }); persist(); };
     eng.onQuestChange = () => { setQuestRows(eng.getQuestLog()); scheduleSave(); };
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); persist(); eng.destroy(); engineRef.current = null; };
+
+    // M8 — live presence socket: broadcast our position + share-a-light, and render
+    // every other traveller sharing the ring (adapted from the /ws/town prototype).
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${proto}://${location.host}/ws/cirql`);
+    wsRef.current = ws;
+    eng.onPresence = (ring, x, y, facing) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: "move", ring, x, y, dir: facing })); };
+    eng.onShareLight = (id) => shareLight(id);
+    const refreshCount = () => { const n = eng.remoteCount() + 1; setOnline(n); eng.setStats({ online: n }); };
+    ws.onopen = () => { setConnected(true); tryJoin(); };
+    ws.onclose = () => { setConnected(false); joinedRef.current = false; };
+    ws.onmessage = (e) => {
+      let m: any; try { m = JSON.parse(e.data); } catch { return; }
+      if (m.t === "welcome") { myIdRef.current = m.id; eng.clearRemotes(); (m.players || []).forEach((p: any) => eng.addRemote(p)); refreshCount(); }
+      else if (m.t === "join") { eng.addRemote(m); refreshCount(); pushFeed("", `${m.name} arrived`); }
+      else if (m.t === "move") { eng.moveRemote(m.id, m.x, m.y, m.dir); }
+      else if (m.t === "leave") { eng.removeRemote(m.id); refreshCount(); }
+      else if (m.t === "chat") { if (m.id === myIdRef.current) { eng.sayLocal(m.text); pushFeed(m.name, m.text, true); } else { eng.chatRemote(m.id, m.text); pushFeed(m.name, m.text); } }
+      else if (m.t === "lit") { receiveLight(m.id, m.name); }
+    };
+
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); persist(); try { ws.close(); } catch { /* ignore */ } eng.destroy(); engineRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -103,6 +162,9 @@ export default function Cirql() {
       if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
       setQuestRows(eng.getQuestLog());
       if (!seen) { setCreatorMode("create"); setShowCreator(true); }
+      // returning players can appear to others immediately; first-run players wait
+      // until they've finished the creator (see onConfirm) so their avatar is real.
+      presenceReadyRef.current = !!seen; tryJoin();
     };
     if (loggedIn) {
       loadedRef.current = true;
@@ -136,6 +198,7 @@ export default function Cirql() {
     // first-run onboarding: auto-start the quest chain so a waypoint guides them (CHR-231)
     if (firstRun) engineRef.current?.acceptQuest("find-your-feet");
     setShowCreator(false); persist();
+    presenceReadyRef.current = true; tryJoin();   // now safe to appear to other travellers
   };
 
   // Leaving a cabinet → back to the CirqlCade hall + a spark a play (CHR-235; full
@@ -207,8 +270,12 @@ export default function Cirql() {
           <span className="tracking-[0.35em]" style={{ fontSize: "1.05rem", color: "#fff", textShadow: "0 0 10px rgba(53,224,208,.6), 0 0 22px rgba(178,108,255,.35)" }}>CIRQL</span>
           <span className="tracking-[0.15em]" style={{ fontSize: "0.63rem", color: "#b26cff", textShadow: "0 0 9px rgba(178,108,255,.8)" }}>VERSE</span>
         </div>
+        <button onClick={() => setShowChat((v) => !v)} data-testid="btn-chat" title="Chat"
+          className="pointer-events-auto ml-auto flex h-7 w-7 items-center justify-center rounded-full border" style={{ borderColor: showChat ? "rgba(53,224,208,.65)" : "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)", color: connected ? "#7be0ff" : "#7a8bb0" }}>
+          <MessageCircle className="h-3.5 w-3.5" />
+        </button>
         <button onClick={() => { setQuestRows(engineRef.current?.getQuestLog() ?? []); setShowQuests((v) => !v); }} data-testid="btn-quests" title="Quests"
-          className="pointer-events-auto ml-auto flex h-7 w-7 items-center justify-center rounded-full border text-amber-200/90" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
+          className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-amber-200/90" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
           <ScrollText className="h-3.5 w-3.5" />
         </button>
         <button onClick={() => { setCreatorMode("edit"); setShowCreator(true); }} data-testid="btn-edit-look" title="Edit look"
@@ -220,6 +287,28 @@ export default function Cirql() {
           <Users className="h-3.5 w-3.5" /> {members}
         </button>
       </div>
+
+      {/* live chat — a slim bar below the header + a short feed (in-world speech bubbles
+          render regardless; this is the "open chat" mode). */}
+      {showChat && (
+        <>
+          <div className="pointer-events-auto absolute inset-x-0 top-12 z-[14] mx-auto flex max-w-[520px] items-center gap-2 px-4">
+            <input value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }} maxLength={120}
+              placeholder={connected ? "Say something to the ring…" : "connecting…"} data-testid="cirql-chat-input"
+              className="min-w-0 flex-1 rounded-xl border px-3 py-2 text-[13px] outline-none" style={{ borderColor: "#2a3a66", background: "rgba(6,11,26,.92)", color: "#fff", touchAction: "auto" }} />
+            <button onClick={sendChat} data-testid="cirql-chat-send" className="flex h-10 w-10 items-center justify-center rounded-xl border-[1.5px] active:scale-90" style={{ borderColor: "#35e0d0", color: "#35e0d0", background: "rgba(53,224,208,.08)" }}><Send className="h-5 w-5" /></button>
+          </div>
+          {feed.length > 0 && (
+            <div className="pointer-events-none absolute left-3 top-[86px] z-[12] flex max-w-[62%] flex-col gap-1">
+              {feed.slice(-5).map((mm) => (
+                <div key={mm.key} className="w-fit rounded-md px-2 py-1 text-[11px] leading-tight" style={{ background: "rgba(6,11,26,.72)", border: `1px solid ${mm.me ? "#ffc46b55" : mm.name ? "#b26cff44" : "#35e0d044"}` }}>
+                  {mm.name ? <><span className="font-bold" style={{ color: mm.me ? "#ffd98a" : "#c9b8ff" }}>{mm.name}:</span> <span className="text-cyan-50/90">{mm.text}</span></> : <span className="italic text-cyan-300/80">{mm.text}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       {/* controls tray — captures all taps in this band so only the controls move the character */}
       <div ref={controlsRef} className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-w-[680px] items-end justify-between gap-4 px-5 pb-[calc(14px+env(safe-area-inset-bottom))] pt-6"
@@ -310,7 +399,10 @@ export default function Cirql() {
             ))}
           </div>
           <button onClick={invite} data-testid="cirql-invite" className="mt-1 w-full rounded-lg py-2.5 text-[13px] font-extrabold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>Invite a friend ✦</button>
-          <p className="mt-2 text-[10.5px] leading-snug text-slate-400">Or meet someone in the world and <span className="text-cyan-300">share a light</span> — coming with live players.</p>
+          <p className="mt-2 text-[10.5px] leading-snug text-slate-400">
+            Or walk up to a traveller and press <b className="text-cyan-200">E</b> to <span className="text-cyan-300">share a light</span> — it lights a lantern for you both.
+            {online > 1 ? <> <span className="text-emerald-300">{online} here now.</span></> : <> <span className="text-slate-500">No one else here right now.</span></>}
+          </p>
         </div>
       )}
 

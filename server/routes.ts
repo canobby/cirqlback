@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { setupMultiplayer } from "./multiplayer";
 import { setupTown } from "./town";
+import { setupCirqlPresence } from "./cirql-presence";
 import multer from "multer";
 import { handleTextTranslation, handleVoiceTranslation, handleTextToSpeech } from "./translation-service";
 import { getMapsConfig } from "./maps-proxy";
@@ -156,6 +157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const mpWss = setupMultiplayer();
   // CIRQL CITY live "shared town" prototype (presence + chat); routed at /ws/town below.
   const townWss = setupTown();
+  // CIRQLVERSE flagship live presence + chat (ring-scoped); routed at /ws/cirql below.
+  const cirqlWss = setupCirqlPresence();
 
   // WebSocket server for real-time updates
   const wss = new WebSocketServer({ noServer: true });
@@ -283,6 +286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     else if (pathname === '/ws/communication') communicationWss.handleUpgrade(req, socket, head, (client) => communicationWss.emit('connection', client, req));
     else if (pathname === '/ws/mp') mpWss.handleUpgrade(req, socket, head, (client) => mpWss.emit('connection', client, req));
     else if (pathname === '/ws/town') townWss.handleUpgrade(req, socket, head, (client) => townWss.emit('connection', client, req));
+    else if (pathname === '/ws/cirql') cirqlWss.handleUpgrade(req, socket, head, (client) => cirqlWss.emit('connection', client, req));
     // else: not ours — leave the socket for Vite HMR / other upgrade listeners.
   });
 
