@@ -36,7 +36,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 const INTRO_LS = "cirql_intro_v1";
 
 type StartDest = "home" | "last" | "arcade";
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; gatheredWisps?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; renown?: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; gatheredWisps?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; renown?: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; graduated?: number[]; }
 interface GameSettings { brightness: number; music: number; sfx: number; reduce: boolean; smooth: boolean; pixel: number; }
 const DEFAULT_SETTINGS: GameSettings = { brightness: 1, music: 0.7, sfx: 0.8, reduce: false, smooth: false, pixel: 1.5 };
 const todayUTC = () => new Date().toISOString().slice(0, 10);
@@ -55,6 +55,8 @@ export default function Cirql() {
   const sparksRef = useRef<number>(0);
   const renownRef = useRef<number>(0);           // Renown — personal earned-not-spent standing (Phase K4)
   const [renownUi, setRenownUi] = useState(0);
+  const graduatedRef = useRef<Set<number>>(new Set());   // ring indices whose quest you've completed = "circles graduated" (K2)
+  const [graduatedUi, setGraduatedUi] = useState(0);
   const energyRef = useRef<number>(0);           // World Energy 0..1
   const membersRef = useRef<number>(0);          // your Cirql size (lanterns lit)
   const playsRef = useRef<{ day: string; n: number }>({ day: "", n: 0 }); // daily play count (anti-farm)
@@ -278,7 +280,7 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, gatheredWisps: (s as any).gatheredWisps, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current, renown: renownRef.current };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, gatheredWisps: (s as any).gatheredWisps, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current, renown: renownRef.current, graduated: Array.from(graduatedRef.current) };
   };
   // Grant Renown (personal standing) + celebrate any rank-up. Returns the amount granted.
   const grantRenown = (amount: number) => {
@@ -345,7 +347,17 @@ export default function Cirql() {
       sparksRef.current += reward; eng.setStats({ sparks: sparksRef.current }); setSparksUi(sparksRef.current);
       const ren = grantRenown(first ? (q.reward.renown ?? 0) : Math.round((q.reward.renown ?? 0) * 0.25));   // Renown scales with tier (K4)
       eng.toast(`✦ ${q.name}${first ? "" : " again"} — +${reward} sparqs${ren > 0 ? ` · ★ +${ren} Renown` : ""}`);
-      if (first && q.id.startsWith("ring-")) progressDaily("explore");   // only the first counts toward the daily
+      if (first && q.id.startsWith("ring-")) {
+        progressDaily("explore");   // only the first counts toward the daily
+        // CIRCLE GRADUATION (K2, owner-locked): finishing a ring's quest graduates that circle
+        const ring = parseInt(q.id.split("-")[1], 10);
+        if (!isNaN(ring) && !graduatedRef.current.has(ring)) {
+          graduatedRef.current.add(ring); setGraduatedUi(graduatedRef.current.size);
+          const bonus = grantRenown(3 + (q.tier ?? 1));   // a graduation Renown bonus on top
+          eng.present("★", "#b26cff");
+          setTimeout(() => eng.toast(`★ Circle graduated! ${graduatedRef.current.size} circle${graduatedRef.current.size === 1 ? "" : "s"} earned · +${bonus} Renown`), 900);
+        }
+      }
       persist();
     };
     eng.onQuestChange = () => { setQuestRows(eng.getQuestLog()); scheduleSave(); };
@@ -453,6 +465,7 @@ export default function Cirql() {
       playsRef.current = { day: st?.playDay ?? "", n: st?.playsToday ?? 0 };
       arcadeVisitedRef.current = !!st?.arcadeVisited; startPrefRef.current = st?.startPref ?? "ask";
       renownRef.current = st?.renown ?? 0; setRenownUi(renownRef.current);
+      graduatedRef.current = new Set(Array.isArray(st?.graduated) ? st!.graduated! : []); setGraduatedUi(graduatedRef.current.size);
       applySettings({ ...DEFAULT_SETTINGS, ...(st?.settings || {}) });   // brightness + reduced-motion prefs
       ownedRef.current = Array.isArray(st?.owned) ? st!.owned! : []; setOwned(ownedRef.current); setSparksUi(sparksRef.current);
       maxRingRef.current = st?.maxRing ?? 0; setCurRingUi(st?.ring ?? 0);
@@ -1131,7 +1144,10 @@ export default function Cirql() {
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,.08)" }}>
                 <div className="h-full rounded-full" style={{ width: `${Math.round(rs.progress * 100)}%`, background: "linear-gradient(90deg,#b26cff,#e0a0ff)" }} />
               </div>
-              <div className="mt-0.5 text-[10px] text-violet-200/70">{rs.next ? `${rs.toNext} to ${rs.next.title}` : "Highest rank reached ✦"}</div>
+              <div className="mt-0.5 flex items-center text-[10px] text-violet-200/70">
+                <span>{rs.next ? `${rs.toNext} to ${rs.next.title}` : "Highest rank reached ✦"}</span>
+                {graduatedUi > 0 && <span className="ml-auto font-bold text-violet-300" title="Circles graduated (ring quests completed)">◎ {graduatedUi} circle{graduatedUi === 1 ? "" : "s"}</span>}
+              </div>
             </div>
           ); })()}
           {/* today's daily task (M10) */}
