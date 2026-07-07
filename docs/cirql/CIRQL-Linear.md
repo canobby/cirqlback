@@ -8,14 +8,17 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 | Milestone | Issues | Done |
 |---|---|---|
 | M0 · Foundations (reused) | 4 | 4 |
-| M1 · The World & Movement | 7 | 7 |
+| M1 · The World & Movement | 8 | 8 |
 | M2 · Identity & Persistence | 4 | 4 |
 | M3 · Quest System (backbone) | 4 | 4 |
-| M4 · First Quest Chain (onboarding) | 4 | 0 |
+| M4 · First Quest Chain (onboarding) | 4 | 4 |
 | M5 · The Wonders (in-world arcade) | 4 | 0 |
 | M6 · Sparks Economy & Your Cirql | 6 | 0 |
 | M7 · Playable Slice Hardening | 3 | 0 |
 | M8 · Social — presence & chat channels | 3 | 0 |
+| M9 · Campaigns & Party Finder | 4 | 0 |
+| M10 · Endless content engines | 4 | 0 |
+| M11 · Depth & Delight (wishlist) | 5 | 0 |
 
 ## M0 · Foundations (reused) — DONE
 - [x] **CHR-211** — Reuse: /town websocket presence prototype
@@ -31,6 +34,7 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 - [x] **CHR-219** — Player movement: WASD + click-to-move + joystick + edge collision
 - [x] **CHR-220** — Minimap: concentric rings + fog + player dot
 - [x] **CHR-221** — Ambient neon polish (glow-up kit: lighting + motes)
+- [x] **CHR-250** — Full-screen sea chart (tap minimap to expand)
 
 ## M2 · Identity & Persistence — DONE (commit b09c79c, live)
 - [x] **CHR-222** — Cirql state model + save/load endpoints (game_progress 'cirql')
@@ -44,11 +48,11 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 - [x] **CHR-226** — Client: quest log + objective tracker HUD
 - [x] **CHR-227** — Client: NPC quest-givers + waypoint markers
 
-## M4 · First Quest Chain (onboarding)
-- [ ] **CHR-228** — Quest 1 — "Find Your Feet" (teaches movement)
-- [ ] **CHR-229** — Quest 2 — "The Lantern Path" (teaches interact)
-- [ ] **CHR-230** — Quest 3 — "The Wonders Door" (find + enter the arcade)
-- [ ] **CHR-231** — First-run onboarding scripting hook
+## M4 · First Quest Chain (onboarding) — DONE (commit 677bf40, live)
+- [x] **CHR-228** — Quest 1 — "Find Your Feet" (teaches movement)
+- [x] **CHR-229** — Quest 2 — "The Lantern Path" (teaches interact)
+- [x] **CHR-230** — Quest 3 — "The Wonders Door" (find + enter the arcade)
+- [x] **CHR-231** — First-run onboarding scripting hook
 
 ## M5 · The Wonders (in-world arcade)
 - [ ] **CHR-232** — Wonders arcade interior + cabinet props from registry
@@ -73,3 +77,23 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 - [ ] **CHR-247** — Live presence in-world (/ws/cirql, room per ring)
 - [ ] **CHR-248** — Chat channel model: Global / Party / DM
 - [ ] **CHR-249** — Channel switcher UI + safety/moderation
+
+## M9 · Campaigns & Party Finder
+- [ ] **CHR-251** — Campaign model: co-op multi-step quests (party-scoped)
+- [ ] **CHR-252** — Campaign Board: post / browse / join (+ new-player-friendly)
+- [ ] **CHR-253** — Party formation + shared waypoint + shared progress
+- [ ] **CHR-254** — Matchmaking requests + safety (tags, report/block)
+
+## M10 · Endless content engines
+- [ ] **CHR-255** — Procedural rings (infinite outward biomes)
+- [ ] **CHR-256** — Quest-template generator (infinite authored-feeling quests)
+- [ ] **CHR-257** — Daily + seasonal loops (rotating dailies, events, drops)
+- [ ] **CHR-258** — Myst-style puzzle quests / campaigns
+
+## M11 · Depth & Delight (wishlist — owner-approved, unscheduled)
+Positioning: **Balanced** (family-friendly / chat-free-first defaults + cosmetic-only + kindness mechanics, with fuller chat + competitive edges for older players).
+- [ ] **CHR-259** — Hearth décor + visiting friends' Hearths
+- [ ] **CHR-260** — Emotes + chat-free expression
+- [ ] **CHR-261** — Tapped businesses become in-world landmarks (loyalty ↔ world)
+- [ ] **CHR-262** — Sailing as a mini-journey (interactive voyages)
+- [ ] **CHR-263** — Jump / hop movement (traversal + expression)

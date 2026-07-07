@@ -7,8 +7,11 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 ## Progress log
 - **M1 · The World & Movement — DONE & LIVE** (commit `b664883`). Walkable Hearth island: cottage, Wonders monolith, Ferra (NPC), Cirql lantern ring, movement, minimap, glow, interact → dialog/toast.
 - **M2 · Identity & Persistence — DONE & LIVE** (commit `b09c79c`). Save/resume via the `cirql` game_progress key; first-run character creator (avatar moved into CIRQL) + "Look" re-edit; expanded avatar (hat styles, aura glow, companions, bigger palettes).
-- **M3 · Quest System (backbone) — DONE & LIVE** (commit `32e4d9e`). Reusable registry (defs in code, progress in the `cirql` blob — no migration), objective model + chain, reward→sparks hook, objective tracker HUD, waypoint chevron + minimap dot, NPC give-via-dialog, quest-log panel. Reference quest "Find Your Feet" ships. Verified in-browser (0 errors, tsc clean).
-- **Next up: M4 · First Quest Chain (onboarding).**
+- **M3 · Quest System (backbone) — DONE & LIVE** (commit `32e4d9e`). Reusable registry (defs in code, progress in the `cirql` blob — no migration), objective model + chain, reward→sparks hook, objective tracker HUD, waypoint chevron + minimap dot, NPC give-via-dialog, quest-log panel.
+- **Feel/UX polish — DONE & LIVE:** smooth-text overlay (readable UI on phones, `e3905ee`), full-bleed responsive viewport + 4-direction facing (`d9e2b27`), full-screen immersive layout + tap-absorbing control tray (`a2e69e4`), and the **full-screen sea chart** (tap the minimap; `3dd6f46`, CHR-250).
+- **M4 · First Quest Chain (onboarding) — DONE & LIVE** (commit `677bf40`). Find Your Feet → The Lantern Path (light 3 lanterns, teaches interact) → The Wonders Door (enter), auto-chaining; first-run auto-accepts quest 1. Verified end-to-end (0 errors, tsc clean).
+- **Next up: M5 · The Wonders (embed the 50 games in-world).**
+- **Roadmap grew (owner brainstorm):** added **M8 Social/chat**, **M9 Campaigns & Party Finder**, **M10 Endless content engines** (procedural rings, quest templates, daily/seasonal, Myst-style puzzles), **M11 Depth & Delight wishlist** (Hearth décor+visiting, emotes, tapped-shops→landmarks, sailing-as-journey, jump). Positioning: **Balanced**.
 
 ## Locked decisions (owner, 2026-07-06 — "ALL IN")
 - **The Wonders** = the 50 arcade cabinets folded IN-WORLD as enchanted monoliths you *attune* to (press E → the cabinet opens as an in-world overlay; you never leave CIRQL). Found on the first quest, which is the movement tutorial.
@@ -32,6 +35,7 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - [x] Player movement: WASD + click + joystick + edge collision *(CHR-219)*
 - [x] Minimap: concentric rings + fog + player dot *(CHR-220)*
 - [x] Ambient neon polish (glow-up kit) *(CHR-221)*
+- [x] Full-screen sea chart (tap minimap to expand) *(CHR-250)*
 
 ## M2 · Identity & Persistence — DONE
 - [x] Cirql state model + save/load endpoints (`cirql` key) *(CHR-222)*
@@ -45,11 +49,11 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - [x] Client: quest log + objective tracker HUD *(CHR-226)*
 - [x] Client: NPC quest-givers + waypoint markers *(CHR-227)*
 
-## M4 · First Quest Chain (onboarding = movement tutorial)
-- [ ] Quest 1 — "Find Your Feet" (teaches movement) *(CHR-228)*
-- [ ] Quest 2 — "The Lantern Path" (teaches interact) *(CHR-229)*
-- [ ] Quest 3 — "The Wonders Door" (find + enter the arcade) *(CHR-230)*
-- [ ] First-run onboarding scripting hook *(CHR-231)*
+## M4 · First Quest Chain (onboarding = movement tutorial) — DONE
+- [x] Quest 1 — "Find Your Feet" (teaches movement) *(CHR-228)*
+- [x] Quest 2 — "The Lantern Path" (teaches interact) *(CHR-229)*
+- [x] Quest 3 — "The Wonders Door" (find + enter the arcade) *(CHR-230)*
+- [x] First-run onboarding scripting hook *(CHR-231)*
 
 ## M5 · The Wonders (in-world arcade)
 - [ ] Wonders interior + cabinet props from registry (all 50) *(CHR-232)*
@@ -74,6 +78,26 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - [ ] Live presence in-world (`/ws/cirql`, room per ring) *(CHR-247)*
 - [ ] Chat channel model: Global / Party / DM *(CHR-248)*
 - [ ] Channel switcher UI + safety/moderation *(CHR-249)*
+
+## M9 · Campaigns & Party Finder (co-op)
+- [ ] Campaign model: co-op multi-step quests (party-scoped) *(CHR-251)*
+- [ ] Campaign Board: post / browse / join (+ new-player-friendly) *(CHR-252)*
+- [ ] Party formation + shared waypoint + shared progress *(CHR-253)*
+- [ ] Matchmaking requests + safety (tags, report/block) *(CHR-254)*
+
+## M10 · Endless content engines
+- [ ] Procedural rings (infinite outward biomes) *(CHR-255)*
+- [ ] Quest-template generator (infinite authored-feeling quests) *(CHR-256)*
+- [ ] Daily + seasonal loops (rotating dailies, events, drops) *(CHR-257)*
+- [ ] Myst-style puzzle quests / campaigns *(CHR-258)*
+
+## M11 · Depth & Delight (wishlist — owner-approved, unscheduled)
+Positioning decision: **Balanced** (family-friendly / chat-free-first defaults + cosmetic-only + kindness mechanics, with fuller chat + competitive edges for older players).
+- [ ] Hearth décor + visiting friends' Hearths *(CHR-259)*
+- [ ] Emotes + chat-free expression *(CHR-260)*
+- [ ] Tapped businesses become in-world landmarks (loyalty ↔ world) *(CHR-261)*
+- [ ] Sailing as a mini-journey (interactive voyages) *(CHR-262)*
+- [ ] Jump / hop movement (traversal + expression) *(CHR-263)*
 
 ## Architecture notes (as built in M1)
 - `client/src/game/cirql-world.ts` — declarative rings/props. **Add a ring = add a config here.** Ring 0 = The Hearth; outer rings stubbed (minimap fog) until Phase 2.
