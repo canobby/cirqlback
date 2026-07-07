@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile, ChevronsUp } from "lucide-react";
+import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile, ChevronsUp, Backpack, Hammer } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlWorldEngine, type QuestLogRow } from "@/game/cirql-world-engine";
 import type { Btn } from "@/game/retro-engine";
@@ -52,7 +52,8 @@ export default function Cirql() {
   const [hallOpen, setHallOpen] = useState(false);         // CirqlCade hall (the in-world arcade)
   const [playRoute, setPlayRoute] = useState<string | null>(null); // a cabinet embedded over the world
   const [showCirql, setShowCirql] = useState(false);       // your Cirql / invite panel
-  const [showDecor, setShowDecor] = useState(false);       // Hearth décor palette (CHR-259)
+  const [showInventory, setShowInventory] = useState(false);  // Inventory: stock + SPARQS + how-to (CHR-270)
+  const [showDecor, setShowDecor] = useState(false);       // CIRQLSPACE build palette (CHR-259)
   const [decorTool, setDecorTool] = useState<string>("");  // selected décor id, "remove", or ""
   const [decorCount, setDecorCount] = useState(0);         // placed-piece count (reactive)
   const [visiting, setVisiting] = useState<string | null>(null);   // name of the Hearth you're visiting (CHR-259)
@@ -523,6 +524,10 @@ export default function Cirql() {
           <ScrollText className="h-3.5 w-3.5" />
           {!dailyUi.done && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full" style={{ background: "#ffc46b", boxShadow: "0 0 6px #ffc46b" }} />}
         </button>
+        <button onClick={() => setShowInventory((v) => !v)} data-testid="btn-inventory" title="Inventory"
+          className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-amber-200/90" style={{ borderColor: showInventory ? "rgba(255,196,107,.65)" : "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
+          <Backpack className="h-3.5 w-3.5" />
+        </button>
         <button onClick={() => { setCreatorMode("edit"); setShowCreator(true); }} data-testid="btn-edit-look" title="Edit look"
           className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-cyan-200/90" style={{ borderColor: "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
           <Pencil className="h-3.5 w-3.5" />
@@ -655,7 +660,36 @@ export default function Cirql() {
         </div>
       )}
 
-      {/* Hearth décor palette (CHR-259) — pick a piece then tap the Hearth to place; world stays tappable */}
+      {/* Inventory (CHR-270) — your SPARQS, owned stock, and the how-to (always available) */}
+      {showInventory && (() => {
+        const ownedCount = DECOR.filter((d) => decorOwned(d.id)).length;
+        return (
+          <div className="absolute right-3 top-14 z-[55] w-[264px] rounded-xl border p-3" data-testid="inventory-panel" style={{ borderColor: "rgba(255,196,107,.35)", background: "rgba(10,18,38,.96)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }}>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-amber-300"><Backpack className="h-3.5 w-3.5" /> Inventory</span>
+              <button onClick={() => setShowInventory(false)} className="text-slate-400 hover:text-slate-200"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg px-2.5 py-2" style={{ background: "rgba(255,196,107,.08)" }}>
+              <span className="text-[18px]">✦</span>
+              <div><div className="text-[17px] font-black text-white" data-testid="inv-sparqs">{sparksUi.toLocaleString()}</div><div className="text-[9px] uppercase tracking-wider text-amber-200/70">sparqs</div></div>
+              <div className="ml-auto text-right"><div className="text-[17px] font-black text-white">{ownedCount}</div><div className="text-[9px] uppercase tracking-wider text-slate-400">item kinds</div></div>
+            </div>
+            <button onClick={() => { setShowInventory(false); openDecorate(); }} data-testid="inv-build" className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg py-2.5 text-[13px] font-extrabold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>
+              <Hammer className="h-4 w-4" /> Build your CIRQLSPACE
+            </button>
+            <div className="mt-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">How it works</div>
+            <ul className="mt-1 flex flex-col gap-1 text-[11.5px] leading-snug text-slate-300">
+              <li>🏝️ This island is <b className="text-white">yours</b>. Tap <b className="text-amber-200">Build</b> to place things &amp; make it your own.</li>
+              <li>✦ Earn <b className="text-amber-200">sparqs</b> from games, quests &amp; campaigns, then spend them on décor.</li>
+              <li>⛵ Sail south to the <b className="text-white">Town</b> for quests, the arcade &amp; the shops.</li>
+              <li>👋 Friends can <b className="text-white">visit</b> your CIRQLSPACE — press Visit on a traveller in chat.</li>
+            </ul>
+            {curRingUi !== 0 && <p className="mt-2 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-amber-200" style={{ background: "rgba(255,196,107,.1)" }}>⛵ Sail home to CIRQLSPACE to build.</p>}
+          </div>
+        );
+      })()}
+
+      {/* CIRQLSPACE build palette (CHR-259) — pick a piece then tap to place; world stays tappable */}
       {showDecor && !visiting && (
         <div className="pointer-events-auto absolute inset-x-0 top-12 z-[15] mx-auto max-w-[560px] px-3" data-testid="decor-palette">
           <div className="rounded-2xl border p-2" style={{ borderColor: "rgba(255,196,107,.4)", background: "rgba(10,12,28,.96)", boxShadow: "0 10px 34px rgba(0,0,0,.55)" }}>
