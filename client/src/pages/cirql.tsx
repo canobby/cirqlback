@@ -9,6 +9,7 @@ import { Joystick } from "@/components/joystick";
 import { CharacterCreator } from "@/components/cirql/character-creator";
 import { ARCADE_GAMES } from "@/game/registry";
 import { CAMPAIGNS, campaignById, MATCH_TAGS, difficultyMeta } from "@/game/cirql-campaigns";
+import { dailyForDate, activeEvent, todayStr, type DailyTask, type CirqlEvent } from "@/game/cirql-daily";
 
 const SPARK_PER_PLAY = 2;
 const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
@@ -18,7 +19,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 // get a character-creation step first; everyone can re-edit their look.
 const INTRO_LS = "cirql_intro_v1";
 
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; daily?: { day: string; done: boolean; streak: number; lastDone: string }; }
 const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export default function Cirql() {
@@ -83,9 +84,46 @@ export default function Cirql() {
   const [postTags, setPostTags] = useState<string[]>([]);
   const [postNewbie, setPostNewbie] = useState(true);
 
+  // M10 — daily task + seasonal event
+  const dailyRef = useRef<{ day: string; done: boolean; streak: number; lastDone: string }>({ day: "", done: false, streak: 0, lastDone: "" });
+  const maxRingRef = useRef(0);
+  const [dailyUi, setDailyUi] = useState<{ day: string; done: boolean; streak: number }>({ day: "", done: false, streak: 0 });
+  const [event, setEvent] = useState<CirqlEvent | null>(null);
+  const [showDaily, setShowDaily] = useState(false);
+  const [eventDismissed, setEventDismissed] = useState(false);
+
   const loggedIn = !!(user as any)?.id;
 
   const myId = () => myIdRef.current;
+
+  const yesterdayOf = (day: string) => { const d = new Date(day + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
+  // Roll the daily to today (resetting done + breaking a lapsed streak) and refresh the event.
+  const refreshDaily = () => {
+    const day = todayStr();
+    const dr = dailyRef.current;
+    if (dr.day !== day) {
+      const streak = dr.lastDone === yesterdayOf(day) ? dr.streak : 0;   // missed a day → streak broken
+      dailyRef.current = { day, done: false, streak, lastDone: dr.lastDone };
+    }
+    setDailyUi({ day: dailyRef.current.day, done: dailyRef.current.done, streak: dailyRef.current.streak });
+    setEvent(activeEvent());
+  };
+  // Credit the daily if `task` matches today's and it isn't already done.
+  const progressDaily = (task: DailyTask) => {
+    const dr = dailyRef.current;
+    if (dr.done || dr.day !== todayStr()) return;
+    const def = dailyForDate(dr.day);
+    if (def.task !== task) return;
+    const ev = activeEvent();
+    const reward = def.reward * (ev?.sparkMult ?? 1);
+    dr.streak = dr.streak + 1; dr.done = true; dr.lastDone = dr.day;
+    sparksRef.current += reward; energyRef.current = Math.min(1, energyRef.current + reward * 0.01);
+    engineRef.current?.setStats({ sparks: sparksRef.current, energy: energyRef.current });
+    setSparksUi(sparksRef.current);
+    setDailyUi({ day: dr.day, done: true, streak: dr.streak });
+    engineRef.current?.toast(`✦ Daily done — +${reward} sparks${ev ? " (festival!)" : ""} · ${dr.streak}-day streak`);
+    persist();
+  };
   // Reflect the current party into the engine (shared waypoint + member highlight).
   const syncPartyToEngine = (p: Party | null) => {
     const eng = engineRef.current; if (!eng) return;
@@ -139,7 +177,7 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, daily: dailyRef.current };
   };
   const persist = () => {
     const st = buildState();
@@ -162,9 +200,9 @@ export default function Cirql() {
     if (import.meta.env.DEV) (window as any).__cirql = eng;
     eng.onInteract = (kind) => { if (kind === "wonders") setHallOpen(true); };   // step into CirqlCade
     eng.onLocalMove = (ring, x, y) => { posRef.current = { ring, x, y }; scheduleSave(); };
-    eng.onSail = (ring) => { const st = eng.getState(); posRef.current = { ring, x: st.x, y: st.y }; persist(); };   // reaching a new ring is a big save point
+    eng.onSail = (ring, maxRing) => { const st = eng.getState(); posRef.current = { ring, x: st.x, y: st.y }; if (maxRing > maxRingRef.current) { maxRingRef.current = maxRing; progressDaily("voyage"); } persist(); };   // reaching a new ring is a big save point
     // quests: grant the sparks reward on completion, persist progress on any change
-    eng.onQuestComplete = (q) => { sparksRef.current += q.reward.sparks; eng.setStats({ sparks: sparksRef.current }); persist(); };
+    eng.onQuestComplete = (q) => { sparksRef.current += q.reward.sparks; eng.setStats({ sparks: sparksRef.current }); if (q.id.startsWith("ring-")) progressDaily("explore"); persist(); };
     eng.onQuestChange = () => { setQuestRows(eng.getQuestLog()); scheduleSave(); };
 
     // M8 — live presence socket: broadcast our position + share-a-light, and render
@@ -212,6 +250,9 @@ export default function Cirql() {
       energyRef.current = st?.worldEnergy ?? 0; membersRef.current = st?.cirqlMembers ?? 0; setMembers(membersRef.current);
       playsRef.current = { day: st?.playDay ?? "", n: st?.playsToday ?? 0 };
       ownedRef.current = Array.isArray(st?.owned) ? st!.owned! : []; setOwned(ownedRef.current); setSparksUi(sparksRef.current);
+      maxRingRef.current = st?.maxRing ?? 0;
+      if (st?.daily && typeof st.daily.day === "string") dailyRef.current = { day: st.daily.day, done: !!st.daily.done, streak: +st.daily.streak || 0, lastDone: st.daily.lastDone || "" };
+      refreshDaily();
       eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: membersRef.current, cirqlTotal: 12, online: 1, energy: energyRef.current });
       eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests });
       if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
@@ -278,6 +319,7 @@ export default function Cirql() {
       } else {
         engineRef.current?.toast("Rest a while — more sparks tomorrow.");
       }
+      progressDaily("attune");   // playing a Wonder can satisfy today's daily
       persist();
     }
     setPlayRoute(null);
@@ -340,9 +382,10 @@ export default function Cirql() {
           className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border" style={{ borderColor: showChat ? "rgba(53,224,208,.65)" : "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)", color: connected ? "#7be0ff" : "#7a8bb0" }}>
           <MessageCircle className="h-3.5 w-3.5" />
         </button>
-        <button onClick={() => { setQuestRows(engineRef.current?.getQuestLog() ?? []); setShowQuests((v) => !v); }} data-testid="btn-quests" title="Quests"
-          className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-amber-200/90" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
+        <button onClick={() => { setQuestRows(engineRef.current?.getQuestLog() ?? []); refreshDaily(); setShowQuests((v) => !v); }} data-testid="btn-quests" title="Quests & Daily"
+          className="pointer-events-auto relative flex h-7 w-7 items-center justify-center rounded-full border text-amber-200/90" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
           <ScrollText className="h-3.5 w-3.5" />
+          {!dailyUi.done && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full" style={{ background: "#ffc46b", boxShadow: "0 0 6px #ffc46b" }} />}
         </button>
         <button onClick={() => { setCreatorMode("edit"); setShowCreator(true); }} data-testid="btn-edit-look" title="Edit look"
           className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-cyan-200/90" style={{ borderColor: "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
@@ -382,6 +425,16 @@ export default function Cirql() {
             </div>
           )}
         </>
+      )}
+
+      {/* seasonal / weekend event banner (M10) — a dismissible ribbon under the header */}
+      {event && !eventDismissed && !showChat && (
+        <div className="pointer-events-auto absolute inset-x-0 top-12 z-[13] mx-auto flex max-w-[420px] items-center gap-2 rounded-full border px-3 py-1.5" data-testid="event-banner"
+          style={{ borderColor: event.accent + "80", background: "rgba(10,18,38,.92)", boxShadow: `0 0 18px ${event.accent}44` }}>
+          <span className="text-[13px]" style={{ filter: `drop-shadow(0 0 5px ${event.accent})` }}>✦</span>
+          <span className="min-w-0 flex-1 truncate text-[11.5px]"><b style={{ color: event.accent }}>{event.name}</b> <span className="text-slate-300">— {event.blurb}</span></span>
+          <button onClick={() => setEventDismissed(true)} className="shrink-0 text-slate-400 hover:text-slate-200"><X className="h-3.5 w-3.5" /></button>
+        </div>
       )}
 
       {/* controls tray — captures all taps in this band so only the controls move the character */}
@@ -444,6 +497,21 @@ export default function Cirql() {
             <span className="text-[11px] font-bold uppercase tracking-widest text-amber-300">Quests</span>
             <button onClick={() => setShowQuests(false)} className="text-xs text-slate-400 hover:text-slate-200">✕</button>
           </div>
+          {/* today's daily task (M10) */}
+          {(() => { const d = dailyForDate(dailyUi.day || todayStr()); return (
+            <div className="mb-2 rounded-lg border p-2.5" data-testid="daily-card" style={{ borderColor: dailyUi.done ? "rgba(91,232,154,.4)" : "rgba(255,196,107,.5)", background: "rgba(255,196,107,.06)" }}>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: dailyUi.done ? "#5be89a" : "#ffc46b" }}>Daily</span>
+                {dailyUi.streak > 0 && <span className="text-[10px] font-bold text-amber-300">🔥 {dailyUi.streak}</span>}
+                {event && <span className="ml-auto text-[9px] font-bold uppercase" style={{ color: event.accent }}>✦ {event.name}</span>}
+              </div>
+              <div className="mt-0.5 text-[13px] font-semibold text-white">{d.title}</div>
+              <p className="text-[11px] leading-snug text-slate-300">{d.blurb}</p>
+              <div className="mt-1 text-[11px] font-bold" style={{ color: dailyUi.done ? "#5be89a" : "#ffd98a" }}>
+                {dailyUi.done ? "✓ Done today — come back tomorrow" : `Reward: ${d.reward * (event?.sparkMult ?? 1)} sparks${event ? " (doubled!)" : ""}`}
+              </div>
+            </div>
+          ); })()}
           {questRows.length === 0 && <p className="text-xs text-slate-400">No quests yet. Talk to Ferra at The Hearth.</p>}
           <div className="flex flex-col gap-2">
             {questRows.map((q) => (
