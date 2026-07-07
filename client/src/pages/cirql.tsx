@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile, ChevronsUp, Backpack, Hammer, Armchair } from "lucide-react";
+import { ArrowLeft, Zap, Pencil, ScrollText, Users, X, MessageCircle, Send, Compass, Flag, MapPin, Smile, ChevronsUp, Backpack, Hammer, Armchair, ZoomIn, ZoomOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlWorldEngine, LAND_TIERS, type QuestLogRow } from "@/game/cirql-world-engine";
 import type { Btn } from "@/game/retro-engine";
@@ -76,6 +76,7 @@ export default function Cirql() {
   const [landTierUi, setLandTierUi] = useState(0);
   const [visiting, setVisiting] = useState<string | null>(null);   // name of the CIRQLSPACE you're visiting (Phase E)
   const [seated, setSeated] = useState(false);                     // free-sit pose (Phase H1) — mirrors engine for the button
+  const [zoomUi, setZoomUi] = useState(1);                         // live zoom level (Phase H2) — mirrors engine for the control
   const [spaceOpen, setSpaceOpen] = useState(true);                // your space: open to anyone (true) or invite-only
   const [spaceInvites, setSpaceInvites] = useState<{ fromId: string; fromName: string }[]>([]);   // pending invites to visit
   const [members, setMembers] = useState(0);               // mirror of membersRef for the panel
@@ -311,6 +312,7 @@ export default function Cirql() {
     };
     eng.onPartyArrive = () => { const p = partyRef.current; if (p) wsSend({ t: "party:advance", step: p.step }); };
     eng.onSeatChange = (s) => setSeated(s);   // keep the Sit button in sync (auto-stand on walk) — Phase H1
+    eng.onZoomChange = (z) => setZoomUi(z);   // keep the zoom % readout in sync (wheel/pinch/reset) — Phase H2
     const refreshCount = () => { const n = eng.remoteCount() + 1; setOnline(n); eng.setStats({ online: n }); };
     ws.onopen = () => { setConnected(true); tryJoin(); };
     ws.onclose = () => { setConnected(false); joinedRef.current = false; };
@@ -423,6 +425,22 @@ export default function Cirql() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Live zoom (Phase H2): mouse wheel + two-finger pinch on the canvas → engine zoom.
+  useEffect(() => {
+    const cv = canvasRef.current; if (!cv) return;
+    const onWheel = (e: WheelEvent) => { e.preventDefault(); engineRef.current?.zoomBy(e.deltaY < 0 ? 1.12 : 0.89); setZoomUi(engineRef.current?.getZoom() ?? 1); };
+    let pinchBase = 0, pinchZoom = 1;
+    const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const onTS = (e: TouchEvent) => { if (e.touches.length === 2) { pinchBase = dist(e.touches); pinchZoom = engineRef.current?.getZoom() ?? 1; } };
+    const onTM = (e: TouchEvent) => { if (e.touches.length === 2 && pinchBase > 0) { e.preventDefault(); const r = dist(e.touches) / pinchBase; engineRef.current?.setZoomTarget(pinchZoom * r); setZoomUi(engineRef.current?.getZoom() ?? 1); } };
+    const onTE = (e: TouchEvent) => { if (e.touches.length < 2) pinchBase = 0; };
+    cv.addEventListener("wheel", onWheel, { passive: false });
+    cv.addEventListener("touchstart", onTS, { passive: false });
+    cv.addEventListener("touchmove", onTM, { passive: false });
+    cv.addEventListener("touchend", onTE);
+    return () => { cv.removeEventListener("wheel", onWheel); cv.removeEventListener("touchstart", onTS); cv.removeEventListener("touchmove", onTM); cv.removeEventListener("touchend", onTE); };
   }, []);
 
   // Full-screen: keep the in-engine HUD clear of the floating header + controls.
@@ -863,6 +881,24 @@ export default function Cirql() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* live zoom control (Phase H2) — a floating +/- on the right; hidden while building */}
+      {!showDecor && !showInventory && (
+        <div className="pointer-events-auto absolute right-3 top-1/2 z-[16] flex -translate-y-1/2 flex-col items-center gap-1.5" data-testid="zoom-control">
+          <button onPointerDown={(e) => { e.preventDefault(); engineRef.current?.zoomBy(1.15); setZoomUi(engineRef.current?.getZoom() ?? 1); }} data-testid="btn-zoom-in" title="Zoom in"
+            className="flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] active:scale-90" style={{ borderColor: "rgba(53,224,208,.5)", color: "#7be0ff", background: "rgba(10,18,38,.55)" }}>
+            <ZoomIn className="h-4 w-4" />
+          </button>
+          <button onPointerDown={(e) => { e.preventDefault(); engineRef.current?.setZoomTarget(1); setZoomUi(1); }} data-testid="btn-zoom-reset" title="Reset zoom"
+            className="rounded-full border px-2 py-0.5 text-[9px] font-bold tabular-nums active:scale-90" style={{ borderColor: zoomUi !== 1 ? "rgba(255,196,107,.5)" : "rgba(120,140,180,.3)", color: zoomUi !== 1 ? "#ffd98a" : "#8ea0c0", background: "rgba(10,18,38,.5)" }}>
+            {Math.round(zoomUi * 100)}%
+          </button>
+          <button onPointerDown={(e) => { e.preventDefault(); engineRef.current?.zoomBy(0.87); setZoomUi(engineRef.current?.getZoom() ?? 1); }} data-testid="btn-zoom-out" title="Zoom out"
+            className="flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] active:scale-90" style={{ borderColor: "rgba(53,224,208,.5)", color: "#7be0ff", background: "rgba(10,18,38,.55)" }}>
+            <ZoomOut className="h-4 w-4" />
+          </button>
         </div>
       )}
 

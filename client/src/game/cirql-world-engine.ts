@@ -68,6 +68,7 @@ export class CirqlWorldEngine extends RetroEngine {
   private vx = 0; private vy = 0; private facing: "up" | "down" | "left" | "right" = "down"; private walk = 0;
   private jumpZ = 0; private jumpVel = 0;      // fake-Z hop (CHR-263): raised height + vertical velocity
   private seated = false; private poseDirty = false;   // free-sit pose (Phase H1) — broadcast even when standing still
+  private zoom = 1; private zoomTarget = 1;            // live camera zoom (Phase H2): 1 = normal, <1 sees more
   // Hearth décor (CHR-259): your placed decorations, an edit mode, and a "visiting" overlay
   private decor: { item: string; x: number; y: number }[] = [];
   private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
@@ -175,12 +176,12 @@ export class CirqlWorldEngine extends RetroEngine {
   getDecor() { return this.decor.slice(); }
   setDecor(list: { item: string; x: number; y: number }[]) { this.decor = Array.isArray(list) ? list.filter((d) => d && decorById[d.item]).map((d) => ({ item: d.item, x: +d.x, y: +d.y })) : []; }
   /** Enter décor edit mode; `itemId` is the piece to place, or "" to remove-on-tap. */
-  beginDecorEdit(itemId: string) { if (this.ringIdx !== 0 || this.visiting) return; this.editDecor = true; this.editPaint = false; this.editSel = decorById[itemId] ? itemId : ""; }
+  beginDecorEdit(itemId: string) { if (this.ringIdx !== 0 || this.visiting) return; this.editDecor = true; this.editPaint = false; this.editSel = decorById[itemId] ? itemId : ""; this.setZoomTarget(1); }
   setDecorTool(itemId: string) { this.editSel = decorById[itemId] ? itemId : ""; }
   setSnap(on: boolean) { this.snapGrid = !!on; }
   endDecorEdit() { this.editDecor = false; }
   // ---- terrain paint (Phase C) ----
-  beginPaint(tile: string) { if (this.ringIdx !== 0 || this.visiting) return; this.editPaint = true; this.editDecor = false; this.paintTile = tile; }
+  beginPaint(tile: string) { if (this.ringIdx !== 0 || this.visiting) return; this.editPaint = true; this.editDecor = false; this.paintTile = tile; this.setZoomTarget(1); }
   setPaintTile(tile: string) { this.paintTile = tile; }
   setBrush(n: number) { this.brush = Math.max(1, Math.min(4, n | 0)); }
   endPaint() { this.editPaint = false; }
@@ -251,6 +252,16 @@ export class CirqlWorldEngine extends RetroEngine {
   toggleSit() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.seated = !this.seated; this.poseDirty = true; if (this.seated) { this.vx = 0; this.vy = 0; this.moveTarget = null; } this.onSeatChange?.(this.seated); }
   private standUp() { if (this.seated) { this.seated = false; this.poseDirty = true; this.onSeatChange?.(false); } }
   isSeated() { return this.seated; }
+  // ---- live zoom (Phase H2) — 0.42 (whole island) … 1.3 (close). Building happens at 1:1. ----
+  onZoomChange?: (z: number) => void;
+  setZoomTarget(z: number) { if (this.editDecor || this.editPaint) z = 1; this.zoomTarget = Math.max(0.42, Math.min(1.3, z)); this.onZoomChange?.(this.zoomTarget); }
+  zoomBy(mult: number) { this.setZoomTarget(this.zoomTarget * mult); }
+  getZoom() { return this.zoomTarget; }
+  /** Convert a logical screen point to world coords, accounting for the current zoom. */
+  private screenToWorld(px: number, py: number) {
+    const fx = this.LW / 2, fy = this.LH / 2;
+    return { x: (px - fx) / this.zoom + fx + this.camX, y: (py - fy) / this.zoom + fy + this.camY };
+  }
   getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), terrain: this.getTerrain(), landTier: this.landTier }; }
   applyState(s: any) {
     if (!s) return;
@@ -603,6 +614,8 @@ export class CirqlWorldEngine extends RetroEngine {
     this.arriveT = Math.max(0, this.arriveT - dt);
     // fake-Z hop physics (CHR-263) — always settles, independent of movement
     if (this.jumpZ > 0 || this.jumpVel !== 0) { this.jumpVel -= 260 * dt; this.jumpZ += this.jumpVel * dt; if (this.jumpZ <= 0) { this.jumpZ = 0; this.jumpVel = 0; } }
+    // live-zoom easing (Phase H2)
+    if (Math.abs(this.zoom - this.zoomTarget) > 0.001) this.zoom += (this.zoomTarget - this.zoom) * Math.min(1, dt * 10); else this.zoom = this.zoomTarget;
 
     // live remotes ease toward their last-known position + decay chat bubbles (runs
     // unconditionally so other travellers keep moving during your dialog / chart)
@@ -703,7 +716,7 @@ export class CirqlWorldEngine extends RetroEngine {
 
     // movement is frozen while a dialog is open or the chart is up
     if (!this.dialog && !tapMap) {
-      if (this.pointer.down && !this.inMinimap(this.pointer.x, this.pointer.y) && !this.editDecor && !this.editPaint) this.moveTarget = { x: this.pointer.x + this.camX, y: this.pointer.y + this.camY };
+      if (this.pointer.down && !this.inMinimap(this.pointer.x, this.pointer.y) && !this.editDecor && !this.editPaint) this.moveTarget = this.screenToWorld(this.pointer.x, this.pointer.y);
       let dx = (this.btn.right ? 1 : 0) - (this.btn.left ? 1 : 0);
       let dy = (this.btn.down ? 1 : 0) - (this.btn.up ? 1 : 0);
       if (dx || dy) this.moveTarget = null;
@@ -825,6 +838,11 @@ export class CirqlWorldEngine extends RetroEngine {
     const camX = this.camX, camY = this.camY;
     const scx = -camX, scy = -camY; // island centre (world 0,0) on screen
 
+    // live zoom (Phase H2): scale the whole world pass around screen-centre; the sky/sea
+    // backdrop above stays full-frame. Restored before the HUD/overlays (screen space).
+    const zoomed = this.zoom !== 1;
+    if (zoomed) { const fx = this.LW / 2 * s, fy = this.LH / 2 * s; b.save(); b.translate(fx, fy); b.scale(this.zoom, this.zoom); b.translate(-fx, -fy); }
+
     // island landmass — grows with the land tier on CIRQLSPACE (Phase D)
     const R = this.effR();
     this.fillCirc(scx + 4, scy + 6, R, "rgba(0,0,0,0.30)");   // soft cast
@@ -943,6 +961,8 @@ export class CirqlWorldEngine extends RetroEngine {
         b.beginPath(); b.arc(mx * s, my * s, (1 + (i % 3) * 0.4) * s, 0, TAU); b.fill();
       }
     }
+
+    if (zoomed) b.restore();   // end the zoom transform — HUD/overlays draw in screen space
 
     this.drawFx();
     this.drawAmbient();
@@ -1118,10 +1138,12 @@ export class CirqlWorldEngine extends RetroEngine {
   // a faint shimmer line. Grass is the default and never painted.
   private drawTerrain(camX: number, camY: number) {
     const half = TILE / 2;
+    // cull bounds widen as you zoom out (Phase H2) so the far tiles still draw
+    const mx = this.LW / 2 * (1 / this.zoom - 1) + TILE, my = this.LH / 2 * (1 / this.zoom - 1) + TILE;
     for (const [key, t] of Array.from(this.curTerrain())) {
       const gx = (key % 1000) - 500, gy = ((key / 1000) | 0) - 500;
       const sx = gx * TILE - camX, sy = gy * TILE - camY;
-      if (sx < -TILE || sx > this.LW + TILE || sy < -TILE || sy > this.LH + TILE) continue;   // cull
+      if (sx < -mx || sx > this.LW + mx || sy < -my || sy > this.LH + my) continue;   // cull
       const col = TILE_COL[t]; if (!col) continue;
       this.rect(sx - half, sy - half, TILE + 1, TILE + 1, col);
       if (t === "w" && !this.reduce) this.rect(sx - half + 4, sy - 3 + Math.round(Math.sin(this.t * 2 + gx) * 1.5), TILE - 8, 1, "rgba(255,255,255,0.12)");
