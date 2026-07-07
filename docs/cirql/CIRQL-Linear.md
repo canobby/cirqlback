@@ -13,7 +13,7 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 | M3 · Quest System (backbone) | 4 | 4 |
 | M4 · First Quest Chain (onboarding) | 4 | 4 |
 | M5 · CirqlCade (in-world arcade) | 4 | 4 |
-| M6 · Sparks Economy & Your Cirql | 6 | 4 |
+| M6 · Sparks Economy & Your Cirql | 6 | 5 |
 | M7 · Playable Slice Hardening | 3 | 0 |
 | M8 · Social — presence & chat channels | 3 | 0 |
 | M9 · Campaigns & Party Finder | 4 | 0 |
@@ -65,7 +65,7 @@ Project **CIRQL — Flagship World** · team Chris Nobbs (CHR). Snapshot of ever
 - [x] **CHR-237** — Your Cirql: friends as lanterns around the Hearth
 - [x] **CHR-238** — Invite-a-friend hook + "share a light" beacon stub
 - [x] **CHR-244** — Earn sparks from play (spark-a-play + daily-capped)
-- [ ] **CHR-246** — Spend sparks: in-CIRQL reward catalog — next
+- [x] **CHR-246** — Spend sparks: in-CIRQL cosmetics (buy-in-place in the creator)
 - [ ] **CHR-245** — Unify rewards → sparks (retire arcade reward system) — deferred (platform-wide; own pass)
 
 ## M7 · Playable Slice Hardening

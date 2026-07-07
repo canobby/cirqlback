@@ -12,8 +12,8 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - **M4 · First Quest Chain (onboarding) — DONE & LIVE** (commit `677bf40`). Find Your Feet → The Lantern Path → The CirqlCade Door, auto-chaining; first-run auto-accepts quest 1.
 - **Brand:** flagship wordmark **CIRQLVERSE** (CIRQL white + VERSE half-size violet); the in-world arcade building renamed **CirqlCade** with a cosmic mystery-dome roof.
 - **M5 · CirqlCade (in-world arcade) — DONE & LIVE** (commit `26eead2`). Enter CirqlCade → a hall of all ~57 live cabinets (from the registry); tap one → it plays **embedded in an iframe over `/cirql`** (never leaves CIRQLVERSE); "← CirqlCade" exits to the hall and the game's own /arcade back-link is caught + routed back; **a spark a play** on exit. Verified end-to-end (0 errors, tsc clean).
-- **M6 · Sparks Economy & Your Cirql — CORE DONE & LIVE** (commit `9f4c0e4`). World Energy meter, your-Cirql lanterns bound to a real count + a Cirql panel with Invite + "share a light", and capped spark-a-play (daily taper). **CHR-245 (retire the platform-wide arcade reward system) deferred** — large blast radius, wants its own careful pass. **CHR-246 (spend-sparks catalog) next.**
-- **Next up: finish M6 (CHR-246 spend catalog), then M7 · Hardening.**
+- **M6 · Sparks Economy & Your Cirql — DONE & LIVE** (commits `9f4c0e4`, `df76f4a`). World Energy meter, your-Cirql lanterns + Cirql panel (Invite + "share a light"), capped spark-a-play, and **spend-sparks cosmetics** (buy-in-place in the creator; owned persists). **Only CHR-245 (retire the platform-wide arcade reward system) remains — intentionally deferred** to its own careful pass (big blast radius).
+- **Next up: M7 · Playable Slice Hardening.**
 - **Roadmap grew (owner brainstorm):** added **M8 Social/chat**, **M9 Campaigns & Party Finder**, **M10 Endless content engines** (procedural rings, quest templates, daily/seasonal, Myst-style puzzles), **M11 Depth & Delight wishlist** (Hearth décor+visiting, emotes, tapped-shops→landmarks, sailing-as-journey, jump). Positioning: **Balanced**.
 
 ## Locked decisions (owner, 2026-07-06 — "ALL IN")
@@ -69,7 +69,7 @@ CIRQL is the flagship: a persistent, magical, social world of concentric island-
 - [x] Your Cirql: friends as lanterns around the Hearth *(CHR-237)*
 - [x] Invite-a-friend hook + "share a light" beacon stub *(CHR-238)*
 - [x] Earn sparks from play (spark-a-play + daily-capped) *(CHR-244)*
-- [ ] Spend sparks: in-CIRQL reward catalog (cosmetics / décor / perks) *(CHR-246)* — next
+- [x] Spend sparks: in-CIRQL cosmetics (buy-in-place in the creator) *(CHR-246)*
 - [ ] Unify rewards → sparks (retire the arcade's separate reward system) *(CHR-245)* — deferred (platform-wide; own pass)
 
 ## M7 · Playable Slice Hardening
