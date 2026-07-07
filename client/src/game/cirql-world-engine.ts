@@ -16,7 +16,7 @@ import {
 } from "./cirql-quests";
 
 export type InteractKind = "wonders" | "npc" | "dock";
-export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; }
+export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; energy: number; }
 export interface QuestLogRow { id: string; name: string; status: QuestStatus; objective: string; }
 
 const TAU = Math.PI * 2;
@@ -42,7 +42,7 @@ export class CirqlWorldEngine extends RetroEngine {
   private dialog: Dialog | null = null;
   private msg = ""; private msgT = 0;      // transient toast
 
-  private stats: CirqlStats = { sparks: 0, cirqlLit: 3, cirqlTotal: 12, online: 1 };
+  private stats: CirqlStats = { sparks: 0, cirqlLit: 0, cirqlTotal: 12, online: 1, energy: 0 };
   private quests: QuestProgress = {};
   private lit = new Set<string>();   // quest lanterns the player has lit
 
@@ -518,7 +518,13 @@ export class CirqlWorldEngine extends RetroEngine {
     this.drawQuestTracker(it);
     this.drawMinimap(it);
 
-    // your cirql — just above the controls, left
+    // World Energy — the light you've fed the shared world (bottom-left)
+    const ew = 70, ex = 6, ey = this.LH - ib - 27;
+    this.q(ex, ey - 9, "WORLD ENERGY", "#7fa0c8", 0.8, "l", true);
+    this.rect(ex, ey, ew, 5, "#0a0714aa");
+    const efill = Math.round(ew * Math.max(0, Math.min(1, this.stats.energy)));
+    if (efill > 0) { this.rect(ex, ey, efill, 5, "#35e0d0"); this.rect(ex, ey, efill, 1, "#bafff2"); }
+    // your Cirql — friends as lanterns lighting the Hearth
     const lit = `CIRQL ${this.stats.cirqlLit}/${this.stats.cirqlTotal}`;
     this.q(6, this.LH - ib - 11, lit, "#ffc46b", 1, "l", true);
 

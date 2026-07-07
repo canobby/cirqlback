@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Pencil, ScrollText } from "lucide-react";
+import { ArrowLeft, Zap, Pencil, ScrollText, Users, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CirqlWorldEngine, type QuestLogRow } from "@/game/cirql-world-engine";
 import type { Btn } from "@/game/retro-engine";
@@ -17,7 +17,8 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 // get a character-creation step first; everyone can re-edit their look.
 const INTRO_LS = "cirql_intro_v1";
 
-interface CirqlState { ring: number; x: number; y: number; quests?: any; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; }
+interface CirqlState { ring: number; x: number; y: number; quests?: any; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; }
+const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export default function Cirql() {
   const { user } = useAuth();
@@ -31,6 +32,9 @@ export default function Cirql() {
   const nameRef = useRef<string>("Traveller");
   const seenIntroRef = useRef<boolean>(false);
   const sparksRef = useRef<number>(0);
+  const energyRef = useRef<number>(0);           // World Energy 0..1
+  const membersRef = useRef<number>(0);          // your Cirql size (lanterns lit)
+  const playsRef = useRef<{ day: string; n: number }>({ day: "", n: 0 }); // daily play count (anti-farm)
   const posRef = useRef<{ ring: number; x: number; y: number }>({ ring: 0, x: 0, y: 150 });
   const loadedRef = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -41,13 +45,15 @@ export default function Cirql() {
   const [questRows, setQuestRows] = useState<QuestLogRow[]>([]);
   const [hallOpen, setHallOpen] = useState(false);         // CirqlCade hall (the in-world arcade)
   const [playRoute, setPlayRoute] = useState<string | null>(null); // a cabinet embedded over the world
+  const [showCirql, setShowCirql] = useState(false);       // your Cirql / invite panel
+  const [members, setMembers] = useState(0);               // mirror of membersRef for the panel
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const loggedIn = !!(user as any)?.id;
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, x: s.x, y: s.y, quests: (s as any).quests, avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current };
+    return { ring: s.ring, x: s.x, y: s.y, quests: (s as any).quests, avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day };
   };
   const persist = () => {
     const st = buildState();
@@ -86,7 +92,9 @@ export default function Cirql() {
       const name = st?.name || acctName || "Traveller";
       const seen = st?.seenIntro ?? (localStorage.getItem(INTRO_LS) === "1");
       avatarRef.current = avatar; nameRef.current = name; seenIntroRef.current = !!seen; sparksRef.current = st?.sparks ?? 0;
-      eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: 3, cirqlTotal: 12, online: 1 });
+      energyRef.current = st?.worldEnergy ?? 0; membersRef.current = st?.cirqlMembers ?? 0; setMembers(membersRef.current);
+      playsRef.current = { day: st?.playDay ?? "", n: st?.playsToday ?? 0 };
+      eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: membersRef.current, cirqlTotal: 12, online: 1, energy: energyRef.current });
       eng.applyState({ ring: st?.ring ?? 0, x: st?.x, y: st?.y, quests: st?.quests });
       if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
       setQuestRows(eng.getQuestLog());
@@ -131,12 +139,34 @@ export default function Cirql() {
   // navigates the iframe away from /play.
   const closeGame = () => {
     if (playRoute) {
-      sparksRef.current += SPARK_PER_PLAY;
-      engineRef.current?.setStats({ sparks: sparksRef.current });
-      engineRef.current?.toast(`+${SPARK_PER_PLAY} sparks`);
+      // spark a play, with a daily taper so it can't be farmed (CHR-244)
+      const today = todayUTC();
+      if (playsRef.current.day !== today) playsRef.current = { day: today, n: 0 };
+      playsRef.current.n += 1;
+      const n = playsRef.current.n;
+      const earned = n <= 12 ? SPARK_PER_PLAY : n <= 20 ? 1 : 0;
+      if (earned > 0) {
+        sparksRef.current += earned;
+        energyRef.current += earned * 0.015;                 // sparks feed the World Energy meter
+        let msg = `+${earned} spark${earned > 1 ? "s" : ""}`;
+        if (energyRef.current >= 1) { energyRef.current = 0.06; msg = "✦ You've fed the world — it stirs."; }
+        engineRef.current?.setStats({ sparks: sparksRef.current, energy: energyRef.current });
+        engineRef.current?.toast(msg);
+      } else {
+        engineRef.current?.toast("Rest a while — more sparks tomorrow.");
+      }
       persist();
     }
     setPlayRoute(null);
+  };
+
+  // Invite a friend to your Cirql (reuses the platform referral idea; lantern lights on real join, later).
+  const invite = async () => {
+    const link = `${location.origin}/cirql${(user as any)?.id ? `?ref=${(user as any).id}` : ""}`;
+    try {
+      if (navigator.share) await navigator.share({ title: "CIRQLVERSE", text: "Come light the world with me in CIRQLVERSE ✦", url: link });
+      else { await navigator.clipboard.writeText(link); engineRef.current?.toast("Invite link copied"); }
+    } catch { /* user cancelled / unsupported */ }
   };
 
   const hold = (b: Btn) => ({
@@ -161,13 +191,17 @@ export default function Cirql() {
           <span className="tracking-[0.35em]" style={{ fontSize: "1.05rem", color: "#fff", textShadow: "0 0 10px rgba(53,224,208,.6), 0 0 22px rgba(178,108,255,.35)" }}>CIRQL</span>
           <span className="tracking-[0.15em]" style={{ fontSize: "0.63rem", color: "#b26cff", textShadow: "0 0 9px rgba(178,108,255,.8)" }}>VERSE</span>
         </div>
-        <button onClick={() => { setQuestRows(engineRef.current?.getQuestLog() ?? []); setShowQuests((v) => !v); }} data-testid="btn-quests"
-          className="pointer-events-auto ml-auto flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-200/90" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
-          <ScrollText className="h-3 w-3" /> Quests
+        <button onClick={() => { setQuestRows(engineRef.current?.getQuestLog() ?? []); setShowQuests((v) => !v); }} data-testid="btn-quests" title="Quests"
+          className="pointer-events-auto ml-auto flex h-7 w-7 items-center justify-center rounded-full border text-amber-200/90" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
+          <ScrollText className="h-3.5 w-3.5" />
         </button>
-        <button onClick={() => { setCreatorMode("edit"); setShowCreator(true); }} data-testid="btn-edit-look"
-          className="pointer-events-auto flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-200/90" style={{ borderColor: "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
-          <Pencil className="h-3 w-3" /> Look
+        <button onClick={() => { setCreatorMode("edit"); setShowCreator(true); }} data-testid="btn-edit-look" title="Edit look"
+          className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-cyan-200/90" style={{ borderColor: "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={() => setShowCirql((v) => !v)} data-testid="btn-cirql" title="Your Cirql"
+          className="pointer-events-auto flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-bold text-amber-200/90" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
+          <Users className="h-3.5 w-3.5" /> {members}
         </button>
       </div>
 
@@ -244,6 +278,23 @@ export default function Cirql() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {showCirql && (
+        <div className="absolute right-3 top-14 z-[55] w-[252px] rounded-xl border p-3" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.96)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }} data-testid="cirql-panel">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-amber-300">Your Cirql</span>
+            <button onClick={() => setShowCirql(false)} className="text-slate-400 hover:text-slate-200"><X className="h-4 w-4" /></button>
+          </div>
+          <p className="text-[12px] leading-snug text-slate-300"><b className="text-white">{members}</b> of 12 lanterns lit — friends light your Hearth.</p>
+          <div className="my-2 flex flex-wrap gap-1.5">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <span key={i} className="h-3 w-3 rounded-full" style={{ background: i < members ? "#ffc46b" : "rgba(255,255,255,.12)", boxShadow: i < members ? "0 0 7px #ffc46b" : "none" }} />
+            ))}
+          </div>
+          <button onClick={invite} data-testid="cirql-invite" className="mt-1 w-full rounded-lg py-2.5 text-[13px] font-extrabold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>Invite a friend ✦</button>
+          <p className="mt-2 text-[10.5px] leading-snug text-slate-400">Or meet someone in the world and <span className="text-cyan-300">share a light</span> — coming with live players.</p>
         </div>
       )}
 
