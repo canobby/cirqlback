@@ -10,6 +10,7 @@
 // state blob keyed by the quest id, like every other quest — no new tables).
 
 import { getRing } from "./cirql-ring-gen";
+import { questRenown } from "./cirql-renown";
 import type { QuestDef, Objective } from "./cirql-quests";
 
 function rngFrom(seed: number) {
@@ -40,7 +41,7 @@ export function generateRingQuest(index: number): QuestDef | null {
   // ring index is the tier. Deeper rings = harder quests (more objectives / bigger counts /
   // longer chains) AND richer rewards. Sub-maps borrow their parent surface ring's tier.
   const tier = Math.max(1, (index >= 100000 ? index % 100000 : index) - 1);
-  const reward = { sparks: Math.min(60, Math.round(6 + tier * 3)) };
+  const reward = { sparks: Math.min(60, Math.round(6 + tier * 3)), renown: questRenown(tier) };
 
   const lanterns = ring.props.filter((p) => p.t === "lantern" && p.id);
   const crystals = ring.props.filter((p) => p.t === "crystal" && p.id);

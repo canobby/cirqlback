@@ -23,7 +23,7 @@ export interface QuestDef {
   giver: string;         // NPC prop id that offers it
   intro: string[];       // giver dialog when offering
   objectives: Objective[];
-  reward: { sparks: number };
+  reward: { sparks: number; renown?: number };
   next?: string;         // quest auto-offered on completion (the chain)
   tier?: number;         // difficulty tier — grows the farther out you sail (Phase K); undefined = authored/onboarding
 }

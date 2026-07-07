@@ -9,6 +9,7 @@ import { Joystick } from "@/components/joystick";
 import { CharacterCreator } from "@/components/cirql/character-creator";
 import { ARCADE_GAMES } from "@/game/registry";
 import { CAMPAIGNS, campaignById, MATCH_TAGS, difficultyMeta } from "@/game/cirql-campaigns";
+import { renownStanding } from "@/game/cirql-renown";
 import { dailyForDate, activeEvent, todayStr, type DailyTask, type CirqlEvent } from "@/game/cirql-daily";
 import { ringName } from "@/game/cirql-ring-gen";
 import { EMOTES, PAIR_GESTURES } from "@/game/cirql-emotes";
@@ -35,7 +36,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 const INTRO_LS = "cirql_intro_v1";
 
 type StartDest = "home" | "last" | "arcade";
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; renown?: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; }
 interface GameSettings { brightness: number; music: number; sfx: number; reduce: boolean; smooth: boolean; pixel: number; }
 const DEFAULT_SETTINGS: GameSettings = { brightness: 1, music: 0.7, sfx: 0.8, reduce: false, smooth: false, pixel: 1.5 };
 const todayUTC = () => new Date().toISOString().slice(0, 10);
@@ -52,6 +53,8 @@ export default function Cirql() {
   const nameRef = useRef<string>("Traveller");
   const seenIntroRef = useRef<boolean>(false);
   const sparksRef = useRef<number>(0);
+  const renownRef = useRef<number>(0);           // Renown — personal earned-not-spent standing (Phase K4)
+  const [renownUi, setRenownUi] = useState(0);
   const energyRef = useRef<number>(0);           // World Energy 0..1
   const membersRef = useRef<number>(0);          // your Cirql size (lanterns lit)
   const playsRef = useRef<{ day: string; n: number }>({ day: "", n: 0 }); // daily play count (anti-farm)
@@ -272,7 +275,16 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current, renown: renownRef.current };
+  };
+  // Grant Renown (personal standing) + celebrate any rank-up. Returns the amount granted.
+  const grantRenown = (amount: number) => {
+    if (amount <= 0) return 0;
+    const before = renownStanding(renownRef.current).index;
+    renownRef.current += amount; setRenownUi(renownRef.current);
+    const after = renownStanding(renownRef.current);
+    if (after.index > before) engineRef.current?.toast(`★ You are now a ${after.rank.title}! (Renown ${renownRef.current})`);
+    return amount;
   };
   // Apply game settings to the engine (brightness + reduced motion) and remember them.
   const applySettings = (s: GameSettings, persistNow = false) => {
@@ -328,7 +340,8 @@ export default function Cirql() {
     eng.onQuestComplete = (q, first) => {
       const reward = first ? q.reward.sparks : Math.max(1, Math.round(q.reward.sparks * 0.25));   // repeats pay ~a quarter
       sparksRef.current += reward; eng.setStats({ sparks: sparksRef.current }); setSparksUi(sparksRef.current);
-      eng.toast(first ? `✦ ${q.name} — +${reward} sparqs` : `✦ ${q.name} again — +${reward} sparqs`);
+      const ren = grantRenown(first ? (q.reward.renown ?? 0) : Math.round((q.reward.renown ?? 0) * 0.25));   // Renown scales with tier (K4)
+      eng.toast(`✦ ${q.name}${first ? "" : " again"} — +${reward} sparqs${ren > 0 ? ` · ★ +${ren} Renown` : ""}`);
       if (first && q.id.startsWith("ring-")) progressDaily("explore");   // only the first counts toward the daily
       persist();
     };
@@ -412,6 +425,7 @@ export default function Cirql() {
         const rw = first ? base : Math.max(2, Math.round(base * 0.25));   // repeat campaigns pay ~a quarter
         doneCampaignsRef.current.add(m.campaignId);
         sparksRef.current += rw; energyRef.current = Math.min(1, energyRef.current + rw * 0.01);
+        grantRenown(first ? Math.max(5, Math.round(base / 4)) : Math.round(base / 16));   // campaigns grant solid Renown (K4)
         eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current);
         applyParty(null);
         eng.playCutscene(campaignCutscene(camp?.title || "Campaign", rw));   // celebration sting (CHR-264)
@@ -435,6 +449,7 @@ export default function Cirql() {
       energyRef.current = st?.worldEnergy ?? 0; membersRef.current = st?.cirqlMembers ?? 0; setMembers(membersRef.current);
       playsRef.current = { day: st?.playDay ?? "", n: st?.playsToday ?? 0 };
       arcadeVisitedRef.current = !!st?.arcadeVisited; startPrefRef.current = st?.startPref ?? "ask";
+      renownRef.current = st?.renown ?? 0; setRenownUi(renownRef.current);
       applySettings({ ...DEFAULT_SETTINGS, ...(st?.settings || {}) });   // brightness + reduced-motion prefs
       ownedRef.current = Array.isArray(st?.owned) ? st!.owned! : []; setOwned(ownedRef.current); setSparksUi(sparksRef.current);
       maxRingRef.current = st?.maxRing ?? 0; setCurRingUi(st?.ring ?? 0);
@@ -1102,6 +1117,20 @@ export default function Cirql() {
             <span className="text-[11px] font-bold uppercase tracking-widest text-amber-300">Quests</span>
             <button onClick={() => setShowQuests(false)} className="text-xs text-slate-400 hover:text-slate-200">✕</button>
           </div>
+          {/* Renown — your personal standing + rank progress (Phase K4) */}
+          {(() => { const rs = renownStanding(renownUi); return (
+            <div className="mb-2 rounded-lg border p-2.5" data-testid="renown-card" style={{ borderColor: "rgba(178,108,255,.4)", background: "rgba(178,108,255,.07)" }}>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase tracking-widest text-violet-300">★ Renown</span>
+                <span className="ml-auto text-[13px] font-black text-violet-100">{renownUi}</span>
+              </div>
+              <div className="mt-0.5 text-[13px] font-bold text-white">{rs.rank.title}</div>
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,.08)" }}>
+                <div className="h-full rounded-full" style={{ width: `${Math.round(rs.progress * 100)}%`, background: "linear-gradient(90deg,#b26cff,#e0a0ff)" }} />
+              </div>
+              <div className="mt-0.5 text-[10px] text-violet-200/70">{rs.next ? `${rs.toNext} to ${rs.next.title}` : "Highest rank reached ✦"}</div>
+            </div>
+          ); })()}
           {/* today's daily task (M10) */}
           {(() => { const d = dailyForDate(dailyUi.day || todayStr()); return (
             <div className="mb-2 rounded-lg border p-2.5" data-testid="daily-card" style={{ borderColor: dailyUi.done ? "rgba(91,232,154,.4)" : "rgba(255,196,107,.5)", background: "rgba(255,196,107,.06)" }}>
@@ -1131,7 +1160,10 @@ export default function Cirql() {
                   <div className="mt-1 flex items-center gap-2 pl-4 text-[10px]">
                     {q.tier ? <span className="rounded px-1 py-0.5 font-bold text-amber-200" style={{ background: "rgba(255,196,107,.14)" }} title={`Difficulty tier ${q.tier}`}>Tier {q.tier}</span> : null}
                     {q.steps && q.steps > 1 ? <span className="text-slate-400">{q.steps} steps</span> : null}
-                    {q.reward ? <span className="ml-auto font-bold text-amber-300">✦ {q.reward}</span> : null}
+                    <span className="ml-auto flex items-center gap-1.5 font-bold">
+                      {q.renownReward ? <span className="text-violet-300">★ {q.renownReward}</span> : null}
+                      {q.reward ? <span className="text-amber-300">✦ {q.reward}</span> : null}
+                    </span>
                   </div>
                 )}
               </div>
