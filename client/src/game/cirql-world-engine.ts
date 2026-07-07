@@ -952,10 +952,20 @@ export class CirqlWorldEngine extends RetroEngine {
     if (this.voyage) { this.drawVoyage(); this.drawFx(); return; }   // the sailing crossing owns the screen
     if (this.diorama) { this.drawDiorama(); this.drawFx(); return; }   // the beauty shot owns the screen (Phase H3)
     const b = this.b, s = this.SS, W = this.LW * s, H = this.LH * s, pal = this.curRing.palette;
+    const dn = this.dayNight();   // day/night cycle (J3/J5)
     // sky/sea backdrop
     const g = b.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, pal.sky[0]); g.addColorStop(0.5, pal.sky[1]); g.addColorStop(1, pal.sea);
     b.fillStyle = g; b.fillRect(0, 0, W, H);
+    // stars come out at night (deterministic, upper sky only)
+    if (dn.night > 0.05) {
+      for (let i = 0; i < 46; i++) {
+        const sx = ((i * 137) % this.LW), sy = ((i * 89) % Math.round(this.LH * 0.55));
+        const tw = 0.5 + 0.5 * Math.sin(this.t * 2 + i * 1.3);
+        b.fillStyle = hexA("#eaf2ff", dn.night * (0.35 + tw * 0.4) * (0.6 + (i % 3) * 0.2));
+        b.fillRect(sx * s, sy * s, (i % 4 === 0 ? 2 : 1) * s, (i % 4 === 0 ? 2 : 1) * s);
+      }
+    }
     // aurora shimmer
     if (!this.reduce) {
       for (let i = 0; i < 3; i++) {
@@ -1104,12 +1114,26 @@ export class CirqlWorldEngine extends RetroEngine {
         b.fillStyle = hexA(pal.mote, Math.max(0, al) * 0.6);
         b.beginPath(); b.arc(mx * s, my * s, (1 + (i % 3) * 0.4) * s, 0, TAU); b.fill();
       }
+      // night fireflies/glowmoths drift out after dusk (J5 ambient expansion)
+      if (dn.night > 0.25) for (let i = 0; i < 14; i++) {
+        const fx = scx + Math.sin(this.t * 0.5 + i * 2.1) * R * 0.66 + Math.cos(i * 1.7) * 50;
+        const fy = scy + Math.cos(this.t * 0.43 + i * 1.3) * R * 0.5 + Math.sin(i * 2) * 40;
+        const bl = Math.sin(this.t * 2.4 + i * 1.9); if (bl <= 0.1) continue;
+        this.glow(fx, fy, 5, "#c8ff9a", bl * 0.5 * dn.night); this.disc(fx, fy, 1, hexA("#eaffcf", dn.night));
+      }
     }
 
     if (zoomed) b.restore();   // end the zoom transform — HUD/overlays draw in screen space
 
     this.drawFx();
     this.drawAmbient();
+    // day/night colour grade (J3) — a cool wash at night + a warm one at dawn/dusk. Screen-
+    // space, over the world but under the HUD. Softened while building so ring 0 stays clear.
+    if (dn.night > 0.01 || dn.twilight > 0.01) {
+      const soft = (this.editDecor || this.editPaint) ? 0.5 : 1;
+      if (dn.night > 0.01) { b.fillStyle = hexA("#141c40", Math.min(0.42, 0.42 * dn.night) * soft); b.fillRect(0, 0, W, H); }
+      if (dn.twilight > 0.01) { b.fillStyle = hexA("#ff8a4a", 0.22 * dn.twilight * soft); b.fillRect(0, 0, W, H); }
+    }
     if (this.mapOpen) this.drawChart(); else if (!this.cs) this.drawHud();
     if (this.cs) this.drawCutscene();
   }
@@ -1302,6 +1326,14 @@ export class CirqlWorldEngine extends RetroEngine {
     if (a === "grasshopper" || a === "gull") return "sand";   // desert + coast
     if (a === "ember") return "ash";
     return "grass";
+  }
+  // Day/night cycle (Phase J3/J5): a smooth ~10-min loop. `night` (0..1) deepens toward
+  // midnight; `twilight` (0..1) peaks at dawn/dusk. Sub-maps + set-piece screens keep their
+  // own light. Drives a screen tint, stars, and night fireflies.
+  private dayNight(): { night: number; twilight: number } {
+    if (isSubMap(this.ringIdx) || this.diorama || this.voyage) return { night: 0, twilight: 0 };
+    const ph = ((this.t / 600) + 0.28) % 1, sun = Math.sin(ph * TAU);
+    return { night: Math.max(0, -sun), twilight: Math.max(0, 1 - Math.abs(sun) * 3) };
   }
   /** A gentle horizontal biome wind (px) that flutters the aura; stronger on open/hot scenes. */
   private windAmt(): number {
