@@ -18,7 +18,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 // get a character-creation step first; everyone can re-edit their look.
 const INTRO_LS = "cirql_intro_v1";
 
-interface CirqlState { ring: number; x: number; y: number; quests?: any; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; }
 const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export default function Cirql() {
@@ -139,7 +139,7 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, x: s.x, y: s.y, quests: (s as any).quests, avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current };
   };
   const persist = () => {
     const st = buildState();
@@ -162,6 +162,7 @@ export default function Cirql() {
     if (import.meta.env.DEV) (window as any).__cirql = eng;
     eng.onInteract = (kind) => { if (kind === "wonders") setHallOpen(true); };   // step into CirqlCade
     eng.onLocalMove = (ring, x, y) => { posRef.current = { ring, x, y }; scheduleSave(); };
+    eng.onSail = (ring) => { const st = eng.getState(); posRef.current = { ring, x: st.x, y: st.y }; persist(); };   // reaching a new ring is a big save point
     // quests: grant the sparks reward on completion, persist progress on any change
     eng.onQuestComplete = (q) => { sparksRef.current += q.reward.sparks; eng.setStats({ sparks: sparksRef.current }); persist(); };
     eng.onQuestChange = () => { setQuestRows(eng.getQuestLog()); scheduleSave(); };
@@ -212,7 +213,7 @@ export default function Cirql() {
       playsRef.current = { day: st?.playDay ?? "", n: st?.playsToday ?? 0 };
       ownedRef.current = Array.isArray(st?.owned) ? st!.owned! : []; setOwned(ownedRef.current); setSparksUi(sparksRef.current);
       eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: membersRef.current, cirqlTotal: 12, online: 1, energy: energyRef.current });
-      eng.applyState({ ring: st?.ring ?? 0, x: st?.x, y: st?.y, quests: st?.quests });
+      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests });
       if (st && typeof st.x === "number") posRef.current = { ring: st.ring ?? 0, x: st.x, y: st.y ?? 0 };
       setQuestRows(eng.getQuestLog());
       if (!seen) { setCreatorMode("create"); setShowCreator(true); }

@@ -9,7 +9,8 @@
 
 import { RetroEngine, type RetroHooks } from "./retro-engine";
 import { loadAvatarLS, DEFAULT_AVATAR, AURA_COLORS, type AvatarConfig } from "./avatar";
-import { RINGS, MINIMAP_RINGS, KNOWN_RINGS, type Ring, type Prop } from "./cirql-world";
+import { RINGS, MINIMAP_RINGS, type Ring, type Prop } from "./cirql-world";
+import { getRing, ringName } from "./cirql-ring-gen";
 import {
   QUESTS, questById, offerableQuest, questStatusList,
   type QuestDef, type QuestProgress, type ObjectiveKind, type QuestStatus,
@@ -36,6 +37,8 @@ export interface RemoteState { id: string; x: number; y: number; dir: string; na
 export class CirqlWorldEngine extends RetroEngine {
   private ringIdx = 0;
   private curRing: Ring = RINGS[0];
+  private maxRing = 0;                          // furthest ring reached (lifts the fog)
+  private arriveT = 0; private arriveName = ""; private arriveSub = "";   // arrival name-card flourish
   private posX = 0; private posY = 0;         // player world position
   private vx = 0; private vy = 0; private facing: "up" | "down" | "left" | "right" = "down"; private walk = 0;
   private camX = 0; private camY = 0;
@@ -75,6 +78,8 @@ export class CirqlWorldEngine extends RetroEngine {
   onInteract?: (kind: InteractKind, prop: Prop) => void;
   /** Fired when the player position changes materially (for autosave, later). */
   onLocalMove?: (ring: number, x: number, y: number) => void;
+  /** Fired when the player sails to a new ring (host persists ring + maxRing). */
+  onSail?: (ring: number, maxRing: number) => void;
   /** Fired when a quest completes — the host grants the sparks reward + persists. */
   onQuestComplete?: (quest: QuestDef) => void;
   /** Fired when quest progress changes (accept / advance / complete) — host may persist. */
@@ -117,14 +122,33 @@ export class CirqlWorldEngine extends RetroEngine {
   setHudInsets(topCss: number, botCss: number) { this.insetTopCss = Math.max(0, topCss); this.insetBotCss = Math.max(0, botCss); }
   /** The on-screen action button + the quest system call this to interact. */
   interact() { this.doInteract(); }
-  getState() { return { ring: this.ringIdx, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit) }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit) }; }
   applyState(s: any) {
     if (!s) return;
-    if (typeof s.ring === "number" && RINGS[s.ring]?.explorable) { this.ringIdx = s.ring; this.curRing = RINGS[s.ring]; }
+    if (typeof s.maxRing === "number") this.maxRing = Math.max(this.maxRing, s.maxRing);
+    if (typeof s.ring === "number" && s.ring >= 0) { this.ringIdx = s.ring; this.curRing = getRing(s.ring); this.maxRing = Math.max(this.maxRing, s.ring); }
     if (typeof s.x === "number" && typeof s.y === "number") { this.posX = s.x; this.posY = s.y; }
     if (s.quests && typeof s.quests === "object") this.quests = s.quests;
     if (Array.isArray(s.lit)) this.lit = new Set(s.lit);
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
+  }
+  /** How many concentric rings are "known" (lit on the chart) — grows as you explore. */
+  private knownRings() { return Math.max(1, this.maxRing + 1); }
+  /** Sail to another ring: swap the world, arrive at the connecting dock, flourish. */
+  private sailTo(dest: number) {
+    if (dest < 0 || dest === this.ringIdx) return;
+    const outward = dest > this.ringIdx;
+    this.ringIdx = dest;
+    this.curRing = getRing(dest);
+    this.maxRing = Math.max(this.maxRing, dest);
+    const r = this.curRing.radius;
+    // arrive at the dock you came through: inward-bound → south shore, outward-bound → north shore
+    this.posX = 0; this.posY = outward ? -r * 0.68 : r * 0.7;
+    this.vx = this.vy = 0; this.facing = outward ? "down" : "up";
+    this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
+    this.near = null; this.dialog = null; this.moveTarget = null; this.partyWp = null;
+    this.arriveT = 3.0; this.arriveName = this.curRing.name; this.arriveSub = this.curRing.sub;
+    this.onSail?.(this.ringIdx, this.maxRing);
   }
   toast(text: string) { this.msg = text; this.msgT = 4.6; }
   /** Current interact target's kind (host may use to theme the action button). */
@@ -238,9 +262,9 @@ export class CirqlWorldEngine extends RetroEngine {
     else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.onInteract?.("wonders", p); }
     else if (p.t === "npc") { this.openNpcDialog(p); this.onInteract?.("npc", p); }
     else if (p.t === "dock") {
-      const dest = RINGS[p.to ?? -1];
-      if (!dest || !dest.explorable) this.toast("The fog past the Hearth hasn't lifted yet.");
-      else this.onInteract?.("dock", p);
+      const to = p.to ?? -1;
+      if (to < 0) this.toast("Only open sea lies inward from the Hearth.");
+      else { this.onInteract?.("dock", p); this.sailTo(to); }
     }
   }
   private openNpcDialog(p: Prop) {
@@ -263,6 +287,7 @@ export class CirqlWorldEngine extends RetroEngine {
   protected update(dt: number) {
     this.t += dt;
     this.msgT = Math.max(0, this.msgT - dt);
+    this.arriveT = Math.max(0, this.arriveT - dt);
 
     // live remotes ease toward their last-known position + decay chat bubbles (runs
     // unconditionally so other travellers keep moving during your dialog / chart)
@@ -440,6 +465,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "wonders": draws.push({ y: p.y + 30, f: () => this.drawWonders(sxp, syp, p) }); break;
         case "npc": draws.push({ y: p.y, f: () => this.drawNpc(sxp, syp, p) }); break;
         case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big) }); break;
+        case "crystal": draws.push({ y: p.y, f: () => this.drawCrystal(sxp, syp, p.big, p.accent || pal.accent) }); break;
         case "lantern": { const isQ = !!p.id && this.activeQuest()?.id === "lantern-path"; const litState = isQ ? this.lit.has(p.id!) : true; draws.push({ y: p.y, f: () => this.drawLantern(sxp, syp, pal.accent, litState) }); break; }
         case "dock": draws.push({ y: p.y - 40, f: () => this.drawDock(sxp, syp, p) }); break;
         case "marker": { const isTarget = this.objTargetProp() === p; if (isTarget) draws.push({ y: p.y - 1, f: () => this.drawMarker(sxp, syp) }); break; }
@@ -586,6 +612,16 @@ export class CirqlWorldEngine extends RetroEngine {
     for (let i = 0; i < 3; i++) this.disc(cx, cy - 14 * s - i * 5 * s, (11 - i * 2) * s, i === 0 ? "#356149" : this.curRing.palette.grass);
     this.disc(cx - 3 * s, cy - 20 * s, 3 * s, "#3e6d52");
   }
+  private drawCrystal(cx: number, cy: number, big: boolean | undefined, c: string) {
+    const s = big ? 1.35 : 1;
+    this.disc(cx, cy + 2, 5 * s, "#0a071440");
+    this.glow(cx, cy - 6 * s, 16 * s, c, this.reduce ? 0.35 : 0.28 + 0.12 * Math.sin(this.t * 1.7 + cx));
+    // faceted shard
+    this.rect(cx - 2 * s, cy - 6 * s, 4 * s, 8 * s, c);
+    this.rect(cx - 1 * s, cy - 12 * s, 2 * s, 8 * s, c);
+    this.rect(cx - 1 * s, cy - 6 * s, 1, 6 * s, "#ffffff");
+    if (big) { this.rect(cx + 3 * s, cy - 3 * s, 2 * s, 5 * s, c); this.rect(cx - 5 * s, cy - 2 * s, 2 * s, 4 * s, c); }
+  }
   private drawLantern(cx: number, cy: number, c: string, lit: boolean) {
     this.rect(cx - 1, cy - 13, 2, 13, "#2a2015");
     if (lit) { this.glow(cx, cy - 16, 22, c, this.reduce ? 0.5 : 0.4 + 0.15 * Math.sin(this.t * 2 + cx)); this.disc(cx, cy - 16, 3, c); }
@@ -621,7 +657,7 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(cx - 1, cy + 6, 2, 14, "#e8dcc4");
     for (let i = 0; i < 10; i++) this.rect(cx + 1, cy + 6 + i, i, 1, hexA(this.curRing.palette.accent, 0.9));
     if (this.near === p) this.glow(cx, cy, 30, this.curRing.palette.accent, 0.25);
-    this.labelPill(cx, cy - 34, "sail →", this.curRing.palette.accent);
+    this.labelPill(cx, cy - 34, p.label || "sail →", this.curRing.palette.accent);
   }
 
   // ---------- HUD ----------
@@ -661,7 +697,8 @@ export class CirqlWorldEngine extends RetroEngine {
       const label = this.near.t === "wonders" ? "Enter CirqlCade"
         : this.near.t === "npc" ? `Talk to ${this.near.label || ""}`
           : this.near.t === "lantern" ? "Light the lantern"
-            : "Set sail";
+            : this.near.t === "dock" ? (this.near.label || "Set sail")
+              : "Set sail";
       promptTxt = `E · ${label}`; promptAcc = this.near.accent || "#35e0d0";
     }
     if (promptTxt) {
@@ -680,6 +717,20 @@ export class CirqlWorldEngine extends RetroEngine {
       this.rect(x - 5, it + 14, w + 10, 11, "#0a0714e0"); this.rectLine(x - 5, it + 14, w + 10, 11, "#b26cff");
       this.b.globalAlpha = 1;
       this.q(this.LW / 2, it + 16, this.msg, "#e6d8ff", 1, "c", false, a);
+    }
+
+    // arrival name-card — a brief cinematic when you reach a new shore
+    if (this.arriveT > 0) {
+      const a = Math.min(1, this.arriveT / 0.6) * Math.min(1, (3.0 - this.arriveT) / 0.4 + 0.001);
+      const al = Math.max(0, Math.min(1, a));
+      const cy = this.LH * 0.4;
+      this.b.globalAlpha = al * 0.85;
+      this.rect(0, cy - 2, this.LW, 26, "#0a0714");
+      this.b.globalAlpha = 1;
+      this.rect(this.LW / 2 - 30, cy - 3, 60, 1, hexA(this.curRing.palette.accent, al));
+      this.rect(this.LW / 2 - 30, cy + 22, 60, 1, hexA(this.curRing.palette.accent, al));
+      this.q(this.LW / 2, cy + 1, this.arriveName, "#eaf6ff", 1.35, "c", true, al);
+      this.q(this.LW / 2, cy + 13, this.arriveSub, this.curRing.palette.accent, 0.85, "c", false, al);
     }
 
     // dialog
@@ -703,9 +754,10 @@ export class CirqlWorldEngine extends RetroEngine {
     const b = this.b, s = this.SS;
     const cx = this.LW - 26, cy = it + 34, R = 20;
     b.fillStyle = "rgba(6,12,26,0.82)"; b.beginPath(); b.arc(cx * s, cy * s, R * s, 0, TAU); b.fill();
-    const step = (R - 3) / MINIMAP_RINGS;
-    for (let i = MINIMAP_RINGS - 1; i >= 0; i--) {
-      const rad = step * (i + 1); const known = i < KNOWN_RINGS;
+    const rings = Math.max(MINIMAP_RINGS, this.maxRing + 2), known0 = this.knownRings();
+    const step = (R - 3) / rings;
+    for (let i = rings - 1; i >= 0; i--) {
+      const rad = step * (i + 1); const known = i < known0;
       b.beginPath(); b.arc(cx * s, cy * s, rad * s, 0, TAU);
       if (known) { b.strokeStyle = i === this.ringIdx ? "#ffffff" : "rgba(120,200,255,0.5)"; b.lineWidth = (i === this.ringIdx ? 1.6 : 1) * s; b.setLineDash([]); }
       else { b.strokeStyle = "rgba(120,140,180,0.22)"; b.lineWidth = 1 * s; b.setLineDash([3 * s, 5 * s]); }
@@ -732,21 +784,24 @@ export class CirqlWorldEngine extends RetroEngine {
     b.fillStyle = "rgba(4,7,16,0.93)"; b.fillRect(0, 0, W * s, H * s);
     this.q(W / 2, it + 6, "The Endless Ocean", "#eaf6ff", 1.3, "c", true);
     this.q(W / 2, it + 20, "your chart of the rings", "#7fa0c8", 0.9, "c");
-    const cx = W / 2, cy = H / 2 + 4, maxR = Math.min(W, H) * 0.40, step = maxR / MINIMAP_RINGS;
+    const rings = Math.max(MINIMAP_RINGS, this.maxRing + 2), known0 = this.knownRings();
+    const cx = W / 2, cy = H / 2 + 4, maxR = Math.min(W, H) * 0.40, step = maxR / rings;
     this.glow(cx, cy, maxR + 10, "#16264d", 0.55);
-    for (let i = MINIMAP_RINGS - 1; i >= 0; i--) {
-      const rad = step * (i + 1); const known = i < KNOWN_RINGS;
+    for (let i = rings - 1; i >= 0; i--) {
+      const rad = step * (i + 1); const known = i < known0;
       b.beginPath(); b.arc(cx * s, cy * s, rad * s, 0, TAU);
       if (known) { b.strokeStyle = i === this.ringIdx ? "#ffffff" : "rgba(120,200,255,0.55)"; b.lineWidth = (i === this.ringIdx ? 2 : 1.2) * s; b.setLineDash([]); }
       else { b.strokeStyle = "rgba(120,140,180,0.28)"; b.lineWidth = 1 * s; b.setLineDash([4 * s, 6 * s]); }
       b.stroke();
     }
     b.setLineDash([]);
-    // land labels (known named; the first fogged ring marked uncharted)
-    for (let i = 0; i < MINIMAP_RINGS; i++) {
+    // land labels (known named; the first fogged ring marked uncharted). Skip labels
+    // when the rings are packed too tight to read.
+    const labelEvery = step < 16 ? 2 : 1;
+    for (let i = 0; i < rings; i++) {
       const rad = step * (i + 1);
-      if (i < KNOWN_RINGS) this.q(cx, cy - rad - 7, RINGS[i]?.name || "", i === this.ringIdx ? "#ffd24a" : "#bfe0ff", 1, "c", true);
-      else if (i === KNOWN_RINGS) { this.q(cx, cy - rad - 7, "? uncharted ?", "#6f86ad", 0.9, "c"); break; }
+      if (i < known0) { if (i % labelEvery === 0 || i === this.ringIdx) this.q(cx, cy - rad - 7, ringName(i), i === this.ringIdx ? "#ffd24a" : "#bfe0ff", i === this.ringIdx ? 1 : 0.85, "c", true); }
+      else if (i === known0) { this.q(cx, cy - rad - 7, "? uncharted ?", "#6f86ad", 0.9, "c"); break; }
     }
     // objective (gold) + you (teal/white) on the current ring
     const pr = step * (this.ringIdx + 1);
