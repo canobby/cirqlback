@@ -1,0 +1,6 @@
+Drop your downloaded itch.io asset .zip files in THIS folder.
+
+- Just move the .zip(s) here (from your Downloads). No need to unzip or reorganize.
+- One zip or many — doesn't matter. Claude will unzip + sort everything.
+- After you drop them, tell Claude "the zips are in assets-incoming" and it will
+  extract, catalog what's inside, and file the sprites/tiles into the app.
