@@ -49,6 +49,15 @@ const PET_CATALOG: { type: string; label: string; cost: number; sp: Species; var
 ];
 const PET_NAMES = ["Pip", "Mochi", "Biscuit", "Nova", "Clover", "Sunny", "Pepper", "Waffle", "Ziggy", "Luna", "Bramble", "Tofu"];
 const petSpec = (type: string) => PET_CATALOG.find((p) => p.type === type);
+
+// A four-legged animal's build — fed to drawQuadruped, which renders it in ANY of the 4
+// facings (toward you / away / left / right) with articulated, swinging legs.
+interface QuadSpec {
+  body: string; body2: string; leg: string; belly?: string; patch?: string;
+  bodyLen: number; bodyH: number; legLen: number; legW: number; neckLen: number; headR: number;
+  ear: "up" | "flop" | "cat" | "tuft"; tail: "deer" | "bushy" | "curl" | "flick"; tailCol: string;
+  antlers?: string;   // glow colour for deer-style antlers
+}
 // terrain paint (Phase C): a tile grid over CIRQLSPACE. Cells keyed with a +500 offset so
 // negative coords stay unique; grass is the default (never stored). Tile chars: s=sand,
 // t=stone, w=water, p=path.
@@ -231,7 +240,7 @@ export class CirqlWorldEngine extends RetroEngine {
     const spec = petSpec(pet.type); if (!spec) return;
     const i = Math.max(0, this.pets.indexOf(pet)), a = i * 1.9, r = 60 + (i % 3) * 26;
     const hx = Math.cos(a) * r, hy = 40 + Math.sin(a) * r * 0.7;
-    this.creatures.push({ x: hx, y: hy, vx: 0, vy: 0, sp: spec.sp, variant: spec.variant, mode: "graze", act: "walk", trust: 1, t: i * 1.3, face: 1, rest: 0, wtx: hx, wty: hy, home: { x: hx, y: hy }, pet: pet.id, name: pet.name });
+    this.creatures.push({ x: hx, y: hy, vx: 0, vy: 0, sp: spec.sp, variant: spec.variant, mode: "graze", act: "walk", trust: 1, t: i * 1.3, face: 1, dir: "d", rest: 0, wtx: hx, wty: hy, home: { x: hx, y: hy }, pet: pet.id, name: pet.name });
   }
   private spawnPets() { for (const p of this.pets) this.spawnOnePet(p); }
   private nearestPet() { let best = 34, found: (typeof this.creatures)[number] | null = null; for (const c of this.creatures) if (c.pet) { const d = Math.hypot(c.x - this.posX, c.y - this.posY); if (d < best) { best = d; found = c; } } return found; }
@@ -2594,7 +2603,7 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- LIVING CREATURES: stateful woodland fauna that REACT to you ----------
   // Shy deer/rabbits flee when you rush them, then warm up if you hold still and let you pet
   // them; a curious fox trails you at a gap. Real walk-cycle sprites + facing.
-  private creatures: { x: number; y: number; vx: number; vy: number; sp: Species; variant?: string; mode: string; act: string; trust: number; t: number; face: number; rest: number; wtx: number; wty: number; home: { x: number; y: number }; pet?: string; name?: string; joy?: number }[] = [];
+  private creatures: { x: number; y: number; vx: number; vy: number; sp: Species; variant?: string; mode: string; act: string; trust: number; t: number; face: number; dir: string; rest: number; wtx: number; wty: number; home: { x: number; y: number }; pet?: string; name?: string; joy?: number }[] = [];
   private creaturesRing = -999;
   private ensureCreatures() {
     if (this.creaturesRing === this.ringIdx) return;
@@ -2613,7 +2622,7 @@ export class CirqlWorldEngine extends RetroEngine {
         const a = anchors.length ? anchors[(i * 7 + k) % anchors.length] : { x: 0, y: 0 };
         let hx = a.x + Math.sin(i * 2.3 + k) * 44, hy = a.y + 30 + Math.cos(i * 1.7 + k) * 34;
         const hr = Math.hypot(hx, hy); if (hr > edge) { hx = hx / hr * edge; hy = hy / hr * edge; }
-        this.creatures.push({ x: hx, y: hy, vx: 0, vy: 0, sp, variant, mode: "graze", act: "walk", trust: 0, t: i * 1.3, face: 1, rest: 0, wtx: hx, wty: hy, home: { x: hx, y: hy } });
+        this.creatures.push({ x: hx, y: hy, vx: 0, vy: 0, sp, variant, mode: "graze", act: "walk", trust: 0, t: i * 1.3, face: 1, dir: "d", rest: 0, wtx: hx, wty: hy, home: { x: hx, y: hy } });
       }
     };
     switch (biome) {
@@ -2684,9 +2693,12 @@ export class CirqlWorldEngine extends RetroEngine {
       const dvx = md < 5 ? 0 : (mdx / md) * spd, dvy = md < 5 ? 0 : (mdy / md) * spd;
       c.vx += (dvx - c.vx) * Math.min(1, dt * 6); c.vy += (dvy - c.vy) * Math.min(1, dt * 6);
       c.x += c.vx * dt; c.y += c.vy * dt;
-      // face the way you're actually HEADING: flip on any real left/right intent (using the
-      // desired direction, not the eased velocity) but hold facing on near-pure-vertical moves
-      if (md >= 5 && Math.abs(mdx) > Math.abs(mdy) * 0.35) c.face = mdx > 0 ? 1 : -1;
+      // 4-directional facing from the HEADING: side view moving horizontally, front view (toward
+      // you) moving down-screen, back view moving up-screen. Idle holds the last facing.
+      if (md >= 5) {
+        if (Math.abs(mdx) > Math.abs(mdy)) { c.dir = mdx > 0 ? "r" : "l"; c.face = mdx > 0 ? 1 : -1; }
+        else c.dir = mdy > 0 ? "d" : "u";
+      }
       c.t += dt;
       const rr = Math.hypot(c.x, c.y); if (rr > edge) { c.x = c.x / rr * edge; c.y = c.y / rr * edge; c.vx *= 0.4; c.vy *= 0.4; }   // shore barrier
     }
@@ -2741,17 +2753,17 @@ export class CirqlWorldEngine extends RetroEngine {
     for (const c of [...this.creatures].sort((a, b) => a.y - b.y)) {
       const sx = c.x - camX, sy = c.y - camY;
       if (sx < -30 || sx > W + 30 || sy < -30 || sy > H + 30) continue;
-      const moving = Math.hypot(c.vx, c.vy) > 6, ph = c.t * 7;
+      const moving = Math.hypot(c.vx, c.vy) > 6;
       const jb = (c.joy ?? 0) > 0 ? -Math.abs(Math.sin((c.joy ?? 0) * 12)) * 4 : 0;   // a happy hop when petted/playing
       const sy2 = sy + jb;
-      if (c.sp === "deer") this.drawDeer(sx, sy2, c.face, moving, ph, c.mode, c.variant, c.act);
-      else if (c.sp === "fox") this.drawFox(sx, sy2, c.face, moving, ph, c.variant, c.act);
-      else if (c.sp === "cat") this.drawCat(sx, sy2, c.face, moving, c.t, c.act);
-      else if (c.sp === "dog") this.drawDog(sx, sy2, c.face, moving, c.t, c.act);
+      if (c.sp === "deer") this.drawDeer(sx, sy2, c.dir, moving, c.t, c.mode, c.variant, c.act);
+      else if (c.sp === "fox") this.drawFox(sx, sy2, c.dir, moving, c.t, c.variant, c.act);
+      else if (c.sp === "cat") this.drawCat(sx, sy2, c.dir, moving, c.t, c.act);
+      else if (c.sp === "dog") this.drawDog(sx, sy2, c.dir, moving, c.t, c.act);
       else if (c.sp === "salamander") this.drawSalamander(sx, sy2, c.face, moving, c.t, c.variant, c.act);
       else if (c.sp === "crab") this.drawCrab(sx, sy2, c.face, moving, c.t, c.act);
       else if (c.sp === "frog") this.drawFrog(sx, sy2, c.face, moving, c.t, c.act);
-      else if (c.sp === "squirrel") this.drawSquirrel(sx, sy2, c.face, moving, c.t, c.act);
+      else if (c.sp === "squirrel") this.drawSquirrel(sx, sy2, c.dir, moving, c.t, c.act);
       else if (c.sp === "moth") this.drawMoth(sx, sy2, c.t);
       else this.drawBunny(sx, sy2, c.face, moving, c.t, c.mode, c.variant, c.act);
       // a pet shows its NAME + extra love when joyful
@@ -2764,62 +2776,98 @@ export class CirqlWorldEngine extends RetroEngine {
       else if (c.act === "graze" && ((c.x | 0) % 3 === 0)) this.q(sx, sy - 22, "♪", "#b6ff6a", 0.6, "c", false, 0.5);   // a content little note
     }
   }
+  // ---- Creature Animation Kit: 4-directional, articulated-leg quadrupeds ----
+  // One 2-bone leg whose foot swings forward/back and lifts on the forward stroke (a real gait).
+  private drawLimb(hx: number, hy: number, ph: number, len: number, w: number, color: string, moving: boolean, reach = 1) {
+    const b = this.b, s = this.SS;
+    const stride = moving ? Math.cos(ph) * len * 0.5 * reach : 0;
+    const lift = moving ? Math.max(0, Math.sin(ph)) * len * 0.4 : 0;
+    const footX = hx + stride, footY = hy + len - lift;
+    const kneeX = (hx + footX) / 2 + len * 0.16, kneeY = hy + len * 0.5 - lift * 0.35;
+    b.strokeStyle = color; b.lineWidth = w * s; b.lineCap = "round";
+    b.beginPath(); b.moveTo(hx * s, hy * s); b.lineTo(kneeX * s, kneeY * s); b.lineTo(footX * s, footY * s); b.stroke();
+    b.lineCap = "butt";
+  }
+  private quadEars(spec: QuadSpec, hx: number, hy: number, f: number, dir: string) {
+    const c = spec.body, dk = shade(spec.body, -0.3), r = spec.headR;
+    if (dir === "u" || dir === "d") {   // front/back — a pair, left + right
+      if (spec.ear === "flop") { this.fillEll(hx - r * 0.7, hy - r * 0.1, 1.8, 3, dk); this.fillEll(hx + r * 0.7, hy - r * 0.1, 1.8, 3, dk); }
+      else if (spec.ear === "cat" || spec.ear === "tuft") { this.triY(hx - r * 0.6, hy - r * 1.3, 1.8, 3, c); this.triY(hx + r * 0.6, hy - r * 1.3, 1.8, 3, c); }
+      else { this.rect(hx - r * 0.7, hy - r * 1.5, 1.6, r, c); this.rect(hx + r * 0.7 - 1.6, hy - r * 1.5, 1.6, r, c); }
+    } else {                            // side — toward the back of the head
+      if (spec.ear === "flop") this.fillEll(hx - 1.6 * f, hy - 0.6, 1.6, 3, dk);
+      else if (spec.ear === "cat" || spec.ear === "tuft") this.triY(hx - 0.6 * f, hy - r - 1, 1.7, 3, c);
+      else this.rect(hx - 2 * f, hy - r - 2, 1.5, r * 0.9, c);
+    }
+  }
+  private quadTail(spec: QuadSpec, tx: number, ty: number, f: number, dir: string) {
+    const c = spec.tailCol;
+    if (dir === "u") {                  // back view — tail up behind
+      if (spec.tail === "bushy") { this.fillEll(tx, ty - 3, 3.4, 5, c); this.fillEll(tx, ty - 4, 2, 3, shade(c, 0.18)); }
+      else if (spec.tail === "curl") this.neonPath([[tx, ty], [tx, ty - 4], [tx - 2, ty - 7]], c, 0, 2.4, 1);
+      else this.rect(tx - 1, ty - 5, 2, 5, c);
+    } else if (dir === "l" || dir === "r") {   // side — off the rump
+      if (spec.tail === "bushy") { this.fillEll(tx, ty, 4.4, 3.2, c); this.fillEll(tx - 1 * f, ty - 1, 2.4, 1.8, shade(c, 0.18)); }
+      else if (spec.tail === "curl") this.neonPath([[tx, ty], [tx - 3 * f, ty - 3], [tx - 4 * f, ty - 7]], c, 0, 2.4, 1);
+      else if (spec.tail === "deer") this.rect(tx, ty - 1, 1.6, 3.4, c);
+      else this.rect(tx, ty - 1, 1.5, 3, c);
+    }                                   // front view — tail hidden behind the body
+  }
+  // Draw a quadruped in the given facing (u=away · d=toward · l/r=side) with a moving gait.
+  private drawQuadruped(sx: number, sy: number, spec: QuadSpec, dir: string, act: string, t: number, moving: boolean, run: boolean) {
+    const lay = act === "lay", sit = act === "sit", graze = act === "graze", idle = lay || sit;
+    const mv = moving && !idle, ph = t * (run ? 12 : 7);
+    const bl = spec.bodyLen, bh = spec.bodyH, lw = spec.legW, dkLeg = shade(spec.leg, -0.28);
+    const bob = mv ? Math.abs(Math.sin(ph)) * 0.6 : Math.sin(t * 1.4) * 0.25;
+    const drop = lay ? spec.legLen * 0.9 : sit ? spec.legLen * 0.5 : 0;
+    const bodyY = sy - spec.legLen - bh * 0.5 + bob + drop;   // body floats a leg above the ground
+    const hipY = bodyY + bh * 0.45;                           // hips at the belly
+    const ll = Math.max(2.5, sy - hipY);                      // legs reach down to the ground (feet at ~sy)
+    this.disc(sx, sy + 2, bl * (lay ? 0.95 : 0.7), "#0a071440");
+    if (dir === "u" || dir === "d") {                 // FRONT (toward) / BACK (away)
+      const front = dir === "d";
+      if (!lay) { this.drawLimb(sx - bl * 0.42, hipY, ph + Math.PI, ll, lw, dkLeg, mv, 0.3); this.drawLimb(sx + bl * 0.42, hipY, ph, ll, lw, dkLeg, mv, 0.3); }
+      if (!front && !lay) this.quadTail(spec, sx, bodyY - bh * 0.6, 1, "u");
+      this.fillEll(sx, bodyY, bl * 0.72, bh * 1.08, spec.body);
+      if (spec.belly && front) this.fillEll(sx, bodyY + bh * 0.32, bl * 0.42, bh * 0.66, spec.belly);
+      if (!lay) { this.drawLimb(sx - bl * 0.32, hipY, ph, ll, lw, spec.leg, mv, 0.3); this.drawLimb(sx + bl * 0.32, hipY, ph + Math.PI, ll, lw, spec.leg, mv, 0.3); }
+      const hy = bodyY - bh * (spec.neckLen > 4 ? 1.1 : 0.7) + (lay ? bh * 0.7 : 0);
+      if (spec.neckLen > 4 && !lay) { const b = this.b, s = this.SS; b.strokeStyle = spec.body; b.lineWidth = 3.2 * s; b.lineCap = "round"; b.beginPath(); b.moveTo(sx * s, (bodyY - bh * 0.4) * s); b.lineTo(sx * s, (hy + spec.headR * 0.6) * s); b.stroke(); b.lineCap = "butt"; }
+      this.fillEll(sx, hy, spec.headR * 1.05, spec.headR, spec.body2);
+      this.quadEars(spec, sx, hy, 1, dir);
+      if (front && !lay) { this.disc(sx - spec.headR * 0.42, hy, 0.7, "#1a1208"); this.disc(sx + spec.headR * 0.42, hy, 0.7, "#1a1208"); this.disc(sx, hy + spec.headR * 0.42, 0.9, shade(spec.body, -0.3)); }
+      if (spec.antlers && !lay) { this.neonPath([[sx - 1.5, hy - spec.headR * 0.6], [sx - 3, hy - spec.headR - 2], [sx - 4.5, hy - spec.headR - 5]], spec.antlers, 3, 1.2, 0.5 + 0.4 * this.nightAmt); this.neonPath([[sx + 1.5, hy - spec.headR * 0.6], [sx + 3, hy - spec.headR - 2], [sx + 4.5, hy - spec.headR - 5]], spec.antlers, 3, 1.2, 0.5 + 0.4 * this.nightAmt); this.glow(sx, hy - spec.headR - 3, 5, spec.antlers, 0.2 + 0.3 * this.nightAmt); }
+    } else {                                          // SIDE (l / r)
+      const f = dir === "r" ? 1 : -1, backHipX = sx - bl * 0.5 * f, frontHipX = sx + bl * 0.42 * f;
+      if (!lay) { this.drawLimb(frontHipX - 1.5 * f, hipY, ph + Math.PI, ll, lw, dkLeg, mv); this.drawLimb(backHipX - 1.5 * f, hipY, ph, ll, lw, dkLeg, mv); }
+      if (!lay) this.quadTail(spec, backHipX - 1 * f, bodyY, f, dir);
+      this.fillEll(sx, bodyY, bl, bh, spec.body);
+      if (spec.patch) this.fillEll(sx - bl * 0.45 * f, bodyY, bl * 0.34, bh * 0.6, spec.patch);
+      if (!lay) { this.drawLimb(frontHipX, hipY, ph, ll, lw, spec.leg, mv); this.drawLimb(backHipX, hipY, ph + Math.PI, ll, lw, spec.leg, mv); }
+      const headUp = !graze && !lay, neck = spec.neckLen > 4 ? (headUp ? spec.neckLen : spec.neckLen * 0.45) : 1;
+      const hx = sx + bl * 0.62 * f, hy = bodyY - neck + (lay ? bh * 0.5 : 0);
+      if (spec.neckLen > 4 && !lay) { const b = this.b, s = this.SS; b.strokeStyle = spec.body; b.lineWidth = 3 * s; b.lineCap = "round"; b.beginPath(); b.moveTo((sx + bl * 0.4 * f) * s, bodyY * s); b.lineTo(hx * s, (hy + spec.headR * 0.5) * s); b.stroke(); b.lineCap = "butt"; }
+      this.fillEll(hx, hy, spec.headR, spec.headR * 0.84, spec.body2);
+      this.quadEars(spec, hx, hy, f, dir);
+      this.disc(hx + spec.headR * 0.7 * f, hy + 0.4, 0.9, shade(spec.body, -0.3));   // snout
+      if (lay) this.rect(hx + spec.headR * 0.2 * f, hy - 0.5, 1.5, 0.6, "#1a1208"); else this.disc(hx + spec.headR * 0.35 * f, hy - 0.3, 0.6, "#1a1208");
+      if (spec.antlers && !lay) { this.neonPath([[hx + 1 * f, hy - 2], [hx + 2 * f, hy - 6], [hx + 4 * f, hy - 9]], spec.antlers, 3, 1.2, 0.5 + 0.4 * this.nightAmt); this.neonPath([[hx + 3 * f, hy - 2], [hx + 5 * f, hy - 5], [hx + 6 * f, hy - 8]], spec.antlers, 3, 1.2, 0.5 + 0.4 * this.nightAmt); this.glow(hx + 3 * f, hy - 6, 5, spec.antlers, 0.2 + 0.3 * this.nightAmt); }
+    }
+  }
   // deer + its variants: caribou (aurora, cool grey + icy antlers) and gazelle (savanna, tan + amber horns).
-  private drawDeer(sx: number, sy: number, f: number, walk: boolean, ph: number, mode: string, variant?: string, act = "walk") {
+  private drawDeer(sx: number, sy: number, dir: string, moving: boolean, t: number, mode: string, variant?: string, act = "walk") {
     const cb = variant === "caribou" ? { body: "#7a7284", body2: "#8a84a0", leg: "#4a4658", patch: "#dfeaf6", ant: "#bfe6ff", tail: "#eef6ff" }
       : variant === "gazelle" ? { body: "#c89a5a", body2: "#d8aa66", leg: "#8a6a3a", patch: "", ant: "#ffcf4a", tail: "#f0e0c0" }
       : { body: "#8a6a44", body2: "#9a7a50", leg: "#5a4630", patch: this.curRing.palette.grass, ant: "#b6ff6a", tail: "#e8ddcf" };
-    const lay = act === "lay", sit = act === "sit", run = act === "run", graze = act === "graze";
-    const gp = run ? ph * 1.5 : ph, amp = run ? 3.2 : 2;
-    const bob = walk ? Math.sin(gp) * 0.6 : Math.sin(this.t * 1.4) * 0.3;
-    const drop = lay ? 9 : sit ? 4 : 0;                                                // how far the body sinks
-    this.disc(sx, sy + 2, lay ? 12 : 9, "#0a071440");
-    const ly = sy - 6 + bob, step = (i: number) => walk ? Math.max(0, Math.sin(gp + i * Math.PI)) * amp : 0;
-    if (!lay) {                                                                        // legs (tucked when lying down)
-      const rear = sit ? 3 : 0;
-      this.rect(sx - 9 * f, ly, 2, 7 - step(0) - rear, cb.leg); this.rect(sx - 3 * f, ly, 2, 7 - step(1) - rear, cb.leg);
-      this.rect(sx + 4 * f, ly, 2, 7 - step(1), cb.leg); this.rect(sx + 9 * f, ly, 2, 7 - step(0), cb.leg);
-    }
-    this.fillEll(sx, sy - 15 + bob + drop, 11, lay ? 5 : 6, cb.body);
-    if (cb.patch) this.fillEll(sx - 8 * f, sy - 15 + bob + drop, 4, 3.5, cb.patch);    // moss / snow patch
-    const headUp = !graze && !lay, hx = sx + 12 * f, hy = sy - (lay ? 12 : headUp ? 25 : 19) + bob;
-    if (!lay) this.rect(sx + 7 * f - 1, sy - 22 + bob + drop, 3, 8 - drop, cb.body);   // neck (shorter when sitting)
-    this.fillEll(hx, hy, 5, 4, cb.body2);
-    this.rect(hx - 2 * f, hy - 4, 1.6, 3, cb.body);                                    // ear
-    this.neonPath([[hx + 1 * f, hy - 3], [hx + 2 * f, hy - 7], [hx + 4 * f, hy - 10]], cb.ant, 3, 1.2, 0.5 + 0.4 * this.nightAmt);
-    this.neonPath([[hx + 3 * f, hy - 3], [hx + 5 * f, hy - 6], [hx + 6 * f, hy - 9]], cb.ant, 3, 1.2, 0.5 + 0.4 * this.nightAmt);
-    this.glow(hx + 3 * f, hy - 7, 5, cb.ant, 0.2 + 0.3 * this.nightAmt);
-    if (lay) this.rect(hx, hy - 0.5, 2.4, 0.7, "#1a1208");                             // eye closed (dozing)
-    else this.disc(hx + 2 * f, hy, 0.8, "#1a1208");                                    // eye
-    if (!lay) this.rect(sx - 11 * f, sy - 16 + bob + drop, 1.5, 3, cb.tail);           // tail
+    this.drawQuadruped(sx, sy, { body: cb.body, body2: cb.body2, leg: cb.leg, patch: cb.patch || undefined, bodyLen: 11, bodyH: 6, legLen: 10, legW: 2, neckLen: 9, headR: 5, ear: "up", tail: "deer", tailCol: cb.tail, antlers: cb.ant }, dir, act, t, moving, act === "run");
   }
   // fox + its variants: snow-fox (winter, pale) and fennec (desert, sandy + big ears).
-  private drawFox(sx: number, sy: number, f: number, walk: boolean, ph: number, variant?: string, act = "walk") {
+  private drawFox(sx: number, sy: number, dir: string, moving: boolean, t: number, variant?: string, act = "walk") {
     const snow = variant === "snow", fennec = variant === "fennec";
     const c = snow ? "#dfe6ee" : fennec ? "#e0c088" : "#d87a3a";
     const c2 = snow ? "#f0f4fa" : fennec ? "#f0d8a8" : "#e89a54";
-    const dk = snow ? "#8a94a4" : fennec ? "#b89a5a" : "#9a5024";
     const leg = snow ? "#aab4c2" : fennec ? "#c8a86a" : "#6a3a1c";
-    const white = snow ? "#ffffff" : fennec ? "#fff8e8" : "#f0e0d0";
-    const eh = fennec ? 5 : 3;   // fennec's oversized ears
-    const lay = act === "lay", sit = act === "sit", run = act === "run";
-    const gp = run ? ph * 1.5 : ph, amp = run ? 3 : 2, drop = lay ? 6 : sit ? 3 : 0;
-    const bob = walk ? Math.sin(gp) * 0.5 : 0;
-    this.disc(sx, sy + 2, lay ? 9 : 7, "#0a071440");
-    const ly = sy - 5 + bob, step = (i: number) => walk ? Math.max(0, Math.sin(gp + i * Math.PI)) * amp : 0;
-    if (!lay) { const rear = sit ? 3 : 0;
-      this.rect(sx - 7 * f, ly, 1.8, 6 - step(0) - rear, leg); this.rect(sx - 2 * f, ly, 1.8, 6 - step(1) - rear, leg);
-      this.rect(sx + 3 * f, ly, 1.8, 6 - step(1), leg); this.rect(sx + 7 * f, ly, 1.8, 6 - step(0), leg);
-    }
-    if (lay) this.fillEll(sx - 8 * f, sy - 5 + drop, 6, 3, c);                          // tail curled round when resting
-    else { this.fillEll(sx - 10 * f, sy - 9 + bob, 5, 3.5, c); this.disc(sx - 13 * f, sy - 10 + bob, 2.2, white); }   // bushy tail
-    this.fillEll(sx, sy - 9 + bob + drop, 9, lay ? 4 : 5, c);
-    const hx = sx + 9 * f, hy = sy - (lay ? 8 : 12) + bob + drop;
-    this.rect(hx - 3 * f, hy - 2 - eh, 2, eh, c); this.rect(hx + 1 * f, hy - 2 - eh, 2, eh, c);   // ears (fennec's are tall)
-    this.disc(hx - 2 * f, hy - 2 - eh, 0.9, dk); this.disc(hx + 2 * f, hy - 2 - eh, 0.9, dk);
-    this.fillEll(hx, hy, 5, 4, c2);
-    this.disc(hx + 5 * f, hy + 0.5, 1.4, dk);                                          // snout
-    if (lay) this.rect(hx + 1 * f, hy - 1, 1.6, 0.6, "#1a1208"); else this.disc(hx + 1.5 * f, hy - 1, 0.6, "#1a1208");   // eye (closed dozing)
+    this.drawQuadruped(sx, sy, { body: c, body2: c2, leg, bodyLen: 9, bodyH: 4.6, legLen: 6, legW: 1.9, neckLen: 1, headR: 4, ear: "cat", tail: "bushy", tailCol: c }, dir, act, t, moving, act === "run");
   }
   // A salamander (ember, fiery) or its newt variant (marsh, teal + violet glow-spots).
   private drawSalamander(sx: number, sy: number, f: number, walk: boolean, t: number, variant?: string, act = "walk") {
@@ -2878,59 +2926,16 @@ export class CirqlWorldEngine extends RetroEngine {
     this.glow(sx, sy - 2 + hop, 4, "#ffe27a", 0.14 * pulse + 0.05); this.disc(sx, sy - 2 + hop, 1, "#ffe9a0");   // throat
   }
   // A darting squirrel with a bushy tail — autumn hero fauna.
-  private drawSquirrel(sx: number, sy: number, f: number, walk: boolean, t: number, act = "walk") {
-    const c = "#b5642c", c2 = "#c87a3c", dk = "#7a3e18", belly = "#e8cba0";
-    const lay = act === "lay", run = act === "run";
-    const bob = walk ? Math.sin(t * (run ? 15 : 10)) * (run ? 1.4 : 1) : Math.sin(t * 2) * 0.3, drop = lay ? 4 : 0;
-    this.disc(sx, sy + 1, lay ? 5 : 4, "#0a071438");
-    this.fillEll(sx - 7 * f, sy - (lay ? 4 : 8) + bob, lay ? 5 : 3.4, lay ? 3 : 6, c); this.fillEll(sx - 7 * f, sy - (lay ? 4 : 9) + bob, lay ? 3 : 2.2, lay ? 2 : 4, c2);   // bushy tail (curls over when curled up)
-    this.fillEll(sx, sy - 4 + bob + drop, 4.5, 3.4, c); this.fillEll(sx, sy - 3 + bob + drop, 3, 2, belly);
-    const hx = sx + 4 * f, hy = sy - (lay ? 4 : 7) + bob + drop;
-    this.disc(hx, hy, 2.4, c2); this.rect(hx - 1 * f, hy - 3, 1.4, 2, c);
-    if (lay) this.rect(hx + 1.4 * f, hy, 1.2, 0.5, "#1a1208"); else this.disc(hx + 2 * f, hy, 0.6, "#1a1208");   // eye (closed when curled)
-    if (!lay) { this.rect(sx - 2 * f, sy - 2 + bob, 1.4, 3, dk); this.rect(sx + 2 * f, sy - 2 + bob, 1.4, 3, dk); }   // legs
+  private drawSquirrel(sx: number, sy: number, dir: string, moving: boolean, t: number, act = "walk") {
+    this.drawQuadruped(sx, sy, { body: "#b5642c", body2: "#c87a3c", leg: "#7a3e18", belly: "#e8cba0", bodyLen: 5, bodyH: 3.4, legLen: 4.4, legW: 1.4, neckLen: 1, headR: 2.8, ear: "tuft", tail: "bushy", tailCol: "#b5642c" }, dir, act, t, moving, act === "run");
   }
-  // A house-cat pet — grey tabby with a curling tail. Sits / lays / runs.
-  private drawCat(sx: number, sy: number, f: number, walk: boolean, t: number, act = "walk") {
-    const c = "#8a8f98", c2 = "#a6abb4", dk = "#5a5f68", pink = "#e8a0a8";
-    const lay = act === "lay", sit = act === "sit", run = act === "run";
-    const gp = run ? t * 14 : t * 9, amp = run ? 3 : 2, drop = lay ? 5 : sit ? 3 : 0;
-    const bob = walk ? Math.sin(gp) * 0.5 : Math.sin(t * 1.6) * 0.2;
-    this.disc(sx, sy + 2, lay ? 8 : 6, "#0a071440");
-    const ly = sy - 5 + bob, step = (i: number) => walk ? Math.max(0, Math.sin(gp + i * Math.PI)) * amp : 0;
-    if (!lay) { const rear = sit ? 3 : 0;
-      this.rect(sx - 5 * f, ly, 1.6, 6 - step(0) - rear, dk); this.rect(sx - 1 * f, ly, 1.6, 6 - step(1) - rear, dk);
-      this.rect(sx + 3 * f, ly, 1.6, 6 - step(1), dk); this.rect(sx + 6 * f, ly, 1.6, 6 - step(0), dk);
-    }
-    const tsw = run ? Math.sin(t * 10) * 4 : Math.sin(t * 2) * 2;
-    this.neonPath([[sx - 6 * f, sy - 7 + bob + drop], [sx - 10 * f, sy - 9 + bob - tsw], [sx - 11 * f, sy - 13 + bob - tsw]], c, 0, 2.2, 1);   // tail
-    this.fillEll(sx, sy - 8 + bob + drop, 7, lay ? 3.5 : 4.5, c);
-    const hx = sx + 6 * f, hy = sy - (lay ? 7 : 11) + bob + drop;
-    this.triY(hx - 2 * f, hy - 6, 1.8, 3, c); this.triY(hx + 2 * f, hy - 6, 1.8, 3, c);   // ears
-    this.fillEll(hx, hy, 3.6, 3.2, c2);
-    this.disc(hx + 3 * f, hy + 0.5, 0.9, pink);   // nose
-    if (lay) this.rect(hx, hy - 0.5, 1.4, 0.5, "#1a1208"); else { this.disc(hx + 1 * f, hy - 0.5, 0.5, "#1a1208"); this.disc(hx + 3 * f, hy - 0.5, 0.5, "#1a1208"); }
+  // A house-cat pet — grey tabby with a curling tail.
+  private drawCat(sx: number, sy: number, dir: string, moving: boolean, t: number, act = "walk") {
+    this.drawQuadruped(sx, sy, { body: "#8a8f98", body2: "#a6abb4", leg: "#5a5f68", belly: "#c2c6cc", bodyLen: 7, bodyH: 4.2, legLen: 6, legW: 1.6, neckLen: 1, headR: 3.4, ear: "cat", tail: "curl", tailCol: "#8a8f98" }, dir, act, t, moving, act === "run");
   }
-  // A friendly dog pet — floppy-eared, tan, with a wagging tail. Sits / lays / runs.
-  private drawDog(sx: number, sy: number, f: number, walk: boolean, t: number, act = "walk") {
-    const c = "#b98a54", c2 = "#ca9a64", dk = "#8a5f34", nose = "#2a2018";
-    const lay = act === "lay", sit = act === "sit", run = act === "run";
-    const gp = run ? t * 13 : t * 9, amp = run ? 3 : 2, drop = lay ? 5 : sit ? 3 : 0;
-    const bob = walk ? Math.sin(gp) * 0.5 : Math.sin(t * 1.5) * 0.2;
-    this.disc(sx, sy + 2, lay ? 8 : 6, "#0a071440");
-    const ly = sy - 5 + bob, step = (i: number) => walk ? Math.max(0, Math.sin(gp + i * Math.PI)) * amp : 0;
-    if (!lay) { const rear = sit ? 3 : 0;
-      this.rect(sx - 5 * f, ly, 1.8, 6 - step(0) - rear, dk); this.rect(sx - 1 * f, ly, 1.8, 6 - step(1) - rear, dk);
-      this.rect(sx + 3 * f, ly, 1.8, 6 - step(1), dk); this.rect(sx + 6 * f, ly, 1.8, 6 - step(0), dk);
-    }
-    const wag = Math.sin(t * (run ? 12 : 6)) * 3;
-    this.fillEll(sx - 7 * f, sy - 10 + bob + drop - wag * 0.4, 2.4, 3.4, c);   // wagging tail
-    this.fillEll(sx, sy - 8 + bob + drop, 7.5, lay ? 3.6 : 4.6, c);
-    const hx = sx + 7 * f, hy = sy - (lay ? 7 : 11) + bob + drop;
-    this.fillEll(hx, hy, 4, 3.4, c2);
-    this.fillEll(hx - 3 * f, hy - 1, 2, 3.4, dk);   // floppy ear
-    this.disc(hx + 4 * f, hy + 0.6, 1.4, c2); this.disc(hx + 5 * f, hy + 1, 0.9, nose);   // snout + nose
-    if (lay) this.rect(hx + 1 * f, hy - 0.5, 1.4, 0.5, "#1a1208"); else this.disc(hx + 2 * f, hy - 0.5, 0.6, "#1a1208");   // eye
+  // A friendly dog pet — floppy-eared, tan, with a wagging tail.
+  private drawDog(sx: number, sy: number, dir: string, moving: boolean, t: number, act = "walk") {
+    this.drawQuadruped(sx, sy, { body: "#b98a54", body2: "#ca9a64", leg: "#8a5f34", belly: "#e0c8a0", bodyLen: 7.5, bodyH: 4.4, legLen: 6, legW: 1.9, neckLen: 1, headR: 3.6, ear: "flop", tail: "bushy", tailCol: "#b98a54" }, dir, act, t, moving, act === "run");
   }
   // A hovering crystal-moth — canyon hero fauna (floats above the ground, wings flapping).
   private drawMoth(sx: number, sy: number, t: number) {
