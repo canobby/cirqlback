@@ -1222,6 +1222,8 @@ export class CirqlWorldEngine extends RetroEngine {
         case "npc": draws.push({ y: p.y, f: () => this.drawNpc(sxp, syp, p) }); break;
         case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big, this.canopyStyle(p.x, p.y), this.seedOf(p.x, p.y)) }); break;
         case "bush": draws.push({ y: p.y, f: () => this.drawBush(sxp, syp) }); break;
+        case "fern": draws.push({ y: p.y, f: () => this.drawFern(sxp, syp) }); break;
+        case "fairyring": draws.push({ y: p.y, f: () => this.drawFairyRing(sxp, syp) }); break;
         case "crystal": draws.push({ y: p.y, f: () => this.drawCrystal(sxp, syp, p.big, p.accent || pal.accent) }); break;
         case "rock": draws.push({ y: p.y, f: () => this.drawRock(sxp, syp, p.big) }); break;
         case "flower": draws.push({ y: p.y, f: () => this.drawFlower(sxp, syp, p.accent || "#ff8fbf") }); break;
@@ -2123,6 +2125,41 @@ export class CirqlWorldEngine extends RetroEngine {
       this.glow(bx + sw, cy + 4 * k, 5 * k, cyan, 0.28 + 0.4 * this.nightAmt); this.disc(bx + sw, cy + 4 * k, 1.2 * k, "#e8ffff");
     }
   }
+  // A cluster of fronds — a couple glow lime (woodland understory). Soft; walk through.
+  private drawFern(cx: number, cy: number) {
+    const g = this.curRing.palette.grass;
+    for (let i = 0; i < 5; i++) {
+      const a = -0.6 + i * 0.3, sw = this.reduce ? 0 : Math.sin(this.t * 1.6 + i + cx * 0.05) * 0.06;
+      const ctrl: [number, number] = [cx + Math.cos(a + 1.5 + sw) * 6, cy - 9], tip: [number, number] = [cx + Math.cos(a + 1.5) * 12, cy - 18];
+      if (i % 2) this.neonPath([[cx, cy], ctrl, tip], "#b6ff6a", 3, 1.1, 0.4 + 0.4 * this.nightAmt);
+      else this.neonPath([[cx, cy], ctrl, tip], shade(g, 0.12), 0, 1.6, 1);
+    }
+  }
+  // A ring of glowing toadstools with a soft ground glow (woodland). Soft; walk through.
+  private drawFairyRing(cx: number, cy: number) {
+    this.glow(cx, cy, 22, "#b6ff6a", 0.05 + 0.14 * this.nightAmt);
+    for (let i = 0; i < 7; i++) {
+      const a = i / 7 * TAU, rx = cx + Math.cos(a) * 18, ry = cy + Math.sin(a) * 10;
+      this.disc(rx, ry + 2, 2.5, "#0a071430");
+      this.rect(rx - 1, ry - 6, 2, 6, "#e8dcc0");                   // stalk
+      this.fillEll(rx, ry - 7, 5, 3, "#ff7aa8");                    // cap
+      this.neonEllipse(rx, ry - 5, 5, 1.6, "#ff7aa8", 3, 1, 0.5 + 0.4 * this.nightAmt, 0, Math.PI);   // glowing gill
+    }
+  }
+  // A fanciful moss-deer — mossy back, glowing antlers. Grazes near the groves (woodland fauna).
+  private drawMossDeer(cx: number, cy: number, t: number) {
+    const bob = this.reduce ? 0 : Math.sin(t * 1.2) * 1, body = "#8a6a44", body2 = "#9a7a50", leg = "#5a4630";
+    this.disc(cx, cy + 2, 8, "#0a071440");
+    this.rect(cx - 11, cy - 16 + bob, 22, 10, body);               // body
+    this.rect(cx + 8, cy - 22 + bob, 7, 9, body);                  // neck
+    this.fillEll(cx + 13, cy - 24 + bob, 6, 5, body2);             // head
+    this.rect(cx - 9, cy - 6 + bob, 2, 7, leg); this.rect(cx - 2, cy - 6 + bob, 2, 7, leg); this.rect(cx + 6, cy - 6 + bob, 2, 7, leg); this.rect(cx + 11, cy - 6 + bob, 2, 7, leg);
+    this.fillEll(cx - 7, cy - 17 + bob, 7, 4, this.curRing.palette.grass);   // moss on the back
+    this.neonPath([[cx + 14, cy - 27 + bob], [cx + 13, cy - 31 + bob], [cx + 12, cy - 34 + bob]], "#b6ff6a", 3, 1.2, 0.5 + 0.4 * this.nightAmt);
+    this.neonPath([[cx + 16, cy - 27 + bob], [cx + 18, cy - 31 + bob], [cx + 19, cy - 33 + bob]], "#b6ff6a", 3, 1.2, 0.5 + 0.4 * this.nightAmt);
+    this.glow(cx + 16, cy - 31 + bob, 5, "#b6ff6a", 0.2 + 0.3 * this.nightAmt);
+    this.disc(cx + 15, cy - 24 + bob, 0.9, "#1a1208");             // eye
+  }
   private drawCrystal(cx: number, cy: number, big: boolean | undefined, c: string) {
     const s = big ? 1.35 : 1;
     this.disc(cx, cy + 2, 5 * s, "#0a071440");
@@ -2262,11 +2299,17 @@ export class CirqlWorldEngine extends RetroEngine {
     // mid-dialog), the nearest critter warms to you → a little heart
     const still = this.walk <= 0 && !this.dozing && !this.dialog;
     let petX = 0, petY = 0, petD = 1e9;
+    // ecological clumping: creatures (not weather particles) gather near their flora
+    const creature = kind === "butterfly" || kind === "bee" || kind === "dragonfly" || kind === "firefly" || kind === "grasshopper";
+    const anchors: { x: number; y: number }[] = [];
+    if (creature) { const fl = this.curRing.props.filter((p) => p.t === "tree" || p.t === "fern" || p.t === "flower" || p.t === "fairyring"); const st = Math.max(1, Math.floor(fl.length / 6)); for (let k = 0; k < fl.length && anchors.length < 6; k += st) anchors.push(fl[k]); }
     for (let i = 0; i < N; i++) {
       // a deterministic world anchor spread across the island (stays with the ground)
       const h = this.ringIdx * 131 + i * 977 + 17;
       const ang = (h % 6283) / 1000, rad = R * (0.1 + ((h >> 3) % 82) / 100);
-      let fx = Math.cos(ang) * rad, fy = Math.sin(ang) * rad;   // final world position
+      let fx: number, fy: number;                                 // final world position
+      if (anchors.length) { const an = anchors[i % anchors.length]; fx = an.x + Math.cos(ang) * 34; fy = an.y + Math.sin(ang) * 22; }   // orbit a flora clump
+      else { fx = Math.cos(ang) * rad; fy = Math.sin(ang) * rad; }
       let render: ((sx: number, sy: number) => void) | null = null;
       if (kind === "butterfly") {
         fx += Math.sin(t * 0.7 + i) * 24 + Math.sin(t * 1.9 + i * 2) * 8;
@@ -2315,6 +2358,22 @@ export class CirqlWorldEngine extends RetroEngine {
     }
     // the nearby critter shows a little heart — it's being petted
     if (still && petD < 26) { const hy = petY - 7 - Math.abs(Math.sin(this.t * 3)) * 2; this.q(petX, hy, "♥", "#ff6b8f", 0.85, "c", false, 0.9); }
+    // WOODLAND signature ambience: drifting spore-motes (day AND night) + grazing moss-deer
+    if (this.curRing.biome === "woodland") {
+      for (let i = 0; i < 16; i++) {
+        const h2 = this.ringIdx * 57 + i * 131 + 9, ax = ((h2 % 2000) / 1000 - 1) * R * 0.85, span = R * 1.3;
+        const ay = R * 0.6 - ((t * 8 + (h2 % 1000) * 0.13) % span), sx = ax + Math.sin(t * 0.6 + i) * 8 - camX, sy = ay - camY;
+        if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 20) continue;
+        const a = (0.1 + 0.22 * this.nightAmt) * (0.45 + 0.55 * Math.sin(t * 1.3 + i));
+        this.glow(sx, sy, 3.5, "#a8ffe0", a); this.disc(sx, sy, 0.7, "#e8fff6");
+      }
+      const fl = this.curRing.props.filter((p) => p.t === "tree" || p.t === "fairyring");
+      for (let d = 0; d < 2 && fl.length; d++) {
+        const an = fl[(d * 7 + 3) % fl.length], wx = an.x + Math.sin(t * 0.25 + d * 2) * 40, wy = an.y + 34 + Math.cos(t * 0.2 + d) * 22;
+        const sx = wx - camX, sy = wy - camY;
+        if (sx > -30 && sx < W + 30 && sy > -30 && sy < H + 30) this.drawMossDeer(sx, sy, t + d);
+      }
+    }
   }
   private drawButterfly(x: number, y: number, ph: number, color: string) {
     x = Math.round(x); y = Math.round(y);

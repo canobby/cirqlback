@@ -200,6 +200,15 @@ export function generateRing(index: number): Ring {
   { const bn = scaled(biome.tree ? 4 : 2); for (let i = 0; i < bn; i++) props.push({ t: "bush", x: hub.x + (rng() - 0.5) * 100, y: hub.y + 36 + (rng() - 0.5) * 46 }); }
   // WISPS strung down the spine — a gather-quest walks you the whole trail (Phase K3)
   for (let i = 0; i < Math.max(6, scaled(7)); i++) { const p = spine[Math.floor(rng() * (spine.length - 1))]; props.push({ t: "wisp", x: p.x + (rng() - 0.5) * corr * 1.3, y: p.y + (rng() - 0.5) * 46, accent: biome.palette.mote }); }
+  // woodland SIGNATURE understory: fern patches (clustered) + a fairy-ring or two
+  if (biome.key === "woodland") {
+    for (let f = 0; f < 2 + Math.floor(rng() * 2); f++) {
+      const p = spine[1 + Math.floor(rng() * (spine.length - 2))], sd = rng() > 0.5 ? 1 : -1, fx = p.x + sd * corr * 0.6, fy = p.y + (rng() - 0.5) * 30;
+      for (let k = 0; k < 3 + Math.floor(rng() * 3); k++) props.push({ t: "fern", x: fx + (rng() - 0.5) * 30, y: fy + (rng() - 0.5) * 24 });
+    }
+    { const p = spine[Math.round((spine.length - 1) * 0.5)], sd = rng() > 0.5 ? 1 : -1; props.push({ t: "fairyring", x: p.x + sd * corr * 1.9, y: p.y + (rng() - 0.5) * 30 }); }
+    if (rng() > 0.5) { const p = spine[Math.round((spine.length - 1) * 0.82)], sd = rng() > 0.5 ? 1 : -1; props.push({ t: "fairyring", x: p.x + sd * corr * 1.6, y: p.y }); }
+  }
   // a PORTAL to a sub-map on many rings (an interactive voyage down/up — CHR-265).
   // Winter is the exception: instead of a calm "cloud stair" it gets a STORM you brave —
   // a tornado sweeps you up into the icy Cloud Reach (the dramatic weather entry, F).

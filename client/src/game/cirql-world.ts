@@ -13,6 +13,8 @@ export type PropType =
   | "wonders"   // the in-world arcade building (doorway → the 50 Wonders)
   | "npc"       // a quest-giver / townsperson
   | "tree"
+  | "fern"      // a cluster of fronds — a couple glow (woodland understory; soft — walk through)
+  | "fairyring" // a ring of glowing toadstools with a soft ground glow (woodland; soft)
   | "bush"      // a leafy bush (solid) — scatter + maze/labyrinth walls (CHR-259)
   | "lantern"   // a plain path lantern
   | "crystal"
