@@ -80,21 +80,19 @@ class TileLabEngine extends RetroEngine {
     //    channel straight through it (the bridge carries the road over the water).
     map.paintLine(9, ROAD_Y, 58, ROAD_Y - 1, "path", 3);
 
-    // 3) the wellspring: a round source pool (its stone plaza is drawn procedurally, round)
-    map.paintCircle(WELL.x, WELL.y + 1, 1.6, "water");      // the round source pool
+    // 3) the wellspring's basin is the fountain sprite's own bowl; the river runs from its base.
 
-    // 4) the river of light — a gently MEANDERING channel of varied width, pool → south rim
+    // 4) the river of light — a MEANDERING channel (source under the fountain), widening
+    //    into a delta at the sea mouth. Tile water is just for collision; the LOOK is procedural.
     this.riverCol = new Array(MH).fill(-1);
-    for (let ty = WELL.y + 2; ty <= 47; ty++) {
-      const cx = RIVER_X + Math.sin((ty - WELL.y) * 0.26) * 2.4;      // soft S-curve
-      const w = 3 + (Math.sin(ty * 0.55) > 0.45 ? 1 : 0);            // occasional widening
-      const half = Math.ceil((w - 1) / 2);
+    for (let ty = WELL.y + 1; ty <= 47; ty++) {
+      const cx = this.riverCenterAt(ty), half = Math.round(this.riverHalfAt(ty));
       for (let dx = -half; dx <= half; dx++) map.set(Math.round(cx) + dx, ty, "water");
       this.riverCol[ty] = cx;
     }
 
-    // 5) the bridge, where the straight lane crosses the meandering river
-    this.placeBridge(map, ROAD_Y, Math.round(this.riverCol[ROAD_Y]));
+    // 5) the bridge, spanning the river where the straight lane crosses it
+    this.placeBridge(map, ROAD_Y, Math.round(this.riverCenterAt(ROAD_Y)), Math.ceil(this.riverHalfAt(ROAD_Y)) + 2);
 
     // 6) buildings — spread out, each near where it "wants to be"
     const H = (sheet: string, w: number, h: number, tx: number, ty: number, sc = 1, sr?: number) =>
@@ -107,8 +105,8 @@ class TileLabEngine extends RetroEngine {
     H("house4", 112, 96, 47, 28, 1);
     H("fisherman", 96, 112, 14, 27, 1);                 // above the west cove (on land)
 
-    // 7) wellspring centrepiece — a fountain rising from its pool (logo spins above)
-    map.addProp({ sheet: "fountain", fw: 32, fh: 80, col: 0, row: 0, x: WELL.x * T + T / 2, y: (WELL.y + 1) * T, solidR: 9 });
+    // 7) wellspring centrepiece drawn specially (only the LOWER tiered fountain); block its base
+    for (const [dx, dy] of [[0, 0], [-1, 0], [1, 0], [0, -1]] as [number, number][]) map.setSolid(WELL.x + dx, WELL.y + dy, true);
 
     // 8) trees — inland singles + a light grove framing the shore
     const oak = (tx: number, ty: number, col = 1) =>
@@ -138,8 +136,8 @@ class TileLabEngine extends RetroEngine {
   }
 
   /** Horizontal wood bridge where the lane crosses the river (and make it walkable). */
-  private placeBridge(map: TileMap, roadY: number, centerX: number) {
-    const x0 = centerX - 2, x1 = centerX + 2;   // spans the river + a tile each side
+  private placeBridge(map: TileMap, roadY: number, centerX: number, halfSpan: number) {
+    const x0 = centerX - halfSpan, x1 = centerX + halfSpan;   // spans the whole river + a margin
     for (let tx = x0; tx <= x1; tx++) {
       const col = tx === x0 ? 3 : tx === x1 ? 5 : 4;   // left cap / deck / right cap
       map.setOverlay(tx, roadY - 1, "bridge_wood", col, 1);
@@ -158,16 +156,15 @@ class TileLabEngine extends RetroEngine {
     return Math.min(oval, cove);
   }
 
+  /** River centre-x at row ty — phased so the SOURCE lines up under the fountain. */
+  private riverCenterAt(ty: number): number { return RIVER_X + Math.sin((ty - WELL.y - 1) * 0.26) * 2.4; }
+  /** River half-width at row ty — varied, and fanning out into a delta near the sea mouth. */
+  private riverHalfAt(ty: number): number { return 1.4 + 0.3 * Math.sin(ty * 0.55) + smoothstep(42, 47, ty) * 1.7; }
+
   /** Continuous river "insideness": >0 inside the meandering channel + well pool. */
   private riverField(tx: number, ty: number): number {
-    let f = -99;
-    if (ty >= WELL.y + 1.5 && ty <= 47.6) {
-      const rc = RIVER_X + Math.sin((ty - WELL.y) * 0.26) * 2.4;   // same meander as the tiles
-      const hw = 1.5 + 0.35 * Math.sin(ty * 0.55);                 // varied half-width
-      f = hw - Math.abs(tx - rc);
-    }
-    const pool = 1.7 - Math.hypot(tx - WELL.x, ty - (WELL.y + 1)); // the round wellspring pool
-    return Math.max(f, pool);
+    if (ty >= WELL.y + 0.5 && ty <= 47.8) return this.riverHalfAt(ty) - Math.abs(tx - this.riverCenterAt(ty));
+    return -99;
   }
 
   /** Smooth low-frequency meadow noise in [-1,1] — soft grass patches, no tile grid. */
@@ -190,37 +187,33 @@ class TileLabEngine extends RetroEngine {
     const FOAM = [212, 234, 240], SHAL = [118, 200, 228], DEEP = [26, 86, 132];
     const GDARK = [44, 94, 46], GLITE = [150, 202, 98];
     const RWATER = [58, 150, 198], RFOAM = [196, 230, 238];   // the river of light + its foam banks
-    const COBBLE = [150, 154, 160], COBBLED = [112, 116, 124]; // the round stone wellspring plaza
     for (let py = 0; py < ch; py++) for (let px = 0; px < cw; px++) {
       const tx = (px + 0.5) / (T * SS), ty = (py + 0.5) / (T * SS), g = this.landField(tx, ty);
       const n = hash2(px, py);
       let col: number[], a = 255;
-      const rf = g > 0.2 ? this.riverField(tx, ty) : -99;   // river only crosses the land
-      if (rf > 0.35) {                                       // river water — smooth, faint shimmer
+      const rf = g > 0.15 ? this.riverField(tx, ty) : -99;  // river only crosses the land
+      if (rf > 0.35) {                                       // river water — blends into the ocean near the mouth
         const wob = Math.sin(ty * 1.8 + tx * 0.5) * 6 + (n - 0.5) * 10;
-        col = [RWATER[0] + wob, RWATER[1] + wob, RWATER[2] + wob];
+        const base = [RWATER[0] + wob, RWATER[1] + wob, RWATER[2] + wob];
+        col = mix3(base, SHAL, smoothstep(1.8, 0.15, g) * 0.85);
       } else if (rf > -0.4) {                                // smooth river bank fading into the land
         col = mix3(RWATER, RFOAM, smoothstep(0.35, -0.05, rf));
         a = Math.round(255 * smoothstep(-0.4, 0.1, rf));
-      } else if (g > 1.8) {
-        const plazaF = 2.9 - Math.hypot(tx - WELL.x, ty - WELL.y);   // round stone plaza around the fountain
-        if (plazaF > -0.5) {
-          const grain = (n - 0.5) * 24, cob = mix3(COBBLED, COBBLE, 0.5 + 0.4 * Math.sin(tx * 2.7 + ty * 2.3));
-          col = [cob[0] + grain, cob[1] + grain, cob[2] + grain]; a = Math.round(255 * smoothstep(-0.5, 0.4, plazaF));
-        } else { const v = this.meadow(tx, ty); col = v < 0 ? GDARK : GLITE; a = Math.round(Math.abs(v) * 46); }
+      } else {
+        // land + coast, with a NOISY, mottled grass↔sand edge (not a manicured line)
+        const noise = this.meadow(tx * 1.5 + 9, ty * 1.5) * 0.85 + (hash2(px >> 2, py >> 2) - 0.5) * 0.9;
+        if (g + noise > 1.7 && g > 0.28) {                  // grass meadow (irregular inner edge)
+          const v = this.meadow(tx, ty); col = v < 0 ? GDARK : GLITE; a = Math.round(Math.abs(v) * 46);
+        } else if (g > 0.1) {                               // sand — grainy + grass-tuft mottling toward the grass
+          const grain = (n - 0.5) * 46 + (hash2(px >> 1, py >> 1) - 0.5) * 22, base = mix3(SANDD, SAND, smoothstep(0.1, 1.1, g));
+          const sand = [base[0] + grain, base[1] + grain, base[2] + grain * 0.8];
+          const gm = smoothstep(0.6, 2.1, g + noise) * (0.35 + hash2(px >> 2, py >> 2) * 0.6);
+          col = mix3(sand, GLITE, gm * 0.55);
+        } else if (g > -0.12) { col = FOAM; }               // foam waterline
+        else if (g > -0.9) { col = mix3(FOAM, SHAL, smoothstep(-0.18, -0.9, g)); const r = (n - 0.5) * 16; col = [col[0] + r, col[1] + r, col[2] + r * 0.7]; }
+        else if (g > -3.2) { col = mix3(SHAL, DEEP, smoothstep(-0.9, -3.2, g)); const wave = Math.sin(g * 2.6 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8; col = [col[0] + wave, col[1] + wave, col[2] + wave]; }
+        else { col = DEEP; }
       }
-      else if (g > 0.12) {                                  // dry→wet sand, grainy
-        const grain = (n - 0.5) * 46 + (hash2(px >> 1, py >> 1) - 0.5) * 22, base = mix3(SANDD, SAND, smoothstep(0.12, 1.1, g));
-        col = [base[0] + grain, base[1] + grain, base[2] + grain * 0.8];
-      } else if (g > -0.12) { col = FOAM; }                 // foam at the waterline
-      else if (g > -0.9) {                                   // shallows w/ ripple sparkle
-        col = mix3(FOAM, SHAL, smoothstep(-0.18, -0.9, g)); const r = (n - 0.5) * 16;
-        col = [col[0] + r, col[1] + r, col[2] + r * 0.7];
-      } else if (g > -3.2) {                                 // shallow → deep w/ wave banding
-        col = mix3(SHAL, DEEP, smoothstep(-0.9, -3.2, g));
-        const wave = Math.sin(g * 2.6 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8;
-        col = [col[0] + wave, col[1] + wave, col[2] + wave];
-      } else { col = DEEP; }
       const i = (py * cw + px) * 4;
       d[i] = clamp255(col[0]); d[i + 1] = clamp255(col[1]); d[i + 2] = clamp255(col[2]); d[i + 3] = a;
     }
@@ -247,17 +240,18 @@ class TileLabEngine extends RetroEngine {
     b.imageSmoothingEnabled = false;
   }
 
-  /** Foam waves lapping the shoreline — animated each frame (drawn under props). */
+  /** Foam waves lapping the shoreline — animated + a whole-island pulse (drawn under props). */
   private drawShoreFoam(c: CanvasRenderingContext2D, cam: Camera) {
+    const breath = 0.7 + 0.5 * Math.sin(this.tsec * 1.6);   // island-wide pulse
     for (let i = 0; i < this.shore.length; i++) {
       const p = this.shore[i];
       const [sx, sy] = this.ren.w2s(cam, p.x, p.y);
       if (sx < -8 || sy < -8 || sx > cam.vw + 8 || sy > cam.vh + 8) continue;
       const ph = 0.5 + 0.5 * Math.sin(this.tsec * 2.2 + i * 0.6);
-      c.globalAlpha = 0.12 + 0.3 * ph;
+      c.globalAlpha = (0.2 + 0.5 * ph) * breath;
       c.fillStyle = "#dff4fa";
-      const s = Math.max(1, cam.scale * 1.0);
-      c.fillRect(sx - s, sy - s, s * 2, s * 2);
+      const s = Math.max(1, cam.scale * 1.3);
+      c.fillRect(sx - s, sy - s, s * 2.2, s * 2.2);
     }
     c.globalAlpha = 1;
   }
@@ -375,7 +369,17 @@ class TileLabEngine extends RetroEngine {
     this.ren.drawOverlay(b, this.map, this.cam);
     const [psx, psy] = this.ren.w2s(this.cam, this.player.x, this.player.y);
     const playerItem: Drawable = { y: this.player.y, render: (c) => this.player.draw(c, this.atlas.get("player"), psx, psy, this.cam.scale) };
-    this.ren.drawEntities(b, this.map, this.cam, [playerItem]);
+    // the LOWER tiered fountain only (src rows 2-4 of the 32×80 sheet = y32,h48), feet-anchored
+    const ffeet = (WELL.y + 1) * T;
+    const fountainItem: Drawable = {
+      y: ffeet,
+      render: (c) => {
+        const sh = this.atlas.get("fountain"), sc = this.cam.scale, dw = 32 * sc, dh = 48 * sc;
+        const [fsx, fsy] = this.ren.w2s(this.cam, WELL.x * T + T / 2, ffeet);
+        sh.draw(c, 0, 32, 32, 48, Math.round(fsx - dw / 2), Math.round(fsy - dh), Math.ceil(dw), Math.ceil(dh));
+      },
+    };
+    this.ren.drawEntities(b, this.map, this.cam, [playerItem, fountainItem]);
     this.drawLogo(b);               // the spinning CIRQLBACK emblem over the wellspring
     this.drawLight(b, this.cam);
   }
@@ -398,7 +402,7 @@ class TileLabEngine extends RetroEngine {
   private drawLogo(b: CanvasRenderingContext2D) {
     if (!this.logo) return;
     const bob = this.reduce ? 0 : Math.sin(this.tsec * 1.4) * 2;
-    const topY = (WELL.y + 1) * T - 84 + bob;   // hovering just above the fountain
+    const topY = (WELL.y + 1) * T - 52 + bob;   // hovering just above the lower fountain
     const [lx, ly] = this.ren.w2s(this.cam, WELL.x * T + T / 2, topY);
     const sz = 22 * this.cam.scale;
     b.save();
