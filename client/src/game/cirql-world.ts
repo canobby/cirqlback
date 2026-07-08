@@ -44,7 +44,8 @@ export type PropType =
   | "bounty"    // a bounty board — a rotating "pick your next task" hub (Phase K7 "chosen" delivery)
   | "petshop"   // the Pet Stall — buy a companion for your CIRQLSPACE (Pets P1)
   | "stylist"   // the Style Studio — restyle your CIRQLSPACE's biome/colour palette (home customization)
-  | "barber";   // the Barber — restyle your hair/look (opens the character editor on hair) (Town business)
+  | "barber"    // the Barber — restyle your hair/look (opens the character editor on hair) (Town business)
+  | "ride";     // an ATTRACTION you actually ride — a scripted cutscene (ferris wheel first); one per ring
 
 export type LandmarkKind = "greattree" | "stonecircle" | "lighthouse" | "crystal" | "waterfall" | "ruin";
 export type CurioKind = "relic" | "blight" | "star" | "cache";
@@ -65,6 +66,7 @@ export interface Prop {
   shopId?: string;      // shop storefront/keeper this prop belongs to (Milestone F)
   end?: "a" | "b";      // which mouth of a two-ended tunnel this is (Milestone F)
   curio?: CurioKind;    // curio: which discoverable kind to draw (relic / blight / star / cache) — Phase K7
+  rideKind?: string;    // ride: which attraction cutscene to play ("ferris", …)
 }
 
 export interface RingPalette {
@@ -186,6 +188,8 @@ const TOWN: Ring = {
     { t: "barber", x: 210, y: 300, id: "barber", label: "The Snip & Sparq", accent: "#ff7ea8" },
     // an early DISCOVERY: a tide-buried cache on the north shore → "What the Tide Kept" (rings 0-1 rework)
     { t: "curio", x: -300, y: -300, id: "curio-town", curio: "cache", label: "Tide-worn Cache", accent: "#ffd24a" },
+    // an ATTRACTION you actually ride — the Town's ferris wheel (the reusable ride pattern)
+    { t: "ride", x: 0, y: 300, id: "ferris", rideKind: "ferris", label: "The Wheel", accent: "#7fd8ff", r: 34 },
   ],
   puzzleTarget: ["rn0", "rn2", "rn3"],
   ambient: "butterfly",

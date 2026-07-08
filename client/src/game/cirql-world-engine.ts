@@ -528,10 +528,10 @@ export class CirqlWorldEngine extends RetroEngine {
   /** The on-screen action button + the quest system call this to interact. */
   interact() { if (this.diorama) { this.closeDiorama(); return; } if (this.tornado) { this.endTornado(); return; } if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
   /** A little fake-Z hop (CHR-263) — raise the sprite; the shadow stays grounded. */
-  jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.standUp(); if (this.jumpZ <= 0.01 && this.jumpVel <= 0) { this.jumpVel = 66; this.sfx("hop"); this.fireAction("hop"); } }
+  jump() { if (this.cs || this.voyage || this.ride || this.dialog || this.mapOpen) return; this.standUp(); if (this.jumpZ <= 0.01 && this.jumpVel <= 0) { this.jumpVel = 66; this.sfx("hop"); this.fireAction("hop"); } }
   /** Free-sit (Phase H1) — plop down where you stand; any movement stands you back up. */
   onSeatChange?: (seated: boolean) => void;
-  toggleSit() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.seated = !this.seated; this.poseDirty = true; this.dozing = false; this.idleT = 0; if (this.seated) { this.vx = 0; this.vy = 0; this.moveTarget = null; this.fireAction("sit"); } this.onSeatChange?.(this.seated); }
+  toggleSit() { if (this.cs || this.voyage || this.ride || this.dialog || this.mapOpen) return; this.seated = !this.seated; this.poseDirty = true; this.dozing = false; this.idleT = 0; if (this.seated) { this.vx = 0; this.vy = 0; this.moveTarget = null; this.fireAction("sit"); } this.onSeatChange?.(this.seated); }
   private standUp() { this.dozing = false; this.idleT = 0; if (this.seated) { this.seated = false; this.poseDirty = true; this.onSeatChange?.(false); } }
   isSeated() { return this.seated; }
   /** How many distinct quests you've completed at least once (feeds the K5 journeys). */
@@ -850,6 +850,71 @@ export class CirqlWorldEngine extends RetroEngine {
     this.toast(parts > 1 ? `🎉 Festival! ${parts} travellers, spirits soaring — +${sparks} sparqs to all.` : `🎉 Festival! The town's spirits soar — +${sparks} sparqs.`);
   }
   private endFestival(reason: string) { if (!this.festival) return; this.festival = null; this.toast(reason); }
+  // ---- Attraction rides (a ride you actually ride) — a self-contained scenic cutscene ----
+  private ride: { kind: string; t: number; dur: number; accent: string; ringName: string } | null = null;
+  onRideDone?: (kind: string) => void;   // host: small sparq reward + persist
+  rideActive() { return !!this.ride; }
+  private startRide(p: Prop) {
+    if (this.ride) return;
+    this.sfx("enter");
+    this.ride = { kind: p.rideKind || "ferris", t: 0, dur: 15, accent: p.accent || "#7fd8ff", ringName: this.curRing.name };
+    this.vx = this.vy = 0; this.moveTarget = null; this.dialog = null; this.near = null; this.mapOpen = false;
+  }
+  private endRide() {
+    const r = this.ride; this.ride = null; if (!r) return;
+    const key = "ride-" + r.kind + "-" + this.ringIdx, first = !this.doneOnce.has(key);
+    if (first) { this.doneOnce.add(key); this.codex.add("codex-" + r.kind); this.toast("📖 Codex — \"The View From the Top\" recorded"); }
+    this.sfx("quest"); this.present("🎡", "#7fd8ff");
+    this.onRideDone?.(r.kind);
+  }
+  private drawRideProp(cx: number, cy: number, p: Prop) {
+    const ac = p.accent || "#7fd8ff", near = this.near === p, R = 20, s = this.SS, b = this.b;
+    this.glow(cx, cy - R + 4, R * 2.2, ac, 0.14 + (near ? 0.1 : 0));
+    this.rect(cx - 20, cy + 12, 40, 5, "#0a071450");
+    const hy = cy - 6;   // hub y
+    b.strokeStyle = hexA("#6a6488", 0.9); b.lineWidth = 1.4 * s;
+    b.beginPath(); b.moveTo((cx - 12) * s, (cy + 12) * s); b.lineTo(cx * s, hy * s); b.lineTo((cx + 12) * s, (cy + 12) * s); b.stroke();   // A-frame legs
+    const base = this.reduce ? 0.6 : this.t * 0.55;
+    this.ring(cx, hy, R, ac, 1.6); this.ring(cx, hy, R - 2.5, shade(ac, -0.3), 1);
+    b.strokeStyle = hexA(ac, 0.6); b.lineWidth = 1 * s;
+    for (let i = 0; i < 8; i++) { const a = base + i * TAU / 8; b.beginPath(); b.moveTo(cx * s, hy * s); b.lineTo((cx + Math.cos(a) * R) * s, (hy + Math.sin(a) * R) * s); b.stroke(); }
+    for (let i = 0; i < 8; i++) { const a = base + i * TAU / 8, gx = cx + Math.cos(a) * R, gy = hy + Math.sin(a) * R; this.rect(gx - 2, gy + 0.5, 4, 3, i % 3 ? "#c9c3d6" : ac); }
+    if (!this.reduce) for (let i = 0; i < 8; i++) { const a = base * 0.7 + i * TAU / 8; if (Math.sin(this.t * 5 + i) > 0) this.px(Math.round(cx + Math.cos(a) * R), Math.round(hy + Math.sin(a) * R), "#fff2c8"); }
+    this.disc(cx, hy, 2.5, shade(ac, -0.2)); this.ring(cx, hy, 2.5, ac, 1);
+    this.labelPill(cx, cy - 34, p.label || "The Wheel", ac);
+  }
+  private drawRide() {
+    const r = this.ride!; const W = this.LW, H = this.LH, s = this.SS, b = this.b, ac = r.accent, t = r.t;
+    const speed = 1.4 * TAU / r.dur, carA = Math.PI / 2 + t * speed;
+    const cx = W / 2, cyW = H * 0.47, R = Math.min(W, H) * 0.30;
+    const carY = cyW + Math.sin(carA) * R, height = Math.max(0, Math.min(1, (cyW + R - carY) / (2 * R)));   // 0 bottom → 1 top
+    // sky — deepens toward starry night as you rise
+    const g = b.createLinearGradient(0, 0, 0, H * s);
+    g.addColorStop(0, mix("#241b4a", "#0a0a24", height)); g.addColorStop(0.6, "#2a1f52"); g.addColorStop(1, "#3c2c5e");
+    b.fillStyle = g; b.fillRect(0, 0, W * s, H * s);
+    if (!this.reduce) for (let i = 0; i < 46; i++) { const sxp = (i * 71) % W, syp = (i * 43) % (H * 0.62); if (Math.sin(t * 3 + i * 1.3) > 0.1 - height) this.px(Math.round(sxp), Math.round(syp), i % 4 ? "#ffffff" : "#ffd24a"); }
+    // the shore spread below — a horizon that sinks as you climb
+    const horizon = H * (0.80 + height * 0.13);
+    this.glow(cx, horizon, W * 0.7, "#1c5540", 0.2 + height * 0.1);
+    this.rect(0, horizon, W, H - horizon + 2, "#14331f");
+    for (let i = 0; i < 11; i++) { const lx = W * 0.14 + i * (W * 0.72 / 10); this.disc(lx, horizon + 3, Math.max(0.5, 1.8 - height * 1.1), i % 3 ? "#ffd98a" : ac); }   // town lights
+    // ---- ferris wheel ----
+    b.strokeStyle = hexA("#2a2540", 1); b.lineWidth = 4 * s;
+    b.beginPath(); b.moveTo((cx - R * 0.5) * s, horizon * s); b.lineTo(cx * s, cyW * s); b.lineTo((cx + R * 0.5) * s, horizon * s); b.stroke();   // A-frame
+    this.ring(cx, cyW, R, ac, 2.4); this.ring(cx, cyW, R - 4, shade(ac, -0.3), 1.2);
+    b.strokeStyle = hexA(ac, 0.7); b.lineWidth = 1.2 * s;
+    for (let i = 0; i < 8; i++) { const a = t * speed + i * TAU / 8; b.beginPath(); b.moveTo(cx * s, cyW * s); b.lineTo((cx + Math.cos(a) * R) * s, (cyW + Math.sin(a) * R) * s); b.stroke(); }
+    this.disc(cx, cyW, 5, shade(ac, -0.2)); this.ring(cx, cyW, 5, ac, 1.4);
+    for (let i = 0; i < 8; i++) { const a = t * speed + i * TAU / 8, gx = cx + Math.cos(a) * R, gy = cyW + Math.sin(a) * R, mine = i === 0;
+      this.rect(gx - 4, gy + 1, 8, 6, mine ? ac : "#c9c3d6"); this.rect(gx - 4, gy + 1, 8, 1.4, shade(mine ? ac : "#c9c3d6", 0.22));
+      if (mine) { this.disc(gx, gy + 3, 1.8, "#ffd0a0"); this.glow(gx, gy + 3, 10, ac, 0.34); } else this.disc(gx, gy + 4, 1.2, "#5a5570"); }
+    if (!this.reduce) for (let i = 0; i < 16; i++) { const a = t * speed * 0.6 + i * TAU / 16; if (Math.sin(t * 6 + i) > 0) this.px(Math.round(cx + Math.cos(a) * R), Math.round(cyW + Math.sin(a) * R), "#fff2c8"); }
+    // letterbox + captions
+    const bar = H * 0.09; this.rect(0, 0, W, bar, "#000000"); this.rect(0, H - bar, W, bar, "#000000");
+    this.q(W / 2, bar + 5, r.kind === "ferris" ? "The Wheel" : "A ride", "#eaf6ff", 1.2, "c", true);
+    if (height > 0.7) this.q(W / 2, H * 0.22, `${r.ringName}, spread out below…`, ac, 1.05, "c", true);
+    this.q(W / 2, H - bar - 8, "tap to step off", "#9fb0d0", 0.82, "c", false, 0.72);
+  }
   private updateFestival(dt: number) {
     const f = this.festival; if (!f) return;
     if (!this.nearProp(f.at)) { f.away += dt; if (f.away > 6) { this.endFestival("You drift away; the festival winds down."); return; } } else f.away = 0;
@@ -1218,6 +1283,7 @@ export class CirqlWorldEngine extends RetroEngine {
     }
     if (p.t === "curio") { this.tryDiscover(p); return; }        // inspect a discoverable → grant its hidden/emergent quest
     if (p.t === "bounty") { this.openBounty(p); return; }         // a bounty board → pick a task
+    if (p.t === "ride") { this.startRide(p); return; }            // an attraction → hop on the ride
     if (p.t === "petshop") { this.openPetShop(); return; }        // the Pet Stall → adopt a companion
     if (p.t === "stylist") { this.openStyleStudio(); return; }    // the Style Studio → restyle your space
     if (p.t === "barber") { this.sfx("talk"); this.onInteract?.("barber", p); return; }   // the Barber → host opens the look editor on hair
@@ -1385,6 +1451,11 @@ export class CirqlWorldEngine extends RetroEngine {
       if (tn.progress >= 1) { this.endTornado(); return; }
       return;
     }
+    if (this.ride) {
+      this.ride.t += dt; this.updateFx(dt);
+      if (justDown || this.pressed.a || this.ride.t >= this.ride.dur) { this.endRide(); return; }   // tap / E steps off early
+      return;
+    }
     if (this.voyage) {
       const v = this.voyage; v.t += dt; v.wob += dt; v.wake += dt;
       if (justDown || this.pressed.a) { this.endVoyage(); return; }   // tap / E skips to the shore
@@ -1546,7 +1617,7 @@ export class CirqlWorldEngine extends RetroEngine {
         const isQL = this.isQuestLantern(p);
         const puzzle = p.t === "rune" || p.t === "tablet" || p.t === "shrine";
         const social = p.t === "gathering" || p.t === "theater" || p.t === "landmark";
-        const discover = p.t === "curio" || p.t === "bounty" || p.t === "petshop" || p.t === "stylist" || p.t === "barber";   // K7 discoverable / bounty / pet stall / style studio / barber
+        const discover = p.t === "curio" || p.t === "bounty" || p.t === "petshop" || p.t === "stylist" || p.t === "barber" || p.t === "ride";   // K7 discoverable / bounty / pet stall / style studio / barber / ride
         if (p.t !== "wonders" && p.t !== "shop" && p.t !== "home" && p.t !== "storm" && p.t !== "tunnel" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social && !discover) continue;
         const d = Math.hypot(this.posX - p.x, this.posY - p.y);
         const range = p.t === "landmark" ? 52 : p.r ?? (isQL || p.t === "rune" ? 26 : 40);
@@ -1624,6 +1695,7 @@ export class CirqlWorldEngine extends RetroEngine {
     this.ui.length = 0; this.uiZoom = false;   // reset the smooth-text queue for this frame
     if (this.tornado) { this.drawTornado(); this.drawFx(); return; }   // the storm sweep owns the screen (F)
     if (this.voyage) { this.drawVoyage(); this.drawFx(); return; }   // the sailing crossing owns the screen
+    if (this.ride) { this.drawRide(); this.drawFx(); return; }        // an attraction ride owns the screen
     if (this.diorama) { this.drawDiorama(); this.drawFx(); return; }   // the beauty shot owns the screen (Phase H3)
     const b = this.b, s = this.SS, W = this.LW * s, H = this.LH * s, pal = this.curRing.palette;
     const dn = this.dayNight();   // day/night cycle (J3/J5)
@@ -1745,6 +1817,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "petshop": draws.push({ y: p.y, f: () => this.drawPetShop(sxp, syp, p) }); break;
         case "stylist": draws.push({ y: p.y, f: () => this.drawStylist(sxp, syp, p) }); break;
         case "barber": draws.push({ y: p.y + 6, f: () => this.drawBarber(sxp, syp, p) }); break;
+        case "ride": draws.push({ y: p.y + 10, f: () => this.drawRideProp(sxp, syp, p) }); break;
         case "marker": { const isTarget = this.objTargetProp() === p; if (isTarget) draws.push({ y: p.y - 1, f: () => this.drawMarker(sxp, syp) }); break; }
         default: break;
       }
@@ -4081,6 +4154,7 @@ export class CirqlWorldEngine extends RetroEngine {
                 : this.near.t === "rune" ? (this.near.id && this.lit.has(this.near.id) ? "Dim the rune" : "Wake the rune")
                   : this.near.t === "shrine" ? (this.puzzleSolved() ? "Enter the shrine" : "The shrine is sealed")
                     : this.near.t === "theater" ? "Watch the show"
+                      : this.near.t === "ride" ? `Ride ${this.near.label || "the ride"}`
                       : this.near.t === "gathering" ? (this.festival ? "Join the festival" : "Raise a festival")
                         : this.near.t === "landmark" ? `Visit ${this.near.label || "the landmark"}`
                         : this.near.t === "portal" ? (this.near.sub === "up" ? (isTunnel(this.ringIdx) ? (this.near.label || "Take the exit") : isHome(this.ringIdx) ? "Leave your home" : isShop(this.ringIdx) ? "Leave the shop" : "Return to the surface") : this.near.sub === "cave" ? "Descend into the cave" : this.near.sub === "tree" ? "Climb the great tree" : "Ascend the cloud stair")
