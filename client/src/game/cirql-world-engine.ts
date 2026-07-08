@@ -234,14 +234,22 @@ export class CirqlWorldEngine extends RetroEngine {
   private pendingRiddle: string | null = null;   // a riddle awaiting an answer
   private censusSeen = new Set<string>();  // distinct creature keys spotted for the active census
   // ---- Pets (P1): companions that live at your CIRQLSPACE ----
-  private pets: { id: string; type: string; name: string }[] = [];
+  private pets: { id: string; type: string; name: string; sp?: Species; variant?: string; bond?: number }[] = [];
   private petStarter = false;              // granted the free starter pet yet?
   private petTalk: string | null = null;   // the pet id you're currently interacting with
+  private wildTalk: (typeof this.creatures)[number] | null = null;   // the wild critter you're taming
+  private treats = 3;                       // pet treats — feed to bond, offer wild critters to tame them
   /** Host wiring: buy a pet (host checks/deducts sparqs, then calls addPet) · rename via a prompt · persist. */
   onBuyPet?: (type: string, cost: number) => void;
+  onBuyTreats?: (count: number, cost: number) => void;   // buy a bag of treats (host deducts, calls addTreats)
+  onPetGift?: (n: number) => void;                        // a well-bonded pet finds you a sparq or two
   onRenamePet?: (id: string, current: string) => void;
   onPetsChange?: () => void;
   getPets() { return this.pets.map((p) => ({ ...p })); }
+  getTreats() { return this.treats; }
+  addTreats(n: number) { this.treats = Math.max(0, this.treats + n); this.onPetsChange?.(); if (n > 0) this.toast(`🍬 +${n} treats (${this.treats} total).`); }
+  private petBond(id: string | null | undefined) { const p = this.pets.find((x) => x.id === id); return p ? (p.bond ?? 20) : 0; }
+  private raiseBond(id: string | null | undefined, amt: number) { const p = this.pets.find((x) => x.id === id); if (!p) return; p.bond = Math.max(0, Math.min(100, (p.bond ?? 20) + amt)); this.onPetsChange?.(); }
   // ---- Space styles + patterns: customize your CIRQLSPACE (home customization) ----
   private spaceStyle = "hearth";
   private spacePattern = "none";
@@ -273,12 +281,31 @@ export class CirqlWorldEngine extends RetroEngine {
     const spec = petSpec(type); if (!spec) return;
     const n = this.pets.reduce((m, p) => Math.max(m, parseInt(p.id.replace("pet-", "")) || 0), 0) + 1;
     const nm = name || PET_NAMES[(this.pets.length * 7 + type.length) % PET_NAMES.length];
-    const pet = { id: "pet-" + n, type, name: nm };
+    const pet = { id: "pet-" + n, type, name: nm, bond: 25 };
     this.pets.push(pet);
     if (this.ringIdx === 0 && !this.reduce) this.spawnOnePet(pet);   // pop into your space right away
     this.sfx("quest"); this.present("🐾", "#ffd24a");
     this.toast(`🐾 ${nm} the ${spec.label.toLowerCase()} joined your Cirql!`);
     this.onPetsChange?.();
+  }
+  /** Tame + adopt a WILD creature you've befriended (any species — the further out, the rarer). It
+   *  becomes your companion in place AND lives at your CIRQLSPACE. Records its exact species/variant. */
+  private adoptWild(c: (typeof this.creatures)[number]) {
+    if (c.pet) return;
+    const n = this.pets.reduce((m, p) => Math.max(m, parseInt(p.id.replace("pet-", "")) || 0), 0) + 1;
+    const nm = PET_NAMES[(this.pets.length * 7 + (c.sp.length)) % PET_NAMES.length];
+    const id = "pet-" + n;
+    const label = this.creatureLabel(c.sp, c.variant);
+    this.pets.push({ id, type: "wild:" + c.sp, name: nm, sp: c.sp, variant: c.variant, bond: 40 });   // starts loyal — you earned it
+    c.pet = id; c.name = nm; c.trust = 1; c.joy = 2; c.mode = "approach";   // befriended right here
+    this.sfx("quest"); this.present("🐾", "#ffd24a");
+    this.toast(`🐾 ${nm} the ${label} trusts you now — a companion for life!`);
+    this.onPetsChange?.();
+  }
+  private creatureLabel(sp: Species, variant?: string) {
+    const cat = PET_CATALOG.find((p) => p.sp === sp && p.variant === variant) || PET_CATALOG.find((p) => p.sp === sp);
+    if (cat) return cat.label.toLowerCase();
+    return (variant ? variant + " " : "") + sp;
   }
   renamePet(id: string, name: string) {
     const p = this.pets.find((x) => x.id === id); if (!p || !name.trim()) return;
@@ -286,14 +313,18 @@ export class CirqlWorldEngine extends RetroEngine {
     for (const c of this.creatures) if (c.pet === id) c.name = p.name;
     this.toast(`Your pet is now ${p.name}.`); this.onPetsChange?.();
   }
-  private spawnOnePet(pet: { id: string; type: string; name: string }) {
-    const spec = petSpec(pet.type); if (!spec) return;
+  private spawnOnePet(pet: { id: string; type: string; name: string; sp?: Species; variant?: string }) {
+    const spec = petSpec(pet.type);
+    const sp = pet.sp ?? spec?.sp, variant = pet.variant ?? spec?.variant;   // wild adoptees carry their own sp/variant
+    if (!sp) return;
     const i = Math.max(0, this.pets.indexOf(pet)), a = i * 1.9, r = 60 + (i % 3) * 26;
     const hx = Math.cos(a) * r, hy = 40 + Math.sin(a) * r * 0.7;
-    this.creatures.push({ x: hx, y: hy, vx: 0, vy: 0, sp: spec.sp, variant: spec.variant, mode: "graze", act: "walk", trust: 1, t: i * 1.3, face: 1, dir: "d", rest: 0, wtx: hx, wty: hy, home: { x: hx, y: hy }, pet: pet.id, name: pet.name });
+    this.creatures.push({ x: hx, y: hy, vx: 0, vy: 0, sp, variant, mode: "graze", act: "walk", trust: 1, t: i * 1.3, face: 1, dir: "d", rest: 0, wtx: hx, wty: hy, home: { x: hx, y: hy }, pet: pet.id, name: pet.name });
   }
   private spawnPets() { for (const p of this.pets) this.spawnOnePet(p); }
   private nearestPet() { let best = 34, found: (typeof this.creatures)[number] | null = null; for (const c of this.creatures) if (c.pet) { const d = Math.hypot(c.x - this.posX, c.y - this.posY); if (d < best) { best = d; found = c; } } return found; }
+  // a wild creature standing close enough to befriend (not already a pet, not the escort follower)
+  private nearestWild() { let best = 40, found: (typeof this.creatures)[number] | null = null; for (const c of this.creatures) if (!c.pet) { const d = Math.hypot(c.x - this.posX, c.y - this.posY); if (d < best) { best = d; found = c; } } return found; }
   /** Host pushes the player's Renown rank index so time/rank-gated quests can evaluate. */
   setRenownRank(i: number) { this.playerRank = Math.max(0, i | 0); }
   /** Recorded codex entry ids (for a future codex panel). */
@@ -529,7 +560,7 @@ export class CirqlWorldEngine extends RetroEngine {
   openDiorama() { if (this.ringIdx !== 0 || this.cs || this.voyage) return; this.diorama = true; this.dioramaT = 0; this.dioramaAng = -0.5; this.editDecor = false; this.editPaint = false; this.onDioramaChange?.(true); }
   closeDiorama() { if (!this.diorama) return; this.diorama = false; this.onDioramaChange?.(false); }
   isDiorama() { return this.diorama; }
-  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), homeDecor: this.homeDecor.slice(), terrain: this.getTerrain(), landTier: this.landTier, codex: Array.from(this.codex), healed: Array.from(this.healed), pets: this.pets.slice(), petStarter: this.petStarter, spaceStyle: this.spaceStyle, spacePattern: this.spacePattern }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), homeDecor: this.homeDecor.slice(), terrain: this.getTerrain(), landTier: this.landTier, codex: Array.from(this.codex), healed: Array.from(this.healed), pets: this.pets.slice(), petStarter: this.petStarter, treats: this.treats, spaceStyle: this.spaceStyle, spacePattern: this.spacePattern }; }
   applyState(s: any) {
     if (!s) return;
     if (Array.isArray(s.doneOnce)) this.doneOnce = new Set(s.doneOnce);
@@ -551,6 +582,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (Array.isArray(s.healed)) this.healed = new Set(s.healed);
     if (Array.isArray(s.pets)) this.pets = s.pets;
     if (typeof s.petStarter === "boolean") this.petStarter = s.petStarter;
+    if (typeof s.treats === "number") this.treats = Math.max(0, s.treats | 0);
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
   }
   /** How many concentric rings are "known" (lit on the chart) — grows as you explore. */
@@ -988,8 +1020,12 @@ export class CirqlWorldEngine extends RetroEngine {
     if (c.accept) { const id = c.accept; this.dialog = null; this.acceptQuest(id); }
     else if (c.pick) { this.resolveQuestChoice(c.pick); }   // resolve a mystery/choice fork
     else if (c.answer) { this.resolveRiddle(c.answer); }    // answer a riddle
-    else if (c.buy) { const [type, cost] = c.buy.split(":"); this.dialog = null; this.onBuyPet?.(type, parseInt(cost, 10)); }   // adopt a pet
-    else if (c.petact) { this.resolvePetAction(c.petact); }   // pet / play / rename
+    else if (c.buy) {   // adopt a pet — or buy a bag of treats
+      const [type, cost, count] = c.buy.split(":"); this.dialog = null;
+      if (type === "treats") this.onBuyTreats?.(parseInt(count || "5", 10), parseInt(cost, 10));
+      else this.onBuyPet?.(type, parseInt(cost, 10));
+    }
+    else if (c.petact) { this.resolvePetAction(c.petact); }   // pet / play / feed / trick / tame / adopt / rename
     else if (c.style) { const [id, cost] = c.style.split(":"); this.dialog = null; this.onSelectStyle?.(id, parseInt(cost, 10)); }   // restyle your space
     else if (c.pattern) { const [id, cost] = c.pattern.split(":"); this.dialog = null; this.onSelectPattern?.(id, parseInt(cost, 10)); }   // ground pattern
     else if (c.goto && d.tree.nodes[c.goto]) { d.nodeId = c.goto; d.i = 0; }
@@ -998,9 +1034,10 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---- Pets (P1): the stall (buy) + a companion interaction (pet / play / rename) ----
   private openPetShop() {
     const choices: DialogChoice[] = PET_CATALOG.map((p) => ({ label: `${p.label} — ${p.cost}✦`, buy: `${p.type}:${p.cost}` }));
+    choices.push({ label: `🍬 Bag of treats ×5 — 8✦`, buy: `treats:8:5` });
     choices.push({ label: "Maybe later" });
     const owned = this.pets.length;
-    this.setDialog("Pet Stall", "#ffd24a", { nodes: { start: { lines: ["Welcome to the Pet Stall!", "A companion to share your CIRQLSPACE — pick a friend.", owned ? `You've ${owned} already; room for more!` : "Take one home today."], choices } }, start: "start" });
+    this.setDialog("Pet Stall", "#ffd24a", { nodes: { start: { lines: ["Welcome to the Pet Stall!", "A companion to share your CIRQLSPACE — pick a friend.", `Treats bond your pets and coax wild critters home. You hold ${this.treats}.`, owned ? `You've ${owned} already; room for more!` : "Take one home today."], choices } }, start: "start" });
   }
   private openStyleStudio() {
     const cur = this.spaceStyle, curP = this.spacePattern;
@@ -1019,17 +1056,60 @@ export class CirqlWorldEngine extends RetroEngine {
     });
   }
   private openPetDialog(c: (typeof this.creatures)[number]) {
-    this.petTalk = c.pet || null;
-    const spec = PET_CATALOG.find((p) => p.sp === c.sp), kind = spec?.label.toLowerCase() ?? "companion";
-    this.setDialog(c.name || "Your pet", "#ffd24a", { nodes: { start: { lines: [`${c.name}, your ${kind}.`, "What shall we do?"], choices: [
-      { label: "Pet ♥", petact: "pet" }, { label: "Play", petact: "play" }, { label: "Rename", petact: "rename" }, { label: "Bye" },
-    ] } }, start: "start" });
+    this.petTalk = c.pet || null; this.wildTalk = null;
+    const kind = this.creatureLabel(c.sp, c.variant);
+    const bond = this.petBond(c.pet), tier = bond >= 80 ? "inseparable" : bond >= 55 ? "devoted" : bond >= 30 ? "warming up" : "still shy";
+    const bar = "♥".repeat(Math.max(1, Math.round(bond / 20))) + "·".repeat(5 - Math.max(1, Math.round(bond / 20)));
+    const choices: DialogChoice[] = [{ label: "Pet ♥", petact: "pet" }, { label: "Play", petact: "play" }];
+    choices.push({ label: `Feed 🍬  (${this.treats})`, petact: "feed" });
+    if (bond >= 60) choices.push({ label: "Ask for a trick ✦", petact: "trick" });
+    choices.push({ label: "Rename", petact: "rename" }, { label: "Bye" });
+    this.setDialog(c.name || "Your pet", "#ffd24a", { nodes: { start: { lines: [`${c.name}, your ${kind}.`, `Bond ${bar}  — ${tier}.`, "What shall we do?"], choices } }, start: "start" });
+  }
+  // A WILD creature you're standing beside: offer treats to earn its trust, then invite it home.
+  private openWildDialog(c: (typeof this.creatures)[number]) {
+    this.wildTalk = c; this.petTalk = null;
+    const kind = this.creatureLabel(c.sp, c.variant), tr = Math.round(c.trust * 100);
+    const near = c.trust >= 0.8;
+    const lines = near
+      ? [`This ${kind} lets you right up close now.`, `Trust ${tr}% — it's ready to come home with you.`]
+      : this.treats > 0
+        ? [`A wary ${kind}.`, `Trust ${tr}%. A treat might win it over. (You hold ${this.treats}.)`]
+        : [`A wary ${kind}.`, `Trust ${tr}%. It won't come closer without a treat to offer.`];
+    const choices: DialogChoice[] = [];
+    if (this.treats > 0 && !near) choices.push({ label: "Offer a treat 🍬", petact: "tame" });
+    if (near) choices.push({ label: "Invite it home 🐾", petact: "adopt" });
+    if (this.treats > 0 && near) choices.push({ label: "Give a treat 🍬", petact: "tame" });
+    choices.push({ label: "Leave it be" });
+    this.setDialog(kind.replace(/^\w/, (m) => m.toUpperCase()), "#b6ff6a", { nodes: { start: { lines, choices } }, start: "start" });
   }
   private resolvePetAction(action: string) {
+    // wild-taming actions operate on wildTalk; home-care actions on petTalk
+    if (action === "tame" || action === "adopt") {
+      const c = this.wildTalk;
+      if (action === "tame" && c) {
+        if (this.treats <= 0) { this.dialog = null; this.wildTalk = null; return; }
+        this.treats--; c.trust = Math.min(1, c.trust + 0.34); c.joy = 1.4; c.rest = 0.6; c.mode = "curious";
+        this.present("♥", "#ff6b8f"); this.sfx("talk"); this.onPetsChange?.();
+        if (c.trust >= 0.8) this.toast(`It trusts you now — invite it home! ♥`); else this.toast(`It edges closer… (trust ${Math.round(c.trust * 100)}%)`);
+        this.openWildDialog(c); return;   // re-open with updated trust
+      }
+      if (action === "adopt" && c) { this.dialog = null; this.wildTalk = null; this.adoptWild(c); return; }
+      this.dialog = null; this.wildTalk = null; return;
+    }
     const id = this.petTalk; this.petTalk = null; this.dialog = null;
     const c = this.creatures.find((x) => x.pet === id);
-    if (action === "pet" && c) { c.joy = 1.2; c.trust = 1; this.present("♥", "#ff6b8f"); this.toast(`${c.name} loves the attention! ♥`); }
-    else if (action === "play" && c) { c.joy = 1.8; c.rest = 0; c.act = "walk"; this.present("✦", "#b6ff6a"); this.toast(`${c.name} zooms around, delighted!`); }
+    if (action === "pet" && c) {
+      c.joy = 1.2; c.trust = 1; this.raiseBond(id, 4); this.present("♥", "#ff6b8f"); this.toast(`${c.name} loves the attention! ♥`);
+      if (this.petBond(id) >= 70 && ((this.t | 0) % 3 === 0)) { this.onPetGift?.(1); this.toast(`${c.name} nudges a stray sparq your way. ✦`); }
+    }
+    else if (action === "play" && c) { c.joy = 1.9; c.rest = 0; c.act = "walk"; this.raiseBond(id, 6); this.present("✦", "#b6ff6a"); this.toast(`${c.name} zooms around, delighted!`); }
+    else if (action === "feed" && c) {
+      if (this.treats <= 0) { this.toast(`No treats left — grab a bag at the Pet Stall.`); return; }
+      this.treats--; c.joy = 1.5; this.raiseBond(id, 12); this.present("🍬", "#ffd24a"); this.sfx("talk"); this.onPetsChange?.();
+      this.toast(`${c.name} gobbles the treat — bond ${this.petBond(id)}. ♥`);
+    }
+    else if (action === "trick" && c) { c.joy = 2.2; c.rest = 0; c.act = "walk"; this.raiseBond(id, 2); this.present("✦", "#ffd24a"); this.sfx("quest"); this.toast(`${c.name} does a happy spin for you! ✦`); if (this.petBond(id) >= 80) { this.onPetGift?.(2); } }
     else if (action === "rename" && id) { const p = this.pets.find((x) => x.id === id); this.onRenamePet?.(id, p?.name || ""); }
   }
   private hitChoice(x: number, y: number) { return this.dialogChoiceRects.findIndex((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); }
@@ -1042,6 +1122,7 @@ export class CirqlWorldEngine extends RetroEngine {
     }
     if (this.nearPlayer) { this.onShareLight?.(this.nearPlayer.id); return; }   // share a light with a traveller
     if (!this.near) { const petC = this.nearestPet(); if (petC) { this.openPetDialog(petC); return; } }   // pet a companion you're standing by
+    if (!this.near) { const wild = this.nearestWild(); if (wild) { this.openWildDialog(wild); return; } }   // befriend a wild critter you're standing by
     const p = this.near; if (!p) return;
     // ---- The Sunken Runes puzzle (CHR-258) ----
     if (p.t === "tablet") { this.openTablet(p); return; }
@@ -2781,9 +2862,12 @@ export class CirqlWorldEngine extends RetroEngine {
       let tx = c.wtx, ty = c.wty, spd = base * 0.45;
       if (c.joy && c.joy > 0) c.joy -= dt;
       if (c.pet) {                                            // a PET — friendly companion, never flees, comes to you
-        if (dist < 240) { c.trust = 1; const gap = 38;
+        const bond = this.petBond(c.pet);
+        if (dist < 240) { c.trust = 1; const gap = 38 - Math.min(16, bond * 0.16);   // devoted pets stick closer
           if (dist > gap + 16) { tx = px; ty = py; spd = base * (dist > 130 ? 1.15 : 0.7); c.act = "walk"; c.mode = "approach"; }
-          else { tx = c.x; ty = c.y; spd = 0; c.mode = dist < 30 ? "petted" : "watch"; c.act = (c.joy ?? 0) > 0 ? "walk" : dist < 30 ? "sit" : "look"; }
+          else { tx = c.x; ty = c.y; spd = 0; c.mode = dist < 30 ? "petted" : "watch"; c.act = (c.joy ?? 0) > 0 ? "walk" : dist < 30 ? "sit" : "look";
+            if (bond >= 55 && (c.joy ?? 0) <= 0 && Math.sin(c.t * 0.7 + c.x) > 0.9993) c.joy = 1.1;   // a devoted pet emotes just to be near you
+          }
         } else { c.mode = "graze"; this.idleWander(c, dt); tx = c.wtx; ty = c.wty; }
       } else if (c.sp === "fox" || c.sp === "salamander" || c.sp === "moth") {   // curious — trails you at a gap (salamander/moth linger closer)
         if (dist < 240) { c.trust = Math.min(1, c.trust + dt * 0.15); c.mode = "curious"; c.act = "walk"; const gap = 84;

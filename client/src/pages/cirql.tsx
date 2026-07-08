@@ -451,6 +451,15 @@ export default function Cirql() {
     };
     eng.onRenamePet = (id, cur) => { const n = window.prompt("Name your pet", cur); if (n && n.trim()) eng.renamePet(id, n); };
     eng.onPetsChange = () => { persist(); };
+    eng.onBuyTreats = (count, cost) => {
+      if (!exploreRef.current && sparksRef.current < cost) { cirqlSfx.play("deny"); eng.toast(`Need ${cost} sparqs for treats`); return; }
+      if (!exploreRef.current) { sparksRef.current -= cost; eng.setStats({ sparks: sparksRef.current }); setSparksUi(sparksRef.current); }
+      eng.addTreats(count); persist();
+    };
+    eng.onPetGift = (n) => {   // a well-bonded pet finds you a stray sparq
+      sparksRef.current += n; energyRef.current = Math.min(1, energyRef.current + n * 0.01);
+      eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current); persist();
+    };
     // Space styles: owned styles switch free; a new paid style costs sparqs once, then it's owned
     eng.onSelectStyle = (id, cost) => {
       const key = `style:${id}`, owned = cost === 0 || exploreRef.current || ownedRef.current.includes(key);
