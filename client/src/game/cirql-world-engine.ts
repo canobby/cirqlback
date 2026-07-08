@@ -2765,7 +2765,7 @@ export class CirqlWorldEngine extends RetroEngine {
       else if (c.sp === "frog") this.drawFrog(sx, sy2, c.face, moving, c.t, c.act);
       else if (c.sp === "squirrel") this.drawSquirrel(sx, sy2, c.dir, moving, c.t, c.act);
       else if (c.sp === "moth") this.drawMoth(sx, sy2, c.t);
-      else this.drawBunny(sx, sy2, c.face, moving, c.t, c.mode, c.variant, c.act);
+      else this.drawBunny(sx, sy2, c.dir, moving, c.t, c.mode, c.variant, c.act);
       // a pet shows its NAME + extra love when joyful
       if (c.pet && c.name) { this.q(sx, sy - 30, c.name, "#ffe9a0", 0.62, "c", false, 0.9); if ((c.joy ?? 0) > 0) { this.q(sx - 6, sy2 - 26, "♥", "#ff6b8f", 0.7, "c", false, 0.9); this.q(sx + 7, sy2 - 30, "♥", "#ff9ab0", 0.55, "c", false, 0.8); } }
       // emotes: startle · napping · curious · content
@@ -2887,19 +2887,31 @@ export class CirqlWorldEngine extends RetroEngine {
     for (let i = 0; i < 4; i++) { const dx = sx - 8 * f + i * 5 * f; this.glow(dx, sy - 6, 3.5, spotGlow, 0.3 + 0.4 * this.nightAmt); this.disc(dx, sy - 6, 1.1, spotCore); }
     if (resting) this.rect(sx + 9 * f, sy - 4, 1.4, 0.5, "#1a0a06"); else this.disc(sx + 10 * f, sy - 4, 0.6, "#1a0a06");   // eye (half-closed basking)
   }
-  // rabbit + variants: snow-hare (winter/aurora, pale) and hare (meadow, tan).
-  private drawBunny(sx: number, sy: number, f: number, walk: boolean, t: number, mode: string, variant?: string, act = "walk") {
+  // rabbit + variants (snow-hare / hare) — a 4-directional HOPPER: bounds toward you, away, or to the side.
+  private drawBunny(sx: number, sy: number, dir: string, moving: boolean, t: number, mode: string, variant?: string, act = "walk") {
     const body = variant === "snow" ? "#eef4fb" : variant === "hare" ? "#c8a878" : "#b8a890";
     const ear = variant === "snow" ? "#dce6f2" : variant === "hare" ? "#b89868" : "#a89880";
     const lay = act === "lay", sit = act === "sit", run = mode === "flee";
-    const hop = walk ? -Math.abs(Math.sin(t * (run ? 12 : 9))) * (run ? 4.2 : 3) : 0;   // bigger, faster bounds when bolting
+    const hop = (moving && !lay && !sit) ? -Math.abs(Math.sin(t * (run ? 12 : 9))) * (run ? 4.2 : 3) : 0;   // bounding arc
     this.disc(sx, sy + 1, lay ? 5 : 4, "#0a071438");
-    this.fillEll(sx, sy - (lay ? 2 : 3) + hop, lay ? 5 : 4, lay ? 2.4 : 3.4, body);      // body (flattens when lying)
-    this.disc(sx + 3 * f, sy - (lay ? 3 : 5) + hop, 2.2, body);                          // head
-    if (run || lay) { this.rect(sx + 1 * f, sy - (lay ? 5 : 7) + hop, 3.6, 1.4, ear); this.rect(sx + 2 * f, sy - (lay ? 6.4 : 8.6) + hop, 3.6, 1.4, ear); }   // ears back/flat
-    else { const eh = sit ? 5 : 4; this.rect(sx + 2 * f, sy - 5 - eh + hop, 1.2, eh, ear); this.rect(sx + 4 * f, sy - 5 - eh + hop, 1.2, eh, ear); }   // ears up (taller sitting)
-    this.disc(sx - 3 * f, sy - 2 + hop, 1.4, "#e8ddcf");                                 // tail
-    if (lay) this.rect(sx + 4 * f, sy - 3, 1.2, 0.5, "#1a1208"); else this.disc(sx + 4 * f, sy - 5 + hop, 0.5, "#1a1208");   // eye (closed dozing)
+    const by = sy - (lay ? 2 : 3) + hop;
+    if (dir === "u" || dir === "d") {                 // front (toward) / back (away)
+      const front = dir === "d";
+      if (!front && !lay) this.disc(sx, by, 1.7, "#f4efe6");                             // fluffy tail (rear)
+      this.fillEll(sx, by, 4, lay ? 2.4 : 3.4, body);                                    // body
+      this.disc(sx, by - (lay ? 2 : 4), 2.2, body);                                      // head
+      if (!lay && !(run && !front)) { const eh = sit ? 5.5 : run ? 3 : 4.5; this.rect(sx - 1.7, by - 4 - eh, 1.3, eh, ear); this.rect(sx + 0.4, by - 4 - eh, 1.3, eh, ear); }
+      else if (!lay) { this.rect(sx - 2, by - 6, 3.4, 1.3, ear); this.rect(sx + 0.4, by - 6, 3.4, 1.3, ear); }   // ears back (fleeing away)
+      if (front) { this.disc(sx - 0.9, by - 4, 0.5, "#1a1208"); this.disc(sx + 0.9, by - 4, 0.5, "#1a1208"); this.disc(sx, by - 3, 0.5, "#e8a0a8"); }   // eyes + nose
+    } else {                                          // side (l / r)
+      const f = dir === "r" ? 1 : -1;
+      this.fillEll(sx, by, lay ? 5 : 4, lay ? 2.4 : 3.4, body);
+      this.disc(sx + 3 * f, by - (lay ? 1 : 2), 2.2, body);                              // head
+      if (run || lay) { this.rect(sx + 1 * f, by - (lay ? 2 : 4), 3.6, 1.4, ear); this.rect(sx + 2 * f, by - (lay ? 3.4 : 5.6), 3.6, 1.4, ear); }   // ears back
+      else { const eh = sit ? 5 : 4; this.rect(sx + 2 * f, by - 2 - eh, 1.2, eh, ear); this.rect(sx + 4 * f, by - 2 - eh, 1.2, eh, ear); }   // ears up
+      this.disc(sx - 3 * f, by + 1, 1.4, "#e8ddcf");                                     // tail
+      if (lay) this.rect(sx + 4 * f, by - 2, 1.2, 0.5, "#1a1208"); else this.disc(sx + 4 * f, by - 2, 0.5, "#1a1208");   // eye
+    }
   }
   // A sidestepping crab — coast hero fauna.
   private drawCrab(sx: number, sy: number, f: number, walk: boolean, t: number, act = "walk") {
