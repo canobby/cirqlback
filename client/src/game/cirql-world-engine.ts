@@ -286,7 +286,11 @@ export class CirqlWorldEngine extends RetroEngine {
   private syncHomeDock() {
     const lr = LAND_TIERS[Math.max(0, Math.min(LAND_TIERS.length - 1, this.landTier))];
     const d = RINGS[0].props.find((p) => p.t === "dock" && p.to === 1);
-    if (d) d.y = Math.round(lr * 0.84);   // just inside the walkable edge (walk limit ≈ radius*0.9)
+    // Sit the dock ~15px inside the sand edge (radius `lr`): its planks land on the shore
+    // and its boat (drawn ~20px further out) sits in the water — a proper dock. Stays within
+    // reach at every tier: player walk-clamp is lr*0.9, dock interact radius is 40, and
+    // (lr - 15) − lr*0.9 = 0.1*lr − 15 ≤ 28 across all land tiers (max radius 430).
+    if (d) d.y = Math.round(lr - 15);
   }
   private tileAtWorld(wx: number, wy: number) { return this.curTerrain().get(CK(Math.round(wx / TILE), Math.round(wy / TILE))) ?? "g"; }
   /** Parse a { numericKey | "gx,gy": tile } terrain blob into the engine's numeric-CK map. */
