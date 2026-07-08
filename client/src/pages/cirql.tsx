@@ -464,9 +464,10 @@ export default function Cirql() {
       sparksRef.current += sparks; energyRef.current = Math.min(1, energyRef.current + sparks * 0.03);
       eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current); persist();
     };
-    eng.onRideDone = () => {   // stepping off an attraction ride — a small sparq keepsake
-      const gain = 6; sparksRef.current += gain; energyRef.current = Math.min(1, energyRef.current + gain * 0.01);
-      eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current); eng.toast(`🎡 What a view! +${gain} sparqs`); persist();
+    eng.onRideDone = (kind, bonus) => {   // stepping off an attraction ride — a sparq keepsake (steered rides pay for what you scooped)
+      const gain = 6 + (bonus || 0) * 2; sparksRef.current += gain; energyRef.current = Math.min(1, energyRef.current + gain * 0.01);
+      eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current);
+      eng.toast(kind === "minecart" ? `⛏️ What a ride! +${gain} sparqs` : `🎡 What a view! +${gain} sparqs`); persist();
     };
     // Space styles: owned styles switch free; a new paid style costs sparqs once, then it's owned
     eng.onSelectStyle = (id, cost) => {

@@ -337,6 +337,13 @@ export function generateRing(index: number): Ring {
     props.push({ t: "gathering", x: side * radius * 0.42, y: (rng() - 0.5) * radius * 0.22, id: "commons", label: "The Commons" });
   }
 
+  // a biome ATTRACTION you actually ride (the reusable ride pattern) — the crystal canyon gets a
+  // steered mine-cart coaster off to one side, away from the dock lanes.
+  if (biome.key === "canyon") {
+    const sd = rng() > 0.5 ? 1 : -1;
+    props.push({ t: "ride", x: sd * radius * 0.38, y: -radius * 0.08, id: `ride-${index}`, rideKind: "minecart", label: "Mine-Cart Run", accent: "#ffb454", r: 34 });
+  }
+
   // ── Phase K7: varied quest DELIVERY ──
   // A bounty board by the beacon hub on every wild ring (the "chosen" delivery — pick a task).
   props.push({ t: "bounty", x: hub.x + 48, y: hub.y + 34, id: "bounty", label: "Bounty Board", accent: biome.palette.accent });

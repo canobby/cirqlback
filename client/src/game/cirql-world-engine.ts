@@ -851,23 +851,28 @@ export class CirqlWorldEngine extends RetroEngine {
   }
   private endFestival(reason: string) { if (!this.festival) return; this.festival = null; this.toast(reason); }
   // ---- Attraction rides (a ride you actually ride) — a self-contained scenic cutscene ----
-  private ride: { kind: string; t: number; dur: number; accent: string; ringName: string } | null = null;
-  onRideDone?: (kind: string) => void;   // host: small sparq reward + persist
+  private ride: { kind: string; t: number; dur: number; accent: string; ringName: string; bx: number; gathered: number; motes: { x: number; y: number; vy: number; got: boolean }[] } | null = null;
+  onRideDone?: (kind: string, bonus: number) => void;   // host: sparq reward (scaled by bonus) + persist
   rideActive() { return !!this.ride; }
   private startRide(p: Prop) {
     if (this.ride) return;
     this.sfx("enter");
-    this.ride = { kind: p.rideKind || "ferris", t: 0, dur: 15, accent: p.accent || "#7fd8ff", ringName: this.curRing.name };
+    const kind = p.rideKind || "ferris";
+    // the mine-cart is a STEERED descent (reuses the voyage's steer + gather): crystals drift down
+    // the track; steer the cart under them to scoop them for a bigger reward.
+    const motes = kind === "minecart" ? Array.from({ length: 8 }, (_, i) => ({ x: 0.32 + ((i * 97) % 36) / 100, y: 0.05 + ((i * 53) % 85) / 100, vy: 0.03 + ((i * 29) % 30) / 1000, got: false })) : [];
+    this.ride = { kind, t: 0, dur: kind === "minecart" ? 18 : 15, accent: p.accent || "#7fd8ff", ringName: this.curRing.name, bx: 0, gathered: 0, motes };
     this.vx = this.vy = 0; this.moveTarget = null; this.dialog = null; this.near = null; this.mapOpen = false;
   }
   private endRide() {
     const r = this.ride; this.ride = null; if (!r) return;
     const key = "ride-" + r.kind + "-" + this.ringIdx, first = !this.doneOnce.has(key);
-    if (first) { this.doneOnce.add(key); this.codex.add("codex-" + r.kind); this.toast("📖 Codex — \"The View From the Top\" recorded"); }
-    this.sfx("quest"); this.present("🎡", "#7fd8ff");
-    this.onRideDone?.(r.kind);
+    if (first) { this.doneOnce.add(key); this.codex.add("codex-" + r.kind); this.toast(`📖 Codex — "${r.kind === "minecart" ? "A Rush Through the Canyon" : "The View From the Top"}" recorded`); }
+    this.sfx("quest"); this.present(r.kind === "minecart" ? "⛏️" : "🎡", "#7fd8ff");
+    this.onRideDone?.(r.kind, r.gathered);
   }
   private drawRideProp(cx: number, cy: number, p: Prop) {
+    if ((p.rideKind || "ferris") === "minecart") { this.drawMinecartProp(cx, cy, p); return; }
     const ac = p.accent || "#7fd8ff", near = this.near === p, R = 20, s = this.SS, b = this.b;
     this.glow(cx, cy - R + 4, R * 2.2, ac, 0.14 + (near ? 0.1 : 0));
     this.rect(cx - 20, cy + 12, 40, 5, "#0a071450");
@@ -883,7 +888,22 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx, hy, 2.5, shade(ac, -0.2)); this.ring(cx, hy, 2.5, ac, 1);
     this.labelPill(cx, cy - 34, p.label || "The Wheel", ac);
   }
+  // The mine-cart's world prop: a timbered mine mouth with rails leading out + a cart parked at it.
+  private drawMinecartProp(cx: number, cy: number, p: Prop) {
+    const ac = p.accent || "#ffb454", near = this.near === p;
+    this.glow(cx, cy - 2, 34, ac, 0.12 + (near ? 0.1 : 0));
+    this.rect(cx - 22, cy + 14, 44, 5, "#0a071450");
+    this.fillEll(cx, cy - 3, 22, 15, "#5a3a30"); this.fillEll(cx, cy - 5, 17, 11, "#4a2e26");   // rock mound
+    this.disc(cx, cy, 10, "#150b09"); this.rect(cx - 10, cy, 20, 12, "#150b09");                // tunnel mouth
+    this.rect(cx - 12, cy - 6, 3, 18, "#6a4a2a"); this.rect(cx + 9, cy - 6, 3, 18, "#6a4a2a"); this.rect(cx - 13, cy - 7, 27, 3, "#7a5530");   // timber frame
+    for (let i = 0; i < 4; i++) this.rect(cx - 8, cy + 8 + i * 3.5, 16, 1, "#5a4326");           // ties out the mouth
+    this.rect(cx - 6, cy + 8, 1.5, 14, "#8a6a42"); this.rect(cx + 4.5, cy + 8, 1.5, 14, "#8a6a42");   // rails
+    this.drawCart(cx, cy + 15, ac);
+    if (!this.reduce) { const gl = 0.4 + 0.3 * Math.sin(this.t * 2); this.disc(cx, cy + 1, 2, mix(ac, "#fff", 0.3)); this.glow(cx, cy + 1, 7, ac, 0.1 + 0.12 * gl); }   // a lantern glow deep in the mine
+    this.labelPill(cx, cy - 26, p.label || "Mine-Cart Run", ac);
+  }
   private drawRide() {
+    if (this.ride!.kind === "minecart") { this.drawMinecart(); return; }
     const r = this.ride!; const W = this.LW, H = this.LH, s = this.SS, b = this.b, ac = r.accent, t = r.t;
     const speed = 1.4 * TAU / r.dur, carA = Math.PI / 2 + t * speed;
     const cx = W / 2, cyW = H * 0.47, R = Math.min(W, H) * 0.30;
@@ -914,6 +934,53 @@ export class CirqlWorldEngine extends RetroEngine {
     this.q(W / 2, bar + 5, r.kind === "ferris" ? "The Wheel" : "A ride", "#eaf6ff", 1.2, "c", true);
     if (height > 0.7) this.q(W / 2, H * 0.22, `${r.ringName}, spread out below…`, ac, 1.05, "c", true);
     this.q(W / 2, H - bar - 8, "tap to step off", "#9fb0d0", 0.82, "c", false, 0.72);
+  }
+  // A STEERED downhill mine-cart: rush down a winding rail through the canyon, steer the cart under
+  // the drifting crystals to scoop them. Reuses the voyage's steer/gather structure.
+  private drawMinecart() {
+    const r = this.ride!; const W = this.LW, H = this.LH, s = this.SS, b = this.b, ac = r.accent, t = r.t;
+    const prog = Math.min(1, t / r.dur);
+    // canyon sky
+    const g = b.createLinearGradient(0, 0, 0, H * s);
+    g.addColorStop(0, "#2a1418"); g.addColorStop(0.5, "#4a2418"); g.addColorStop(1, "#160c0a");
+    b.fillStyle = g; b.fillRect(0, 0, W * s, H * s);
+    // parallax mesa layers scrolling past (speed)
+    for (let layer = 0; layer < 2; layer++) {
+      const yy = H * 0.22 + layer * 16, col = layer === 0 ? "#3a1e1a" : "#5a2e20", sp = t * (50 + layer * 40);
+      for (let i = -1; i < 9; i++) { const mx = (((i * 96 - sp) % (W + 200)) + W + 200) % (W + 200) - 100; this.rect(mx, yy, 64 - layer * 12, 46, col); this.rect(mx + 10, yy - 8, 30, 12, col); }
+    }
+    // enclosing rock walls (perspective — narrow at the top)
+    b.fillStyle = "#241210";
+    b.beginPath(); b.moveTo(0, H * 0.2 * s); b.lineTo(W * 0.30 * s, H * 0.2 * s); b.lineTo(W * 0.10 * s, H * s); b.lineTo(0, H * s); b.closePath(); b.fill();
+    b.beginPath(); b.moveTo(W * s, H * 0.2 * s); b.lineTo(W * 0.70 * s, H * 0.2 * s); b.lineTo(W * 0.90 * s, H * s); b.lineTo(W * s, H * s); b.closePath(); b.fill();
+    // the winding track — ties + rails from the vanishing point down toward you
+    const sway = (p: number) => Math.sin(p * 5.5 + t * 0.5) * 0.13;
+    const vy = H * 0.2;
+    for (let i = 0; i < 18; i++) {
+      const f = i / 18, fy = vy + (H - vy) * (f * f), cxn = 0.5 + sway(prog + (1 - f) * 0.45), cxp = cxn * W, hw = 3 + f * 44, th = Math.max(1, f * 3.4);
+      this.rect(cxp - hw, fy, hw * 2, th, "#3a2418");                                             // tie
+      this.rect(cxp - hw, fy - th * 0.3, 2.2, th * 1.6, "#8a6a42"); this.rect(cxp + hw - 2.2, fy - th * 0.3, 2.2, th * 1.6, "#8a6a42");   // rails
+    }
+    // crystals drifting down the track
+    for (const m of r.motes) if (!m.got) { const mx = m.x * W, my = m.y * H, sc = 1 + m.y * 2.2; this.glow(mx, my, 5 * sc * 0.5, ac, 0.5); this.triY(mx, my - 2 * sc, 2 * sc, 4 * sc, ac); this.disc(mx, my, 1 * sc, "#eaffff"); }
+    // motion streaks
+    if (!this.reduce) for (let i = 0; i < 12; i++) { const sx = (i * 127) % W, sy = ((i * 89 + t * 620) % H); b.fillStyle = hexA("#ffd0a0", 0.1); b.fillRect(sx * s, sy * s, 1 * s, 7 * s); }
+    // your cart at the bottom, steered
+    this.drawCart(W * (0.5 + r.bx * 0.34), H * 0.82, ac);
+    // letterbox + HUD
+    const bar = H * 0.09; this.rect(0, 0, W, bar, "#000000"); this.rect(0, H - bar, W, bar, "#000000");
+    this.q(W / 2, bar + 5, "Mine-Cart Run", "#ffe0b0", 1.2, "c", true);
+    const pw = W * 0.5, px = (W - pw) / 2, py = bar + 15; this.rect(px, py, pw, 2, "#0a0714aa"); this.rect(px, py, pw * prog, 2, ac);
+    if (r.gathered > 0) this.q(W / 2, py + 6, `✦ ${r.gathered} crystals`, ac, 0.92, "c");
+    this.q(W / 2, H - bar - 8, "steer with the stick · tap E to finish", "#d0a890", 0.82, "c", false, 0.72);
+  }
+  private drawCart(cx: number, cy: number, ac: string) {
+    this.disc(cx, cy + 5, 7, "#0a071450");
+    this.disc(cx - 5, cy + 4, 2.6, "#241a12"); this.disc(cx + 5, cy + 4, 2.6, "#241a12"); this.ring(cx - 5, cy + 4, 2.6, "#6a5038", 1); this.ring(cx + 5, cy + 4, 2.6, "#6a5038", 1);   // wheels
+    this.rect(cx - 8, cy - 4, 16, 8, "#5a3a22"); this.rect(cx - 8, cy - 4, 16, 2, "#7a5030"); this.rectLine(cx - 8, cy - 4, 16, 8, "#241206");   // body
+    this.rect(cx - 6, cy - 2, 12, 4, "#2e1c10");
+    this.disc(cx, cy - 6, 2.2, "#ffd0a0"); this.rect(cx - 2, cy - 4, 4, 3, "#c0504a");   // you, peeking
+    this.glow(cx, cy - 2, 12, ac, 0.16);
   }
   private updateFestival(dt: number) {
     const f = this.festival; if (!f) return;
@@ -1452,8 +1519,23 @@ export class CirqlWorldEngine extends RetroEngine {
       return;
     }
     if (this.ride) {
-      this.ride.t += dt; this.updateFx(dt);
-      if (justDown || this.pressed.a || this.ride.t >= this.ride.dur) { this.endRide(); return; }   // tap / E steps off early
+      const rd = this.ride;
+      if (rd.kind === "minecart") {
+        // steer the cart (stick / arrows / drag) — mirrors the sailing voyage's steering
+        let steer = (this.btn.right ? 1 : 0) - (this.btn.left ? 1 : 0);
+        if (this.pointer.down) steer += Math.max(-1, Math.min(1, ((this.pointer.x - this.LW / 2) / (this.LW * 0.36)) - rd.bx)) * 1.2;
+        rd.bx = Math.max(-1, Math.min(1, rd.bx + steer * dt * 2.0));
+        const cartN = 0.5 + rd.bx * 0.34;
+        for (const m of rd.motes) {
+          m.y += (0.5 + m.vy) * dt;                    // scroll down the track toward the cart
+          if (!m.got && Math.abs(m.y - 0.82) < 0.06 && Math.abs(m.x - cartN) < 0.08) { m.got = true; rd.gathered++; this.fxRing(cartN * this.LW, 0.82 * this.LH, rd.accent, 12); this.fxPop(cartN * this.LW, 0.76 * this.LH, "+✦", rd.accent, 0.9); this.sfx("wisp"); }
+          if (m.y > 1.08) { m.y = -0.08; m.x = ((m.x * 7.13 + rd.t * 0.37) % 0.62) + 0.19; m.got = false; }   // recycle from the top
+        }
+      }
+      rd.t += dt; this.updateFx(dt);
+      // ferris (passive): a tap/E steps off. minecart (steered): only the E button exits, so drags steer freely.
+      const exit = rd.kind === "minecart" ? this.pressed.a : (justDown || this.pressed.a);
+      if (exit || rd.t >= rd.dur) { this.endRide(); return; }
       return;
     }
     if (this.voyage) {
