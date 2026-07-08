@@ -150,7 +150,7 @@ export interface IStorage {
   deleteNFCTag(id: string): Promise<boolean>;
   
   // Tap operations
-  processTap(tap: InsertTap, opts?: { latitude?: number; longitude?: number }): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; message: string; reason?: string; groupProgress?: any[]; donations?: any[]; progress?: { count: number; goal: number; rewardEarned: boolean } }>;
+  processTap(tap: InsertTap, opts?: { latitude?: number; longitude?: number }): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; sparqsEarned?: number; message: string; reason?: string; groupProgress?: any[]; donations?: any[]; progress?: { count: number; goal: number; rewardEarned: boolean } }>;
   getTaps(businessId?: string, customerEmail?: string): Promise<Tap[]>;
   // Distinct businesses a customer has tapped, most-recent first — powers the
   // CIRQL City hub personalizing shop signs with the player's real visited places.
@@ -2905,7 +2905,7 @@ export class DatabaseStorage implements IStorage {
   async processTap(
     tap: InsertTap,
     opts?: { latitude?: number; longitude?: number }
-  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; earnedBadges?: string[]; luckyBonus?: number; completedCollections?: string[]; message: string; reason?: string; groupProgress?: any[]; donations?: any[]; progress?: { count: number; goal: number; rewardEarned: boolean } }> {
+  ): Promise<{ success: boolean; reward?: Reward; pointsEarned?: number; sparqsEarned?: number; earnedBadges?: string[]; luckyBonus?: number; completedCollections?: string[]; message: string; reason?: string; groupProgress?: any[]; donations?: any[]; progress?: { count: number; goal: number; rewardEarned: boolean } }> {
     try {
       const now = Date.now();
 
@@ -3143,10 +3143,23 @@ export class DatabaseStorage implements IStorage {
         }).where(eq(users.id, customer.id));
       }
 
+      // ── THE MOAT (F / Phase 2): a real-world tap credits SPARQS into the player's
+      // CIRQLVERSE wallet (the server-authoritative `sparqbank` game_progress row that
+      // CIRQL drains on load). Genuine business visits fuel the flagship world — the tap
+      // ⇄ game loop that ties the loyalty platform to the game. Capped per UTC day so it
+      // can't be farmed; only for customers with an account (the wallet is per-user).
+      const TAP_SPARQS = 5, TAP_SPARQ_DAILY_CAP = 25;
+      let sparqsEarned = 0;
+      if (customer) {
+        try { sparqsEarned = await this.creditSparqWallet(customer.id, TAP_SPARQS, TAP_SPARQ_DAILY_CAP); }
+        catch (e) { console.error("sparq wallet credit failed:", e); }
+      }
+
       return {
         success: true,
         reward,
         pointsEarned: points,
+        sparqsEarned,
         earnedBadges,
         luckyBonus,
         completedCollections,

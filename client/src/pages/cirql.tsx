@@ -245,7 +245,7 @@ export default function Cirql() {
         sparksRef.current += n; energyRef.current = Math.min(1, energyRef.current + n * 0.01);
         engineRef.current?.setStats({ sparks: sparksRef.current, energy: energyRef.current });
         setSparksUi(sparksRef.current);
-        engineRef.current?.toast(`✦ +${n} sparq${n > 1 ? "s" : ""} earned in the arcade`);
+        engineRef.current?.toast(`✦ +${n} sparq${n > 1 ? "s" : ""} earned from your visits & play`);
         persist();
       })
       .catch(() => { /* best-effort */ });
