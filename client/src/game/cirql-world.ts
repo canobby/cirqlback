@@ -41,7 +41,8 @@ export type PropType =
   | "tunnel"    // a burrow mouth — walk through the tunnel sub-map to emerge at its OTHER mouth (F)
   | "portal"    // a cave/hollow-tree/cloud-stair — travel to a sub-map (CHR-265)
   | "curio"     // a DISCOVERABLE object (relic / blight / star / cache) — inspect to trigger a hidden/emergent quest (Phase K7)
-  | "bounty";   // a bounty board — a rotating "pick your next task" hub (Phase K7 "chosen" delivery)
+  | "bounty"    // a bounty board — a rotating "pick your next task" hub (Phase K7 "chosen" delivery)
+  | "petshop";  // the Pet Stall — buy a companion for your CIRQLSPACE (Pets P1)
 
 export type LandmarkKind = "greattree" | "stonecircle" | "lighthouse" | "crystal" | "waterfall" | "ruin";
 export type CurioKind = "relic" | "blight" | "star" | "cache";
@@ -113,6 +114,8 @@ const CIRQLSPACE: Ring = {
     { t: "npc", x: -50, y: 96, id: "guide", label: "Cirqla", accent: "#7fffe6", r: 34 },
     // your cottage — walk in to enter & decorate your Home interior (Milestone F)
     { t: "home", x: 120, y: -40, to: 500000, id: "home", label: "Your Home", accent: "#ffc46b" },
+    // the Pet Stall — adopt a companion that lives here at your CIRQLSPACE (Pets P1)
+    { t: "petshop", x: -140, y: -30, id: "petshop", label: "Pet Stall", accent: "#ffd24a" },
     // the dock out to the Town (ring 1) — where all the game lives
     { t: "dock", x: 0, y: 400, to: 1, label: "the Town", id: "dock-out" },
   ],

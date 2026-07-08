@@ -440,6 +440,14 @@ export default function Cirql() {
       const key = decorPriceKey(itemId);
       if (!ownedRef.current.includes(key)) { ownedRef.current = [...ownedRef.current, key]; setOwned(ownedRef.current); persist(); }
     };
+    // Pets (P1): buy from the stall (take sparqs) · rename via prompt · persist on any change
+    eng.onBuyPet = (type, cost) => {
+      if (!exploreRef.current && sparksRef.current < cost) { cirqlSfx.play("deny"); eng.toast(`Need ${cost} sparqs for that friend`); return; }
+      if (!exploreRef.current) { sparksRef.current -= cost; eng.setStats({ sparks: sparksRef.current }); setSparksUi(sparksRef.current); }
+      eng.addPet(type); persist();
+    };
+    eng.onRenamePet = (id, cur) => { const n = window.prompt("Name your pet", cur); if (n && n.trim()) eng.renamePet(id, n); };
+    eng.onPetsChange = () => { persist(); };
     eng.onDecorChange = () => { setDecorCount(eng.getDecor().length); broadcastBuild(); persist(); };   // place/paint/expand → live to visitors (Phase E)
 
     // M8 — live presence socket: broadcast our position + share-a-light, and render
