@@ -34,6 +34,10 @@ export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: numb
 export interface QuestLogRow { id: string; name: string; status: QuestStatus; objective: string; tier?: number; reward?: number; renownReward?: number; steps?: number; }
 
 const TAU = Math.PI * 2;
+// per-biome tree silhouettes (canopyStyle → drawTree dispatch)
+type CanopyKind = "round" | "pine" | "mushroom" | "willow" | "palm" | "maple" | "blossom" | "acacia" | "frostpine" | "toadstool";
+// stateful hero fauna sprites (per biome, some recoloured via a `variant`)
+type Species = "deer" | "rabbit" | "fox" | "salamander" | "crab" | "frog" | "squirrel" | "moth";
 // terrain paint (Phase C): a tile grid over CIRQLSPACE. Cells keyed with a +500 offset so
 // negative coords stay unique; grass is the default (never stored). Tile chars: s=sand,
 // t=stone, w=water, p=path.
@@ -2087,16 +2091,26 @@ export class CirqlWorldEngine extends RetroEngine {
   private static readonly SHROOM_HUES = ["#ff5fe0", "#c8a2ff", "#54ffe0", "#ff7aa8"];
   /** Which canopy to draw for a tree at world (x,y). Species CLUSTER by region so a grove
    *  reads as one stand (ecological clumping), with light per-tree variation to avoid monotony. */
-  private canopyStyle(x: number, y: number): "round" | "pine" | "mushroom" | "willow" {
+  // Which tree silhouette to draw at (x,y). Species cluster by REGION (a 130u grid) so a clump
+  // reads as one grove/stand, not salt-and-pepper — and each biome has its own signature canopy.
+  private canopyStyle(x: number, y: number): CanopyKind {
     const rx = Math.round(x / 130), ry = Math.round(y / 130);
     const region = (Math.abs(rx * 92837 ^ ry * 689287) >>> 0) % 10;
     const jit = (Math.abs((x | 0) * 3 + (y | 0) * 7) | 0) % 10;
-    if (this.curRing.biome === "woodland") {
-      if (region < 4) return jit < 8 ? "mushroom" : "willow";   // a mushroom grove
-      if (region < 7) return jit < 8 ? "willow" : "mushroom";   // a willow stand
-      return jit < 2 ? "mushroom" : "round";                    // ordinary wood, a few shrooms
+    switch (this.curRing.biome) {
+      case "woodland":
+        if (region < 4) return jit < 8 ? "mushroom" : "willow";   // a mushroom grove
+        if (region < 7) return jit < 8 ? "willow" : "mushroom";   // a willow stand
+        return jit < 2 ? "mushroom" : "round";                    // ordinary wood, a few shrooms
+      case "winter": case "aurora": return jit < 8 ? "frostpine" : "round";   // snow-laden conifers
+      case "coast": return jit < 9 ? "palm" : "round";                        // a palm-lined shore
+      case "tropical": return region < 6 ? "palm" : (jit < 6 ? "palm" : "round");   // palms + jungle broadleaf
+      case "autumn": return jit < 2 ? "pine" : "maple";                       // amber maples, a few firs
+      case "meadow": return region < 5 ? (jit < 6 ? "blossom" : "round") : (jit < 3 ? "blossom" : "round");   // blossom orchard
+      case "savanna": return "acacia";                                        // flat-top acacias
+      case "marsh": return region < 6 ? (jit < 7 ? "toadstool" : "willow") : (jit < 4 ? "toadstool" : "round");   // giant toadstools + willows
+      default: return jit < 3 ? "pine" : "round";
     }
-    return jit < 3 ? "pine" : "round";
   }
   private seedOf(x: number, y: number) { return (Math.abs((x | 0) * 73856093 ^ (y | 0) * 19349663) >>> 0); }
   private triY(cx: number, apexY: number, halfW: number, h: number, color: string) {
@@ -2104,9 +2118,15 @@ export class CirqlWorldEngine extends RetroEngine {
     b.fillStyle = color; b.beginPath();
     b.moveTo(cx * s, apexY * s); b.lineTo((cx - halfW) * s, (apexY + h) * s); b.lineTo((cx + halfW) * s, (apexY + h) * s); b.closePath(); b.fill();
   }
-  private drawTree(cx: number, cy: number, big?: boolean, kind: "round" | "pine" | "mushroom" | "willow" = "round", seed = 0) {
+  private drawTree(cx: number, cy: number, big?: boolean, kind: CanopyKind = "round", seed = 0) {
     if (kind === "mushroom") { this.drawMushroomTree(cx, cy, big, seed); return; }
     if (kind === "willow") { this.drawTentacleWillow(cx, cy, big, seed); return; }
+    if (kind === "palm") { this.drawPalm(cx, cy, big, seed); return; }
+    if (kind === "maple") { this.drawMaple(cx, cy, big, seed); return; }
+    if (kind === "blossom") { this.drawBlossom(cx, cy, big, seed); return; }
+    if (kind === "acacia") { this.drawAcacia(cx, cy, big); return; }
+    if (kind === "frostpine") { this.drawFrostPine(cx, cy, big); return; }
+    if (kind === "toadstool") { this.drawGiantToadstool(cx, cy, big, seed); return; }
     const s = big ? 1.4 : 1;
     // Foliage keyed to the ring's grass but pushed to READ against same-colour ground:
     // a deeper fill, a dark rim that outlines the silhouette, and a lit top (I-polish).
@@ -2158,6 +2178,75 @@ export class CirqlWorldEngine extends RetroEngine {
       this.neonPath([[bx, cy - 42 * k], [bx + sw * 0.5, cy - 18 * k], [bx + sw, cy + 4 * k]], cyan, 4 * k, 1.4 * k, 0.5 + 0.4 * this.nightAmt);
       this.glow(bx + sw, cy + 4 * k, 5 * k, cyan, 0.28 + 0.4 * this.nightAmt); this.disc(bx + sw, cy + 4 * k, 1.2 * k, "#e8ffff");
     }
+  }
+  // ---- per-biome tree silhouettes (each biome its own signature canopy) ----
+  // A snow-laden conifer with a cool glowing tip — winter / aurora tundra.
+  private drawFrostPine(cx: number, cy: number, big?: boolean) {
+    const s = big ? 1.4 : 1, g = this.curRing.palette.grass, acc = this.curRing.palette.accent;
+    const dk = shade(mix(g, "#2a4a6a", 0.5), -0.2), fill = mix(g, "#3a6a8a", 0.4), snow = "#eaf4ff";
+    this.disc(cx, cy + 3, 6 * s, "#0a071452");
+    this.rect(cx - 1.5, cy - 6 * s, 3, 8 * s, "#3a3140");
+    for (let i = 0; i < 3; i++) { const ty = cy - 12 * s - i * 6 * s, hw = (9 - i * 2.5) * s + 1;
+      this.triY(cx, ty, hw, 9 * s + 1.5, dk); this.triY(cx, ty, hw - 1, 9 * s, fill); this.triY(cx, ty, (hw - 1) * 0.66, 4 * s, snow); }
+    this.disc(cx, cy - 30 * s, 1.6 * s, acc); this.glow(cx, cy - 30 * s, 5 * s, acc, 0.1 + 0.24 * this.nightAmt);
+  }
+  // A leaning palm with radiating fronds + coconuts — coast / tropical.
+  private drawPalm(cx: number, cy: number, big: boolean | undefined, seed: number) {
+    const s = big ? 1.35 : 1, lean = (seed % 2) ? 1 : -1, b = this.b, ss = this.SS;
+    const g = this.curRing.palette.grass, frond = mix(g, "#2f9a54", 0.5), frondDk = shade(frond, -0.32);
+    this.disc(cx, cy + 3, 6 * s, "#0a071452");
+    b.strokeStyle = "#8a6a44"; b.lineWidth = 4 * s * ss; b.lineCap = "round"; b.beginPath();
+    b.moveTo(cx * ss, cy * ss); b.quadraticCurveTo((cx + lean * 6 * s) * ss, (cy - 18 * s) * ss, (cx + lean * 10 * s) * ss, (cy - 34 * s) * ss); b.stroke();
+    b.lineCap = "butt";
+    const tx = cx + lean * 10 * s, ty = cy - 34 * s, sway = this.reduce ? 0 : Math.sin(this.t * 1.2 + cx * 0.05) * 2;
+    for (let i = 0; i < 7; i++) { const a = Math.PI + (i / 6) * Math.PI, ex = tx + Math.cos(a) * 16 * s + sway, ey = ty + Math.sin(a) * 10 * s - 2;
+      this.neonPath([[tx, ty], [tx + Math.cos(a) * 9 * s, ty + Math.sin(a) * 6 * s - 3], [ex, ey]], i % 3 ? frond : frondDk, 0, 2 * s, 1); }
+    this.disc(tx - 2 * s, ty + 2, 1.8 * s, "#6a4a2c"); this.disc(tx + 2 * s, ty + 3, 1.6 * s, "#6a4a2c");
+  }
+  // An amber maple with a slow-falling leaf — autumn wood.
+  private drawMaple(cx: number, cy: number, big: boolean | undefined, seed: number) {
+    const s = big ? 1.4 : 1, cols = ["#e07a2a", "#d24a2a", "#e8a83a", "#c23a5a"], c = cols[seed % cols.length];
+    const fill = shade(c, -0.12), rim = shade(c, -0.5), hi = shade(c, 0.3);
+    this.disc(cx, cy + 3, 6 * s, "#0a071452");
+    this.rect(cx - 2, cy - 8 * s, 4, 10 * s, "#4a3222");
+    for (let i = 0; i < 3; i++) this.disc(cx, cy - 14 * s - i * 5 * s, (11 - i * 2) * s + 1.2, rim);
+    for (let i = 0; i < 3; i++) this.disc(cx, cy - 14 * s - i * 5 * s, (11 - i * 2) * s, fill);
+    this.disc(cx - 3 * s, cy - 20 * s, 3.2 * s, hi);
+    if (!this.reduce) { const fp = (this.t * 0.4 + cx * 0.1) % 1; this.disc(cx + 7 * s + Math.sin(this.t + cx) * 4, cy - 24 * s + fp * 30, 1.3, c); }
+  }
+  // A blossom orchard tree (pink/white) — spring meadow.
+  private drawBlossom(cx: number, cy: number, big: boolean | undefined, seed: number) {
+    const s = big ? 1.35 : 1, pink = (seed % 2) ? "#ffb3d9" : "#ffd1e8", g = this.curRing.palette.grass;
+    const rim = shade(g, -0.55);
+    this.disc(cx, cy + 3, 6 * s, "#0a071452");
+    this.rect(cx - 2, cy - 8 * s, 4, 10 * s, "#5a4432");
+    for (let i = 0; i < 3; i++) this.disc(cx, cy - 14 * s - i * 5 * s, (11 - i * 2) * s + 1.2, rim);
+    for (let i = 0; i < 3; i++) this.disc(cx, cy - 14 * s - i * 5 * s, (11 - i * 2) * s, mix(g, pink, 0.35));
+    for (let i = 0; i < 7; i++) { const a = i / 7 * TAU; this.disc(cx + Math.cos(a) * 8 * s, cy - 18 * s + Math.sin(a) * 7 * s, 2.2 * s, pink); }
+    this.disc(cx - 3 * s, cy - 20 * s, 2.4 * s, "#ffffff");
+  }
+  // A flat-topped umbrella acacia — golden savanna.
+  private drawAcacia(cx: number, cy: number, big?: boolean) {
+    const s = big ? 1.4 : 1, g = this.curRing.palette.grass, b = this.b, ss = this.SS;
+    const fill = mix(g, "#5a6a2a", 0.4), rim = shade(fill, -0.5), hi = shade(fill, 0.28);
+    this.disc(cx, cy + 3, 7 * s, "#0a071452");
+    this.rect(cx - 1.5, cy - 16 * s, 3, 18 * s, "#6a5030");
+    b.strokeStyle = "#6a5030"; b.lineWidth = 2 * s * ss; b.beginPath();
+    b.moveTo(cx * ss, (cy - 14 * s) * ss); b.lineTo((cx - 7 * s) * ss, (cy - 20 * s) * ss);
+    b.moveTo(cx * ss, (cy - 14 * s) * ss); b.lineTo((cx + 7 * s) * ss, (cy - 20 * s) * ss); b.stroke();
+    this.fillEll(cx, cy - 22 * s, 18 * s, 5 * s, rim); this.fillEll(cx, cy - 23 * s, 17 * s, 4 * s, fill); this.fillEll(cx - 6 * s, cy - 24 * s, 8 * s, 2.4 * s, hi);
+  }
+  // A giant glowing toadstool — the mushroom-marsh signature (taller/bolder than the woodland cap).
+  private drawGiantToadstool(cx: number, cy: number, big: boolean | undefined, seed: number) {
+    const k = big ? 1.4 : 1.1, hues = ["#c85cff", "#5ff2c0", "#ff7ad0", "#7a9cff"], hue = hues[seed % hues.length];
+    const capDk = shade(hue, -0.45), capHi = mix(hue, "#ffffff", 0.4), sway = this.reduce ? 0 : Math.sin(this.t * 1.0 + cx * 0.05) * 0.7;
+    this.disc(cx, cy + 2, 7 * k, "#0a071452");
+    this.rect(cx - 3.5 * k + sway, cy - 46 * k, 7 * k, 46 * k, "#d8e0d0"); this.rect(cx + 1 * k + sway, cy - 46 * k, 2.5 * k, 46 * k, "#aeb8a8");
+    const cy2 = cy - 48 * k;
+    this.fillEll(cx + sway, cy2 + 3 * k, 24 * k, 13 * k, capDk); this.fillEll(cx + sway, cy2, 23 * k, 12 * k, hue); this.fillEll(cx - 5 * k + sway, cy2 - 4 * k, 12 * k, 6 * k, capHi);
+    for (let i = 0; i < 5; i++) this.disc(cx - 13 * k + i * 7 * k + sway, cy2 - 2 * k - ((i * 7) % 5) * k, 2.2 * k, mix(hue, "#fff", 0.55));
+    this.neonEllipse(cx + sway, cy - 44 * k, 22 * k, 6 * k, hue, 6 * k, 1.6 * k, this.glowN(), 0, Math.PI);
+    this.glow(cx + sway, cy - 46 * k, 22 * k, hue, 0.1 + 0.22 * this.nightAmt);
   }
   // A cluster of fronds — a couple glow lime (woodland understory). Soft; walk through.
   private drawFern(cx: number, cy: number) {
@@ -2239,32 +2328,46 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- LIVING CREATURES: stateful woodland fauna that REACT to you ----------
   // Shy deer/rabbits flee when you rush them, then warm up if you hold still and let you pet
   // them; a curious fox trails you at a gap. Real walk-cycle sprites + facing.
-  private creatures: { x: number; y: number; vx: number; vy: number; sp: "deer" | "rabbit" | "fox" | "salamander"; mode: string; trust: number; t: number; face: number; rest: number; wtx: number; wty: number; home: { x: number; y: number } }[] = [];
+  private creatures: { x: number; y: number; vx: number; vy: number; sp: Species; variant?: string; mode: string; trust: number; t: number; face: number; rest: number; wtx: number; wty: number; home: { x: number; y: number } }[] = [];
   private creaturesRing = -999;
   private ensureCreatures() {
     if (this.creaturesRing === this.ringIdx) return;
     this.creaturesRing = this.ringIdx; this.creatures = [];
     if (this.reduce) return;
     const biome = this.curRing.biome, edge = this.effR() * 0.82;
-    const spawn = (sp: "deer" | "rabbit" | "fox" | "salamander", n: number, k: number, anchors: { x: number; y: number }[]) => {
+    // anchor the herd near landscape features (groves/rocks/water) so critters gather, not scatter
+    const anchors = this.curRing.props.filter((p) => ["tree", "fern", "fairyring", "flower", "rock", "crystal", "pond"].includes(p.t));
+    const spawn = (sp: Species, n: number, k: number, variant?: string) => {
       for (let i = 0; i < n; i++) {
         const a = anchors.length ? anchors[(i * 7 + k) % anchors.length] : { x: 0, y: 0 };
         let hx = a.x + Math.sin(i * 2.3 + k) * 44, hy = a.y + 30 + Math.cos(i * 1.7 + k) * 34;
         const hr = Math.hypot(hx, hy); if (hr > edge) { hx = hx / hr * edge; hy = hy / hr * edge; }
-        this.creatures.push({ x: hx, y: hy, vx: 0, vy: 0, sp, mode: "graze", trust: 0, t: i * 1.3, face: 1, rest: 0, wtx: hx, wty: hy, home: { x: hx, y: hy } });
+        this.creatures.push({ x: hx, y: hy, vx: 0, vy: 0, sp, variant, mode: "graze", trust: 0, t: i * 1.3, face: 1, rest: 0, wtx: hx, wty: hy, home: { x: hx, y: hy } });
       }
     };
-    if (biome === "woodland") { const flora = this.curRing.props.filter((p) => p.t === "tree" || p.t === "fern" || p.t === "fairyring"); spawn("deer", 2, 3, flora); spawn("rabbit", 3, 5, flora); spawn("fox", 1, 2, flora); }
-    else if (biome === "ember") { const geo = this.curRing.props.filter((p) => p.t === "crystal" || p.t === "rock" || p.t === "pond"); spawn("salamander", 3, 4, geo); }
+    switch (biome) {
+      case "woodland": spawn("deer", 2, 3); spawn("rabbit", 3, 5); spawn("fox", 1, 2); break;
+      case "ember": spawn("salamander", 3, 4); break;
+      case "winter": spawn("fox", 2, 2, "snow"); spawn("rabbit", 3, 5, "snow"); break;
+      case "aurora": spawn("deer", 2, 3, "caribou"); spawn("rabbit", 2, 5, "snow"); break;
+      case "coast": spawn("crab", 4, 3); break;
+      case "tropical": spawn("frog", 3, 4); break;
+      case "meadow": spawn("deer", 1, 2); spawn("rabbit", 3, 5, "hare"); break;
+      case "desert": spawn("fox", 2, 3, "fennec"); break;
+      case "autumn": spawn("squirrel", 3, 4); spawn("deer", 1, 2); break;
+      case "marsh": spawn("salamander", 3, 4, "newt"); break;
+      case "savanna": spawn("deer", 2, 3, "gazelle"); break;
+      case "canyon": spawn("moth", 3, 4); break;
+    }
   }
   private updateCreatures(dt: number) {
     if (!this.creatures.length) return;
     const px = this.posX, py = this.posY, calm = this.walk <= 0.05 && !this.dozing && !this.dialog;
     for (const c of this.creatures) {
       const dx = px - c.x, dy = py - c.y, dist = Math.hypot(dx, dy) || 1;
-      const base = c.sp === "rabbit" ? 34 : c.sp === "fox" ? 30 : c.sp === "salamander" ? 18 : 26;
+      const base = c.sp === "rabbit" ? 34 : c.sp === "squirrel" ? 40 : c.sp === "fox" || c.sp === "moth" ? 30 : c.sp === "crab" ? 22 : c.sp === "salamander" || c.sp === "frog" ? 18 : 26;
       let tx = c.wtx, ty = c.wty, spd = base * 0.45;
-      if (c.sp === "fox" || c.sp === "salamander") {          // curious — trails you at a gap (salamander basks slower)
+      if (c.sp === "fox" || c.sp === "salamander" || c.sp === "moth") {   // curious — trails you at a gap (salamander/moth linger closer)
         if (dist < 240) { c.trust = Math.min(1, c.trust + dt * 0.15); c.mode = "curious"; const gap = 84;
           if (dist > gap + 14) { tx = px; ty = py; spd = base * (dist > 160 ? 1.2 : 0.8); }
           else if (dist < gap - 14) { tx = c.x - dx / dist * 30; ty = c.y - dy / dist * 30; spd = base * 0.9; }
@@ -2299,36 +2402,50 @@ export class CirqlWorldEngine extends RetroEngine {
       const sx = c.x - camX, sy = c.y - camY;
       if (sx < -30 || sx > W + 30 || sy < -30 || sy > H + 30) continue;
       const moving = Math.hypot(c.vx, c.vy) > 6, ph = c.t * 7;
-      if (c.sp === "deer") this.drawDeer(sx, sy, c.face, moving, ph, c.mode);
-      else if (c.sp === "fox") this.drawFox(sx, sy, c.face, moving, ph);
-      else if (c.sp === "salamander") this.drawSalamander(sx, sy, c.face, moving, c.t);
-      else this.drawBunny(sx, sy, c.face, moving, c.t, c.mode);
+      if (c.sp === "deer") this.drawDeer(sx, sy, c.face, moving, ph, c.mode, c.variant);
+      else if (c.sp === "fox") this.drawFox(sx, sy, c.face, moving, ph, c.variant);
+      else if (c.sp === "salamander") this.drawSalamander(sx, sy, c.face, moving, c.t, c.variant);
+      else if (c.sp === "crab") this.drawCrab(sx, sy, c.face, moving, c.t);
+      else if (c.sp === "frog") this.drawFrog(sx, sy, c.face, moving, c.t);
+      else if (c.sp === "squirrel") this.drawSquirrel(sx, sy, c.face, moving, c.t);
+      else if (c.sp === "moth") this.drawMoth(sx, sy, c.t);
+      else this.drawBunny(sx, sy, c.face, moving, c.t, c.mode, c.variant);
       if (c.mode === "flee") this.q(sx, sy - 26, "!", "#ffd24a", 0.85, "c", true);
       else if (c.mode === "curious" || c.mode === "watch") this.q(sx, sy - 26, "?", "#9fd0ff", 0.8, "c", true);
       else if (c.mode === "petted" || (c.mode === "approach" && c.trust > 0.85)) { const hy = sy - 24 - Math.abs(Math.sin(this.t * 3)) * 2; this.q(sx, hy, "♥", "#ff6b8f", 0.9, "c", false, 0.95); }
     }
   }
-  private drawDeer(sx: number, sy: number, f: number, walk: boolean, ph: number, mode: string) {
-    const body = "#8a6a44", body2 = "#9a7a50", leg = "#5a4630";
+  // deer + its variants: caribou (aurora, cool grey + icy antlers) and gazelle (savanna, tan + amber horns).
+  private drawDeer(sx: number, sy: number, f: number, walk: boolean, ph: number, mode: string, variant?: string) {
+    const cb = variant === "caribou" ? { body: "#7a7284", body2: "#8a84a0", leg: "#4a4658", patch: "#dfeaf6", ant: "#bfe6ff", tail: "#eef6ff" }
+      : variant === "gazelle" ? { body: "#c89a5a", body2: "#d8aa66", leg: "#8a6a3a", patch: "", ant: "#ffcf4a", tail: "#f0e0c0" }
+      : { body: "#8a6a44", body2: "#9a7a50", leg: "#5a4630", patch: this.curRing.palette.grass, ant: "#b6ff6a", tail: "#e8ddcf" };
     const bob = walk ? Math.sin(ph) * 0.6 : Math.sin(this.t * 1.4) * 0.3;
     this.disc(sx, sy + 2, 9, "#0a071440");
     const ly = sy - 6 + bob, step = (i: number) => walk ? Math.max(0, Math.sin(ph + i * Math.PI)) * 2 : 0;
-    this.rect(sx - 9 * f, ly, 2, 7 - step(0), leg); this.rect(sx - 3 * f, ly, 2, 7 - step(1), leg);
-    this.rect(sx + 4 * f, ly, 2, 7 - step(1), leg); this.rect(sx + 9 * f, ly, 2, 7 - step(0), leg);
-    this.fillEll(sx, sy - 15 + bob, 11, 6, body);
-    this.fillEll(sx - 8 * f, sy - 15 + bob, 4, 3.5, this.curRing.palette.grass);   // moss on the back
-    this.rect(sx + 7 * f - 1, sy - 22 + bob, 3, 8, body);                           // neck
+    this.rect(sx - 9 * f, ly, 2, 7 - step(0), cb.leg); this.rect(sx - 3 * f, ly, 2, 7 - step(1), cb.leg);
+    this.rect(sx + 4 * f, ly, 2, 7 - step(1), cb.leg); this.rect(sx + 9 * f, ly, 2, 7 - step(0), cb.leg);
+    this.fillEll(sx, sy - 15 + bob, 11, 6, cb.body);
+    if (cb.patch) this.fillEll(sx - 8 * f, sy - 15 + bob, 4, 3.5, cb.patch);          // moss / snow patch
+    this.rect(sx + 7 * f - 1, sy - 22 + bob, 3, 8, cb.body);                          // neck
     const headUp = mode !== "graze", hx = sx + 12 * f, hy = sy - (headUp ? 25 : 19) + bob;
-    this.fillEll(hx, hy, 5, 4, body2);
-    this.rect(hx - 2 * f, hy - 4, 1.6, 3, body);                                     // ear
-    this.neonPath([[hx + 1 * f, hy - 3], [hx + 2 * f, hy - 7], [hx + 4 * f, hy - 10]], "#b6ff6a", 3, 1.2, 0.5 + 0.4 * this.nightAmt);
-    this.neonPath([[hx + 3 * f, hy - 3], [hx + 5 * f, hy - 6], [hx + 6 * f, hy - 9]], "#b6ff6a", 3, 1.2, 0.5 + 0.4 * this.nightAmt);
-    this.glow(hx + 3 * f, hy - 7, 5, "#b6ff6a", 0.2 + 0.3 * this.nightAmt);
-    this.disc(hx + 2 * f, hy, 0.8, "#1a1208");                                       // eye
-    this.rect(sx - 11 * f, sy - 16 + bob, 1.5, 3, "#e8ddcf");                        // tail
+    this.fillEll(hx, hy, 5, 4, cb.body2);
+    this.rect(hx - 2 * f, hy - 4, 1.6, 3, cb.body);                                    // ear
+    this.neonPath([[hx + 1 * f, hy - 3], [hx + 2 * f, hy - 7], [hx + 4 * f, hy - 10]], cb.ant, 3, 1.2, 0.5 + 0.4 * this.nightAmt);
+    this.neonPath([[hx + 3 * f, hy - 3], [hx + 5 * f, hy - 6], [hx + 6 * f, hy - 9]], cb.ant, 3, 1.2, 0.5 + 0.4 * this.nightAmt);
+    this.glow(hx + 3 * f, hy - 7, 5, cb.ant, 0.2 + 0.3 * this.nightAmt);
+    this.disc(hx + 2 * f, hy, 0.8, "#1a1208");                                         // eye
+    this.rect(sx - 11 * f, sy - 16 + bob, 1.5, 3, cb.tail);                            // tail
   }
-  private drawFox(sx: number, sy: number, f: number, walk: boolean, ph: number) {
-    const c = "#d87a3a", c2 = "#e89a54", dk = "#9a5024", leg = "#6a3a1c", white = "#f0e0d0";
+  // fox + its variants: snow-fox (winter, pale) and fennec (desert, sandy + big ears).
+  private drawFox(sx: number, sy: number, f: number, walk: boolean, ph: number, variant?: string) {
+    const snow = variant === "snow", fennec = variant === "fennec";
+    const c = snow ? "#dfe6ee" : fennec ? "#e0c088" : "#d87a3a";
+    const c2 = snow ? "#f0f4fa" : fennec ? "#f0d8a8" : "#e89a54";
+    const dk = snow ? "#8a94a4" : fennec ? "#b89a5a" : "#9a5024";
+    const leg = snow ? "#aab4c2" : fennec ? "#c8a86a" : "#6a3a1c";
+    const white = snow ? "#ffffff" : fennec ? "#fff8e8" : "#f0e0d0";
+    const eh = fennec ? 5 : 3;   // fennec's oversized ears
     const bob = walk ? Math.sin(ph) * 0.5 : 0;
     this.disc(sx, sy + 2, 7, "#0a071440");
     const ly = sy - 5 + bob, step = (i: number) => walk ? Math.max(0, Math.sin(ph + i * Math.PI)) * 2 : 0;
@@ -2337,15 +2454,18 @@ export class CirqlWorldEngine extends RetroEngine {
     this.fillEll(sx - 10 * f, sy - 9 + bob, 5, 3.5, c); this.disc(sx - 13 * f, sy - 10 + bob, 2.2, white);   // bushy tail
     this.fillEll(sx, sy - 9 + bob, 9, 5, c);
     const hx = sx + 9 * f, hy = sy - 12 + bob;
-    this.rect(hx - 3 * f, hy - 5, 2, 3, c); this.rect(hx + 1 * f, hy - 5, 2, 3, c);   // ears
-    this.disc(hx - 2 * f, hy - 5, 0.9, dk); this.disc(hx + 2 * f, hy - 5, 0.9, dk);
+    this.rect(hx - 3 * f, hy - 2 - eh, 2, eh, c); this.rect(hx + 1 * f, hy - 2 - eh, 2, eh, c);   // ears (fennec's are tall)
+    this.disc(hx - 2 * f, hy - 2 - eh, 0.9, dk); this.disc(hx + 2 * f, hy - 2 - eh, 0.9, dk);
     this.fillEll(hx, hy, 5, 4, c2);
     this.disc(hx + 5 * f, hy + 0.5, 1.4, dk);                                         // snout
     this.disc(hx + 1.5 * f, hy - 1, 0.6, "#1a1208");                                  // eye
   }
-  // A salamander — the ember biome's hero fauna: a fiery lizard with glowing dorsal spots.
-  private drawSalamander(sx: number, sy: number, f: number, walk: boolean, t: number) {
-    const body = "#c2401a", body2 = "#e05a24", dk = "#7a2410", sway = walk ? Math.sin(t * 4) * 1 : 0;
+  // A salamander (ember, fiery) or its newt variant (marsh, teal + violet glow-spots).
+  private drawSalamander(sx: number, sy: number, f: number, walk: boolean, t: number, variant?: string) {
+    const newt = variant === "newt";
+    const body = newt ? "#2c8a6a" : "#c2401a", body2 = newt ? "#3faa84" : "#e05a24", dk = newt ? "#1a5a44" : "#7a2410";
+    const spotGlow = newt ? "#c85cff" : "#ffab3a", spotCore = newt ? "#e0a8ff" : "#ffe27a";
+    const sway = walk ? Math.sin(t * 4) * 1 : 0;
     this.disc(sx, sy + 2, 8, "#0a071440");
     this.fillEll(sx - 8 * f, sy - 2 + sway * 0.3, 4, 2.4, body);            // tail base
     this.fillEll(sx - 13 * f, sy - 1 + sway * 0.5, 2.6, 1.6, body);         // tail tip
@@ -2354,11 +2474,13 @@ export class CirqlWorldEngine extends RetroEngine {
     this.fillEll(sx + 8 * f, sy - 3.5, 4, 3, body2);                        // head
     const lp = walk ? Math.sin(t * 4) * 2 : 0;
     this.rect(sx - 5 * f, sy - 1, 1.4, 3 + lp * 0.3, dk); this.rect(sx + 4 * f, sy - 1, 1.4, 3 - lp * 0.3, dk);
-    for (let i = 0; i < 4; i++) { const dx = sx - 8 * f + i * 5 * f; this.glow(dx, sy - 6, 3.5, "#ffab3a", 0.3 + 0.4 * this.nightAmt); this.disc(dx, sy - 6, 1.1, "#ffe27a"); }
+    for (let i = 0; i < 4; i++) { const dx = sx - 8 * f + i * 5 * f; this.glow(dx, sy - 6, 3.5, spotGlow, 0.3 + 0.4 * this.nightAmt); this.disc(dx, sy - 6, 1.1, spotCore); }
     this.disc(sx + 10 * f, sy - 4, 0.6, "#1a0a06");                         // eye
   }
-  private drawBunny(sx: number, sy: number, f: number, walk: boolean, t: number, mode: string) {
-    const body = "#b8a890", ear = "#a89880";
+  // rabbit + variants: snow-hare (winter/aurora, pale) and hare (meadow, tan).
+  private drawBunny(sx: number, sy: number, f: number, walk: boolean, t: number, mode: string, variant?: string) {
+    const body = variant === "snow" ? "#eef4fb" : variant === "hare" ? "#c8a878" : "#b8a890";
+    const ear = variant === "snow" ? "#dce6f2" : variant === "hare" ? "#b89868" : "#a89880";
     const hop = walk ? -Math.abs(Math.sin(t * 9)) * 3 : 0;
     this.disc(sx, sy + 1, 4, "#0a071438");
     this.fillEll(sx, sy - 3 + hop, 4, 3.4, body);
@@ -2367,6 +2489,47 @@ export class CirqlWorldEngine extends RetroEngine {
     else { this.rect(sx + 2 * f, sy - 9 + hop, 1.2, 4, ear); this.rect(sx + 4 * f, sy - 9 + hop, 1.2, 4, ear); }                          // ears up
     this.disc(sx - 3 * f, sy - 2 + hop, 1.4, "#e8ddcf");                              // tail
     this.disc(sx + 4 * f, sy - 5 + hop, 0.5, "#1a1208");                              // eye
+  }
+  // A sidestepping crab — coast hero fauna.
+  private drawCrab(sx: number, sy: number, f: number, walk: boolean, t: number) {
+    const c = "#e0603a", c2 = "#f07a4a", dk = "#a83a1a", bob = walk ? Math.sin(t * 8) * 0.6 : 0, b = this.b, s = this.SS;
+    this.disc(sx, sy + 2, 6, "#0a071440");
+    b.strokeStyle = dk; b.lineWidth = 1.2 * s; b.lineCap = "round"; b.beginPath();   // legs
+    for (let i = 0; i < 3; i++) { const ly = sy - 4 + i * 2 + bob; b.moveTo((sx - 4) * s, (ly) * s); b.lineTo((sx - 9) * s, (ly + 2) * s); b.moveTo((sx + 4) * s, (ly) * s); b.lineTo((sx + 9) * s, (ly + 2) * s); }
+    b.stroke(); b.lineCap = "butt";
+    this.fillEll(sx, sy - 4 + bob, 7, 4.5, c); this.fillEll(sx - 1, sy - 5 + bob, 5, 2.6, c2);   // shell
+    this.rect(sx - 2, sy - 10 + bob, 0.8, 3, dk); this.rect(sx + 2, sy - 10 + bob, 0.8, 3, dk);  // eye stalks
+    this.disc(sx - 2, sy - 10 + bob, 1, "#1a1208"); this.disc(sx + 2, sy - 10 + bob, 1, "#1a1208");
+    this.fillEll(sx - 9 * f, sy - 4 + bob, 2.6, 2.2, c); this.fillEll(sx + 9 * f, sy - 4 + bob, 2.6, 2.2, c);   // claws
+  }
+  // A tree-frog with a glowing throat — tropical hero fauna.
+  private drawFrog(sx: number, sy: number, f: number, walk: boolean, t: number) {
+    const c = "#4ac06a", c2 = "#6ad088", dk = "#2a8a4a", hop = walk ? -Math.abs(Math.sin(t * 9)) * 3 : 0;
+    this.disc(sx, sy + 1, 4, "#0a071438");
+    this.rect(sx - 5 * f, sy - 2 + hop, 2, 3, dk); this.rect(sx + 3 * f, sy - 2 + hop, 2, 3, dk);   // back legs
+    this.fillEll(sx, sy - 3 + hop, 5, 3.4, c); this.fillEll(sx, sy - 4 + hop, 3.4, 2, c2);
+    this.disc(sx - 2 * f, sy - 6 + hop, 1.4, c2); this.disc(sx + 2 * f, sy - 6 + hop, 1.4, c2);      // eye bulges
+    this.disc(sx - 2 * f, sy - 6 + hop, 0.7, "#1a1208"); this.disc(sx + 2 * f, sy - 6 + hop, 0.7, "#1a1208");
+    const pulse = this.reduce ? 0.7 : 0.5 + 0.5 * Math.sin(t * 3);
+    this.glow(sx, sy - 2 + hop, 4, "#ffe27a", 0.14 * pulse + 0.05); this.disc(sx, sy - 2 + hop, 1, "#ffe9a0");   // throat
+  }
+  // A darting squirrel with a bushy tail — autumn hero fauna.
+  private drawSquirrel(sx: number, sy: number, f: number, walk: boolean, t: number) {
+    const c = "#b5642c", c2 = "#c87a3c", dk = "#7a3e18", belly = "#e8cba0", bob = walk ? Math.sin(t * 10) * 1 : Math.sin(t * 2) * 0.3;
+    this.disc(sx, sy + 1, 4, "#0a071438");
+    this.fillEll(sx - 7 * f, sy - 8 + bob, 3.4, 6, c); this.fillEll(sx - 7 * f, sy - 9 + bob, 2.2, 4, c2);   // bushy tail
+    this.fillEll(sx, sy - 4 + bob, 4.5, 3.4, c); this.fillEll(sx, sy - 3 + bob, 3, 2, belly);
+    const hx = sx + 4 * f, hy = sy - 7 + bob;
+    this.disc(hx, hy, 2.4, c2); this.rect(hx - 1 * f, hy - 3, 1.4, 2, c); this.disc(hx + 2 * f, hy, 0.6, "#1a1208");   // head + ear + eye
+    this.rect(sx - 2 * f, sy - 2 + bob, 1.4, 3, dk); this.rect(sx + 2 * f, sy - 2 + bob, 1.4, 3, dk);   // legs
+  }
+  // A hovering crystal-moth — canyon hero fauna (floats above the ground, wings flapping).
+  private drawMoth(sx: number, sy: number, t: number) {
+    const acc = this.curRing.palette.accent, fy = sy - 14 + Math.sin(t * 2) * 4, flap = Math.abs(Math.sin(t * 12)), wc = mix(acc, "#ffffff", 0.3);
+    this.disc(sx, sy + 2, 2, "#0a071430");
+    this.fillEll(sx - 3, fy, 3 + flap * 1.5, 4 - flap * 1.5, wc); this.fillEll(sx + 3, fy, 3 + flap * 1.5, 4 - flap * 1.5, wc);   // wings
+    this.fillEll(sx, fy, 1.4, 3, "#3a2c3a");                                  // body
+    this.glow(sx, fy, 7, acc, 0.16 + 0.2 * this.nightAmt); this.disc(sx, fy - 3, 0.8, mix(acc, "#fff", 0.5));
   }
   // An obsidian spire — the ember biome's "crystal": dark angular shards with a magenta sheen.
   private drawObsidianSpire(cx: number, cy: number, big: boolean | undefined) {
@@ -2407,8 +2570,42 @@ export class CirqlWorldEngine extends RetroEngine {
     this.glow(cx, cy, r * 1.6, "#ff6a1a", 0.12 + 0.14 * this.nightAmt);
     for (const L of lobes) this.neonEllipse(cx + L[0] * r * 0.72, cy + L[1] * r * 0.62, r * L[2], r * L[2] * 0.62, "#ffab3a", 3, 1.2, 0.4 + 0.4 * this.nightAmt);
   }
+  // The crystal-canyon signature: a cluster of tall faceted shards in the ring's accent hue.
+  private drawCrystalSpire(cx: number, cy: number, big: boolean | undefined, c: string) {
+    const k = big ? 1.35 : 1, b = this.b, s = this.SS, hi = mix(c, "#ffffff", 0.55), dk = shade(c, -0.42);
+    this.disc(cx, cy + 2, 6 * k, "#0a071440");
+    this.glow(cx, cy - 16 * k, 18 * k, c, 0.1 + 0.2 * this.nightAmt);
+    const shard = (ox: number, w: number, h: number, col: string) => { b.fillStyle = col; b.beginPath(); b.moveTo((cx + ox) * s, (cy - h) * s); b.lineTo((cx + ox - w) * s, cy * s); b.lineTo((cx + ox + w) * s, cy * s); b.closePath(); b.fill(); };
+    shard(-7 * k, 4 * k, 20 * k, dk); shard(6 * k, 4.5 * k, 24 * k, dk);
+    shard(0, 5.5 * k, 34 * k, c); shard(-1.5 * k, 2 * k, 34 * k, hi);
+    shard(6 * k, 3 * k, 24 * k, mix(c, "#fff", 0.3)); shard(-7 * k, 2.5 * k, 20 * k, mix(c, "#fff", 0.25));
+    this.neonPath([[cx - 1.5 * k, cy - 34 * k], [cx + 6 * k, cy]], hi, 3 * k, 1 * k, 0.4 + 0.4 * this.nightAmt);
+  }
+  // Murky peat water — the mushroom-marsh "pond": deep green-brown with a violet glowing rim
+  // and slow rising bubbles.
+  private drawBogWater(cx: number, cy: number, r: number) {
+    const acc = mix(this.curRing.palette.accent, "#7a4fd0", 0.4);
+    const lobes: [number, number, number][] = [[0, 0, 1], [0.55, -0.12, 0.72], [-0.5, 0.14, 0.64], [0.28, 0.36, 0.5]];
+    const el = (dx: number, dy: number, sc: number, ry: number, col: string) => this.fillEll(cx + dx * r * 0.72, cy + dy * r * 0.62, r * sc, r * sc * ry, col);
+    for (const L of lobes) el(L[0], L[1] + 0.06, L[2] * 1.04, 0.64, "#0e1e18");
+    for (const L of lobes) el(L[0], L[1], L[2], 0.6, "#1c3a2c");
+    for (const L of lobes) el(L[0], L[1], L[2] * 0.8, 0.5, "#2c5240");
+    for (const L of lobes) this.fillEll(cx + L[0] * r * 0.72 - r * 0.06, cy + L[1] * r * 0.62 - r * 0.06, r * L[2] * 0.4, r * L[2] * 0.24, "#3f6a4e");
+    if (!this.reduce) for (let i = 0; i < 4; i++) { const L = lobes[i % lobes.length], bx = cx + L[0] * r * 0.72 + Math.sin(this.t * 0.8 + i * 2) * r * 0.3, by = cy + L[1] * r * 0.62 - ((this.t * 0.4 + i * 0.5) % 1) * r * 0.4; this.disc(bx, by, 0.9, "#8affc8"); }
+    this.glow(cx, cy, r * 1.4, acc, 0.08 + 0.14 * this.nightAmt);
+    for (const L of lobes) this.neonEllipse(cx + L[0] * r * 0.72, cy + L[1] * r * 0.62, r * L[2], r * L[2] * 0.62, acc, 3, 1.1, 0.32 + 0.42 * this.nightAmt);
+  }
+  // Lily-pads with the odd bloom — laid over a tropical lagoon.
+  private drawLilyPads(cx: number, cy: number, r: number) {
+    for (let i = 0; i < 4; i++) { const a = i * (TAU / 4) + (Math.abs(cx) % 5) * 0.2, px = cx + Math.cos(a) * r * 0.5, py = cy + Math.sin(a) * r * 0.4;
+      this.fillEll(px, py, 4.5, 2.6, "#2f8a5a"); this.fillEll(px, py, 3.4, 1.9, "#3fa86a");
+      const b = this.b, s = this.SS; b.strokeStyle = "#1c5a38"; b.lineWidth = 0.8 * s; b.beginPath(); b.moveTo(px * s, py * s); b.lineTo((px + 3) * s, (py - 1.4) * s); b.stroke();
+      if (i % 2) { this.disc(px + 1, py - 2, 1.3, "#ffd1e8"); this.disc(px + 1, py - 2, 0.7, "#ffffff"); }
+    }
+  }
   private drawCrystal(cx: number, cy: number, big: boolean | undefined, c: string) {
     if (this.curRing.biome === "ember") { this.drawObsidianSpire(cx, cy, big); return; }
+    if (this.curRing.biome === "canyon") { this.drawCrystalSpire(cx, cy, big, c); return; }
     const s = big ? 1.35 : 1;
     this.disc(cx, cy + 2, 5 * s, "#0a071440");
     this.glow(cx, cy - 6 * s, 16 * s, c, this.reduce ? 0.35 : 0.28 + 0.12 * Math.sin(this.t * 1.7 + cx));
@@ -2418,9 +2615,30 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(cx - 1 * s, cy - 6 * s, 1, 6 * s, "#ffffff");
     if (big) { this.rect(cx + 3 * s, cy - 3 * s, 2 * s, 5 * s, c); this.rect(cx - 5 * s, cy - 2 * s, 2 * s, 4 * s, c); }
   }
+  // A wind-carved sandstone mesa — the desert signature "rock" (banded, warm, with a notch).
+  private drawSandstone(cx: number, cy: number, big?: boolean) {
+    const s = big ? 1.5 : 1, bands = ["#b57a44", "#c98d50", "#d8a05e", "#c07a42"];
+    this.disc(cx, cy + 2, 8 * s, "#0a071440");
+    for (let i = 0; i < 4; i++) { const h = (16 - i * 3.4) * s; this.fillEll(cx, cy - i * 3.6 * s, (9 - i * 1.2) * s, (5 - i * 0.5) * s, bands[i]); this.rect(cx - (9 - i * 1.2) * s, cy - i * 3.6 * s - h * 0.05, (18 - i * 2.4) * s, 1, "#8a5a34"); }
+    this.fillEll(cx - 2 * s, cy - 13 * s, 4 * s, 2.2 * s, "#e6b86e");   // sunlit top
+    this.rect(cx + 3 * s, cy - 6 * s, 2 * s, 6 * s, "#7a4e2c");         // shadowed notch
+  }
+  // A flat-topped butte studded with a couple of glowing crystals — the crystal-canyon "rock".
+  private drawMesa(cx: number, cy: number, big?: boolean) {
+    const s = big ? 1.5 : 1, acc = this.curRing.palette.accent;
+    this.disc(cx, cy + 2, 8 * s, "#0a071440");
+    this.rect(cx - 8 * s, cy - 12 * s, 16 * s, 12 * s, "#7a4030"); this.rect(cx - 8 * s, cy - 12 * s, 16 * s, 2.4 * s, "#9a5a3e");
+    this.rect(cx - 8 * s, cy - 12 * s, 3 * s, 12 * s, "#63321f");
+    this.fillEll(cx, cy - 12 * s, 8 * s, 2.6 * s, "#a86a48");
+    this.rect(cx + 2 * s, cy - 18 * s, 1.6 * s, 6 * s, acc); this.glow(cx + 2.8 * s, cy - 17 * s, 5 * s, acc, 0.12 + 0.22 * this.nightAmt);
+    this.rect(cx - 4 * s, cy - 16 * s, 1.3 * s, 4 * s, acc); this.glow(cx - 3.4 * s, cy - 15 * s, 4 * s, acc, 0.1 + 0.2 * this.nightAmt);
+  }
   // ---- landscape: rocks + ponds ----
   private drawRock(cx: number, cy: number, big?: boolean) {
-    if (this.curRing.biome === "ember") { this.drawBasaltColumn(cx, cy, big); return; }
+    const biome = this.curRing.biome;
+    if (biome === "ember") { this.drawBasaltColumn(cx, cy, big); return; }
+    if (biome === "desert") { this.drawSandstone(cx, cy, big); return; }
+    if (biome === "canyon") { this.drawMesa(cx, cy, big); return; }
     const s = big ? 1.5 : 1;
     this.disc(cx, cy + 2, 6 * s, "#0a071440");
     this.disc(cx, cy - 2 * s, 6 * s, "#565663");
@@ -2428,9 +2646,16 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx + 2 * s, cy, 3.5 * s, "#474753");
     this.rect(cx - 6 * s, cy + 1 * s, 12 * s, 2 * s, "#38384352");
     this.disc(cx - 2 * s, cy - 4 * s, 1.5 * s, "#8a8a97");   // highlight
-    if (this.curRing.biome === "woodland") {                 // a mossy cap in the deep wood
+    if (biome === "woodland" || biome === "marsh") {         // a mossy cap (teal-ish in the marsh)
       const g = this.curRing.palette.grass;
       this.disc(cx - 2 * s, cy - 4 * s, 4 * s, shade(g, 0.05)); this.disc(cx + 2.5 * s, cy - 3 * s, 2.5 * s, g);
+    } else if (biome === "winter" || biome === "aurora") {   // a snow cap
+      this.disc(cx - 1 * s, cy - 5 * s, 4.4 * s, "#eef6ff"); this.disc(cx + 2.5 * s, cy - 3.5 * s, 2.6 * s, "#dce8f6");
+    } else if (biome === "coast") {                          // barnacles + a pink coral tuft
+      this.disc(cx + 2 * s, cy - 1 * s, 1.2 * s, "#e8e0d0"); this.disc(cx - 3 * s, cy - 1 * s, 1 * s, "#e8e0d0");
+      this.rect(cx - 1 * s, cy - 8 * s, 1.4, 4 * s, "#ff8fae"); this.disc(cx - 0.4 * s, cy - 8 * s, 1.4 * s, "#ff8fae");
+    } else if (biome === "autumn") {                         // a few fallen leaves
+      this.disc(cx - 4 * s, cy + 2 * s, 1.2, "#d24a2a"); this.disc(cx + 4 * s, cy + 1.5 * s, 1.2, "#e8a83a");
     }
   }
   // A collectible wisp (Phase K3 gather quests): a bobbing glowing orb with a soft halo.
@@ -2442,8 +2667,47 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx, y, 2.2, c); this.disc(cx - 0.6, y - 0.6, 0.9, "#ffffff");
     if (!this.reduce) { const a = (this.t + cx) % 1.4; this.q(cx + Math.sin(this.t * 2 + cy) * 3, y - 4 - a * 5, "·", c, 0.8, "c", false, (1 - a / 1.4) * 0.8); }
   }
+  // ---- per-biome blooms (each biome its own flower; default = the cheerful pastal bloom) ----
+  private drawIceLotus(cx: number, cy: number) {          // winter: pale crystalline star + cold glow
+    const c = "#bfe6ff", hi = "#eaf7ff";
+    for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + i * (TAU / 6); this.triY(cx + Math.cos(a) * 1.2, cy - 6 + Math.sin(a) * 1.2, 1.4, 3.2, i % 2 ? c : hi); }
+    const pulse = this.reduce ? 0.7 : 0.6 + 0.4 * Math.sin(this.t * 1.8 + cx);
+    this.glow(cx, cy - 5, 6, c, (0.1 + 0.26 * this.nightAmt) * pulse + 0.06); this.disc(cx, cy - 5, 1.2, "#ffffff");
+  }
+  private drawHibiscus(cx: number, cy: number, c: string) {   // tropical: bold 5-petal bloom + stamen
+    const col = mix(c, "#ff5a6a", 0.4);
+    this.rect(cx, cy - 4, 1, 5, "#2f8a4a");
+    for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * (TAU / 5); this.fillEll(cx + Math.cos(a) * 2.6, cy - 6 + Math.sin(a) * 2.6, 2.6, 1.8, col); }
+    this.disc(cx, cy - 6, 1.4, "#ffe27a"); this.rect(cx - 0.4, cy - 10, 0.8, 3, "#ffd24a"); this.disc(cx, cy - 10, 0.9, "#ff9a3c");
+  }
+  private drawBogBloom(cx: number, cy: number) {          // marsh: drooping violet bell, glowing lip
+    const c = mix(this.curRing.palette.accent, "#c85cff", 0.5);
+    this.rect(cx, cy - 6, 1, 7, "#2c6656");
+    this.fillEll(cx, cy - 7, 2.6, 3.2, shade(c, -0.2)); this.fillEll(cx, cy - 6, 2.4, 2, c);
+    this.neonEllipse(cx, cy - 5, 2.4, 1, c, 3, 0.9, 0.5 + 0.4 * this.nightAmt, 0, Math.PI);
+    this.glow(cx, cy - 6, 5, c, 0.1 + 0.22 * this.nightAmt);
+  }
+  private drawCactusBloom(cx: number, cy: number) {       // desert: barrel cactus + night-bloom
+    const g = "#4a8a4a", gd = "#3a6a3a";
+    this.disc(cx, cy + 1, 3, "#0a071438");
+    this.rect(cx - 2.4, cy - 8, 4.8, 9, gd); this.fillEll(cx, cy - 8, 2.6, 3, g);
+    for (let i = -1; i <= 1; i++) this.rect(cx + i * 1.6, cy - 7, 0.5, 7, shade(g, 0.2));   // ribs
+    const pulse = this.reduce ? 0.8 : 0.6 + 0.4 * Math.sin(this.t * 2 + cx);
+    this.disc(cx, cy - 9, 1.6, "#ff8fbf"); this.glow(cx, cy - 9, 5, "#ff8fbf", (0.12 + 0.24 * this.nightAmt) * pulse);
+  }
+  private drawCrystalBloom(cx: number, cy: number, c: string) {   // canyon: a geode sprouting a shard
+    this.fillEll(cx, cy - 1, 3, 2, "#7a4030"); this.fillEll(cx, cy - 1, 2, 1.3, shade(c, -0.2));
+    this.triY(cx, cy - 8, 1.4, 7, c); this.rect(cx - 0.4, cy - 8, 0.8, 7, mix(c, "#fff", 0.5));
+    this.glow(cx, cy - 5, 5, c, 0.1 + 0.22 * this.nightAmt);
+  }
   private drawFlower(cx: number, cy: number, c: string) {
-    if (this.curRing.biome === "ember") { this.drawEmberPoppy(cx, cy); return; }
+    const biome = this.curRing.biome;
+    if (biome === "ember") { this.drawEmberPoppy(cx, cy); return; }
+    if (biome === "winter" || biome === "aurora") { this.drawIceLotus(cx, cy); return; }
+    if (biome === "tropical") { this.drawHibiscus(cx, cy, c); return; }
+    if (biome === "marsh") { this.drawBogBloom(cx, cy); return; }
+    if (biome === "desert") { this.drawCactusBloom(cx, cy); return; }
+    if (biome === "canyon") { this.drawCrystalBloom(cx, cy, c); return; }
     // stem + a little leaf, then a rounded 5-petal bloom + centre (reads as a flower,
     // not a jewel — CHR-259 landscape pass)
     this.rect(cx, cy - 4, 1, 5, "#3a6a34");
@@ -2483,6 +2747,7 @@ export class CirqlWorldEngine extends RetroEngine {
   // bioluminescent shoreline that breathes with night.
   private drawPond(cx: number, cy: number, r: number) {
     if (this.curRing.biome === "ember") { this.drawLavaPool(cx, cy, r); return; }
+    if (this.curRing.biome === "marsh") { this.drawBogWater(cx, cy, r); return; }
     const sea = this.curRing.palette.sea, deep = shade(sea, -0.28), shallow = mix(sea, "#3fb0b8", 0.5);
     const edge = mix(this.curRing.palette.accent, "#5ff2ff", 0.4);
     // deterministic lobe shape (stable per pond via its x): [dx, dy, scale]
@@ -2504,6 +2769,7 @@ export class CirqlWorldEngine extends RetroEngine {
       else if (k === 1) this.drawFlower(ex, ey, i % 2 ? "#ff8fbf" : "#ffd24a");                                    // a bloom
       else { this.rect(ex - 1, ey - 3, 1, 4, g); this.rect(ex, ey - 4, 1, 5, g); }                                 // grass tuft
     }
+    if (this.curRing.biome === "tropical") this.drawLilyPads(cx, cy, r);   // lagoon lily-pads
   }
 
   // ---- groundcover (Phase J3): a static, deterministic scatter of tiny ground details

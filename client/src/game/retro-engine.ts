@@ -40,6 +40,25 @@ export function mix(a: string, b: string, t: number): string {
   const A = hexToRgb(a), B = hexToRgb(b);
   return toHex(Math.round(A[0] + (B[0] - A[0]) * t), Math.round(A[1] + (B[1] - A[1]) * t), Math.round(A[2] + (B[2] - A[2]) * t));
 }
+/** Rotate a hex colour's hue by `deg` degrees (optionally nudge saturation/lightness ±).
+ *  Used to give each ring its own signature tint while keeping the biome's identity. */
+export function hueShift(hex: string, deg: number, satMul = 1, litAdd = 0): string {
+  let [r, g, b] = hexToRgb(hex); r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0; const l = (max + min) / 2;
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d) % 6; else if (max === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  h = (h + deg) % 360; if (h < 0) h += 360;
+  const s2 = Math.max(0, Math.min(1, s * satMul)), l2 = Math.max(0, Math.min(1, l + litAdd));
+  const c = (1 - Math.abs(2 * l2 - 1)) * s2, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l2 - c / 2;
+  let rr = 0, gg = 0, bb = 0;
+  if (h < 60) { rr = c; gg = x; } else if (h < 120) { rr = x; gg = c; } else if (h < 180) { gg = c; bb = x; }
+  else if (h < 240) { gg = x; bb = c; } else if (h < 300) { rr = x; bb = c; } else { rr = c; bb = x; }
+  return toHex(Math.round((rr + m) * 255), Math.round((gg + m) * 255), Math.round((bb + m) * 255));
+}
 
 export type Btn = "up" | "down" | "left" | "right" | "a" | "b";
 

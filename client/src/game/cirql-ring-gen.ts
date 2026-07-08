@@ -10,6 +10,7 @@
 import { RINGS, type Ring, type Prop, type RingPalette, type LandmarkKind } from "./cirql-world";
 import { isShop, shopIdAt, shopInterior } from "./cirql-shops";
 import { isHome, homeInterior } from "./cirql-home";
+import { shade, hueShift } from "./retro-engine";
 
 // deterministic RNG seeded from an integer (mulberry32)
 function rngFrom(seed: number) {
@@ -68,6 +69,22 @@ const BIOMES: Biome[] = [
   // basalt columns, ember-poppies, a lava pool + a salamander. crystals=obsidian, rocks=basalt.
   { key: "ember", tree: false, crystals: 3, lanterns: 3, rocks: 6, pond: true, flowers: 6, fence: false, path: true, ambient: "ember", landmark: "ruin",
     palette: { sky: ["#2a1410", "#160a08"], sea: "#1a0c08", land: "#3a2620", grass: "#4a342c", sand: "#6a4a3a", accent: "#ff6a1a", mote: "#ffab3a" } },
+  // mushroom marsh — a bioluminescent bog: giant glowing toadstools, peat water, drifting
+  // wisps + a glow-newt. Teal peat with magenta/violet light. (biome-kit)
+  { key: "marsh", tree: true, crystals: 1, lanterns: 4, rocks: 2, pond: true, flowers: 4, fence: false, path: true, ambient: "firefly", landmark: "greattree",
+    palette: { sky: ["#12242e", "#0a151c"], sea: "#0c2a2e", land: "#1c3a34", grass: "#2c6656", sand: "#7a7a5a", accent: "#c85cff", mote: "#ff9ae0" } },
+  // crystal canyon — a stark badland of amber mesas studded with glowing crystal spires + geodes;
+  // no trees, a crystal-moth flutters. Red-rock day, cyan crystal light. (biome-kit)
+  { key: "canyon", tree: false, crystals: 5, lanterns: 3, rocks: 8, pond: false, flowers: 1, fence: false, path: true, ambient: "dust", landmark: "ruin",
+    palette: { sky: ["#3a1e22", "#201014"], sea: "#241a20", land: "#6a3a34", grass: "#8a5540", sand: "#e0a870", accent: "#57e0ff", mote: "#a8ecff" } },
+  // golden savanna — warm sunset grassland: flat-top acacias, tall gold grass, a watering hole
+  // + a bounding gazelle. Amber light. (biome-kit)
+  { key: "savanna", tree: true, crystals: 0, lanterns: 3, rocks: 3, pond: true, flowers: 3, fence: false, path: true, ambient: "grasshopper", landmark: "greattree",
+    palette: { sky: ["#3a2a12", "#221808"], sea: "#2a3320", land: "#6a5228", grass: "#b89434", sand: "#e8c878", accent: "#ffcf4a", mote: "#ffe9a0" } },
+  // aurora tundra — a night-lit snowfield under dancing aurora: frost-pines, glowing lichen,
+  // ice-crystals + a caribou. Deep sky, green/violet light. (biome-kit)
+  { key: "aurora", tree: true, crystals: 3, lanterns: 4, rocks: 3, pond: false, flowers: 0, fence: false, path: true, ambient: "snow", landmark: "crystal",
+    palette: { sky: ["#101a34", "#0a1024"], sea: "#122844", land: "#26324e", grass: "#3a5270", sand: "#dfeaf6", accent: "#5cffb0", mote: "#b0ffd8" } },
 ];
 
 const FLOWER_COLS = ["#ff8fbf", "#ffd24a", "#ffffff", "#e0a0ff", "#ff6b6b", "#8fd0ff"];
@@ -88,6 +105,26 @@ const WANDERERS = ["Tamsin", "Corin", "Mabel", "Dov", "Perrin", "Isolde", "Hale"
 const SUBS = ["a quiet shore", "beyond the fog", "a windswept land", "where lanterns drift", "an uncharted ring", "far from home", "a shore of echoes"];
 
 function pick<T>(rng: () => number, arr: T[]): T { return arr[Math.floor(rng() * arr.length)]; }
+
+// Give each ring its OWN signature tint so even a repeated biome reads as a distinct place:
+// rotate the glow accents' hue and nudge ground lightness deterministically from the index.
+// Render-only (never touches prop generation), so quests/layout stay identical.
+function varyPalette(base: RingPalette, index: number): RingPalette {
+  const vr = rngFrom(Math.imul(index, 40503) ^ 0x51ed270b);
+  const deg = (vr() - 0.5) * 74;      // ±37° hue rotate on the neon accents (the "colour of the glow")
+  const litL = (vr() - 0.5) * 0.10;   // ±5% land / sky lightness
+  const litG = (vr() - 0.5) * 0.12;   // ±6% grass
+  const litS = (vr() - 0.5) * 0.08;   // ±4% water
+  return {
+    sky: [shade(base.sky[0], litL * 0.4), shade(base.sky[1], litL * 0.4)],
+    sea: shade(base.sea, litS),
+    land: shade(base.land, litL),
+    grass: shade(base.grass, litG),
+    sand: base.sand,
+    accent: hueShift(base.accent, deg),
+    mote: hueShift(base.mote, deg),
+  };
+}
 
 const TAU = Math.PI * 2;
 
@@ -146,8 +183,8 @@ function wallClump(props: Prop[], cx: number, cy: number, biome: Biome, n: numbe
 export function generateRing(index: number): Ring {
   const rng = rngFrom(Math.imul(index, 2654435761) ^ 0x9e3779b9);
   // stride through the biomes so consecutive rings are always a different scene and all
-  // biomes get used (3 is coprime with 8 → cycles through every biome, no adjacent repeats)
-  const biome = BIOMES[(index * 3 + 1) % BIOMES.length];
+  // biomes get used (5 is coprime with 12 → cycles through every biome, no adjacent repeats)
+  const biome = BIOMES[(index * 5 + 1) % BIOMES.length];
   const name = ringNameFor(rng);
   // rings grow the farther out you sail — more room to roam + populate (Hearth is 430)
   const radius = 440 + index * 55 + Math.floor(rng() * 70);
@@ -244,7 +281,7 @@ export function generateRing(index: number): Ring {
     const c = clearSpot();
     props.push({ t: "storm", x: c.x, y: c.y, to: subIndex("cloud", index), sub: "cloud", label: "the storm", accent: "#dfeaff" });
   } else {
-    const portalKind: SubKind | null = (biome.key === "desert" || biome.key === "ember") ? "cave" : (biome.key === "woodland" || biome.key === "meadow" || biome.key === "autumn") ? "tree" : (biome.key === "coast") ? "cloud" : null;
+    const portalKind: SubKind | null = (biome.key === "desert" || biome.key === "ember" || biome.key === "canyon") ? "cave" : (biome.key === "woodland" || biome.key === "meadow" || biome.key === "autumn" || biome.key === "marsh" || biome.key === "savanna") ? "tree" : (biome.key === "coast" || biome.key === "aurora") ? "cloud" : null;
     if (portalKind) { const c = clearSpot(); props.push({ t: "portal", x: c.x, y: c.y, to: subIndex(portalKind, index), sub: portalKind, label: portalKind === "cave" ? "cave" : portalKind === "tree" ? "hollow tree" : "cloud stair" }); }
   }
   // a two-ended TUNNEL across the island (Milestone F) — enter one burrow, walk the passage,
@@ -297,7 +334,7 @@ export function generateRing(index: number): Ring {
     sub: pick(rng, SUBS),
     radius,
     explorable: true,
-    palette: biome.palette,
+    palette: varyPalette(biome.palette, index),   // per-ring signature tint (each ring its own place)
     spawn: { x: 0, y: -radius * 0.68 },   // arrive near the inward dock
     props,
     ambient: biome.ambient,               // the critter that belongs to this scene
