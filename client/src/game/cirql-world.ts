@@ -43,7 +43,8 @@ export type PropType =
   | "curio"     // a DISCOVERABLE object (relic / blight / star / cache) — inspect to trigger a hidden/emergent quest (Phase K7)
   | "bounty"    // a bounty board — a rotating "pick your next task" hub (Phase K7 "chosen" delivery)
   | "petshop"   // the Pet Stall — buy a companion for your CIRQLSPACE (Pets P1)
-  | "stylist";  // the Style Studio — restyle your CIRQLSPACE's biome/colour palette (home customization)
+  | "stylist"   // the Style Studio — restyle your CIRQLSPACE's biome/colour palette (home customization)
+  | "barber";   // the Barber — restyle your hair/look (opens the character editor on hair) (Town business)
 
 export type LandmarkKind = "greattree" | "stonecircle" | "lighthouse" | "crystal" | "waterfall" | "ruin";
 export type CurioKind = "relic" | "blight" | "star" | "cache";
@@ -181,6 +182,8 @@ const TOWN: Ring = {
     { t: "shop", x: 330,  y: -40, to: 400003, shopId: "garden",   id: "shop-garden",   label: "Garden & Grove",  accent: "#8fe6a0" },
     { t: "shop", x: 360,  y: 250, to: 400004, shopId: "curios",   id: "shop-curios",   label: "Curios & Wonders", accent: "#c79dff" },
     { t: "shop", x: -160, y: 330, to: 400005, shopId: "building", id: "shop-building", label: "Timber & Stone",  accent: "#ffb877" },
+    // the Barber — a Town business that restyles your hair/look (opens the character editor on hair)
+    { t: "barber", x: 210, y: 300, id: "barber", label: "The Snip & Sparq", accent: "#ff7ea8" },
   ],
   puzzleTarget: ["rn0", "rn2", "rn3"],
   ambient: "butterfly",

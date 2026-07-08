@@ -79,6 +79,7 @@ export default function Cirql() {
 
   const [showCreator, setShowCreator] = useState(false);
   const [creatorMode, setCreatorMode] = useState<"create" | "edit">("create");
+  const [creatorCat, setCreatorCat] = useState<string | undefined>(undefined);   // jump the editor to a category (Barber → hair)
   const [showQuests, setShowQuests] = useState(false);
   const [questRows, setQuestRows] = useState<QuestLogRow[]>([]);
   const [hallOpen, setHallOpen] = useState(false);         // CirqlCade hall (the in-world arcade)
@@ -407,9 +408,10 @@ export default function Cirql() {
     if (import.meta.env.DEV) (window as any).__cirql = eng;
     eng.onInteract = (kind, p) => {   // step into CirqlCade / a shop keeper opens the store (F)
       if (kind === "wonders") openHall();
+      else if (kind === "barber") { setCreatorCat("hair"); setCreatorMode("edit"); setShowCreator(true); }   // the Barber → the look editor, on hair
       else if (kind === "shopkeeper" && p?.shopId) {
         const id = p.shopId as ShopId; const s = SHOPS[id]; if (!s) return;
-        if (s.opensCreator) { setCreatorMode("edit"); setShowCreator(true); }   // Boutique → the mirror (avatar cosmetics)
+        if (s.opensCreator) { setCreatorCat(undefined); setCreatorMode("edit"); setShowCreator(true); }   // Boutique → the mirror (avatar cosmetics)
         else setShopOpen(id);
       }
     };
@@ -860,7 +862,7 @@ export default function Cirql() {
           className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-cyan-200/90" style={{ borderColor: showSettings ? "rgba(53,224,208,.65)" : "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
           <SlidersHorizontal className="h-3.5 w-3.5" />
         </button>
-        <button onClick={() => { setCreatorMode("edit"); setShowCreator(true); }} data-testid="btn-edit-look" title="Edit look"
+        <button onClick={() => { setCreatorCat(undefined); setCreatorMode("edit"); setShowCreator(true); }} data-testid="btn-edit-look" title="Edit look"
           className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border text-cyan-200/90" style={{ borderColor: "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
           <Pencil className="h-3.5 w-3.5" />
         </button>
@@ -1716,6 +1718,7 @@ export default function Cirql() {
       {showCreator && (
         <CharacterCreator
           mode={creatorMode}
+          initialCat={creatorCat as any}
           initial={avatarRef.current}
           initialName={nameRef.current === "Traveller" ? "" : nameRef.current}
           sparks={sparksUi}

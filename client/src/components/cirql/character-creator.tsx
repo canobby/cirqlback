@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type AvatarConfig, DEFAULT_AVATAR, drawAvatarToCanvas, cosmeticCost,
-  SKINS, EYES, HAT_COLORS, HAT_STYLES, BODY_COLORS, SIDEKICKS, AURAS, AURA_COLORS, WINGS, HELD_ITEMS,
+  SKINS, EYES, HAT_COLORS, HAT_STYLES, HAIR_STYLES, HAIR_COLORS, BODY_COLORS, SIDEKICKS, AURAS, AURA_COLORS, WINGS, HELD_ITEMS,
 } from "@/game/avatar";
 
 // CIRQL character creator (CHR-242/243). Shown on first entry (create) and from
@@ -14,6 +14,7 @@ interface Props {
   initial?: AvatarConfig;
   initialName?: string;
   mode?: Mode;
+  initialCat?: CatId;                                // jump straight to a category (Barber → "hair")
   sparks?: number;                                   // current balance (for buying looks)
   owned?: string[];                                  // purchased cosmetic ids
   onBuy?: (id: string, cost: number) => boolean;     // spend sparks; returns true if bought
@@ -21,18 +22,19 @@ interface Props {
   onCancel?: () => void;
 }
 
-type CatId = "skin" | "eye" | "hatColor" | "hatStyle" | "body" | "wings" | "held" | "aura" | "companion";
+type CatId = "skin" | "eye" | "hair" | "hairColor" | "hatColor" | "hatStyle" | "body" | "wings" | "held" | "aura" | "companion";
 const CATS: { id: CatId; label: string }[] = [
-  { id: "skin", label: "Skin" }, { id: "eye", label: "Eyes" }, { id: "hatColor", label: "Hat" },
-  { id: "hatStyle", label: "Shape" }, { id: "body", label: "Outfit" },
+  { id: "skin", label: "Skin" }, { id: "eye", label: "Eyes" },
+  { id: "hair", label: "Hair" }, { id: "hairColor", label: "Hair Dye" },
+  { id: "hatColor", label: "Hat" }, { id: "hatStyle", label: "Shape" }, { id: "body", label: "Outfit" },
   { id: "wings", label: "Wings" }, { id: "held", label: "Magic" },
   { id: "aura", label: "Aura" }, { id: "companion", label: "Friend" },
 ];
 
-export function CharacterCreator({ initial, initialName, mode = "create", sparks = 0, owned = [], onBuy, onConfirm, onCancel }: Props) {
+export function CharacterCreator({ initial, initialName, mode = "create", initialCat, sparks = 0, owned = [], onBuy, onConfirm, onCancel }: Props) {
   const [cfg, setCfg] = useState<AvatarConfig>({ ...DEFAULT_AVATAR, ...(initial || {}) });
   const [name, setName] = useState((initialName || "").slice(0, 16));
-  const [cat, setCat] = useState<CatId>("skin");
+  const [cat, setCat] = useState<CatId>(initialCat ?? "skin");
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const set = (patch: Partial<AvatarConfig>) => setCfg((c) => ({ ...c, ...patch }));
@@ -89,10 +91,28 @@ export function CharacterCreator({ initial, initialName, mode = "create", sparks
     </div>
   );
 
+  // priced colour swatches (hair dye) — like swatches() but with lock + buy (some dyes cost sparqs)
+  const pricedSwatches = (list: { c: string }[], set1: (c: string) => void, cur: string, prefix: string) => (
+    <div className="flex flex-wrap gap-2">
+      {list.map(({ c }) => {
+        const id = `${prefix}:${c}`, cost = cosmeticCost(id), locked = cost > 0 && !owned.includes(id), afford = sparks >= cost, active = cur === c;
+        const handle = () => { if (locked) { if (onBuy && onBuy(id, cost)) set1(c); } else set1(c); };
+        return (
+          <button key={c} onClick={handle} data-testid={`sw-${prefix}-${c}`} className="relative h-9 w-9 rounded-full border-2 transition active:scale-90"
+            style={{ background: c, borderColor: active ? "#fff" : "transparent", boxShadow: active ? "0 0 12px rgba(255,255,255,.5)" : "0 0 0 1px rgba(255,255,255,.12)", opacity: locked && !afford ? 0.55 : 1 }}>
+            {locked && <span className="absolute -bottom-1 -right-1 rounded px-0.5 text-[8px] font-bold" style={{ background: "rgba(255,196,107,.92)", color: "#1a1206" }}>✦{cost}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   const panel = useMemo(() => {
     switch (cat) {
       case "skin": return swatches(SKINS, "skin", cfg.skin);
       case "eye": return swatches(EYES, "eye", cfg.eye);
+      case "hair": return chips(HAIR_STYLES, cfg.hair ?? "none", (k) => set({ hair: k }), undefined, "hair");
+      case "hairColor": return pricedSwatches(HAIR_COLORS, (c) => set({ hairColor: c }), cfg.hairColor ?? "#4a3222", "haircolor");
       case "hatColor": return swatches(HAT_COLORS, "hat", cfg.hat);
       case "hatStyle": return chips(HAT_STYLES, cfg.hatStyle ?? "cap", (k) => set({ hatStyle: k }), undefined, "hat");
       case "body": return swatches(BODY_COLORS, "body", cfg.body);

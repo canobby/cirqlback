@@ -30,7 +30,7 @@ import { npcLook, type NpcLook } from "./cirql-npc-looks";
 import { simpleDialog, npcConversation, choiceDialog, type DialogTree, type DialogChoice } from "./cirql-dialog";
 import { npcProfile } from "./cirql-npc-cast";
 
-export type InteractKind = "wonders" | "npc" | "dock" | "shop" | "shopkeeper";
+export type InteractKind = "wonders" | "npc" | "dock" | "shop" | "shopkeeper" | "barber";
 export interface CirqlStats { sparks: number; cirqlLit: number; cirqlTotal: number; online: number; energy: number; }
 export interface QuestLogRow { id: string; name: string; status: QuestStatus; objective: string; tier?: number; reward?: number; renownReward?: number; steps?: number; }
 
@@ -1063,6 +1063,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (p.t === "bounty") { this.openBounty(p); return; }         // a bounty board → pick a task
     if (p.t === "petshop") { this.openPetShop(); return; }        // the Pet Stall → adopt a companion
     if (p.t === "stylist") { this.openStyleStudio(); return; }    // the Style Studio → restyle your space
+    if (p.t === "barber") { this.sfx("talk"); this.onInteract?.("barber", p); return; }   // the Barber → host opens the look editor on hair
     if (p.t === "gathering") { this.toast("A good place to rest and meet fellow travellers."); return; }
     if (p.t === "landmark") {   // a focal set-piece — a meeting spot + (later) a quest home (J4)
       const flavor: Record<string, string> = { greattree: "The Great Tree — older than the ring itself.", stonecircle: "The Stone Circle hums with a quiet, ancient charge.", lighthouse: "The Lighthouse sweeps the dark water for wanderers.", crystal: "The Great Crystal glows from somewhere deep within.", waterfall: "The Falls thunder into a cool, misted pool.", ruin: "The Old Ruin keeps the secrets of who built it." };
@@ -1384,7 +1385,7 @@ export class CirqlWorldEngine extends RetroEngine {
         const isQL = this.isQuestLantern(p);
         const puzzle = p.t === "rune" || p.t === "tablet" || p.t === "shrine";
         const social = p.t === "gathering" || p.t === "theater" || p.t === "landmark";
-        const discover = p.t === "curio" || p.t === "bounty" || p.t === "petshop" || p.t === "stylist";   // K7 discoverable / bounty / pet stall / style studio
+        const discover = p.t === "curio" || p.t === "bounty" || p.t === "petshop" || p.t === "stylist" || p.t === "barber";   // K7 discoverable / bounty / pet stall / style studio / barber
         if (p.t !== "wonders" && p.t !== "shop" && p.t !== "home" && p.t !== "storm" && p.t !== "tunnel" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social && !discover) continue;
         const d = Math.hypot(this.posX - p.x, this.posY - p.y);
         const range = p.t === "landmark" ? 52 : p.r ?? (isQL || p.t === "rune" ? 26 : 40);
@@ -1582,6 +1583,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "bounty": draws.push({ y: p.y, f: () => this.drawBounty(sxp, syp, p) }); break;
         case "petshop": draws.push({ y: p.y, f: () => this.drawPetShop(sxp, syp, p) }); break;
         case "stylist": draws.push({ y: p.y, f: () => this.drawStylist(sxp, syp, p) }); break;
+        case "barber": draws.push({ y: p.y + 6, f: () => this.drawBarber(sxp, syp, p) }); break;
         case "marker": { const isTarget = this.objTargetProp() === p; if (isTarget) draws.push({ y: p.y - 1, f: () => this.drawMarker(sxp, syp) }); break; }
         default: break;
       }
@@ -2652,6 +2654,23 @@ export class CirqlWorldEngine extends RetroEngine {
     const sw = ["#8ef0a0", "#ff6a1a", "#bfe6ff", "#c85cff"]; for (let i = 0; i < 4; i++) this.disc(cx - 5 + (i % 2) * 6, cy - 26 + Math.floor(i / 2) * 6, 1.8, sw[i]);
     this.glow(cx, cy - 22, 12, ac, 0.08 + 0.12 * this.nightAmt);
     if (near) this.q(cx, cy - 40, "✦", ac, 0.9, "c", true);
+  }
+  // The Barber ("The Snip & Sparq") — a little shopfront with a spinning barber pole.
+  private drawBarber(cx: number, cy: number, p: Prop) {
+    const near = this.near === p, ac = p.accent || "#ff7ea8";
+    this.disc(cx, cy + 4, 14, "#0a071440");
+    // shop body + awning + door
+    this.rect(cx - 15, cy - 26, 30, 30, "#3a4a66"); this.rect(cx - 15, cy - 26, 30, 3, "#4a5a78");
+    for (let i = 0; i < 6; i++) this.rect(cx - 15 + i * 5, cy - 30, 5, 5, i % 2 ? "#e85a8a" : "#f0e6ee");   // striped awning
+    this.rect(cx - 5, cy - 14, 10, 18, "#2a2440"); this.rect(cx - 5, cy - 14, 10, 2, "#3a3458");            // door
+    this.rect(cx - 12, cy - 22, 6, 6, "#9fd0ff"); this.rect(cx + 6, cy - 22, 6, 6, "#9fd0ff");              // windows
+    // spinning barber pole (right of the door)
+    const px = cx + 12, top = cy - 20, h = 18;
+    this.rect(px - 1.5, top, 3, h, "#f0eae0");
+    for (let i = 0; i < 6; i++) { const yy = top + ((i * 3 + this.t * 6) % h); this.rect(px - 1.5, yy, 3, 1.4, i % 2 ? "#e0403a" : "#3a6ad0"); }
+    this.disc(px, top - 1, 1.4, "#c8c8d0"); this.disc(px, top + h + 1, 1.4, "#c8c8d0");
+    this.glow(cx, cy - 20, 12, ac, 0.08 + 0.12 * this.nightAmt);
+    if (near) this.q(cx, cy - 38, "✦", ac, 0.9, "c", true);
   }
   // ---- geography (density fill-in): a fallen log, a stump, a tall-grass clump ----
   private drawLog(cx: number, cy: number, seed: number) {

@@ -5,6 +5,7 @@
 // a plain 2D canvas (customizer/lobby) and on a RetroEngine buffer (in-game hero).
 
 export type HatStyle = "cap" | "crown" | "band" | "beanie" | "witch" | "none";
+export type HairStyle = "none" | "short" | "buzz" | "bob" | "long" | "curly" | "afro" | "mohawk" | "ponytail" | "bun" | "pigtails";
 export type AvatarAura = "none" | "teal" | "violet" | "gold" | "rose" | "mint" | "sky";
 export type AvatarWings = "none" | "fairy" | "bat" | "angel";
 /** Facing direction for top-down worlds. "down" = front (default, arcade look). */
@@ -22,11 +23,14 @@ export interface AvatarConfig {
   hatStyle?: HatStyle;   // shape of the headwear (defaults to the classic cap)
   aura?: AvatarAura;     // a soft glow the world/preview paints behind the figure (on-brand light)
   wings?: AvatarWings;   // a back-worn wing pair (Boutique special — drawn behind the figure)
+  hair?: HairStyle;      // hairstyle drawn on the head, under the hat (Barber / chooser)
+  hairColor?: string;    // hair colour hex
 }
 
 export const DEFAULT_AVATAR: AvatarConfig = {
   skin: "#f4c79a", eye: "#1a1226", hat: "#33b0e0", body: "#e2544f", bib: "#3a6ad0",
   tool: "none", sidekick: "none", hatStyle: "cap", aura: "none", wings: "none",
+  hair: "short", hairColor: "#4a3222",
 };
 
 // The soft-glow palette for auras (hex per aura id). "none" → no glow. Rendered by
@@ -48,6 +52,17 @@ export const HAT_COLORS: Swatch[] = [
 // Headwear shapes (CIRQL). "cap" is the classic arcade look = the default.
 export const HAT_STYLES: Opt<HatStyle>[] = [
   { k: "cap", label: "Cap" }, { k: "beanie", label: "Beanie" }, { k: "band", label: "Band" }, { k: "crown", label: "Crown" }, { k: "witch", label: "Witch" }, { k: "none", label: "Bare" },
+];
+// Hairstyles (chooser: the basics free; the Barber sells the fancy ones).
+export const HAIR_STYLES: Opt<HairStyle>[] = [
+  { k: "none", label: "Bald" }, { k: "buzz", label: "Buzz" }, { k: "short", label: "Short" }, { k: "bob", label: "Bob" },
+  { k: "long", label: "Long" }, { k: "curly", label: "Curly" }, { k: "afro", label: "Afro" }, { k: "ponytail", label: "Ponytail" },
+  { k: "bun", label: "Top Bun" }, { k: "pigtails", label: "Pigtails" }, { k: "mohawk", label: "Mohawk" },
+];
+// Hair colours — naturals first, then fun dyes (the dyes are Barber premiums).
+export const HAIR_COLORS: Swatch[] = [
+  { c: "#2a2028" }, { c: "#4a3222" }, { c: "#6a4a2c" }, { c: "#b5814a" }, { c: "#d8a860" }, { c: "#8a8f98" }, { c: "#e8e6e2" }, { c: "#8a3a2a" },
+  { c: "#ff7ea8" }, { c: "#78b4ff" }, { c: "#35e0d0" }, { c: "#b26cff" }, { c: "#5be89a" }, { c: "#ffd24a" },
 ];
 // Boutique "super-special" wearables (Milestone F) — wings worn on the back + a held item.
 export const WINGS: Opt<AvatarWings>[] = [
@@ -77,6 +92,9 @@ export const AURAS: Opt<AvatarAura>[] = [
 export const COSMETIC_PRICES: Record<string, number> = {
   "aura:violet": 20, "aura:gold": 25, "aura:rose": 20, "aura:mint": 20, "aura:sky": 20,
   "hat:beanie": 15, "hat:band": 15, "hat:crown": 40, "hat:witch": 50,
+  // hairstyles + fancy dyes (also sold at the Barber). Naturals free; these are flair.
+  "hair:bob": 10, "hair:long": 15, "hair:curly": 15, "hair:afro": 18, "hair:ponytail": 15, "hair:bun": 18, "hair:pigtails": 18, "hair:mohawk": 20,
+  "haircolor:#ff7ea8": 12, "haircolor:#78b4ff": 12, "haircolor:#35e0d0": 12, "haircolor:#b26cff": 12, "haircolor:#5be89a": 12, "haircolor:#ffd24a": 12,
   "companion:cat": 20, "companion:bot": 30, "companion:moth": 25, "companion:sprite": 30, "companion:donut": 20, "companion:vinyl": 25, "companion:taco": 20,
   // Boutique super-specials (Milestone F)
   "wings:fairy": 60, "wings:bat": 55, "wings:angel": 70, "tool:staff": 45, "tool:wand": 40,
@@ -157,6 +175,8 @@ export function paintAvatar(p: AvatarPainter, x: number, y: number, cfg: AvatarC
     p.rect(x - 1, y - 17, 3, 1, "#c65a4a"); p.px(x, y - 17, "#e07a68");
     p.px(x - 3, y - 17, p.shade(skin, -0.15)); p.px(x + 3, y - 17, p.shade(skin, -0.15)); // cheeks
   }
+  // hair (on the head, framing the face — drawn under the hat so a hat sits over it)
+  drawHair(p, x, y, cfg.hair ?? "none", cfg.hairColor ?? "#4a3222", dir);
   // headwear (shape chosen by hatStyle; "cap" is the classic default)
   drawHat(p, x, y, hat, cfg.hatStyle ?? "cap");
   // tool in hand (hidden from the back)
@@ -165,6 +185,37 @@ export function paintAvatar(p: AvatarPainter, x: number, y: number, cfg: AvatarC
   drawSidekick(p, x, y, cfg.sidekick);
 }
 
+// Hair drawn on the head (head centre ~x,y-19, r4; crown ~y-23). Framing only — never over
+// the eyes (y-19) or mouth (y-17). Drawn before the hat so a hat covers the crown.
+function drawHair(p: AvatarPainter, x: number, y: number, style: HairStyle, color: string, dir: AvatarDir) {
+  if (style === "none") return;
+  const dk = p.shade(color, -0.22), hi = p.shade(color, 0.28);
+  if (style === "buzz") { p.rect(x - 4, y - 23, 8, 1, color); p.px(x - 4, y - 21, dk); p.px(x + 3, y - 21, dk); return; }
+  // crown cap (top of the head) — shared by all the longer styles
+  p.rect(x - 4, y - 23, 8, 2, color); p.rect(x - 3, y - 24, 6, 1, color); p.px(x - 3, y - 23, hi);
+  if (dir === "up") {   // back of the head — hair covers the whole back
+    p.rect(x - 4, y - 22, 8, 3, color);
+    if (style === "long") p.rect(x - 4, y - 19, 8, 7, color);
+    else if (style === "bob") p.rect(x - 4, y - 19, 8, 3, color);
+    else if (style === "ponytail") { p.rect(x - 1, y - 20, 2, 9, color); p.px(x - 2, y - 12, dk); p.px(x + 1, y - 12, dk); }
+    else if (style === "pigtails") { p.disc(x - 5, y - 19, 2, color); p.disc(x + 5, y - 19, 2, color); }
+    else if (style === "bun") { p.disc(x, y - 26, 2, color); }
+    else if (style === "mohawk") { p.rect(x - 1, y - 26, 2, 5, color); }
+    else if (style === "afro" || style === "curly") { p.disc(x, y - 22, style === "afro" ? 5 : 4, color); }
+    return;
+  }
+  // front / side styles — fringe on the forehead (above the eyes) + side framing
+  const fringe = () => { p.rect(x - 4, y - 22, 8, 1, dk); p.px(x - 3, y - 21, color); p.px(x + 2, y - 21, color); };
+  if (style === "short") { fringe(); p.px(x - 4, y - 21, color); p.px(x + 3, y - 21, color); }
+  else if (style === "bob") { fringe(); p.rect(x - 5, y - 22, 1, 6, color); p.rect(x + 4, y - 22, 1, 6, color); }
+  else if (style === "long") { fringe(); p.rect(x - 5, y - 22, 1, 10, color); p.rect(x + 4, y - 22, 1, 10, color); }
+  else if (style === "ponytail") { fringe(); const s = dir === "left" ? 1 : -1; p.rect(x + 5 * s, y - 22, 1, 6, color); p.px(x + 6 * s, y - 21, hi); }
+  else if (style === "bun") { fringe(); p.disc(x, y - 26, 2, color); }
+  else if (style === "pigtails") { fringe(); p.disc(x - 5, y - 20, 2, color); p.disc(x + 5, y - 20, 2, color); }
+  else if (style === "mohawk") { p.rect(x - 1, y - 27, 2, 6, color); p.px(x, y - 28, hi); }
+  else if (style === "afro") { p.disc(x - 4, y - 22, 2.4, color); p.disc(x + 4, y - 22, 2.4, color); p.disc(x, y - 24, 3, color); }
+  else if (style === "curly") { p.disc(x - 4, y - 22, 2, color); p.disc(x + 4, y - 22, 2, color); p.disc(x, y - 24, 2.4, color); p.px(x - 3, y - 24, hi); }
+}
 function drawHat(p: AvatarPainter, x: number, y: number, hat: string, style: HatStyle) {
   switch (style) {
     case "none":
