@@ -76,6 +76,7 @@ export interface Ring {
   props: Prop[];
   puzzleTarget?: string[];   // rune ids that must be lit (and no others) to open the shrine (CHR-258)
   ambient?: "butterfly" | "firefly" | "ember" | "snow" | "gull" | "dust" | "bee" | "dragonfly" | "grasshopper";   // drifting critters/particles for the biome
+  biome?: string;   // biome key (e.g. "woodland") — drives the per-biome flora/geo/glow kit
 }
 
 // ---- Ring 0: CIRQLSPACE — the player's blank, buildable home island ----------

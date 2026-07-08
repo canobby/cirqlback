@@ -56,9 +56,11 @@ const BIOMES: Biome[] = [
   // autumn wood — amber trees, a fence, bees
   { key: "autumn", tree: true, crystals: 0, lanterns: 4, rocks: 2, pond: false, flowers: 3, fence: false, path: true, ambient: "bee", landmark: "stonecircle",
     palette: { sky: ["#2e1c12", "#1a1008"], sea: "#243026", land: "#5a3a1e", grass: "#8a5a26", sand: "#d8b070", accent: "#ff9a3c", mote: "#ffd090" } },
-  // deep woodland — dense trees, a pond, fireflies
-  { key: "woodland", tree: true, crystals: 1, lanterns: 4, rocks: 3, pond: true, flowers: 4, fence: false, path: true, ambient: "firefly", landmark: "greattree",
-    palette: { sky: ["#12241a", "#0a160f"], sea: "#0c2036", land: "#1c3a26", grass: "#2a5a38", sand: "#a89060", accent: "#8ef0a0", mote: "#c8ffd6" } },
+  // deep woodland — mushroom-trees, tentacle-willows, a glowing pond, fireflies (biome-kit
+  // pass): a brighter, more saturated green base so the day is colour-forward, with the neon
+  // flora popping harder at night.
+  { key: "woodland", tree: true, crystals: 1, lanterns: 4, rocks: 3, pond: true, flowers: 5, fence: false, path: true, ambient: "firefly", landmark: "greattree",
+    palette: { sky: ["#18402a", "#0d2114"], sea: "#0c2036", land: "#245e3a", grass: "#38975c", sand: "#a89060", accent: "#8ef0a0", mote: "#c8ffd6" } },
   // sunlit coast — beach, gulls, rocks
   { key: "coast", tree: true, crystals: 0, lanterns: 5, rocks: 5, pond: false, flowers: 2, fence: false, path: false, ambient: "gull", landmark: "lighthouse",
     palette: { sky: ["#183048", "#0e1c34"], sea: "#0a5578", land: "#20464a", grass: "#2f7a6a", sand: "#f0dca0", accent: "#6fd8ff", mote: "#bff0ff" } },
@@ -239,6 +241,7 @@ export function generateRing(index: number): Ring {
     spawn: { x: 0, y: -radius * 0.68 },   // arrive near the inward dock
     props,
     ambient: biome.ambient,               // the critter that belongs to this scene
+    biome: biome.key,                     // drives the per-biome flora/geo/glow kit
   };
 }
 

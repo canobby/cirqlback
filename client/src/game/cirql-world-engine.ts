@@ -1131,6 +1131,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (this.diorama) { this.drawDiorama(); this.drawFx(); return; }   // the beauty shot owns the screen (Phase H3)
     const b = this.b, s = this.SS, W = this.LW * s, H = this.LH * s, pal = this.curRing.palette;
     const dn = this.dayNight();   // day/night cycle (J3/J5)
+    this.nightAmt = dn.night;     // per-object neon glow "breathes" up at night (biome kit)
     // sky/sea backdrop
     const g = b.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, pal.sky[0]); g.addColorStop(0.5, pal.sky[1]); g.addColorStop(1, pal.sea);
@@ -1219,7 +1220,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "storm": draws.push({ y: p.y + 30, f: () => this.drawStorm(sxp, syp, p) }); break;
         case "tunnel": draws.push({ y: p.y, f: () => this.drawTunnel(sxp, syp, p) }); break;
         case "npc": draws.push({ y: p.y, f: () => this.drawNpc(sxp, syp, p) }); break;
-        case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big, this.treeKind(p.x, p.y)) }); break;
+        case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big, this.canopyStyle(p.x, p.y), this.seedOf(p.x, p.y)) }); break;
         case "bush": draws.push({ y: p.y, f: () => this.drawBush(sxp, syp) }); break;
         case "crystal": draws.push({ y: p.y, f: () => this.drawCrystal(sxp, syp, p.big, p.accent || pal.accent) }); break;
         case "rock": draws.push({ y: p.y, f: () => this.drawRock(sxp, syp, p.big) }); break;
@@ -1249,7 +1250,7 @@ export class CirqlWorldEngine extends RetroEngine {
         if (r === "path" || r === "pond") continue;                                             // ground pass
         else if (r === "stone") draws.push({ y: d.y, f: () => this.drawRock(sx, sy, def.big) });
         else if (r === "fence") draws.push({ y: d.y, f: () => this.drawFence(sx, sy, false) });
-        else if (r === "tree") draws.push({ y: d.y, f: () => this.drawTree(sx, sy, def.big, this.treeKind(d.x, d.y)) });
+        else if (r === "tree") draws.push({ y: d.y, f: () => this.drawTree(sx, sy, def.big, this.canopyStyle(d.x, d.y), this.seedOf(d.x, d.y)) });
         else if (r === "bush") draws.push({ y: d.y, f: () => this.drawBush(sx, sy) });
         else if (r === "flower") draws.push({ y: d.y, f: () => this.drawFlower(sx, sy, def.accent || "#ff8fbf") });
         else if (r === "lantern") draws.push({ y: d.y, f: () => this.drawLantern(sx, sy, def.accent || pacc, true) });
@@ -1761,7 +1762,7 @@ export class CirqlWorldEngine extends RetroEngine {
         else if (r === "pond") this.drawPond(p.sx, p.sy, 20);
         else if (r === "stone") this.drawRock(p.sx, p.sy, def.big);
         else if (r === "fence") this.drawFence(p.sx, p.sy, false);
-        else if (r === "tree") this.drawTree(p.sx, p.sy, def.big, this.treeKind(dd.x, dd.y));
+        else if (r === "tree") this.drawTree(p.sx, p.sy, def.big, this.canopyStyle(dd.x, dd.y), this.seedOf(dd.x, dd.y));
         else if (r === "bush") this.drawBush(p.sx, p.sy);
         else if (r === "flower") this.drawFlower(p.sx, p.sy, def.accent || "#ff8fbf");
         else if (r === "lantern") this.drawLantern(p.sx, p.sy, def.accent || pal.accent, true);
@@ -2030,15 +2031,39 @@ export class CirqlWorldEngine extends RetroEngine {
     }
   }
   // tree kind from a stable hash of world position → a mix of shapes per ring (CHR-259)
-  private treeKind(x: number, y: number): "round" | "pine" {
-    return ((Math.abs(x * 3 + y * 7) | 0) % 10) < 3 ? "pine" : "round";
+  // ---- per-object neon (biome kit): crisp edge + a TIGHT hug-glow, never a screen blur ----
+  private nightAmt = 0;
+  /** Glow strength that "breathes": present by day, stronger at night. */
+  private glowN() { return 0.5 + 0.5 * this.nightAmt; }
+  private neonEllipse(cx: number, cy: number, rx: number, ry: number, color: string, blur = 4, width = 1.4, alpha = 1, a0 = 0, a1 = TAU) {
+    const b = this.b, s = this.SS;
+    b.save(); b.strokeStyle = color; b.lineWidth = width * s; b.globalAlpha = alpha; b.shadowColor = color; b.shadowBlur = blur * s; b.lineCap = "round"; b.lineJoin = "round";
+    b.beginPath(); b.ellipse(cx * s, cy * s, rx * s, ry * s, 0, a0, a1); b.stroke(); b.restore();
   }
+  private neonPath(pts: [number, number][], color: string, blur = 4, width = 1.4, alpha = 1) {
+    if (pts.length < 2) return; const b = this.b, s = this.SS;
+    b.save(); b.strokeStyle = color; b.lineWidth = width * s; b.globalAlpha = alpha; b.shadowColor = color; b.shadowBlur = blur * s; b.lineCap = "round"; b.lineJoin = "round";
+    b.beginPath(); b.moveTo(pts[0][0] * s, pts[0][1] * s);
+    if (pts.length === 3) b.quadraticCurveTo(pts[1][0] * s, pts[1][1] * s, pts[2][0] * s, pts[2][1] * s);
+    else for (let i = 1; i < pts.length; i++) b.lineTo(pts[i][0] * s, pts[i][1] * s);
+    b.stroke(); b.restore();
+  }
+  private static readonly SHROOM_HUES = ["#ff5fe0", "#c8a2ff", "#54ffe0", "#ff7aa8"];
+  /** Which canopy to draw for a tree at world (x,y). Woodland gets the fanciful kit. */
+  private canopyStyle(x: number, y: number): "round" | "pine" | "mushroom" | "willow" {
+    const h = (Math.abs((x | 0) * 3 + (y | 0) * 7) | 0) % 10;
+    if (this.curRing.biome === "woodland") { if (h < 3) return "mushroom"; if (h < 5) return "willow"; return "round"; }
+    return h < 3 ? "pine" : "round";
+  }
+  private seedOf(x: number, y: number) { return (Math.abs((x | 0) * 73856093 ^ (y | 0) * 19349663) >>> 0); }
   private triY(cx: number, apexY: number, halfW: number, h: number, color: string) {
     const b = this.b, s = this.SS;
     b.fillStyle = color; b.beginPath();
     b.moveTo(cx * s, apexY * s); b.lineTo((cx - halfW) * s, (apexY + h) * s); b.lineTo((cx + halfW) * s, (apexY + h) * s); b.closePath(); b.fill();
   }
-  private drawTree(cx: number, cy: number, big?: boolean, kind: "round" | "pine" = "round") {
+  private drawTree(cx: number, cy: number, big?: boolean, kind: "round" | "pine" | "mushroom" | "willow" = "round", seed = 0) {
+    if (kind === "mushroom") { this.drawMushroomTree(cx, cy, big, seed); return; }
+    if (kind === "willow") { this.drawTentacleWillow(cx, cy, big, seed); return; }
     const s = big ? 1.4 : 1;
     // Foliage keyed to the ring's grass but pushed to READ against same-colour ground:
     // a deeper fill, a dark rim that outlines the silhouette, and a lit top (I-polish).
@@ -2053,6 +2078,42 @@ export class CirqlWorldEngine extends RetroEngine {
       for (let i = 0; i < 3; i++) this.disc(cx, cy - 14 * s - i * 5 * s, (11 - i * 2) * s + 1.2, rim);   // dark rim silhouette
       for (let i = 0; i < 3; i++) this.disc(cx, cy - 14 * s - i * 5 * s, (11 - i * 2) * s, fill);        // foliage fill
       this.disc(cx - 3 * s, cy - 20 * s, 3.2 * s, hi);                              // top-left highlight (lit)
+    }
+  }
+  private fillEll(cx: number, cy: number, rx: number, ry: number, color: string) {
+    const b = this.b, s = this.SS; b.fillStyle = color; b.beginPath(); b.ellipse(cx * s, cy * s, rx * s, ry * s, 0, 0, TAU); b.fill();
+  }
+  // A fanciful cap-tree — the woodland signature. Rich colour + spots; the ONLY glow is a
+  // tight neon arc under the cap (the "gills"), so it reads bioluminescent, not blurry.
+  private drawMushroomTree(cx: number, cy: number, big: boolean | undefined, seed: number) {
+    const k = big ? 1.3 : 1;
+    const hue = CirqlWorldEngine.SHROOM_HUES[seed % CirqlWorldEngine.SHROOM_HUES.length];
+    const capDk = shade(hue, -0.42), capHi = mix(hue, "#ffffff", 0.4);
+    const sway = this.reduce ? 0 : Math.sin(this.t * 1.1 + cx * 0.05) * 0.6;
+    this.disc(cx, cy + 2, 6 * k, "#0a071452");                                // contact shadow
+    this.rect(cx - 3 * k + sway, cy - 40 * k, 6 * k, 40 * k, "#e8dcc0");      // stalk
+    this.rect(cx + 1 * k + sway, cy - 40 * k, 2 * k, 40 * k, "#c9bda0");
+    const cy2 = cy - 42 * k;
+    this.fillEll(cx + sway, cy2 + 3 * k, 20 * k, 11 * k, capDk);              // cap underside
+    this.fillEll(cx + sway, cy2, 19 * k, 10 * k, hue);                        // cap
+    this.fillEll(cx - 4 * k + sway, cy2 - 3 * k, 10 * k, 5 * k, capHi);       // lit top-left
+    for (let i = 0; i < 4; i++) this.disc(cx - 11 * k + i * 7 * k + sway, cy2 - 2 * k - ((i * 7) % 5) * k, 2 * k, mix(hue, "#fff", 0.5));   // spots
+    this.neonEllipse(cx + sway, cy - 38 * k, 18 * k, 5 * k, hue, 5 * k, 1.5 * k, this.glowN(), 0, Math.PI);   // glowing gills
+    this.glow(cx + sway, cy - 40 * k, 18 * k, hue, 0.08 + 0.2 * this.nightAmt);
+  }
+  // A drooping willow whose tendrils glow like forest-jellyfish — a woodland signature.
+  private drawTentacleWillow(cx: number, cy: number, big: boolean | undefined, _seed: number) {
+    const k = big ? 1.3 : 1, g = this.curRing.palette.grass, cyan = "#5ff2ff";
+    this.disc(cx, cy + 2, 7 * k, "#0a071448");
+    this.rect(cx - 4 * k, cy - 38 * k, 8 * k, 38 * k, "#6a4a2c");             // trunk
+    this.rect(cx - 4 * k, cy - 38 * k, 2.5 * k, 38 * k, "#835a34");
+    this.fillEll(cx, cy - 44 * k, 20 * k, 12 * k, mix(g, "#1c3f7a", 0.35));   // moody canopy
+    this.fillEll(cx - 5 * k, cy - 48 * k, 13 * k, 8 * k, mix(g, "#2a5aa0", 0.3));
+    for (let i = 0; i < 6; i++) {
+      const bx = cx - 15 * k + i * 6 * k;
+      const sw = this.reduce ? 0 : Math.sin(this.t * 1.4 + i + cx * 0.03) * 6 * k;
+      this.neonPath([[bx, cy - 42 * k], [bx + sw * 0.5, cy - 18 * k], [bx + sw, cy + 4 * k]], cyan, 4 * k, 1.4 * k, 0.5 + 0.4 * this.nightAmt);
+      this.glow(bx + sw, cy + 4 * k, 5 * k, cyan, 0.28 + 0.4 * this.nightAmt); this.disc(bx + sw, cy + 4 * k, 1.2 * k, "#e8ffff");
     }
   }
   private drawCrystal(cx: number, cy: number, big: boolean | undefined, c: string) {
@@ -2074,6 +2135,10 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx + 2 * s, cy, 3.5 * s, "#474753");
     this.rect(cx - 6 * s, cy + 1 * s, 12 * s, 2 * s, "#38384352");
     this.disc(cx - 2 * s, cy - 4 * s, 1.5 * s, "#8a8a97");   // highlight
+    if (this.curRing.biome === "woodland") {                 // a mossy cap in the deep wood
+      const g = this.curRing.palette.grass;
+      this.disc(cx - 2 * s, cy - 4 * s, 4 * s, shade(g, 0.05)); this.disc(cx + 2.5 * s, cy - 3 * s, 2.5 * s, g);
+    }
   }
   // A collectible wisp (Phase K3 gather quests): a bobbing glowing orb with a soft halo.
   private drawWisp(cx: number, cy: number, c: string) {
@@ -2091,7 +2156,10 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx - 1.5, cy - 1, 1.1, "#4c8a46");            // leaf
     const R = 2.1;
     for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * (TAU / 5); this.disc(cx + Math.cos(a) * R, cy - 5 + Math.sin(a) * R, 1.5, c); }
-    this.disc(cx, cy - 5, 1.3, "#ffe58a");                  // centre
+    // a glowing neon core (tight, pulsing) — the magical accent, breathes with night
+    const pulse = this.reduce ? 0.7 : 0.6 + 0.4 * Math.sin(this.t * 2 + cx);
+    this.glow(cx, cy - 5, 6, mix(c, "#ffffff", 0.35), (0.1 + 0.26 * this.nightAmt) * pulse + 0.05);
+    this.disc(cx, cy - 5, 1.3, mix(c, "#ffffff", 0.6));    // neon core
   }
   private drawBush(cx: number, cy: number) {
     const g = this.curRing.palette.grass, fill = shade(g, -0.14), rim = shade(g, -0.56), hi = shade(g, 0.32);
@@ -2116,22 +2184,30 @@ export class CirqlWorldEngine extends RetroEngine {
     b.fillStyle = "rgba(90,72,46,0.5)"; b.beginPath(); b.ellipse(cx * s, cy * s, 16 * s, 9 * s, 0, 0, TAU); b.fill();
     b.fillStyle = "rgba(120,98,64,0.4)"; b.beginPath(); b.ellipse(cx * s, cy * s, 12 * s, 6 * s, 0, 0, TAU); b.fill();
   }
+  // An ORGANIC body of water — a blob built from offset lobes (no more concentric
+  // "trampoline" rings): deep centre → shallow edge, drifting ripples, and a tight
+  // bioluminescent shoreline that breathes with night.
   private drawPond(cx: number, cy: number, r: number) {
-    const sea = this.curRing.palette.sea;
-    this.fillCirc(cx, cy + 2, r, "rgba(10,15,30,0.35)");     // damp rim shadow
-    this.fillCirc(cx, cy, r, "rgba(70,120,150,0.55)");       // shallow water
-    this.fillCirc(cx, cy, r - 3, sea);                        // deeper centre
-    if (!this.reduce) for (let i = 0; i < 3; i++) { const yy = cy - r * 0.4 + i * r * 0.4; this.rect(cx - r * 0.4, yy + Math.sin(this.t * 2 + i) * 1, r * 0.8, 1, "rgba(255,255,255,0.14)"); }  // shimmer
-    for (let i = 0; i < 8; i++) { const a = i * (TAU / 8); this.disc(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.9, 1.6, "#4a4a52"); }   // rim stones
-    // water's edge: reeds, grass tufts + the odd flower fringe the rim (CHR-259)
+    const sea = this.curRing.palette.sea, deep = shade(sea, -0.28), shallow = mix(sea, "#3fb0b8", 0.5);
+    const edge = mix(this.curRing.palette.accent, "#5ff2ff", 0.4);
+    // deterministic lobe shape (stable per pond via its x): [dx, dy, scale]
+    const lobes: [number, number, number][] = [[0, 0, 1], [0.55, -0.12, 0.72], [-0.5, 0.14, 0.64], [0.28, 0.36, 0.5], [-0.28, -0.3, 0.46]];
+    const el = (dx: number, dy: number, sc: number, ry: number, c: string) => this.fillEll(cx + dx * r * 0.72, cy + dy * r * 0.62, r * sc, r * sc * ry, c);
+    for (const L of lobes) el(L[0], L[1] + 0.06, L[2], 0.62, "rgba(10,15,30,0.30)");   // damp shadow
+    for (const L of lobes) el(L[0], L[1], L[2], 0.6, deep);                             // deep water
+    for (const L of lobes) el(L[0], L[1], L[2] * 0.82, 0.5, sea);
+    for (const L of lobes) this.fillEll(cx + L[0] * r * 0.72 - r * 0.08, cy + L[1] * r * 0.62 - r * 0.08, r * L[2] * 0.5, r * L[2] * 0.3, shallow);
+    if (!this.reduce) for (let i = 0; i < 3; i++) { const yy = cy - r * 0.3 + i * r * 0.3 + Math.sin(this.t * 1.4 + i) * 1.4; this.rect(cx - r * 0.35, yy, r * 0.7, 1, "rgba(255,255,255,0.16)"); }   // ripples
+    for (const L of lobes) this.neonEllipse(cx + L[0] * r * 0.72, cy + L[1] * r * 0.62, r * L[2] * 0.98, r * L[2] * 0.6, edge, 3, 1, 0.28 + 0.42 * this.nightAmt);   // bioluminescent shoreline
+    // water's edge: reeds, grass tufts + the odd bloom (curated, not a full ring)
     const g = this.curRing.palette.grass;
-    for (let i = 0; i < 11; i++) {
-      const a = i * (TAU / 11) + (Math.abs(cx) % 5) * 0.13;
-      const ex = cx + Math.cos(a) * (r + 1), ey = cy + Math.sin(a) * (r * 0.9 + 1);
-      const k = (i * 7 + (Math.abs(cx) | 0)) % 5;
+    for (let i = 0; i < 9; i++) {
+      const a = i * (TAU / 9) + (Math.abs(cx) % 5) * 0.13;
+      const ex = cx + Math.cos(a) * (r * 1.15), ey = cy + Math.sin(a) * (r * 0.66 + 1);
+      const k = (i * 7 + (Math.abs(cx) | 0)) % 4;
       if (k === 0) { this.rect(ex, ey - 7, 1, 7, "#3f6f36"); this.rect(ex - 0.5, ey - 8, 2, 2, "#8a6a2e"); }      // cattail reed
       else if (k === 1) this.drawFlower(ex, ey, i % 2 ? "#ff8fbf" : "#ffd24a");                                    // a bloom
-      else { this.rect(ex - 1, ey - 3, 1, 4, g); this.rect(ex + 1, ey - 2, 1, 3, g); this.rect(ex, ey - 4, 1, 5, g); }   // grass tuft
+      else { this.rect(ex - 1, ey - 3, 1, 4, g); this.rect(ex, ey - 4, 1, 5, g); }                                 // grass tuft
     }
   }
 
