@@ -115,6 +115,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   createUser(user: UpsertUser): Promise<User>;
+  updateUserPassword(userId: string, passwordHash: string): Promise<void>;
   getUserByEmail(email: string): Promise<User | undefined>;
   updateUserPoints(userId: string, points: number): Promise<void>;
   updateUserSubscription(userId: string, updates: { 
@@ -227,6 +228,10 @@ export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
+  }
+
+  async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
+    await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {

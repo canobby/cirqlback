@@ -236,6 +236,27 @@ export function setupAuth(app: Express) {
     });
   });
 
+  // Change the signed-in user's password (verifies the current one first).
+  app.post("/api/auth/change-password", isAuthenticated, async (req, res, next) => {
+    try {
+      const parsed = z
+        .object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) })
+        .safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "New password must be at least 8 characters." });
+      const { currentPassword, newPassword } = parsed.data;
+      const userId = (req.user as User).id;
+      const user = await storage.getUser(userId);
+      if (!user || !user.passwordHash) return res.status(400).json({ message: "This account has no password set." });
+      const ok = await verifyPassword(currentPassword, user.passwordHash);
+      if (!ok) return res.status(401).json({ message: "Your current password is incorrect." });
+      if (currentPassword === newPassword) return res.status(400).json({ message: "Please choose a new password that's different from your current one." });
+      await storage.updateUserPassword(userId, await hashPassword(newPassword));
+      return res.json({ success: true });
+    } catch (err) {
+      return next(err);
+    }
+  });
+
   app.get("/api/auth/user", (req, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "Unauthorized" });
