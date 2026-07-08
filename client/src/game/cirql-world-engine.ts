@@ -2874,9 +2874,9 @@ export class CirqlWorldEngine extends RetroEngine {
       else if (c.sp === "fox") this.drawFox(sx, sy2, c.dir, moving, c.t, c.variant, c.act);
       else if (c.sp === "cat") this.drawCat(sx, sy2, c.dir, moving, c.t, c.act);
       else if (c.sp === "dog") this.drawDog(sx, sy2, c.dir, moving, c.t, c.act);
-      else if (c.sp === "salamander") this.drawSalamander(sx, sy2, c.face, moving, c.t, c.variant, c.act);
+      else if (c.sp === "salamander") this.drawSalamander(sx, sy2, c.dir, moving, c.t, c.variant, c.act);
       else if (c.sp === "crab") this.drawCrab(sx, sy2, c.face, moving, c.t, c.act);
-      else if (c.sp === "frog") this.drawFrog(sx, sy2, c.face, moving, c.t, c.act);
+      else if (c.sp === "frog") this.drawFrog(sx, sy2, c.dir, moving, c.t, c.act);
       else if (c.sp === "squirrel") this.drawSquirrel(sx, sy2, c.dir, moving, c.t, c.act);
       else if (c.sp === "moth") this.drawMoth(sx, sy2, c.t);
       else this.drawBunny(sx, sy2, c.dir, moving, c.t, c.mode, c.variant, c.act);
@@ -2989,22 +2989,32 @@ export class CirqlWorldEngine extends RetroEngine {
     this.drawQuadruped(sx, sy, { body: c, body2: c2, leg, bodyLen: 9, bodyH: 4.6, legLen: 6, legW: 1.9, neckLen: 1, headR: 4, ear: "cat", tail: "bushy", tailCol: c }, dir, act, t, moving, act === "run");
   }
   // A salamander (ember, fiery) or its newt variant (marsh, teal + violet glow-spots).
-  private drawSalamander(sx: number, sy: number, f: number, walk: boolean, t: number, variant?: string, act = "walk") {
+  private drawSalamander(sx: number, sy: number, dir: string, moving: boolean, t: number, variant?: string, act = "walk") {
     const newt = variant === "newt";
     const body = newt ? "#2c8a6a" : "#c2401a", body2 = newt ? "#3faa84" : "#e05a24", dk = newt ? "#1a5a44" : "#7a2410";
     const spotGlow = newt ? "#c85cff" : "#ffab3a", spotCore = newt ? "#e0a8ff" : "#ffe27a";
-    const resting = act === "lay" || act === "bask";   // sunning itself, still
-    const sway = walk ? Math.sin(t * 4) * 1 : resting ? 0 : Math.sin(t * 1.2) * 0.4;
+    const resting = act === "lay" || act === "bask";
     this.disc(sx, sy + 2, 8, "#0a071440");
+    if (dir === "u" || dir === "d") {   // toward / away — a foreshortened crawl (legs splay, spots down the spine)
+      const front = dir === "d", cr = moving && !resting ? Math.sin(t * 6) : 0;
+      this.rect(sx - 6, sy - 3 + cr, 1.4, 3, dk); this.rect(sx + 5, sy - 3 - cr, 1.4, 3, dk);   // fore legs
+      if (!front) this.fillEll(sx, sy - 1, 2.4, 1.6, body);                                      // tail toward you (back view)
+      this.fillEll(sx, sy - 4, 5, 4, body); this.fillEll(sx, sy - 5, 3.4, 2.6, body2);
+      for (let i = 0; i < 3; i++) { this.glow(sx, sy - 6 + i * 1.6, 3, spotGlow, 0.3 + 0.4 * this.nightAmt); this.disc(sx, sy - 6 + i * 1.6, 1, spotCore); }
+      if (front) { this.fillEll(sx, sy - 7.5, 3, 2.2, body2); this.disc(sx - 1, sy - 7.5, 0.5, "#1a0a06"); this.disc(sx + 1, sy - 7.5, 0.5, "#1a0a06"); }   // head + eyes toward you
+      return;
+    }
+    const f = dir === "r" ? 1 : -1;
+    const sway = moving ? Math.sin(t * 4) * 1 : resting ? 0 : Math.sin(t * 1.2) * 0.4;
     this.fillEll(sx - 8 * f, sy - 2 + sway * 0.3, 4, 2.4, body);            // tail base
     this.fillEll(sx - 13 * f, sy - 1 + sway * 0.5, 2.6, 1.6, body);         // tail tip
     this.fillEll(sx, sy - 3, 9, 3.6, body);                                 // body
     this.fillEll(sx - 2 * f, sy - 4, 6, 2.4, body2);
     this.fillEll(sx + 8 * f, sy - 3.5, 4, 3, body2);                        // head
-    const lp = walk ? Math.sin(t * 4) * 2 : 0;
+    const lp = moving ? Math.sin(t * 4) * 2 : 0;
     this.rect(sx - 5 * f, sy - 1, 1.4, 3 + lp * 0.3, dk); this.rect(sx + 4 * f, sy - 1, 1.4, 3 - lp * 0.3, dk);
     for (let i = 0; i < 4; i++) { const dx = sx - 8 * f + i * 5 * f; this.glow(dx, sy - 6, 3.5, spotGlow, 0.3 + 0.4 * this.nightAmt); this.disc(dx, sy - 6, 1.1, spotCore); }
-    if (resting) this.rect(sx + 9 * f, sy - 4, 1.4, 0.5, "#1a0a06"); else this.disc(sx + 10 * f, sy - 4, 0.6, "#1a0a06");   // eye (half-closed basking)
+    if (resting) this.rect(sx + 9 * f, sy - 4, 1.4, 0.5, "#1a0a06"); else this.disc(sx + 10 * f, sy - 4, 0.6, "#1a0a06");   // eye
   }
   // rabbit + variants (snow-hare / hare) — a 4-directional HOPPER: bounds toward you, away, or to the side.
   private drawBunny(sx: number, sy: number, dir: string, moving: boolean, t: number, mode: string, variant?: string, act = "walk") {
@@ -3045,16 +3055,24 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(sx - 2, sy - 10 + bob, 1, "#1a1208"); this.disc(sx + 2, sy - 10 + bob, 1, "#1a1208");
     this.fillEll(sx - (9 - tuck) * f, sy - 4 + bob, 2.6, 2.2, c); this.fillEll(sx + (9 - tuck) * f, sy - 4 + bob, 2.6, 2.2, c);   // claws (tucked when resting)
   }
-  // A tree-frog with a glowing throat — tropical hero fauna.
-  private drawFrog(sx: number, sy: number, f: number, walk: boolean, t: number, act = "walk") {
-    const c = "#4ac06a", c2 = "#6ad088", dk = "#2a8a4a", hop = walk ? -Math.abs(Math.sin(t * 9)) * 3 : 0, flat = act === "lay" ? 1 : 0;
+  // A tree-frog with a glowing throat — a 4-directional HOPPER (bounds toward you, away, or sideways).
+  private drawFrog(sx: number, sy: number, dir: string, moving: boolean, t: number, act = "walk") {
+    const c = "#4ac06a", c2 = "#6ad088", dk = "#2a8a4a";
+    const hop = (moving && act !== "lay") ? -Math.abs(Math.sin(t * 9)) * 3 : 0, flat = act === "lay" ? 1 : 0;
     this.disc(sx, sy + 1, 4 + flat, "#0a071438");
-    this.rect(sx - 5 * f, sy - 2 + hop, 2, 3, dk); this.rect(sx + 3 * f, sy - 2 + hop, 2, 3, dk);   // back legs
+    const front = dir === "d", back = dir === "u", side = !front && !back, f = dir === "r" ? 1 : -1;
+    // splayed back legs (kick out further mid-hop)
+    const kick = hop < -1 ? 1.5 : 0;
+    this.rect(sx - 5 - kick, sy - 2 + hop, 2, 3, dk); this.rect(sx + 3 + kick, sy - 2 + hop, 2, 3, dk);
     this.fillEll(sx, sy - 3 + hop, 5, 3.4, c); this.fillEll(sx, sy - 4 + hop, 3.4, 2, c2);
-    this.disc(sx - 2 * f, sy - 6 + hop, 1.4, c2); this.disc(sx + 2 * f, sy - 6 + hop, 1.4, c2);      // eye bulges
-    this.disc(sx - 2 * f, sy - 6 + hop, 0.7, "#1a1208"); this.disc(sx + 2 * f, sy - 6 + hop, 0.7, "#1a1208");
+    if (!back) {   // eye bulges — both toward you (front) or leading + trailing (side)
+      const ex = side ? [1.6 * f, -1.6 * f] : [-2, 2], er = side ? [1.5, 1.1] : [1.4, 1.4];
+      this.disc(sx + ex[0], sy - 6 + hop, er[0], c2); this.disc(sx + ex[1], sy - 6 + hop, er[1], c2);
+      this.disc(sx + ex[0], sy - 6 + hop, 0.7, "#1a1208"); if (front) this.disc(sx + ex[1], sy - 6 + hop, 0.7, "#1a1208");
+      else this.disc(sx + ex[1], sy - 6 + hop, 0.5, "#1a1208");
+    } else { this.fillEll(sx, sy - 5 + hop, 3, 1.6, dk); }   // hunched back toward you
     const pulse = this.reduce ? 0.7 : 0.5 + 0.5 * Math.sin(t * 3);
-    this.glow(sx, sy - 2 + hop, 4, "#ffe27a", 0.14 * pulse + 0.05); this.disc(sx, sy - 2 + hop, 1, "#ffe9a0");   // throat
+    if (!back) { this.glow(sx, sy - 2 + hop, 4, "#ffe27a", 0.14 * pulse + 0.05); this.disc(sx, sy - 2 + hop, 1, "#ffe9a0"); }   // throat
   }
   // A darting squirrel with a bushy tail — autumn hero fauna.
   private drawSquirrel(sx: number, sy: number, dir: string, moving: boolean, t: number, act = "walk") {
