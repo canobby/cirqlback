@@ -11,6 +11,9 @@ vite.config.ts.*
 .env.*
 !.env.example
 
+# Personal credentials reference (plaintext logins) — never commit.
+CREDENTIALS.md
+
 # Playwright MCP scratch output (snapshots/screenshots from local testing)
 .playwright-mcp/
 
