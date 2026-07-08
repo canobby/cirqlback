@@ -33,7 +33,7 @@ export const DEFAULT_TERRAIN: TerrainConfig = {
   water: { fill: "water_middle", blob: { sheet: "water_blob", layout: BLOB_3x5 } },
   // cobble_blob bakes a tan dirt shoulder into its edges (ugly against grass), so the
   // road uses the sheet's border-free solid cobble tile (0,3) for a clean paved lane.
-  path:  { fill: "cobble_blob", cell: [0, 4] },
+  path:  { fill: "cobble_blob", cell: [1, 1] },
   cliff: { fill: "cliff", cell: [4, 2] },
 };
 

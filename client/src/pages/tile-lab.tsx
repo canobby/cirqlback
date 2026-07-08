@@ -53,7 +53,7 @@ class TileLabEngine extends RetroEngine {
     const dx = (tx - CX) / RX, dy = (ty - CY) / RY;
     const ang = Math.atan2(ty - CY, tx - CX);
     const d = dx * dx + dy * dy;
-    const R = 1 + 0.05 * Math.sin(ang * 3 + 0.6) + 0.03 * Math.sin(ang * 5);
+    const R = 1 + 0.035 * Math.sin(ang * 2 + 0.6);   // one gentle low-freq wave → smooth shore, no 1-tile jaggies
     if (d >= R) return false;
     // carve a round bay on the west for the dock + fisherman
     if ((tx - 10) ** 2 + (ty - 33) ** 2 < 20) return false;
@@ -87,7 +87,7 @@ class TileLabEngine extends RetroEngine {
     H("house2", 144, 128, 45, 20, 1);
     H("house3", 144, 128, 24, 27, 1);
     H("house4", 112, 96, 47, 28, 1);
-    H("fisherman", 96, 112, 8, 30, 1);                  // the west cove
+    H("fisherman", 96, 112, 14, 27, 1);                 // above the west cove (on land)
 
     // 6) wellspring centrepiece (the Well) at the plaza heart
     map.addProp({ sheet: "well", fw: 32, fh: 48, col: 0, row: 0, x: WELL.x * T + T / 2, y: WELL.y * T + T, solidR: 9 });
@@ -117,7 +117,7 @@ class TileLabEngine extends RetroEngine {
     for (const [tx, ty] of [[27, 20], [29, 21], [43, 24]] as [number, number][]) chick(tx, ty);
     // villager NPCs — premade sheets are 64×64 frames; (0,0) is a front idle, feet ~0.66 down
     map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 30 * T, y: 26 * T, solidR: 6 }); // by the plaza
-    map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 12 * T, y: 31 * T, solidR: 6 }); // at the cove
+    map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 16 * T, y: 29 * T, solidR: 6 }); // by the cove (on land)
 
     this.map = map;
     // waterfall point where the river meets the front cliff
