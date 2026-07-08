@@ -85,13 +85,13 @@ export const QUESTS: QuestDef[] = [
     name: "A Word to the Neighbours",
     giver: "keeper",
     intro: [
-      "Would you carry a kind word to the next shore for me?",
-      "Sail south from the dock, find their Commons, then come home.",
-      "The map will point the way — follow the glimmer to the dock.",
+      "Would you gather word from the Town for me?",
+      "Meet the neighbours at the Commons, then carry it home to CIRQLSPACE.",
+      "The map will point the way — follow the glimmer.",
     ],
     objectives: [
-      { kind: "reach", ring: 1, target: "commons", label: "Visit the next shore's Commons" },
-      { kind: "reach", ring: 0, target: "marker-shore", label: "Bring word home to CIRQLSPACE" },
+      { kind: "reach", ring: 1, target: "commons", label: "Gather word at the Town Commons" },
+      { kind: "interact", ring: 0, target: "guide", label: "Bring word home to Cirqla" },
     ],
     reward: { sparks: 14 },
   },

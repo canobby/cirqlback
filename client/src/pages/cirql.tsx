@@ -372,6 +372,16 @@ export default function Cirql() {
     else tryJoin();
     persist();
   };
+  // Dismiss the "Where to?" picker without moving — stay exactly where you are. Safe both
+  // when it opens on load (releases the held presence at the already-loaded spot) and when
+  // reopened via the 📍 button. Doesn't change any remembered default.
+  const closeStartPick = () => {
+    setStartPick(null);
+    engineRef.current?.startAudio();   // this tap is a valid audio gesture too
+    presenceReadyRef.current = true;
+    if (joinedRef.current) { const st = engineRef.current?.getState(); if (st) wsSend({ t: "move", ring: st.ring, x: st.x, y: st.y, dir: "down", pose: "stand" }); }
+    else tryJoin();
+  };
   // Open the CirqlCade hall + record the first visit (unlocks the arcade startup shortcut).
   const openHall = () => { setHallOpen(true); if (!arcadeVisitedRef.current) { arcadeVisitedRef.current = true; persist(); } };
   const persist = () => {
@@ -1198,7 +1208,7 @@ export default function Cirql() {
       {/* controls tray — captures all taps in this band so only the controls move the character */}
       <div ref={controlsRef} className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-w-[680px] items-end justify-between gap-4 px-5 pb-[calc(14px+env(safe-area-inset-bottom))] pt-6"
         style={{ background: "linear-gradient(0deg, rgba(6,11,26,.78) 40%, rgba(6,11,26,0))", touchAction: "none", display: dioramaOn ? "none" : undefined }}>
-        <Joystick press={(b) => engineRef.current?.press(b)} release={(b) => engineRef.current?.release(b)} color="#35e0d0" size={128} />
+        <Joystick press={(b) => engineRef.current?.press(b)} release={(b) => engineRef.current?.release(b)} color="#35e0d0" size={128} floatOrigin />
         <div className="mb-1 flex min-w-0 flex-wrap items-end justify-end gap-2">
           <button onPointerDown={(e) => { e.preventDefault(); setShowEmotes((v) => !v); }} data-testid="btn-emotes" title="Emotes"
             className="flex h-12 w-12 flex-col items-center justify-center rounded-full border-[1.5px] text-[8px] font-extrabold active:scale-90"
@@ -1636,8 +1646,12 @@ export default function Cirql() {
 
       {/* startup location picker — Home / Last spot / Arcade (Phase-I polish) */}
       {startPick && (
-        <div className="absolute inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(5,6,15,.86)" }} data-testid="start-picker">
-          <div className="max-h-[92vh] w-full max-w-[380px] overflow-y-auto rounded-2xl border p-4" style={{ borderColor: "rgba(53,224,208,.35)", background: "rgba(10,14,30,.98)", boxShadow: "0 18px 52px rgba(0,0,0,.6)" }}>
+        <div className="absolute inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(5,6,15,.86)" }} data-testid="start-picker" onClick={closeStartPick}>
+          <div className="relative max-h-[92vh] w-full max-w-[380px] overflow-y-auto rounded-2xl border p-4" style={{ borderColor: "rgba(53,224,208,.35)", background: "rgba(10,14,30,.98)", boxShadow: "0 18px 52px rgba(0,0,0,.6)" }} onClick={(e) => e.stopPropagation()}>
+            <button onClick={closeStartPick} data-testid="start-close" title="Stay where I am" aria-label="Close"
+              className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full border text-slate-300 active:scale-90" style={{ borderColor: "rgba(255,255,255,.16)", background: "rgba(255,255,255,.04)" }}>
+              <X className="h-4 w-4" />
+            </button>
             <div className="text-center text-[15px] font-black tracking-wide text-cyan-100">Where to?</div>
             <div className="mb-3 mt-0.5 text-center text-[11px] text-slate-400">Pick where to begin{nameRef.current && nameRef.current !== "Traveller" ? `, ${nameRef.current}` : ""}.</div>
             <div className="flex flex-col gap-2">
@@ -1658,6 +1672,9 @@ export default function Cirql() {
               <input type="checkbox" checked={startRemember} onChange={(e) => setStartRemember(e.target.checked)} data-testid="start-remember" className="h-3.5 w-3.5 accent-cyan-400" />
               Start here every time <span className="text-slate-500">(change from the <MapPin className="inline h-3 w-3" /> button)</span>
             </label>
+            <button onClick={closeStartPick} data-testid="start-stay" className="mt-3 w-full rounded-xl border py-2 text-[12px] font-bold text-slate-300 active:scale-[.98]" style={{ borderColor: "rgba(255,255,255,.14)", background: "rgba(255,255,255,.03)" }}>
+              Stay where I am
+            </button>
           </div>
         </div>
       )}

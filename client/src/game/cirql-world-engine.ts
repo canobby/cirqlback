@@ -543,7 +543,10 @@ export class CirqlWorldEngine extends RetroEngine {
     if (!t) { this.setWp(null, false); return; }
     if ((t.ring ?? 0) === this.ringIdx) {
       let pos: { x: number; y: number } | null = null;
-      if (t.at) { const p = this.curRing.props.find((x) => x.id === t.at); if (p) pos = { x: p.x, y: p.y }; }
+      // a named prop that doesn't exist on this (procedurally-generated) ring — e.g. a
+      // campaign asking for a "commons" on a wild shore that rolled a different landmark —
+      // falls back to the ring centre so the step is never an unreachable dead end.
+      if (t.at) { const p = this.curRing.props.find((x) => x.id === t.at); pos = p ? { x: p.x, y: p.y } : { x: 0, y: 0 }; }
       else if (t.x != null && t.y != null) pos = { x: t.x, y: t.y };
       this.setWp(pos, !!pos);                      // on-ring → real target, arrival advances
     } else {

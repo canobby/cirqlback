@@ -7,9 +7,13 @@ import type { Btn } from "@/game/retro-engine";
 const DIRS: Btn[] = ["up", "down", "left", "right"];
 const DEAD = 0.34;
 
-export function Joystick({ press, release, color = "#b79bff", size = 132 }: { press: (b: Btn) => void; release: (b: Btn) => void; color?: string; size?: number }) {
+export function Joystick({ press, release, color = "#b79bff", size = 132, floatOrigin = false }: { press: (b: Btn) => void; release: (b: Btn) => void; color?: string; size?: number; floatOrigin?: boolean }) {
   const active = useRef<Set<Btn>>(new Set());
   const dragging = useRef(false);
+  // where "center" is for this drag. With floatOrigin, it's wherever you first pressed
+  // (so a stick jammed near a screen edge still has full range — e.g. landscape "down");
+  // otherwise it's the knob's fixed geometric centre.
+  const origin = useRef<{ x: number; y: number } | null>(null);
   const knob = useRef<HTMLDivElement>(null);
   const R = size / 2;
 
@@ -17,11 +21,12 @@ export function Joystick({ press, release, color = "#b79bff", size = 132 }: { pr
     for (const d of DIRS) { if (dirs.has(d) && !active.current.has(d)) press(d); else if (!dirs.has(d) && active.current.has(d)) release(d); }
     active.current = dirs;
   };
-  const reset = () => { dragging.current = false; setDirs(new Set()); if (knob.current) knob.current.style.transform = "translate(0px,0px)"; };
+  const reset = () => { dragging.current = false; origin.current = null; setDirs(new Set()); if (knob.current) knob.current.style.transform = "translate(0px,0px)"; };
   const move = (cx: number, cy: number) => {
     const el = knob.current?.parentElement; if (!el) return;
     const r = el.getBoundingClientRect();
-    const dx = cx - (r.left + r.width / 2), dy = cy - (r.top + r.height / 2);
+    const base = origin.current ?? { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    const dx = cx - base.x, dy = cy - base.y;
     const len = Math.hypot(dx, dy) || 1, cl = Math.min(len, R);
     if (knob.current) knob.current.style.transform = `translate(${(dx / len) * cl}px,${(dy / len) * cl}px)`;
     const nx = dx / R, ny = dy / R;
@@ -33,7 +38,7 @@ export function Joystick({ press, release, color = "#b79bff", size = 132 }: { pr
 
   return (
     <div
-      onPointerDown={(e) => { e.preventDefault(); dragging.current = true; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } move(e.clientX, e.clientY); }}
+      onPointerDown={(e) => { e.preventDefault(); dragging.current = true; origin.current = floatOrigin ? { x: e.clientX, y: e.clientY } : null; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } move(e.clientX, e.clientY); }}
       onPointerMove={(e) => { if (dragging.current) move(e.clientX, e.clientY); }}
       onPointerUp={reset} onPointerCancel={reset}
       data-testid="joystick"
