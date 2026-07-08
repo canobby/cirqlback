@@ -2402,30 +2402,100 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(cx - 5, cy + 9, 10, 7, "#0b0a1e");
     this.labelPill(cx, cy - 46, p.label || "CirqlCade", ac);
   }
-  // A Town storefront (Milestone F) — a cozy shop you walk into: warm walls, a striped
-  // awning + sign in the shop's accent, glowing windows and a lit doorway. `p.accent`
-  // tints the awning/sign so the five shops read apart at a glance.
+  // A Town storefront (Milestone F). Each of the five shops now has its own SILHOUETTE + a
+  // signature animated motif (dispatched by shopId), so the Town reads as bespoke rather than
+  // one recoloured box. Unknown shopIds fall back to the cozy generic storefront.
   private drawShop(cx: number, cy: number, p: Prop) {
-    const ac = p.accent || "#ffd98a";
-    const near = this.near === p;
-    this.glow(cx, cy - 6, 54, ac, 0.16 + (near ? 0.16 : 0));
-    this.rect(cx - 24, cy + 14, 48, 6, "#0a071450");                 // ground shadow
-    // walls
-    this.rect(cx - 22, cy - 10, 44, 26, "#e7d8bd");
-    this.rect(cx - 22, cy - 10, 44, 2, shade(ac, -0.2));        // eave line
-    this.rectLine(cx - 22, cy - 10, 44, 26, shade(ac, -0.35));
-    // pitched roof
+    const near = this.near === p, ac = p.accent || "#ffd98a";
+    this.glow(cx, cy - 6, 56, ac, 0.16 + (near ? 0.16 : 0));
+    this.rect(cx - 24, cy + 14, 48, 6, "#0a071450");                 // shared ground shadow
+    switch (p.shopId) {
+      case "boutique": this.shopBoutique(cx, cy, ac); break;
+      case "garden": this.shopGarden(cx, cy, ac); break;
+      case "curios": this.shopCurios(cx, cy, ac); break;
+      case "building": this.shopBuilding(cx, cy, ac); break;
+      case "general": this.shopGeneral(cx, cy, ac); break;
+      default: this.shopGeneric(cx, cy, ac); break;
+    }
+    this.labelPill(cx, cy - 38, p.label || "Shop", ac);
+  }
+  private shopGeneric(cx: number, cy: number, ac: string) {
+    this.rect(cx - 22, cy - 10, 44, 26, "#e7d8bd"); this.rect(cx - 22, cy - 10, 44, 2, shade(ac, -0.2)); this.rectLine(cx - 22, cy - 10, 44, 26, shade(ac, -0.35));
     for (let i = 0; i < 12; i++) this.rect(cx - 26 + i, cy - 10 - i, (26 - i) * 2, 1, shade(ac, -0.15));
-    // striped awning over the front
     for (let i = 0; i < 11; i++) this.rect(cx - 22 + i * 4, cy - 1, 4, 4, i % 2 ? ac : "#fff6e8");
-    this.rect(cx - 22, cy + 3, 44, 1, shade(ac, -0.3));
-    // sign board above the awning
     this.rect(cx - 14, cy - 20, 28, 6, shade(ac, -0.1)); this.rectLine(cx - 14, cy - 20, 28, 6, "#0a0714");
-    // glowing windows + lit door
     this.disc(cx - 13, cy + 8, 3, "#ffe6a8"); this.disc(cx + 13, cy + 8, 3, "#ffe6a8");
-    this.rect(cx - 5, cy + 4, 10, 12, shade(ac, 0.1)); this.rect(cx - 4, cy + 6, 8, 10, "#7a4a1e");
-    this.px(cx + 2, cy + 11, "#ffd98a");                             // door knob
-    this.labelPill(cx, cy - 30, p.label || "Shop", ac);
+    this.rect(cx - 5, cy + 4, 10, 12, shade(ac, 0.1)); this.rect(cx - 4, cy + 6, 8, 10, "#7a4a1e"); this.px(cx + 2, cy + 11, "#ffd98a");
+  }
+  // General Store — a western false-front trading post: plank walls, barrels & crates, a swaying sign.
+  private shopGeneral(cx: number, cy: number, ac: string) {
+    const wood = "#c2914e", dk = "#6a4a24";
+    this.rect(cx - 23, cy - 22, 46, 14, shade(wood, 0.08)); this.rectLine(cx - 23, cy - 22, 46, 14, dk); this.rect(cx - 23, cy - 22, 46, 2, shade(wood, 0.22));   // false-front parapet
+    this.rect(cx - 16, cy - 19, 32, 7, shade(ac, -0.12)); this.rectLine(cx - 16, cy - 19, 32, 7, "#2a1c0c"); this.rect(cx - 13, cy - 17, 26, 1, shade(ac, 0.3));   // sign
+    this.rect(cx - 22, cy - 8, 44, 24, wood); for (let i = 1; i < 4; i++) this.rect(cx - 22, cy - 8 + i * 6, 44, 0.7, shade(wood, -0.18)); this.rectLine(cx - 22, cy - 8, 44, 24, dk);   // plank walls
+    this.rect(cx + 2, cy + 2, 10, 14, "#5a3a1e"); this.rect(cx + 3, cy + 3, 8, 13, "#7a4a1e"); this.px(cx + 4, cy + 9, "#ffd98a");   // door
+    this.rect(cx - 15, cy - 3, 11, 9, "#ffe6a8"); this.rectLine(cx - 15, cy - 3, 11, 9, dk); this.rect(cx - 10, cy - 3, 1, 9, dk); this.rect(cx - 15, cy + 1, 11, 1, dk);   // paned window
+    this.rect(cx - 21, cy + 7, 8, 9, "#8a5a2e"); this.rect(cx - 21, cy + 9, 8, 1, "#5a3a1e"); this.rect(cx - 21, cy + 13, 8, 1, "#5a3a1e"); this.rect(cx - 21, cy + 7, 3, 9, shade("#8a5a2e", 0.15));   // barrel
+    this.rect(cx + 14, cy - 11, 9, 1.4, dk);   // sign arm
+    const sw = Math.sin(this.t * 1.7) * 1.6;
+    this.rect(cx + 18 + sw, cy - 8, 8, 6, shade(ac, -0.05)); this.rectLine(cx + 18 + sw, cy - 8, 8, 6, dk);   // swaying hung sign
+  }
+  // The Looking Glass — an elegant atelier: a mansard roof, a tall arched display window with a
+  // dress-form, a scalloped awning, and a gleam sweeping across the glass.
+  private shopBoutique(cx: number, cy: number, ac: string) {
+    const wall = "#f2dfe8", dk = shade(ac, -0.4);
+    for (let i = 0; i < 10; i++) { const w = 22 - i * 1.5; this.rect(cx - w, cy - 10 - i, w * 2, 1, i < 3 ? shade(ac, -0.1) : shade(ac, -0.24)); }   // mansard roof
+    this.disc(cx, cy - 21, 1.8, mix(ac, "#ffffff", 0.4));   // finial
+    this.rect(cx - 20, cy - 10, 40, 26, wall); this.rectLine(cx - 20, cy - 10, 40, 26, dk);
+    this.rect(cx - 15, cy - 4, 13, 20, mix(ac, "#ffffff", 0.5)); this.disc(cx - 8.5, cy - 4, 6.5, mix(ac, "#ffffff", 0.5)); this.rectLine(cx - 15, cy - 4, 13, 20, dk);   // arched display window
+    this.rect(cx - 10, cy + 3, 4, 9, shade(ac, -0.15)); this.disc(cx - 8, cy + 1, 2, shade(ac, -0.08));   // dress form
+    for (let i = 0; i < 5; i++) this.disc(cx - 16 + i * 8, cy + 1, 4, i % 2 ? ac : "#fff2f7"); this.rect(cx - 20, cy - 2, 40, 2, shade(ac, -0.05));   // scalloped awning
+    this.rect(cx + 6, cy + 3, 10, 13, mix(ac, "#ffffff", 0.3)); this.rectLine(cx + 6, cy + 3, 10, 13, dk); this.px(cx + 8, cy + 9, dk);   // door
+    if (!this.reduce) { const g = Math.sin(this.t * 1.2) * 0.5 + 0.5; this.px(Math.round(cx - 14 + g * 11), cy - 2, "#ffffff"); this.px(Math.round(cx - 14 + g * 11), cy - 1, "#ffffff"); }   // gleam
+  }
+  // Garden & Grove — a glass greenhouse: a glazed gable roof, greenery crowding the panes, and a
+  // glowing bloom on the ridge with drifting pollen.
+  private shopGarden(cx: number, cy: number, ac: string) {
+    const glass = "#bfeccf", bar = "#e8f6ee", frame = shade(ac, -0.35);
+    for (let i = 0; i < 14; i++) this.rect(cx - 22 + i * 1.57, cy - 6 - i, (22 - i * 1.57) * 2, 1, i % 3 === 0 ? bar : glass);   // glazed gable
+    this.rect(cx - 20, cy - 6, 40, 22, glass); this.rectLine(cx - 20, cy - 6, 40, 22, frame);
+    for (let i = -2; i <= 2; i++) this.rect(cx + i * 8, cy - 6, 0.8, 22, bar); this.rect(cx - 20, cy + 4, 40, 0.8, bar);   // glazing bars
+    for (let i = 0; i < 6; i++) { const gx = cx - 16 + i * 6.4; this.disc(gx, cy + 8 - (i % 2) * 3, 3, i % 2 ? "#3fae5a" : "#59c46f"); this.disc(gx + 1, cy + 5 - (i % 2) * 3, 2, "#7fd88a"); }   // plants
+    const pulse = this.reduce ? 0.6 : 0.5 + 0.5 * Math.sin(this.t * 2);
+    this.glow(cx, cy - 20, 10, ac, 0.2 + 0.2 * pulse); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * TAU / 5; this.disc(cx + Math.cos(a) * 2.4, cy - 20 + Math.sin(a) * 2.4, 2, mix(ac, "#fff", 0.3)); } this.disc(cx, cy - 20, 1.6, "#ffe9a0");   // ridge bloom
+    this.rect(cx - 5, cy + 3, 10, 13, mix(glass, "#ffffff", 0.3)); this.rectLine(cx - 5, cy + 3, 10, 13, frame); this.rect(cx, cy + 3, 0.8, 13, frame);   // door
+    if (!this.reduce) for (let i = 0; i < 3; i++) this.px(Math.round(cx - 10 + i * 9), Math.round(cy - 10 + Math.sin(this.t * 0.5 + i * 2) * 6), "#fff2a0");   // pollen
+  }
+  // Curios & Wonders — a crooked wizard's shop: a starry conical roof with a star finial, a round
+  // window holding a glowing crystal ball, and trinkets orbiting it.
+  private shopCurios(cx: number, cy: number, ac: string) {
+    const wall = "#3a2f5a", dk = shade(ac, -0.3);
+    for (let i = 0; i < 16; i++) { const w = 16 - i; if (w <= 0) break; this.rect(cx - w, cy - 12 - i, w * 2, 1, i < 4 ? shade(ac, -0.05) : "#241a44"); }   // conical roof
+    for (let i = 0; i < 5; i++) { const sx = cx - 8 + (i * 7) % 16, sy = cy - 14 - (i * 5) % 12; if (this.reduce || Math.sin(this.t * 3 + i) > -0.2) this.px(sx, sy, i % 2 ? "#ffd24a" : "#ffffff"); }   // roof stars
+    this.disc(cx, cy - 28, 1.6, "#ffd24a"); this.glow(cx, cy - 28, 6, "#ffd24a", 0.3);   // star finial
+    this.rect(cx - 15, cy - 12, 30, 28, wall); this.rectLine(cx - 15, cy - 12, 30, 28, dk); this.rect(cx - 15, cy - 12, 30, 2, shade(wall, 0.2));
+    this.disc(cx, cy - 2, 6, "#120e26"); this.ring(cx, cy - 2, 6, dk, 1.2);   // round window
+    const cp = this.reduce ? 0.6 : 0.5 + 0.5 * Math.sin(this.t * 2.2);
+    this.disc(cx, cy - 2, 3.5, mix(ac, "#ffffff", 0.3)); this.glow(cx, cy - 2, 8, ac, 0.18 + 0.16 * cp);   // crystal ball
+    if (!this.reduce) for (let i = 0; i < 3; i++) { const a = this.t * 1.4 + i * TAU / 3; this.disc(cx + Math.cos(a) * 12, cy - 2 + Math.sin(a) * 6, 1.3, i === 0 ? "#ffd24a" : i === 1 ? "#7fe0ff" : "#ff9dd6"); }   // orbiting trinkets
+    this.rect(cx - 4, cy + 6, 8, 10, "#160f2e"); this.disc(cx, cy + 6, 4, "#160f2e"); this.rectLine(cx - 4, cy + 6, 8, 10, dk); this.px(cx + 2, cy + 11, ac);   // arched door
+  }
+  // Timber & Stone — a stout workshop: a stone base + timbered upper, a smoking chimney, and a
+  // water wheel that turns on the side.
+  private shopBuilding(cx: number, cy: number, ac: string) {
+    const stone = "#8f8a80", timber = "#a9793f", dk = "#4a3a22";
+    for (let i = 0; i < 13; i++) this.rect(cx - 24 + i * 1.7, cy - 8 - i, (24 - i * 1.7) * 2, 1, i % 2 ? shade(timber, -0.2) : shade(timber, -0.08)); this.rect(cx - 24, cy - 8, 48, 1.5, dk);   // roof
+    this.rect(cx - 20, cy + 2, 40, 14, stone); for (let i = 0; i < 5; i++) this.rect(cx - 20 + i * 8, cy + 2, 0.6, 14, shade(stone, -0.2)); this.rect(cx - 20, cy + 8, 40, 0.6, shade(stone, -0.2));   // stone base
+    this.rect(cx - 20, cy - 8, 40, 10, timber); this.rectLine(cx - 20, cy - 8, 40, 10, dk);
+    this.rect(cx - 20, cy - 8, 40, 1.5, shade(timber, 0.15)); this.rect(cx - 20, cy - 8, 2, 10, dk); this.rect(cx - 2, cy - 8, 2, 10, dk); this.rect(cx + 18, cy - 8, 2, 10, dk);   // beams
+    this.rect(cx + 12, cy - 20, 5, 12, "#6a5a4a");
+    if (!this.reduce) for (let i = 0; i < 3; i++) { const yy = cy - 22 - i * 4 - (this.t * 6 % 4); this.disc(cx + 14 + Math.sin(this.t * 1.4 + i) * 2, yy, 1.5 + i * 0.4, "#b8b0a4"); }   // smoke
+    this.rect(cx - 14, cy + 4, 8, 8, "#ffe6a8"); this.rectLine(cx - 14, cy + 4, 8, 8, dk);   // window
+    this.rect(cx + 2, cy + 4, 10, 12, "#5a3a1e"); this.rect(cx + 3, cy + 5, 8, 11, "#7a4a1e");   // door
+    const wx = cx - 24, wy = cy + 6, r = 7;
+    this.disc(wx, wy, r + 0.5, "#3a2f22"); this.ring(wx, wy, r, "#7a5a34", 1.4);
+    for (let i = 0; i < 8; i++) { const a = this.t * 1.2 + i * TAU / 8; this.rect(wx + Math.cos(a) * (r - 1) - 1, wy + Math.sin(a) * (r - 1) - 1, 2, 2, "#8a6a44"); }   // turning wheel paddles
+    this.disc(wx, wy, 1.6, "#5a4326");
   }
   // A brooding storm you can brave (F weather entry) — dark churning cloud puffs, a hint of
   // a funnel, flickering lightning + icy flecks swirling. Interact → the tornado sweep.
