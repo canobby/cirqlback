@@ -204,6 +204,7 @@ export function setupAuth(app: Express) {
       // Establish a session for the newly registered user.
       req.login(user, (err) => {
         if (err) return next(err);
+        if (req.body?.remember !== false && req.session?.cookie) req.session.cookie.maxAge = 1000 * 60 * 60 * 24 * 30;
         return res.status(201).json(sanitize(user));
       });
     } catch (err) {
@@ -212,11 +213,14 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/auth/login", (req, res, next) => {
+    const remember = req.body?.remember !== false;   // default on
     passport.authenticate("local", (err: unknown, user: User | false, info?: { message?: string }) => {
       if (err) return next(err);
       if (!user) return res.status(401).json({ message: info?.message ?? "Invalid email or password" });
       req.login(user, (loginErr) => {
         if (loginErr) return next(loginErr);
+        // "Remember me": keep this session alive for 30 days (else the default 1-week cookie).
+        if (remember && req.session?.cookie) req.session.cookie.maxAge = 1000 * 60 * 60 * 24 * 30;
         return res.json(sanitize(user));
       });
     })(req, res, next);

@@ -41,23 +41,35 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [role, setRole] = useState<"customer" | "merchant">("customer");
+  const [remember, setRemember] = useState(true);   // keep me signed in + prefill my email
 
   // Already signed in? Don't show the form.
   useEffect(() => {
     if (!isLoading && isAuthenticated) setLocation("/");
   }, [isLoading, isAuthenticated, setLocation]);
 
+  // Prefill the saved email (from a previous "remember me" sign-in) so it's one tap.
+  useEffect(() => {
+    try { const saved = localStorage.getItem("cb_saved_email"); if (saved) setEmail(saved); } catch { /* ignore */ }
+  }, []);
+
   const authMutation = useMutation({
     mutationFn: async (): Promise<AuthUser> => {
       const url = mode === "login" ? "/api/auth/login" : "/api/auth/register";
       const body =
         mode === "login"
-          ? { email, password }
-          : { email, password, firstName: firstName || undefined, role };
+          ? { email, password, remember }
+          : { email, password, firstName: firstName || undefined, role, remember };
       const res = await apiRequest("POST", url, body);
       return (await res.json()) as AuthUser;
     },
     onSuccess: (user) => {
+      // Remember me: keep the email prefilled next time (the browser's password
+      // manager saves the password itself). Unchecked → forget it.
+      try {
+        if (remember && email) localStorage.setItem("cb_saved_email", email);
+        else localStorage.removeItem("cb_saved_email");
+      } catch { /* ignore */ }
       queryClient.setQueryData(["/api/auth/user"], user);
       toast({
         title: mode === "login" ? "Welcome back!" : "Account created",
@@ -132,6 +144,17 @@ export default function AuthPage() {
                 placeholder={mode === "register" ? "At least 8 characters" : "••••••••"}
               />
             </div>
+
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                data-testid="remember-me"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              Remember me <span className="text-xs">(stay signed in &amp; save my email on this device)</span>
+            </label>
 
             {mode === "register" && (
               <div className="space-y-2">
