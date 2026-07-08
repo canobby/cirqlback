@@ -1322,11 +1322,11 @@ export class CirqlWorldEngine extends RetroEngine {
       }
     }
 
-    if (zoomed) b.restore();   // end the zoom transform — HUD/overlays draw in screen space
-    this.uiZoom = false;       // post-restore labels (ambient cues, HUD) are screen-space
-
     this.drawFx();
-    this.drawAmbient();
+    this.drawAmbient();         // animals/particles INSIDE the zoom → they scale + track the
+                               // world (fixes: zoomed out, animals stayed player-size + drifted)
+    if (zoomed) b.restore();   // end the zoom transform — HUD/overlays draw in screen space
+    this.uiZoom = false;       // HUD + chart labels are screen-space
     // day/night colour grade (J3) — a cool wash at night + a warm one at dawn/dusk. Screen-
     // space, over the world but under the HUD. Softened while building so ring 0 stays clear.
     if (dn.night > 0.01 || dn.twilight > 0.01) {
