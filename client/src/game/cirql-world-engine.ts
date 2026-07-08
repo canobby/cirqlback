@@ -20,7 +20,7 @@ import { activeEvent } from "./cirql-daily";
 import { MOVIES, REEL_SECONDS } from "./cirql-theater";
 import {
   allQuests, questById, offerableQuest, repeatableQuest, questStatusList, registerQuest,
-  type QuestDef, type QuestProgress, type ObjectiveKind, type QuestStatus,
+  type QuestDef, type QuestProgress, type ObjectiveKind, type QuestStatus, type Objective,
 } from "./cirql-quests";
 import { generateRingQuests } from "./cirql-quest-gen";
 import { EMOTE_BY_ID, EMOTE_SECONDS, PAIR_BY_ID } from "./cirql-emotes";
@@ -185,6 +185,11 @@ export class CirqlWorldEngine extends RetroEngine {
   private playerRank = 0;                  // Renown rank index (host keeps it in sync) — for require.minRenownRank
   private codex = new Set<string>();       // recorded lore/collection entries
   private healed = new Set<string>();      // curio ids "healed" by an emergent quest (drawn as mended)
+  // Phase 2 verbs
+  private escortee: { x: number; y: number; vx: number; vy: number; destId: string } | null = null;   // a follower being led to a place
+  private questTimer: { id: string; left: number } | null = null;   // a timed RACE's countdown
+  private pendingRiddle: string | null = null;   // a riddle awaiting an answer
+  private censusSeen = new Set<string>();  // distinct creature keys spotted for the active census
   /** Host pushes the player's Renown rank index so time/rank-gated quests can evaluate. */
   setRenownRank(i: number) { this.playerRank = Math.max(0, i | 0); }
   /** Recorded codex entry ids (for a future codex panel). */
@@ -623,6 +628,9 @@ export class CirqlWorldEngine extends RetroEngine {
     // lanterns are all dark + lightable, regardless of any permanent/global lit state
     if (q.objectives.some((o) => o.kind === "lightLanterns")) this.litForQuest = new Set();
     if (q.objectives.some((o) => o.kind === "gather")) this.gatheredWisps = new Set();
+    if (q.objectives.some((o) => o.kind === "census")) this.censusSeen = new Set();   // fresh naturalist tally
+    if (q.objectives.some((o) => o.kind === "escort")) this.escortee = null;           // (re)spawns from update
+    if (q.timeLimit) this.questTimer = { id, left: q.timeLimit };                       // start the race clock
     this.toast(`✦ New quest — ${q.name}`);
     this.onQuestChange?.();
   }
@@ -643,19 +651,24 @@ export class CirqlWorldEngine extends RetroEngine {
     const p = this.quests[q.id]; if (!p) return -1;
     return q.objectives.findIndex((o, i) => (p.obj[i] || 0) < (o.count ?? 1));
   }
-  /** Advance any active objective matching (kind, targetId); complete the quest if done. */
+  /** Advance the FIRST active quest whose CURRENT objective matches (kind, targetId) on this ring.
+   *  (Scans all active quests, not just the tracked one, so a ring quest can't shadow an authored
+   *  quest that needs the same event.) Completes / offers the choice fork when the quest is done. */
   private advanceObjective(kind: ObjectiveKind, targetId?: string) {
-    const q = this.activeQuest(); if (!q) return;
-    const p = this.quests[q.id]; const oi = this.currentObjIndex(q); if (oi < 0) return;
-    const o = q.objectives[oi];
-    if (o.kind !== kind) return;
-    if (o.ring != null && o.ring !== this.ringIdx) return;   // cross-ring: advance only on the objective's ring
-    if ((kind === "reach" || kind === "interact") && o.target && o.target !== targetId) return;
-    p.obj[oi] = Math.min(o.count ?? 1, (p.obj[oi] || 0) + 1);
-    this.onQuestChange?.();
-    if (this.currentObjIndex(q) < 0) {
-      if (q.choice && !p.pick) this.presentQuestChoice(q);   // mystery/choice: the clue-trail is done → offer the fork
-      else this.completeQuest(q);
+    for (const q of allQuests()) {
+      const p = this.quests[q.id]; if (!p || p.status !== "active") continue;
+      const oi = this.currentObjIndex(q); if (oi < 0) continue;
+      const o = q.objectives[oi];
+      if (o.kind !== kind) continue;
+      if (o.ring != null && o.ring !== this.ringIdx) continue;   // cross-ring: advance only on the objective's ring
+      if ((kind === "reach" || kind === "interact" || kind === "deliver" || kind === "escort") && o.target && o.target !== targetId) continue;
+      p.obj[oi] = Math.min(o.count ?? 1, (p.obj[oi] || 0) + 1);
+      this.onQuestChange?.();
+      if (this.currentObjIndex(q) < 0) {
+        if (q.choice && !p.pick) this.presentQuestChoice(q);   // mystery/choice: the clue-trail is done → offer the fork
+        else this.completeQuest(q);
+      }
+      return;   // one match per event
     }
   }
   // ---- mystery/choice quests (K7): once the clues are gathered, offer the branching fork ----
@@ -679,6 +692,8 @@ export class CirqlWorldEngine extends RetroEngine {
   private completeQuest(q: QuestDef, rewardOverride?: { sparks: number; renown?: number }) {
     const p = this.quests[q.id]; if (!p || p.status === "done") return;
     p.status = "done";
+    if (this.questTimer?.id === q.id) this.questTimer = null;   // beat the race clock
+    this.escortee = null;                                       // the follower's home safe
     // a chosen fork pays that option's reward instead of the base (the host reads q.reward)
     const effective: QuestDef = rewardOverride ? { ...q, reward: rewardOverride } : q;
     q = effective;
@@ -727,7 +742,26 @@ export class CirqlWorldEngine extends RetroEngine {
     if (pr?.status === "done") { this.toast(kind === "blight" && this.healed.has(cid) ? "The ground has mended — green returns." : "You've already unravelled this one."); return; }
     if (pr?.status === "active") { this.toast(`${flavor} — your task here is underway.`); return; }
     if (!this.meetsRequire(q)) { this.toast(q.require?.timeOfDay === "night" ? `${flavor} Something more may show once it's dark…` : `${flavor} It isn't the moment yet.`); return; }
+    // RIDDLE quests pose their question here (answer to solve) instead of a plain accept
+    if (q.riddle) {
+      this.pendingRiddle = q.id;
+      const choices: DialogChoice[] = q.riddle.options.map((o) => ({ label: o.label, answer: o.id }));
+      this.setDialog(p.label || "A riddle", p.accent || "#c9a0ff", { nodes: { start: { lines: q.intro, choices } }, start: "start" });
+      return;
+    }
     this.setDialog(p.label || (kind === "blight" ? "Blighted ground" : "A discovery"), p.accent || "#c9a0ff", simpleDialog(q.intro, q.id));
+  }
+  /** RIDDLE: check the picked answer; correct → complete the quest, wrong → try again. */
+  private resolveRiddle(answerId: string) {
+    const qid = this.pendingRiddle; this.pendingRiddle = null; this.dialog = null;
+    const q = qid ? questById(qid) : undefined; if (!q || !q.riddle) return;
+    if (answerId === q.riddle.answer) {
+      this.quests[qid!] = { status: "active", obj: q.objectives.map((o) => o.count ?? 1) };   // fill in so it completes
+      this.completeQuest(q);
+      this.toast("The stone warms — you've answered true.");
+    } else {
+      this.toast("The stone stays silent. That wasn't the answer.");
+    }
   }
   /** CHOSEN delivery: a bounty board offers a rotating pool of tasks (repeatable, refresh daily). */
   private openBounty(p: Prop) {
@@ -758,7 +792,12 @@ export class CirqlWorldEngine extends RetroEngine {
       .map(({ quest, status }) => {
         const p = this.quests[quest.id];
         let objective = quest.objectives[0]?.label ?? "";
-        if (status === "active" && p) { const oi = this.currentObjIndex(quest); if (oi >= 0) { const o = quest.objectives[oi]; objective = (o.ring != null && o.ring !== this.ringIdx) ? `Sail to ${ringName(o.ring)} — ${o.label}` : o.label; } else objective = (quest.choice && !p.pick) ? "◆ A choice awaits — speak to the keeper" : "Return complete"; }
+        if (status === "active" && p) { const oi = this.currentObjIndex(quest);
+          if (oi >= 0) { const o = quest.objectives[oi];
+            let lbl = o.kind === "census" ? `${o.label} (${p.obj[oi] || 0}/${o.count ?? 1})` : o.label;
+            objective = (o.ring != null && o.ring !== this.ringIdx) ? `Sail to ${ringName(o.ring)} — ${lbl}` : lbl;
+            if (this.questTimer && this.questTimer.id === quest.id) { const s = Math.max(0, Math.ceil(this.questTimer.left)); objective = `⌛ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} — ${objective}`; }
+          } else objective = (quest.choice && !p.pick) ? "◆ A choice awaits — speak to the keeper" : "Return complete"; }
         else if (status === "done") objective = "Complete";
         return { id: quest.id, name: quest.name, status, objective, tier: quest.tier, reward: quest.reward.sparks, renownReward: quest.reward.renown, steps: quest.objectives.length };
       });
@@ -840,6 +879,7 @@ export class CirqlWorldEngine extends RetroEngine {
     const c: DialogChoice | undefined = node.choices[idx]; if (!c) return;
     if (c.accept) { const id = c.accept; this.dialog = null; this.acceptQuest(id); }
     else if (c.pick) { this.resolveQuestChoice(c.pick); }   // resolve a mystery/choice fork
+    else if (c.answer) { this.resolveRiddle(c.answer); }    // answer a riddle
     else if (c.goto && d.tree.nodes[c.goto]) { d.nodeId = c.goto; d.i = 0; }
     else this.dialog = null;   // plain choice → end the chat
   }
@@ -1221,6 +1261,7 @@ export class CirqlWorldEngine extends RetroEngine {
 
     // living creatures react to you (shy/curious fauna) — stateful, per sim step
     this.ensureCreatures(); this.updateCreatures(dt);
+    this.updateQuestVerbs(dt);   // Phase 2: escort follower / race clock / naturalist census
 
     // auto-rotate the soundtrack every ~minute so no tune wears out (crossfaded)
     if (this.musicStarted && this.orchestra && this.musicVol > 0) { this.musicT += dt; if (this.musicT >= 60) this.rotateMusic(); }
@@ -2535,9 +2576,53 @@ export class CirqlWorldEngine extends RetroEngine {
       const rr = Math.hypot(c.x, c.y); if (rr > edge) { c.x = c.x / rr * edge; c.y = c.y / rr * edge; c.vx *= 0.4; c.vy *= 0.4; }   // shore barrier
     }
   }
+  // ---- Phase 2 quest verbs: escort follower · timed race clock · naturalist census ----
+  private updateQuestVerbs(dt: number) {
+    // RACE: count the timed quest's clock down; fail + reset if it hits zero
+    if (this.questTimer) {
+      const tp = this.quests[this.questTimer.id];
+      if (!tp || tp.status !== "active") this.questTimer = null;
+      else { this.questTimer.left -= dt; if (this.questTimer.left <= 0) { const id = this.questTimer.id; this.questTimer = null; delete this.quests[id]; this.escortee = null; this.toast("⌛ Out of time — the trail's gone cold. Try again."); this.onQuestChange?.(); } }
+    }
+    // find the current escort / census objective across ALL active quests on this ring
+    let esc: { q: QuestDef; oi: number; o: Objective } | null = null, cen: { q: QuestDef; oi: number; o: Objective } | null = null;
+    for (const q of allQuests()) {
+      const p = this.quests[q.id]; if (!p || p.status !== "active") continue;
+      const oi = this.currentObjIndex(q); if (oi < 0) continue;
+      const o = q.objectives[oi];
+      if (o.ring != null && o.ring !== this.ringIdx) continue;
+      if (o.kind === "escort" && !esc) esc = { q, oi, o };
+      if (o.kind === "census" && !cen) cen = { q, oi, o };
+    }
+    // ESCORT: a follower spawns, trails you at a gap, and arrives at the destination prop
+    if (esc) {
+      if (!this.escortee) { const s = esc.o.from ? this.curRing.props.find((pp) => pp.id === esc.o.from) : null; this.escortee = { x: s ? s.x : this.posX, y: s ? s.y + 20 : this.posY + 26, vx: 0, vy: 0, destId: esc.o.target || "" }; }
+      const e = this.escortee, dx = this.posX - e.x, dy = this.posY - e.y, d = Math.hypot(dx, dy) || 1, gap = 42;
+      const spd = d > gap ? 82 * Math.min(1.7, d / gap) : 0, tvx = d > gap ? (dx / d) * spd : 0, tvy = d > gap ? (dy / d) * spd : 0;
+      e.vx += (tvx - e.vx) * Math.min(1, dt * 6); e.vy += (tvy - e.vy) * Math.min(1, dt * 6); e.x += e.vx * dt; e.y += e.vy * dt;
+      const dest = this.curRing.props.find((pp) => pp.id === e.destId);
+      if (dest && Math.hypot(dest.x - e.x, dest.y - e.y) < (dest.r ?? 46)) this.advanceObjective("escort", e.destId);
+    } else if (this.escortee) { this.escortee = null; }
+    // CENSUS: log each distinct creature variant you get close to
+    if (cen) {
+      const p = this.quests[cen.q.id];
+      for (const c of this.creatures) if (Math.hypot(c.x - this.posX, c.y - this.posY) < 120) this.censusSeen.add(c.sp + (c.variant ? ":" + c.variant : ""));
+      const want = cen.o.count ?? 1, have = Math.min(want, this.censusSeen.size);
+      if (have > (p.obj[cen.oi] || 0)) { p.obj[cen.oi] = have; this.onQuestChange?.(); if (this.currentObjIndex(cen.q) < 0) this.completeQuest(cen.q); }
+    }
+  }
   private drawCreatures() {
-    if (!this.creatures.length) return;
     const camX = this.camX, camY = this.camY, W = this.LW, H = this.LH;
+    // the escorted follower — a little lantern-bearer trailing you to safety
+    if (this.escortee) {
+      const sx = this.escortee.x - camX, sy = this.escortee.y - camY, bob = this.reduce ? 0 : Math.sin(this.t * 3) * 1;
+      this.disc(sx, sy + 2, 5, "#0a071440");
+      this.rect(sx - 3, sy - 10 + bob, 6, 10, "#6a5a8a"); this.rect(sx - 3, sy - 10 + bob, 2, 10, "#7a6aa0");   // cloak
+      this.disc(sx, sy - 12 + bob, 3, "#e8c9a0");                                                                // head
+      this.disc(sx + 4.5, sy - 6 + bob, 1.6, "#ffd24a"); this.glow(sx + 4.5, sy - 6 + bob, 6, "#ffd24a", 0.28 + 0.14 * this.nightAmt);   // their lantern
+      this.q(sx, sy - 20 + bob, "♥", "#ff6b8f", 0.8, "c", false, 0.9);
+    }
+    if (!this.creatures.length) return;
     for (const c of [...this.creatures].sort((a, b) => a.y - b.y)) {
       const sx = c.x - camX, sy = c.y - camY;
       if (sx < -30 || sx > W + 30 || sy < -30 || sy > H + 30) continue;

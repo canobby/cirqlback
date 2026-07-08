@@ -345,6 +345,7 @@ export function generateRing(index: number): Ring {
   //  ring 7 → blighted ground (emergent; heals on completion).
   if (index === 2) props.push({ t: "curio", curio: "star", x: hub.x + 72, y: hub.y - 30, id: "curio-2", label: "A fallen star", accent: "#bfe6ff" });
   if (index === 4) props.push({ t: "curio", curio: "cache", x: hub.x - 62, y: hub.y - 40, id: "curio-4", label: "A buried cache", accent: "#ffd24a" });
+  if (index === 6) props.push({ t: "curio", curio: "relic", x: hub.x - 58, y: hub.y - 44, id: "curio-6", label: "The ash-stone", accent: "#ff9a3c" });   // riddle
   if (index === 7) props.push({ t: "curio", curio: "blight", x: hub.x + 40, y: hub.y - 58, id: "curio-7", label: "Blighted ground", accent: "#a05cff" });
 
   // stable ids so the quest-template generator (CHR-256) can target this ring's own

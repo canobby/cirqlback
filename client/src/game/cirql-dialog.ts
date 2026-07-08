@@ -11,7 +11,8 @@ export interface DialogChoice {
   goto?: string;         // jump to this node id
   accept?: string;       // accept this quest id, then close
   pick?: string;         // resolve the pending mystery/choice quest with this option id, then close
-  // (no goto + accept + pick) → the choice closes the conversation
+  answer?: string;       // answer the pending RIDDLE with this option id (correct → completes; wrong → retry)
+  // (no goto + accept + pick + answer) → the choice closes the conversation
 }
 export interface DialogNode {
   lines: string[];       // spoken lines, advanced with E/tap

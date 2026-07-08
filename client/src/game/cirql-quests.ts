@@ -7,14 +7,18 @@
 // lanterns). Quests are chained via `next`, so completing one can auto-offer the
 // following one — the M4 onboarding chain is just data in QUESTS below.
 
-export type ObjectiveKind = "reach" | "interact" | "enterWonders" | "lightLanterns" | "solvePuzzle" | "gather" | "deliver";
+export type ObjectiveKind = "reach" | "interact" | "enterWonders" | "lightLanterns" | "solvePuzzle" | "gather" | "deliver"
+  | "escort"    // lead a follower to a destination prop (Phase K7 Phase 2)
+  | "riddle"    // answer a riddle correctly (via a dialog choice)
+  | "census";   // spot N distinct creature variants on the ring (naturalist)
 
 export interface Objective {
   kind: ObjectiveKind;
-  target?: string;   // prop id (reach/interact) — resolved against the ring's props
-  count?: number;    // for lightLanterns (default 1)
+  target?: string;   // prop id (reach/interact/escort-destination) — resolved against the ring's props
+  count?: number;    // for lightLanterns/gather/census (default 1)
   label: string;     // shown in the tracker / log
   ring?: number;     // if set, this objective is on that ring — advances only there; off-ring the waypoint points to the dock (cross-ring quests)
+  from?: string;     // escort: the prop id the follower starts at (defaults to the giver / player)
 }
 
 // A branching MYSTERY/CHOICE quest (the ring 14-25 marquee model): after the clue-trail
@@ -63,6 +67,9 @@ export interface QuestDef {
   grants?: string;       // décor/cosmetic id unlocked FREE on completion (build-reward tie)
   codex?: CodexEntry;    // a lore/collection entry recorded on completion
   heals?: string;        // a curio id this quest "heals" on completion (emergent → the world visibly mends)
+  // Phase 2 verbs
+  timeLimit?: number;    // a RACE: seconds to finish before it fails + resets
+  riddle?: { options: { id: string; label: string }[]; answer: string };   // posed by the discover curio; correct option completes it
 }
 
 // The onboarding chain (M4): Find Your Feet → The Lantern Path → The Wonders Door.
@@ -200,6 +207,54 @@ export const QUESTS: QuestDef[] = [
   { id: "bounty-gather", name: "Scattered Light", giver: "", bounty: true, tier: 2, intro: ["A warden's bounty: gather the loose wisps."], objectives: [{ kind: "gather", count: 4, label: "Gather any 4 wisps" }], reward: { sparks: 10, renown: 2 } },
   { id: "bounty-scout", name: "Scout Ahead", giver: "", bounty: true, tier: 1, intro: ["A warden's bounty: chart the onward shore."], objectives: [{ kind: "reach", target: "dock-out", label: "Reach the onward dock" }], reward: { sparks: 8, renown: 1 } },
   { id: "bounty-nightwatch", name: "Nightwatch", giver: "", bounty: true, tier: 3, require: { timeOfDay: "night" }, intro: ["A warden's bounty, posted by night: gather the night-wisps."], objectives: [{ kind: "gather", count: 3, label: "Gather 3 wisps under the night sky" }], reward: { sparks: 14, renown: 3 } },
+
+  // ── Phase 2 verb examples (one per new mechanic) ──
+  // ESCORT — lead a dazed traveller from the shore to the Commons (ring 3, autumn).
+  {
+    id: "escort-3", name: "The Long Way Home", giver: "keeper-3", tier: 3,
+    intro: ["A traveller washed in on the tide, dazed and turned-around.", "Walk them to the Commons where it's warm — they'll follow your light.", "Don't rush too far ahead, mind."],
+    objectives: [{ kind: "escort", ring: 3, from: "dock-in", target: "commons", label: "Walk the traveller to the Commons" }],
+    reward: { sparks: 18, renown: 4 }, grants: "lantern",
+    codex: { id: "codex-escort", title: "The Kindness of Light", text: "A stranger led home is a friend made. The shore remembers who carried the lantern." },
+  },
+  // TIMED RACE — reach the Great Crystal before the frost-tide seals the path (ring 5, winter).
+  {
+    id: "race-5", name: "Beat the Frost", giver: "keeper-5", tier: 5, timeLimit: 50,
+    intro: ["The frost-tide's coming in fast — it'll seal the path to the Great Crystal.", "Run for it — reach the crystal before the cold does!", "Go — you've moments, not minutes."],
+    objectives: [{ kind: "reach", ring: 5, target: "landmark-5", label: "Reach the Great Crystal before the frost" }],
+    reward: { sparks: 22, renown: 6 }, grants: "campfire",
+    codex: { id: "codex-race", title: "Ahead of the Cold", text: "Winter always comes. The trick is to be somewhere warm when it does." },
+  },
+  // RIDDLE — answer the ash-stone (discovered on ring 6, ember).
+  {
+    id: "riddle-ash", name: "The Riddle of the Ash", giver: "", tier: 5,
+    discover: { at: "curio-6", ring: 6 },
+    intro: ["An old stone, warm as a banked fire. Words surface as you touch it:", "\"Born in fire, yet I am not flame; I settle soft and grey, and feed the ground I claim. What am I?\""],
+    riddle: { options: [{ id: "smoke", label: "Smoke" }, { id: "ash", label: "Ash" }, { id: "ember", label: "Ember" }], answer: "ash" },
+    objectives: [{ kind: "riddle", label: "Answer the ash-stone's riddle" }],
+    reward: { sparks: 20, renown: 5 }, grants: "torch",
+    codex: { id: "codex-ash", title: "The Ash-Speaker", text: "Fire's last word is ash — and ash is where the next green begins." },
+  },
+  // CENSUS — get close to three kinds of woodland fauna (ring 8, woodland).
+  {
+    id: "naturalist-8", name: "The Naturalist", giver: "keeper-8", tier: 7,
+    intro: ["You've a keen eye, traveller?", "Our wood teems with shy life. Get near three different kinds and note them for me.", "Move gently — they spook."],
+    objectives: [{ kind: "census", ring: 8, count: 3, label: "Catalogue kinds of woodland fauna" }],
+    reward: { sparks: 24, renown: 6 }, grants: "birdhouse",
+    codex: { id: "codex-fauna", title: "A Field Guide Begun", text: "Deer, hare, fox — the wood keeps its own company, if you're quiet enough to be let in." },
+  },
+  // TRADE CHAIN — a three-cornered barter (ring 10, desert) — reuses interact + deliver.
+  {
+    id: "trade-10", name: "The Merchant's Errand", giver: "keeper-10", tier: 9,
+    intro: ["A three-cornered trade, if you're willing.", "The wanderer holds saffron; the strand-keeper wants it and has water to spare.", "Carry the saffron out, bring the water back — everyone wins."],
+    objectives: [
+      { kind: "interact", ring: 10, target: "wanderer-10", label: "Barter with the wanderer for saffron" },
+      { kind: "deliver", ring: 10, target: "sider-10-1", label: "Trade the saffron for spring-water" },
+      { kind: "interact", ring: 10, target: "keeper-10", label: "Bring the water back to the keeper" },
+    ],
+    reward: { sparks: 28, renown: 7 },
+    codex: { id: "codex-trade", title: "The Three-Cornered Trade", text: "No coin changed hands — only need met need. The oldest kind of market." },
+  },
 ];
 
 export type QuestProgress = Record<string, { status: "active" | "done"; obj: number[]; pick?: string }>;
