@@ -457,6 +457,14 @@ export default function Cirql() {
       ownedRef.current = [...ownedRef.current, key]; setOwned(ownedRef.current);
       eng.setSpaceStyle(id); persist();
     };
+    eng.onSelectPattern = (id, cost) => {
+      const key = `pattern:${id}`, owned = cost === 0 || exploreRef.current || ownedRef.current.includes(key);
+      if (owned) { eng.setSpacePattern(id); persist(); return; }
+      if (sparksRef.current < cost) { cirqlSfx.play("deny"); eng.toast(`Need ${cost} sparqs for that pattern`); return; }
+      sparksRef.current -= cost; eng.setStats({ sparks: sparksRef.current }); setSparksUi(sparksRef.current);
+      ownedRef.current = [...ownedRef.current, key]; setOwned(ownedRef.current);
+      eng.setSpacePattern(id); persist();
+    };
     eng.onDecorChange = () => { setDecorCount(eng.getDecor().length); broadcastBuild(); persist(); };   // place/paint/expand → live to visitors (Phase E)
 
     // M8 — live presence socket: broadcast our position + share-a-light, and render

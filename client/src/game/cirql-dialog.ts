@@ -15,6 +15,7 @@ export interface DialogChoice {
   buy?: string;          // Pet Stall: "type:cost" — adopt this pet (host takes the sparqs)
   petact?: string;       // pet interaction: "pet" | "play" | "rename"
   style?: string;        // Style Studio: "id:cost" — restyle your CIRQLSPACE (host checks owned/sparqs)
+  pattern?: string;      // Style Studio: "id:cost" — choose a ground pattern
   // (no goto + accept + pick + answer + buy + petact) → the choice closes the conversation
 }
 export interface DialogNode {

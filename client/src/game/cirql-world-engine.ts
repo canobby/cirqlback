@@ -50,20 +50,28 @@ const PET_CATALOG: { type: string; label: string; cost: number; sp: Species; var
 const PET_NAMES = ["Pip", "Mochi", "Biscuit", "Nova", "Clover", "Sunny", "Pepper", "Waffle", "Ziggy", "Luna", "Bramble", "Tofu"];
 const petSpec = (type: string) => PET_CATALOG.find((p) => p.type === type);
 
-// SPACE STYLES (Pets-era home customization): reskin your CIRQLSPACE (ring 0) with a biome's
-// palette. Two free starters; the rest cost sparqs (then owned). Applied as a palette override.
-const SPACE_STYLES: { id: string; label: string; cost: number; palette: RingPalette }[] = [
-  { id: "hearth", label: "Hearth (default)", cost: 0, palette: { sky: ["#241640", "#12163a"], sea: "#0c2036", land: "#243a2f", grass: "#2f5340", sand: "#c9ad74", accent: "#ffc46b", mote: "#ffd98a" } },
-  { id: "meadow", label: "Spring Meadow", cost: 0, palette: { sky: ["#20331f", "#12241a"], sea: "#0e2c33", land: "#2a5a30", grass: "#43884a", sand: "#cdb87a", accent: "#a6f06a", mote: "#e0ffb0" } },
-  { id: "woodland", label: "Enchanted Wood", cost: 40, palette: { sky: ["#18402a", "#0d2114"], sea: "#0c2036", land: "#245e3a", grass: "#38975c", sand: "#a89060", accent: "#8ef0a0", mote: "#c8ffd6" } },
-  { id: "tropical", label: "Tropical Lagoon", cost: 50, palette: { sky: ["#0e3040", "#0a2233"], sea: "#0a5f70", land: "#1f5a52", grass: "#2f8a6a", sand: "#f0e0a0", accent: "#4fe0d0", mote: "#bafff0" } },
-  { id: "winter", label: "Winter Frost", cost: 40, palette: { sky: ["#1b2740", "#101a30"], sea: "#173a56", land: "#3a4a60", grass: "#5a6f88", sand: "#dfeaf6", accent: "#bfe6ff", mote: "#eef7ff" } },
-  { id: "ember", label: "Ember Reach", cost: 60, palette: { sky: ["#2a1410", "#160a08"], sea: "#1a0c08", land: "#3a2620", grass: "#4a342c", sand: "#6a4a3a", accent: "#ff6a1a", mote: "#ffab3a" } },
-  { id: "aurora", label: "Aurora Night", cost: 60, palette: { sky: ["#101a34", "#0a1024"], sea: "#122844", land: "#26324e", grass: "#3a5270", sand: "#dfeaf6", accent: "#5cffb0", mote: "#b0ffd8" } },
-  { id: "marsh", label: "Mushroom Marsh", cost: 50, palette: { sky: ["#12242e", "#0a151c"], sea: "#0c2a2e", land: "#1c3a34", grass: "#2c6656", sand: "#7a7a5a", accent: "#c85cff", mote: "#ff9ae0" } },
-  { id: "desert", label: "Golden Desert", cost: 50, palette: { sky: ["#3a2414", "#20140c"], sea: "#243026", land: "#6a4526", grass: "#8a6a34", sand: "#e8c485", accent: "#ffb058", mote: "#ffe0a8" } },
+// SPACE STYLES (home customization): reskin your CIRQLSPACE (ring 0) with a biome's palette +
+// its atmosphere (the floating critter). Two free starters; the rest cost sparqs (then owned).
+type SpaceAmbient = "butterfly" | "firefly" | "ember" | "snow" | "dragonfly" | "grasshopper";
+const SPACE_STYLES: { id: string; label: string; cost: number; ambient: SpaceAmbient; palette: RingPalette }[] = [
+  { id: "hearth", label: "Hearth (default)", cost: 0, ambient: "butterfly", palette: { sky: ["#241640", "#12163a"], sea: "#0c2036", land: "#243a2f", grass: "#2f5340", sand: "#c9ad74", accent: "#ffc46b", mote: "#ffd98a" } },
+  { id: "meadow", label: "Spring Meadow", cost: 0, ambient: "butterfly", palette: { sky: ["#20331f", "#12241a"], sea: "#0e2c33", land: "#2a5a30", grass: "#43884a", sand: "#cdb87a", accent: "#a6f06a", mote: "#e0ffb0" } },
+  { id: "woodland", label: "Enchanted Wood", cost: 40, ambient: "firefly", palette: { sky: ["#18402a", "#0d2114"], sea: "#0c2036", land: "#245e3a", grass: "#38975c", sand: "#a89060", accent: "#8ef0a0", mote: "#c8ffd6" } },
+  { id: "tropical", label: "Tropical Lagoon", cost: 50, ambient: "dragonfly", palette: { sky: ["#0e3040", "#0a2233"], sea: "#0a5f70", land: "#1f5a52", grass: "#2f8a6a", sand: "#f0e0a0", accent: "#4fe0d0", mote: "#bafff0" } },
+  { id: "winter", label: "Winter Frost", cost: 40, ambient: "snow", palette: { sky: ["#1b2740", "#101a30"], sea: "#173a56", land: "#3a4a60", grass: "#5a6f88", sand: "#dfeaf6", accent: "#bfe6ff", mote: "#eef7ff" } },
+  { id: "ember", label: "Ember Reach", cost: 60, ambient: "ember", palette: { sky: ["#2a1410", "#160a08"], sea: "#1a0c08", land: "#3a2620", grass: "#4a342c", sand: "#6a4a3a", accent: "#ff6a1a", mote: "#ffab3a" } },
+  { id: "aurora", label: "Aurora Night", cost: 60, ambient: "snow", palette: { sky: ["#101a34", "#0a1024"], sea: "#122844", land: "#26324e", grass: "#3a5270", sand: "#dfeaf6", accent: "#5cffb0", mote: "#b0ffd8" } },
+  { id: "marsh", label: "Mushroom Marsh", cost: 50, ambient: "firefly", palette: { sky: ["#12242e", "#0a151c"], sea: "#0c2a2e", land: "#1c3a34", grass: "#2c6656", sand: "#7a7a5a", accent: "#c85cff", mote: "#ff9ae0" } },
+  { id: "desert", label: "Golden Desert", cost: 50, ambient: "grasshopper", palette: { sky: ["#3a2414", "#20140c"], sea: "#243026", land: "#6a4526", grass: "#8a6a34", sand: "#e8c485", accent: "#ffb058", mote: "#ffe0a8" } },
 ];
 const spaceStyleById = (id: string) => SPACE_STYLES.find((s) => s.id === id);
+// SPACE PATTERNS — a decorative motif tiled over your home ground (a second style axis).
+const SPACE_PATTERNS: { id: string; label: string; cost: number }[] = [
+  { id: "none", label: "Plain", cost: 0 }, { id: "checker", label: "Checkerboard", cost: 0 },
+  { id: "dots", label: "Polka Dots", cost: 30 }, { id: "stripes", label: "Stripes", cost: 30 },
+  { id: "grid", label: "Tile Grid", cost: 30 }, { id: "waves", label: "Ripples", cost: 40 },
+  { id: "petals", label: "Petals", cost: 40 }, { id: "stars", label: "Starfield", cost: 50 },
+];
 
 // A four-legged animal's build — fed to drawQuadruped, which renders it in ANY of the 4
 // facings (toward you / away / left / right) with articulated, swinging legs.
@@ -234,22 +242,29 @@ export class CirqlWorldEngine extends RetroEngine {
   onRenamePet?: (id: string, current: string) => void;
   onPetsChange?: () => void;
   getPets() { return this.pets.map((p) => ({ ...p })); }
-  // ---- Space styles: reskin your CIRQLSPACE's palette (Pets-era home customization) ----
+  // ---- Space styles + patterns: customize your CIRQLSPACE (home customization) ----
   private spaceStyle = "hearth";
-  onSelectStyle?: (id: string, cost: number) => void;   // host checks owned/sparqs, then calls setSpaceStyle
+  private spacePattern = "none";
+  onSelectStyle?: (id: string, cost: number) => void;     // host checks owned/sparqs, then calls setSpaceStyle
+  onSelectPattern?: (id: string, cost: number) => void;   // ditto for a ground pattern
   getSpaceStyle() { return this.spaceStyle; }
-  /** Apply a space style (host has cleared the cost). Re-skins CIRQLSPACE immediately. */
+  getSpacePattern() { return this.spacePattern; }
+  /** Apply a space style (host cleared the cost): re-skins CIRQLSPACE's palette + atmosphere live. */
   setSpaceStyle(id: string) {
     if (!spaceStyleById(id)) return;
     this.spaceStyle = id;
-    if (this.ringIdx === 0) this.curRing = this.styleRing(getRing(0));
-    const st = spaceStyleById(id); this.toast(`Your CIRQLSPACE is now styled "${st?.label}".`);
+    if (this.ringIdx === 0) { this.curRing = this.styleRing(getRing(0)); this.creaturesRing = -999; }   // refresh ambient/pets
+    this.toast(`Your CIRQLSPACE now wears "${spaceStyleById(id)?.label}".`);
     this.onPetsChange?.();
   }
-  /** Ring 0 gets the chosen style's palette (a clone; never mutates the shared ring). */
+  setSpacePattern(id: string) {
+    if (!SPACE_PATTERNS.some((p) => p.id === id)) return;
+    this.spacePattern = id; this.toast(`Ground pattern: ${SPACE_PATTERNS.find((p) => p.id === id)?.label}.`); this.onPetsChange?.();
+  }
+  /** Ring 0 gets the chosen style's palette + atmosphere (a clone; never mutates the shared ring). */
   private styleRing(r: Ring): Ring {
     if (r.index === 0 && this.spaceStyle && this.spaceStyle !== "hearth") {
-      const st = spaceStyleById(this.spaceStyle); if (st) return { ...r, palette: st.palette };
+      const st = spaceStyleById(this.spaceStyle); if (st) return { ...r, palette: st.palette, ambient: st.ambient };
     }
     return r;
   }
@@ -514,7 +529,7 @@ export class CirqlWorldEngine extends RetroEngine {
   openDiorama() { if (this.ringIdx !== 0 || this.cs || this.voyage) return; this.diorama = true; this.dioramaT = 0; this.dioramaAng = -0.5; this.editDecor = false; this.editPaint = false; this.onDioramaChange?.(true); }
   closeDiorama() { if (!this.diorama) return; this.diorama = false; this.onDioramaChange?.(false); }
   isDiorama() { return this.diorama; }
-  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), homeDecor: this.homeDecor.slice(), terrain: this.getTerrain(), landTier: this.landTier, codex: Array.from(this.codex), healed: Array.from(this.healed), pets: this.pets.slice(), petStarter: this.petStarter, spaceStyle: this.spaceStyle }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), homeDecor: this.homeDecor.slice(), terrain: this.getTerrain(), landTier: this.landTier, codex: Array.from(this.codex), healed: Array.from(this.healed), pets: this.pets.slice(), petStarter: this.petStarter, spaceStyle: this.spaceStyle, spacePattern: this.spacePattern }; }
   applyState(s: any) {
     if (!s) return;
     if (Array.isArray(s.doneOnce)) this.doneOnce = new Set(s.doneOnce);
@@ -527,6 +542,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (Array.isArray(s.gatheredWisps)) this.gatheredWisps = new Set(s.gatheredWisps);
     if (typeof s.maxRing === "number") this.maxRing = Math.max(this.maxRing, s.maxRing);
     if (typeof s.spaceStyle === "string") this.spaceStyle = s.spaceStyle;
+    if (typeof s.spacePattern === "string") this.spacePattern = s.spacePattern;
     if (typeof s.ring === "number" && s.ring >= 0) { this.ringIdx = s.ring; this.curRing = this.styleRing(getRing(s.ring)); this.maxRing = Math.max(this.maxRing, s.ring); this.ensureRingQuest(); }
     if (typeof s.x === "number" && typeof s.y === "number") { this.posX = s.x; this.posY = s.y; }
     if (s.quests && typeof s.quests === "object") this.quests = s.quests;
@@ -975,6 +991,7 @@ export class CirqlWorldEngine extends RetroEngine {
     else if (c.buy) { const [type, cost] = c.buy.split(":"); this.dialog = null; this.onBuyPet?.(type, parseInt(cost, 10)); }   // adopt a pet
     else if (c.petact) { this.resolvePetAction(c.petact); }   // pet / play / rename
     else if (c.style) { const [id, cost] = c.style.split(":"); this.dialog = null; this.onSelectStyle?.(id, parseInt(cost, 10)); }   // restyle your space
+    else if (c.pattern) { const [id, cost] = c.pattern.split(":"); this.dialog = null; this.onSelectPattern?.(id, parseInt(cost, 10)); }   // ground pattern
     else if (c.goto && d.tree.nodes[c.goto]) { d.nodeId = c.goto; d.i = 0; }
     else this.dialog = null;   // plain choice → end the chat
   }
@@ -986,10 +1003,20 @@ export class CirqlWorldEngine extends RetroEngine {
     this.setDialog("Pet Stall", "#ffd24a", { nodes: { start: { lines: ["Welcome to the Pet Stall!", "A companion to share your CIRQLSPACE — pick a friend.", owned ? `You've ${owned} already; room for more!` : "Take one home today."], choices } }, start: "start" });
   }
   private openStyleStudio() {
-    const cur = this.spaceStyle;
-    const choices: DialogChoice[] = SPACE_STYLES.map((s) => ({ label: `${s.id === cur ? "✓ " : ""}${s.label}${s.cost ? `  (${s.cost}✦)` : "  (free)"}`, style: `${s.id}:${s.cost}` }));
-    choices.push({ label: "Leave" });
-    this.setDialog("Style Studio", "#c9a0ff", { nodes: { start: { lines: ["Make your CIRQLSPACE your own.", "Pick a look — a whole biome's colours for your shore.", "Owned styles are free to switch back to anytime."], choices } }, start: "start" });
+    const cur = this.spaceStyle, curP = this.spacePattern;
+    const styleChoices: DialogChoice[] = SPACE_STYLES.map((s) => ({ label: `${s.id === cur ? "✓ " : ""}${s.label}${s.cost ? `  (${s.cost}✦)` : "  (free)"}`, style: `${s.id}:${s.cost}` }));
+    styleChoices.push({ label: "◂ Back", goto: "start" });
+    const patChoices: DialogChoice[] = SPACE_PATTERNS.map((p) => ({ label: `${p.id === curP ? "✓ " : ""}${p.label}${p.cost ? `  (${p.cost}✦)` : "  (free)"}`, pattern: `${p.id}:${p.cost}` }));
+    patChoices.push({ label: "◂ Back", goto: "start" });
+    this.setDialog("Style Studio", "#c9a0ff", {
+      nodes: {
+        start: { lines: ["Make your CIRQLSPACE your own.", "What shall we change today?"], choices: [
+          { label: "🎨 Biome look (colours + air)", goto: "biomes" }, { label: "▦ Ground pattern", goto: "patterns" }, { label: "Leave" },
+        ] },
+        biomes: { lines: ["A whole biome's colours + atmosphere for your shore.", "Owned looks switch back free anytime."], choices: styleChoices },
+        patterns: { lines: ["A motif tiled across your home turf."], choices: patChoices },
+      }, start: "start",
+    });
   }
   private openPetDialog(c: (typeof this.creatures)[number]) {
     this.petTalk = c.pet || null;
@@ -1489,6 +1516,8 @@ export class CirqlWorldEngine extends RetroEngine {
     }
     // groundcover (Phase J3): deterministic per-biome texture so the ground is never bald
     if (this.ringIdx !== 0) this.drawGroundcover(scx, scy, R);
+    // your chosen ground PATTERN, tiled over the home turf (Style Studio)
+    else if (this.spacePattern && this.spacePattern !== "none") this.drawGroundPattern(scx, scy, R);
     // faint path ring
     b.strokeStyle = "rgba(255,220,150,0.10)"; b.lineWidth = 20 * s;
     b.beginPath(); b.arc(scx * s, scy * s, R * 0.42 * s, 0, TAU); b.stroke();
@@ -3272,6 +3301,41 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---- groundcover (Phase J3): a static, deterministic scatter of tiny ground details
   //      (tufts/clover/pebbles · snow drifts/sparkles · sand pebbles/ripples · ash specks/
   //      embers) so no biome floor is a flat bald colour. World-space, culled + zoom-aware. ----
+  // A decorative motif tiled over the home ground (Style Studio patterns). World-anchored,
+  // clipped to the land, tinted by the current style's palette.
+  private drawGroundPattern(scx: number, scy: number, R: number) {
+    const b = this.b, s = this.SS, pal = this.curRing.palette, pat = this.spacePattern;
+    const rad = R - 24, step = 44, tint = shade(pal.land, 0.12), acc = pal.accent;
+    b.save(); b.beginPath(); b.arc(scx * s, scy * s, rad * s, 0, TAU); b.clip();
+    if (pat === "checker") {
+      b.fillStyle = hexA(tint, 0.55);
+      for (let wy = -rad; wy < rad; wy += step) for (let wx = -rad; wx < rad; wx += step)
+        if (((Math.round(wx / step) + Math.round(wy / step)) & 1) === 0) b.fillRect((scx + wx) * s, (scy + wy) * s, step * s, step * s);
+    } else if (pat === "grid") {
+      b.strokeStyle = hexA(acc, 0.14); b.lineWidth = 1.4 * s;
+      for (let wy = -rad; wy < rad; wy += step) { const y = (scy + wy) * s; b.beginPath(); b.moveTo((scx - rad) * s, y); b.lineTo((scx + rad) * s, y); b.stroke(); }
+      for (let wx = -rad; wx < rad; wx += step) { const x = (scx + wx) * s; b.beginPath(); b.moveTo(x, (scy - rad) * s); b.lineTo(x, (scy + rad) * s); b.stroke(); }
+    } else if (pat === "stripes") {
+      b.fillStyle = hexA(tint, 0.5);
+      for (let wy = -rad; wy < rad; wy += step) if ((Math.round(wy / step) & 1) === 0) b.fillRect((scx - rad) * s, (scy + wy) * s, 2 * rad * s, step * 0.5 * s);
+    } else if (pat === "dots" || pat === "petals") {
+      for (let wy = -rad; wy < rad; wy += step) for (let wx = -rad; wx < rad; wx += step) {
+        const x = (scx + wx + step / 2) * s, y = (scy + wy + step / 2) * s;
+        if (pat === "dots") { b.fillStyle = hexA(acc, 0.18); b.beginPath(); b.arc(x, y, 3.2 * s, 0, TAU); b.fill(); }
+        else { b.fillStyle = hexA(acc, 0.15); for (let k = 0; k < 5; k++) { const a = k / 5 * TAU; b.beginPath(); b.ellipse(x + Math.cos(a) * 3 * s, y + Math.sin(a) * 3 * s, 2 * s, 1.1 * s, a, 0, TAU); b.fill(); } }
+      }
+    } else if (pat === "waves") {
+      b.strokeStyle = hexA(acc, 0.13); b.lineWidth = 1.5 * s;
+      for (let wy = -rad; wy < rad; wy += step * 0.7) { b.beginPath(); for (let wx = -rad; wx <= rad; wx += 6) { const xx = (scx + wx) * s, yy = (scy + wy + Math.sin((wx + wy) / 20) * 4) * s; if (wx === -rad) b.moveTo(xx, yy); else b.lineTo(xx, yy); } b.stroke(); }
+    } else if (pat === "stars") {
+      b.fillStyle = hexA(acc, 0.5);
+      for (let wy = -rad; wy < rad; wy += step) for (let wx = -rad; wx < rad; wx += step) {
+        const jx = (Math.abs(wx * 73 ^ wy * 91) % step) - step / 2, jy = (Math.abs(wx * 13 ^ wy * 57) % step) - step / 2;
+        b.beginPath(); b.arc((scx + wx + jx) * s, (scy + wy + jy) * s, 1.2 * s, 0, TAU); b.fill();
+      }
+    }
+    b.restore();
+  }
   private drawGroundcover(scx: number, scy: number, R: number) {
     const kind = this.groundKind(), pal = this.curRing.palette;
     const half = R - 26, N = Math.min(150, Math.round(R / 4.5));
