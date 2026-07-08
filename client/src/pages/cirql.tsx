@@ -40,7 +40,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 const INTRO_LS = "cirql_intro_v1";
 
 type StartDest = "home" | "last" | "arcade";
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; gatheredWisps?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; renown?: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; homeDecor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; graduated?: number[]; journeys?: string[]; explore?: boolean; exploreSaved?: number; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; gatheredWisps?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; renown?: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; homeDecor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; graduated?: number[]; journeys?: string[]; explore?: boolean; exploreSaved?: number; pets?: any[]; petStarter?: boolean; treats?: number; spaceStyle?: string; spacePattern?: string; homeShape?: "round" | "square"; codex?: string[]; healed?: string[]; }
 interface GameSettings { brightness: number; music: number; sfx: number; reduce: boolean; smooth: boolean; pixel: number; }
 const DEFAULT_SETTINGS: GameSettings = { brightness: 1, music: 0.7, sfx: 0.8, reduce: false, smooth: false, pixel: 1.5 };
 const todayUTC = () => new Date().toISOString().slice(0, 10);
@@ -87,6 +87,7 @@ export default function Cirql() {
   const [startPick, setStartPick] = useState<{ canArcade: boolean } | null>(null);   // startup location picker
   const [showPeers, setShowPeers] = useState(false);                                  // "who's here" popup (online badge tap)
   const [showSettings, setShowSettings] = useState(false);                            // game settings panel
+  const [homeShapeUi, setHomeShapeUi] = useState<"round" | "square">("round");         // your home: round island or square room
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const settingsRef = useRef<GameSettings>(DEFAULT_SETTINGS);
   const [startRemember, setStartRemember] = useState(true);
@@ -296,7 +297,7 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, gatheredWisps: (s as any).gatheredWisps, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], homeDecor: (s as any).homeDecor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current, renown: renownRef.current, graduated: Array.from(graduatedRef.current), journeys: Array.from(journeyClaimsRef.current), explore: exploreRef.current, exploreSaved: savedSparqsRef.current };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, gatheredWisps: (s as any).gatheredWisps, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], homeDecor: (s as any).homeDecor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current, renown: renownRef.current, graduated: Array.from(graduatedRef.current), journeys: Array.from(journeyClaimsRef.current), explore: exploreRef.current, exploreSaved: savedSparqsRef.current, pets: (s as any).pets ?? [], petStarter: (s as any).petStarter, treats: (s as any).treats, spaceStyle: (s as any).spaceStyle, spacePattern: (s as any).spacePattern, homeShape: (s as any).homeShape, codex: (s as any).codex, healed: (s as any).healed };
   };
   // The live metric values the K5 journeys track (all from state the game already keeps).
   const journeyMetrics = (): Record<JourneyMetric, number> => ({
@@ -602,7 +603,8 @@ export default function Cirql() {
       if (st?.daily && typeof st.daily.day === "string") dailyRef.current = { day: st.daily.day, done: !!st.daily.done, streak: +st.daily.streak || 0, lastDone: st.daily.lastDone || "" };
       refreshDaily();
       eng.setLocal(name, avatar); eng.setStats({ sparks: sparksRef.current, cirqlLit: membersRef.current, cirqlTotal: 12, online: 1, energy: energyRef.current });
-      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests, lit: st?.lit, litForQuest: st?.litForQuest, gatheredWisps: st?.gatheredWisps, doneOnce: st?.doneOnce, decor: st?.decor, homeDecor: st?.homeDecor, terrain: st?.terrain, landTier: st?.landTier });
+      eng.applyState({ ring: st?.ring ?? 0, maxRing: st?.maxRing ?? 0, x: st?.x, y: st?.y, quests: st?.quests, lit: st?.lit, litForQuest: st?.litForQuest, gatheredWisps: st?.gatheredWisps, doneOnce: st?.doneOnce, decor: st?.decor, homeDecor: st?.homeDecor, terrain: st?.terrain, landTier: st?.landTier, codex: (st as any)?.codex, healed: (st as any)?.healed, pets: st?.pets, petStarter: st?.petStarter, treats: st?.treats, spaceStyle: st?.spaceStyle, spacePattern: st?.spacePattern, homeShape: st?.homeShape });
+      setHomeShapeUi(eng.getHomeShape());
       landTierRef.current = eng.getLandTier(); setLandTierUi(landTierRef.current);
       // K5 journeys: load claimed milestones; a pre-journeys save seeds silently so existing
       // progress doesn't dump a flood of rewards — only future milestones pay out.
@@ -1684,6 +1686,17 @@ export default function Cirql() {
                 onChange={(e) => applySettings({ ...settingsRef.current, reduce: e.target.checked }, true)} />
               Reduced motion <span className="text-[10px] text-slate-500">(calmer animation)</span>
             </label>
+            <div className="flex items-center gap-2 rounded-lg px-1 py-1.5 text-[12px] text-slate-200">
+              <span className="text-cyan-300/80"><Armchair className="h-3.5 w-3.5" /></span> Home inside
+              <div className="ml-auto flex overflow-hidden rounded-md border" style={{ borderColor: "rgba(53,224,208,.3)" }}>
+                {(["round", "square"] as const).map((sh) => (
+                  <button key={sh} data-testid={`set-home-${sh}`}
+                    onClick={() => { const eng = engineRef.current; if (!eng) return; eng.setHomeShape(sh); setHomeShapeUi(sh); persist(); }}
+                    className="px-2.5 py-1 text-[11px] font-bold capitalize"
+                    style={{ background: homeShapeUi === sh ? "rgba(53,224,208,.22)" : "transparent", color: homeShapeUi === sh ? "#8ff0e2" : "#8aa0b0" }}>{sh}</button>
+                ))}
+              </div>
+            </div>
             <p className="mt-2 text-[9.5px] leading-snug text-slate-500">The soundtrack adapts as you travel — home, town, the wilds, shops &amp; the deep places each have their own theme.</p>
             {/* Explore Mode — walkthrough / beta helper: unlock everything, keep awards on */}
             <div className="mt-3 rounded-lg border p-2" style={{ borderColor: explore ? "rgba(255,196,107,.5)" : "rgba(255,255,255,.1)", background: explore ? "rgba(255,196,107,.08)" : "transparent" }}>

@@ -568,7 +568,7 @@ export class CirqlWorldEngine extends RetroEngine {
   openDiorama() { if (this.ringIdx !== 0 || this.cs || this.voyage) return; this.diorama = true; this.dioramaT = 0; this.dioramaAng = -0.5; this.editDecor = false; this.editPaint = false; this.onDioramaChange?.(true); }
   closeDiorama() { if (!this.diorama) return; this.diorama = false; this.onDioramaChange?.(false); }
   isDiorama() { return this.diorama; }
-  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), homeDecor: this.homeDecor.slice(), terrain: this.getTerrain(), landTier: this.landTier, codex: Array.from(this.codex), healed: Array.from(this.healed), pets: this.pets.slice(), petStarter: this.petStarter, treats: this.treats, spaceStyle: this.spaceStyle, spacePattern: this.spacePattern }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), homeDecor: this.homeDecor.slice(), terrain: this.getTerrain(), landTier: this.landTier, codex: Array.from(this.codex), healed: Array.from(this.healed), pets: this.pets.slice(), petStarter: this.petStarter, treats: this.treats, spaceStyle: this.spaceStyle, spacePattern: this.spacePattern, homeShape: this.homeShape }; }
   applyState(s: any) {
     if (!s) return;
     if (Array.isArray(s.doneOnce)) this.doneOnce = new Set(s.doneOnce);
@@ -591,6 +591,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (Array.isArray(s.pets)) this.pets = s.pets;
     if (typeof s.petStarter === "boolean") this.petStarter = s.petStarter;
     if (typeof s.treats === "number") this.treats = Math.max(0, s.treats | 0);
+    if (s.homeShape === "round" || s.homeShape === "square") this.homeShape = s.homeShape;
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
   }
   /** How many concentric rings are "known" (lit on the chart) — grows as you explore. */
@@ -1661,13 +1662,18 @@ export class CirqlWorldEngine extends RetroEngine {
       }
 
       if (this.isInterior()) {
-        // room furniture collision (AABB push-out along the shallowest axis) + keep inside the walls
-        for (const rct of this.roomSolids()) {
-          const pr = 7;
-          if (this.posX > rct.x0 - pr && this.posX < rct.x1 + pr && this.posY > rct.y0 - pr && this.posY < rct.y1 + pr) {
-            const dl = this.posX - (rct.x0 - pr), dR = (rct.x1 + pr) - this.posX, dU = this.posY - (rct.y0 - pr), dD = (rct.y1 + pr) - this.posY;
-            const m = Math.min(dl, dR, dU, dD);
-            if (m === dl) this.posX = rct.x0 - pr; else if (m === dR) this.posX = rct.x1 + pr; else if (m === dU) this.posY = rct.y0 - pr; else this.posY = rct.y1 + pr;
+        if (isHome(this.ringIdx)) {
+          // square home: the obstacles are your own placed décor (circle push-out)
+          for (const s of this.solids()) { const ox = this.posX - s.x, oy = this.posY - s.y, d = Math.hypot(ox, oy), min = s.r + 5; if (d < min && d > 0.001) { const k = min / d; this.posX = s.x + ox * k; this.posY = s.y + oy * k; } }
+        } else {
+          // shop furniture collision (AABB push-out along the shallowest axis)
+          for (const rct of this.roomSolids()) {
+            const pr = 7;
+            if (this.posX > rct.x0 - pr && this.posX < rct.x1 + pr && this.posY > rct.y0 - pr && this.posY < rct.y1 + pr) {
+              const dl = this.posX - (rct.x0 - pr), dR = (rct.x1 + pr) - this.posX, dU = this.posY - (rct.y0 - pr), dD = (rct.y1 + pr) - this.posY;
+              const m = Math.min(dl, dR, dU, dD);
+              if (m === dl) this.posX = rct.x0 - pr; else if (m === dR) this.posX = rct.x1 + pr; else if (m === dU) this.posY = rct.y0 - pr; else this.posY = rct.y1 + pr;
+            }
           }
         }
         const rm = this.roomBounds();
@@ -1793,7 +1799,12 @@ export class CirqlWorldEngine extends RetroEngine {
   // Indoors we drop the circular-island world and draw a bounded, furnished RECTANGULAR room
   // (TMW-style): a tiled plank floor, walls with height, a doorway, and shop-specific furniture with
   // collision. Only active for shop/home ring indices; the outdoor world is untouched.
-  private isInterior() { return isShop(this.ringIdx) || isHome(this.ringIdx); }
+  // Home can be a ROUND island (classic) or a SQUARE room (player's choice, Settings). Shops are
+  // always square rooms. Default round preserves the existing home.
+  private homeShape: "round" | "square" = "round";
+  getHomeShape() { return this.homeShape; }
+  setHomeShape(s: "round" | "square") { if (s !== "round" && s !== "square") return; this.homeShape = s; if (isHome(this.ringIdx)) { this.posX = Math.max(-260, Math.min(260, this.posX)); this.posY = Math.max(0, Math.min(160, this.posY)); } this.onLocalMove?.(this.ringIdx, Math.round(this.posX), Math.round(this.posY)); }
+  private isInterior() { return isShop(this.ringIdx) || (isHome(this.ringIdx) && this.homeShape === "square"); }
   private roomBounds() { return { x0: -300, y0: -58, x1: 300, y1: 200 }; }   // walkable floor rect (in front of the counter)
   private static readonly ROOM_SOLID: Record<string, { hw: number; hh: number }> = {
     counter: { hw: 150, hh: 11 }, backshelf: { hw: 52, hh: 10 }, arcaneshelf: { hw: 52, hh: 10 }, plantshelf: { hw: 52, hh: 10 }, toolrack: { hw: 52, hh: 10 },
@@ -1803,6 +1814,8 @@ export class CirqlWorldEngine extends RetroEngine {
     workbench: { hw: 36, hh: 12 }, lumberstack: { hw: 28, hh: 13 },
   };
   private roomItems(): { kind: string; x: number; y: number }[] {
+    // your home (square): just soft light — you fill the room with your own décor
+    if (isHome(this.ringIdx)) return [{ kind: "hanglamp", x: -150, y: -182 }, { kind: "hanglamp", x: 150, y: -182 }];
     const id = shopIdAt(this.ringIdx);
     const F: { kind: string; x: number; y: number }[] = [{ kind: "hanglamp", x: -150, y: -182 }, { kind: "hanglamp", x: 150, y: -182 }, { kind: "counter", x: 0, y: -80 }, { kind: "rug", x: 0, y: 110 }];
     switch (id) {
