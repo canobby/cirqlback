@@ -10,7 +10,7 @@
 // (slow attack, long release = legato and soothing, not blippy) and steps can be CHORDS.
 // Tracks are authored in cirql-music.ts as slow chord progressions + melodies.
 
-export type Inst = "strings" | "pad" | "lead" | "bass" | "harp" | "bell" | "boom";
+export type Inst = "strings" | "pad" | "lead" | "bass" | "harp" | "bell" | "boom" | "arp";
 
 /** A step: a note ("C4"), a CHORD (["E4","G4","B4"]), a drum-ish boom ("*"), or 0 (rest). `d` = 16th-note steps. */
 export interface OStep { n: string | string[] | 0; d: number }
@@ -34,7 +34,8 @@ interface Patch {
   vibRate: number; vibDepth: number;      // vibrato (Hz / cents), ramped in for expression
   send: number;                            // reverb send 0..1
   level: number;                           // base amplitude
-  pluck?: boolean;                         // harp/bell: no sustain, exponential decay
+  pluck?: boolean;                         // harp/bell/arp: no sustain, exponential decay
+  tail?: number;                           // pluck decay tail (s) — short for a tight arp
 }
 const PATCHES: Record<Inst, Patch> = {
   // sustained string ensemble — three detuned saws, softened by a lowpass, slow swell
@@ -57,7 +58,11 @@ const PATCHES: Record<Inst, Patch> = {
     cutoff: 4200, q: 0.6, atk: 0.004, dec: 0, sus: 0, rel: 0, vibRate: 0, vibDepth: 0, send: 0.6, level: 0.16, pluck: true },
   // low cinematic boom/timpani — a pitch-dropping sine + soft noise, big reverb
   boom: { oscs: [{ type: "sine", detune: 0, gain: 1 }],
-    cutoff: 260, q: 0.5, atk: 0.005, dec: 0, sus: 0, rel: 0, vibRate: 0, vibDepth: 0, send: 0.7, level: 0.5, pluck: true },
+    cutoff: 260, q: 0.5, atk: 0.005, dec: 0, sus: 0, rel: 0, vibRate: 0, vibDepth: 0, send: 0.7, level: 0.5, pluck: true, tail: 0.4 },
+  // the '80s synth ARPEGGIATOR — a bright detuned saw/square pluck with a short, tight tail
+  // so fast eighth-note runs stay crisp (the pulsing bed of the whole genre)
+  arp: { oscs: [{ type: "sawtooth", detune: -5, gain: 0.5 }, { type: "square", detune: 5, gain: 0.32 }],
+    cutoff: 2700, q: 1.2, atk: 0.006, dec: 0, sus: 0, rel: 0, vibRate: 0, vibDepth: 0, send: 0.42, level: 0.15, pluck: true, tail: 0.32 },
 };
 
 interface CompiledLayer extends OLayer { steps: (OStep | null)[]; len: number }
@@ -187,7 +192,7 @@ export class CirqlOrchestra {
         // percussive: fast attack then a long exponential decay (harp/bell/boom)
         amp.gain.setValueAtTime(0, when);
         amp.gain.linearRampToValueAtTime(peak, when + p.atk);
-        endT = when + Math.max(0.4, dur * 0.9) + (inst === "boom" ? 0.4 : 1.1);
+        endT = when + Math.max(0.2, dur * 0.9) + (p.tail ?? 1.1);
         amp.gain.exponentialRampToValueAtTime(0.0001, endT);
         if (inst === "boom") { for (const o of oscs) { o.frequency.setValueAtTime(freq, when); o.frequency.exponentialRampToValueAtTime(Math.max(30, freq * 0.4), when + 0.35); } this.noiseHit(when, p.send, peak * 0.5); }
       } else {
