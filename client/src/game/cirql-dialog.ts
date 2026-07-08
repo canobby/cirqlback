@@ -10,7 +10,8 @@ export interface DialogChoice {
   label: string;         // the button text the player taps
   goto?: string;         // jump to this node id
   accept?: string;       // accept this quest id, then close
-  // (no goto + no accept) → the choice closes the conversation
+  pick?: string;         // resolve the pending mystery/choice quest with this option id, then close
+  // (no goto + accept + pick) → the choice closes the conversation
 }
 export interface DialogNode {
   lines: string[];       // spoken lines, advanced with E/tap
@@ -24,6 +25,12 @@ export interface DialogTree {
 /** A one-node linear dialog (backwards-compatible with the old lines+acceptOnClose flow). */
 export function simpleDialog(lines: string[], accept?: string): DialogTree {
   return { nodes: { start: { lines, choices: accept ? [{ label: "✦ Accept", accept }, { label: "Not now" }] : undefined } }, start: "start" };
+}
+
+/** The FORK of a mystery/choice quest: a prompt + one button per option. Each option carries
+ *  the quest-choice option id, resolved by the engine (grants that option's reward + sets a flag). */
+export function choiceDialog(prompt: string[], options: { id: string; label: string; blurb?: string }[]): DialogTree {
+  return { nodes: { start: { lines: prompt, choices: options.map((o) => ({ label: o.blurb ? `${o.label} — ${o.blurb}` : o.label, pick: o.id })) } }, start: "start" };
 }
 
 /**

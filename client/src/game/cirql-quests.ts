@@ -17,6 +17,22 @@ export interface Objective {
   ring?: number;     // if set, this objective is on that ring — advances only there; off-ring the waypoint points to the dock (cross-ring quests)
 }
 
+// A branching MYSTERY/CHOICE quest (the ring 14-25 marquee model): after the clue-trail
+// objectives are done, the player is offered a FORK. Each option grants its own reward +
+// sets a persisted standing flag, so both paths feel good (flavour vs Renown).
+export interface QuestChoiceOption {
+  id: string;                              // stable option key (persisted as the "pick")
+  label: string;                           // the button text
+  blurb?: string;                          // a short consequence line under the button
+  reward: { sparks: number; renown?: number };
+  grants?: string;                         // optional décor/cosmetic id to unlock (build-reward tie; wired later)
+  toast?: string;                          // confirmation line shown when chosen
+}
+export interface QuestChoice {
+  prompt: string[];                        // the fork question, shown once the clues are gathered
+  options: QuestChoiceOption[];
+}
+
 export interface QuestDef {
   id: string;
   name: string;
@@ -26,6 +42,7 @@ export interface QuestDef {
   reward: { sparks: number; renown?: number };
   next?: string;         // quest auto-offered on completion (the chain)
   tier?: number;         // difficulty tier — grows the farther out you sail (Phase K); undefined = authored/onboarding
+  choice?: QuestChoice;  // if set, the quest ends on a branching fork instead of auto-completing
 }
 
 // The onboarding chain (M4): Find Your Feet → The Lantern Path → The Wonders Door.
@@ -95,9 +112,40 @@ export const QUESTS: QuestDef[] = [
     ],
     reward: { sparks: 14 },
   },
+  // ── The FIRST mystery/choice quest (pilot for the ring 14-25 marquee model). Given by the
+  // marsh ring's keeper; a clue-trail of NPCs + the landmark, then a branching fork. ──
+  {
+    id: "false-light",
+    name: "The False Light",
+    giver: "keeper-11",
+    tier: 10,
+    intro: [
+      "Traveller — something's wrong on our fen.",
+      "The guide-lanterns have been moving in the night. Wanderers wash up lost.",
+      "Walk the shore, ask who's seen what, and find who's meddling with the lights.",
+      "It's a fair task — four steps, and a choice at the end.",
+    ],
+    objectives: [
+      { kind: "interact", ring: 11, target: "wanderer-11", label: "Ask the wanderer what they saw" },
+      { kind: "interact", ring: 11, target: "sider-11-1", label: "Question the lamplighter" },
+      { kind: "interact", ring: 11, target: "sider-11-2", label: "Question the fen-tender" },
+      { kind: "reach", ring: 11, target: "landmark-11", label: "Examine the moved lights at the landmark" },
+    ],
+    reward: { sparks: 20, renown: 8 },   // fallback (unused once a choice is picked)
+    choice: {
+      prompt: [
+        "The trail leads to a lonely marsh-sprite, moving the lights to keep travellers near — it was only afraid to be alone.",
+        "What will you do?",
+      ],
+      options: [
+        { id: "report", label: "Report the sprite", blurb: "the shore is made safe", reward: { sparks: 26, renown: 8 }, toast: "You bring word to the keeper. The lanterns are righted; the fen is safe once more." },
+        { id: "teach", label: "Teach it to guide", blurb: "it stays as a lantern-keeper", reward: { sparks: 16, renown: 16 }, toast: "You teach the sprite to light the true path. It takes up the lantern-watch, no longer alone." },
+      ],
+    },
+  },
 ];
 
-export type QuestProgress = Record<string, { status: "active" | "done"; obj: number[] }>;
+export type QuestProgress = Record<string, { status: "active" | "done"; obj: number[]; pick?: string }>;
 
 // Dynamic quests (the M10 quest-template generator, CHR-256) register here so they flow
 // through the same lookup/offer/log machinery as the authored ones. Keyed by id; the

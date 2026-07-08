@@ -26,7 +26,7 @@ import { EMOTE_BY_ID, EMOTE_SECONDS, PAIR_BY_ID } from "./cirql-emotes";
 import { arrivalCutscene, BEAT_SECONDS, type Cutscene, type CutsceneBeat, type CutsceneFx } from "./cirql-cutscenes";
 import { decorById, DECOR_SOLID } from "./cirql-decor";
 import { npcLook, type NpcLook } from "./cirql-npc-looks";
-import { simpleDialog, npcConversation, type DialogTree, type DialogChoice } from "./cirql-dialog";
+import { simpleDialog, npcConversation, choiceDialog, type DialogTree, type DialogChoice } from "./cirql-dialog";
 import { npcProfile } from "./cirql-npc-cast";
 
 export type InteractKind = "wonders" | "npc" | "dock" | "shop" | "shopkeeper";
@@ -640,11 +640,35 @@ export class CirqlWorldEngine extends RetroEngine {
     if ((kind === "reach" || kind === "interact") && o.target && o.target !== targetId) return;
     p.obj[oi] = Math.min(o.count ?? 1, (p.obj[oi] || 0) + 1);
     this.onQuestChange?.();
-    if (this.currentObjIndex(q) < 0) this.completeQuest(q);
+    if (this.currentObjIndex(q) < 0) {
+      if (q.choice && !p.pick) this.presentQuestChoice(q);   // mystery/choice: the clue-trail is done → offer the fork
+      else this.completeQuest(q);
+    }
   }
-  private completeQuest(q: QuestDef) {
+  // ---- mystery/choice quests (K7): once the clues are gathered, offer the branching fork ----
+  private pendingChoice: string | null = null;
+  /** Show the quest's fork as a dialog (reuses the branching-dialog UI). */
+  private presentQuestChoice(q: QuestDef) {
+    if (!q.choice) { this.completeQuest(q); return; }
+    this.pendingChoice = q.id;
+    this.setDialog(q.name, "#c9a0ff", choiceDialog(q.choice.prompt, q.choice.options));
+  }
+  /** The player picked an option: record the choice, grant THAT option's reward, finish. */
+  private resolveQuestChoice(optionId: string) {
+    const qid = this.pendingChoice; if (!qid) return;
+    const q = questById(qid); const p = this.quests[qid]; if (!q || !q.choice || !p) { this.pendingChoice = null; return; }
+    const opt = q.choice.options.find((o) => o.id === optionId) ?? q.choice.options[0];
+    p.pick = opt.id;
+    this.pendingChoice = null; this.dialog = null;
+    this.completeQuest(q, opt.reward);
+    if (opt.toast) this.toast(opt.toast);
+  }
+  private completeQuest(q: QuestDef, rewardOverride?: { sparks: number; renown?: number }) {
     const p = this.quests[q.id]; if (!p || p.status === "done") return;
     p.status = "done";
+    // a chosen fork pays that option's reward instead of the base (the host reads q.reward)
+    const effective: QuestDef = rewardOverride ? { ...q, reward: rewardOverride } : q;
+    q = effective;
     const first = !this.doneOnce.has(q.id);
     this.doneOnce.add(q.id);
     // lanterns lit for this quest become permanently lit (the path stays glowing)
@@ -666,7 +690,7 @@ export class CirqlWorldEngine extends RetroEngine {
       .map(({ quest, status }) => {
         const p = this.quests[quest.id];
         let objective = quest.objectives[0]?.label ?? "";
-        if (status === "active" && p) { const oi = this.currentObjIndex(quest); if (oi >= 0) { const o = quest.objectives[oi]; objective = (o.ring != null && o.ring !== this.ringIdx) ? `Sail to ${ringName(o.ring)} — ${o.label}` : o.label; } else objective = "Return complete"; }
+        if (status === "active" && p) { const oi = this.currentObjIndex(quest); if (oi >= 0) { const o = quest.objectives[oi]; objective = (o.ring != null && o.ring !== this.ringIdx) ? `Sail to ${ringName(o.ring)} — ${o.label}` : o.label; } else objective = (quest.choice && !p.pick) ? "◆ A choice awaits — speak to the keeper" : "Return complete"; }
         else if (status === "done") objective = "Complete";
         return { id: quest.id, name: quest.name, status, objective, tier: quest.tier, reward: quest.reward.sparks, renownReward: quest.reward.renown, steps: quest.objectives.length };
       });
@@ -747,6 +771,7 @@ export class CirqlWorldEngine extends RetroEngine {
     const d = this.dialog, node = this.dialogNode(); if (!d || !node?.choices) return;
     const c: DialogChoice | undefined = node.choices[idx]; if (!c) return;
     if (c.accept) { const id = c.accept; this.dialog = null; this.acceptQuest(id); }
+    else if (c.pick) { this.resolveQuestChoice(c.pick); }   // resolve a mystery/choice fork
     else if (c.goto && d.tree.nodes[c.goto]) { d.nodeId = c.goto; d.i = 0; }
     else this.dialog = null;   // plain choice → end the chat
   }
@@ -819,6 +844,13 @@ export class CirqlWorldEngine extends RetroEngine {
     const name = p.label || "Ferra";
     // an "interact" objective aimed at this NPC advances on talk
     this.advanceObjective("interact", npcId);
+    if (this.pendingChoice) return;   // that talk just completed the clue-trail → keep the fork on screen
+    // re-present a dismissed fork this NPC owns (clue-trail done, choice not yet made)
+    for (const q of allQuests()) {
+      if (q.giver !== npcId || !q.choice) continue;
+      const pr = this.quests[q.id];
+      if (pr && pr.status === "active" && !pr.pick && this.currentObjIndex(q) < 0) { this.presentQuestChoice(q); return; }
+    }
     // a quest this keeper can offer (fresh, or a repeatable re-offer for a slighter reward)
     const fresh = offerableQuest(npcId, this.quests);
     const offer = fresh || repeatableQuest(npcId, this.quests);
