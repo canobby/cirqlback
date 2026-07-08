@@ -32,8 +32,9 @@ export const ringQuestId = (index: number) => `ring-${index}-q`;
  * scout the onward shore) and scales the reward by how far out you've sailed.
  */
 /** How many SIDE quests a ring offers (beyond the main one) — scales with ring size so the
- *  big outer rings become full destinations, not one-quest fly-bys. */
-export function ringSideQuestCount(index: number): number { return index <= 1 ? 0 : Math.min(5, Math.floor(index / 2)); }
+ *  big outer rings become full destinations, not one-quest fly-bys. Ramps ~2→9 quests/ring,
+ *  so the first ~15 rings hold ~100 quests total. */
+export function ringSideQuestCount(index: number): number { return index <= 1 ? 0 : Math.min(8, Math.floor(index / 1.5)); }
 
 // Build one quest for a ring. variant 0 = the MAIN quest (keeper at the hub, the onward
 // through-line + escalation); variant >=1 = a shorter, focused SIDE quest from a 'sider' NPC.

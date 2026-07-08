@@ -209,10 +209,10 @@ export function generateRing(index: number): Ring {
   }
   // SIDE-QUEST givers scale with ring size (mini-continents) — spread along the trail so the
   // big outer rings become full destinations; each offers one of the ring's extra quests.
-  const sideN = Math.min(5, Math.floor(index / 2));
+  const sideN = Math.min(8, Math.floor(index / 1.5));
   for (let v = 1; v <= sideN; v++) {
-    const p = spine[Math.max(1, Math.min(spine.length - 2, Math.round((spine.length - 1) * (0.22 + 0.56 * (v / (sideN + 1))))))], sd = v % 2 ? 1 : -1;
-    props.push({ t: "npc", x: p.x + sd * corr * 1.25, y: p.y + 12, id: `sider-${index}-${v}`, label: pick(rng, WANDERERS), accent: biome.palette.mote });
+    const p = spine[Math.max(1, Math.min(spine.length - 2, Math.round((spine.length - 1) * (0.16 + 0.68 * (v / (sideN + 1))))))], sd = v % 2 ? 1 : -1;
+    props.push({ t: "npc", x: p.x + sd * corr * (1.15 + (v % 3) * 0.3), y: p.y + 12 + (v % 2) * 18, id: `sider-${index}-${v}`, label: pick(rng, WANDERERS), accent: biome.palette.mote });
   }
   // woodland SIGNATURE understory: fern patches (clustered) + a fairy-ring or two
   if (biome.key === "woodland") {
