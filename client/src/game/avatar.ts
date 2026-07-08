@@ -4,8 +4,9 @@
 // cabinet. It's drawn through a tiny painter interface so the same routine works on
 // a plain 2D canvas (customizer/lobby) and on a RetroEngine buffer (in-game hero).
 
-export type HatStyle = "cap" | "crown" | "band" | "beanie" | "none";
+export type HatStyle = "cap" | "crown" | "band" | "beanie" | "witch" | "none";
 export type AvatarAura = "none" | "teal" | "violet" | "gold" | "rose" | "mint" | "sky";
+export type AvatarWings = "none" | "fairy" | "bat" | "angel";
 /** Facing direction for top-down worlds. "down" = front (default, arcade look). */
 export type AvatarDir = "down" | "up" | "left" | "right";
 
@@ -15,16 +16,17 @@ export interface AvatarConfig {
   hat: string;    // hat colour hex
   body: string;   // shirt/outfit hex
   bib?: string;   // overalls/apron hex (optional)
-  tool?: "none" | "mug" | "pizza" | "wrench" | "broom" | "spatula";
+  tool?: "none" | "mug" | "pizza" | "wrench" | "broom" | "spatula" | "staff" | "wand";
   sidekick?: "none" | "star" | "cat" | "bot" | "donut" | "vinyl" | "taco" | "moth" | "sprite";
   // --- CIRQL additions (CHR-243): all optional so existing arcade avatars are unchanged ---
   hatStyle?: HatStyle;   // shape of the headwear (defaults to the classic cap)
   aura?: AvatarAura;     // a soft glow the world/preview paints behind the figure (on-brand light)
+  wings?: AvatarWings;   // a back-worn wing pair (Boutique special — drawn behind the figure)
 }
 
 export const DEFAULT_AVATAR: AvatarConfig = {
   skin: "#f4c79a", eye: "#1a1226", hat: "#33b0e0", body: "#e2544f", bib: "#3a6ad0",
-  tool: "none", sidekick: "none", hatStyle: "cap", aura: "none",
+  tool: "none", sidekick: "none", hatStyle: "cap", aura: "none", wings: "none",
 };
 
 // The soft-glow palette for auras (hex per aura id). "none" → no glow. Rendered by
@@ -45,7 +47,14 @@ export const HAT_COLORS: Swatch[] = [
 ];
 // Headwear shapes (CIRQL). "cap" is the classic arcade look = the default.
 export const HAT_STYLES: Opt<HatStyle>[] = [
-  { k: "cap", label: "Cap" }, { k: "beanie", label: "Beanie" }, { k: "band", label: "Band" }, { k: "crown", label: "Crown" }, { k: "none", label: "Bare" },
+  { k: "cap", label: "Cap" }, { k: "beanie", label: "Beanie" }, { k: "band", label: "Band" }, { k: "crown", label: "Crown" }, { k: "witch", label: "Witch" }, { k: "none", label: "Bare" },
+];
+// Boutique "super-special" wearables (Milestone F) — wings worn on the back + a held item.
+export const WINGS: Opt<AvatarWings>[] = [
+  { k: "none", label: "None" }, { k: "fairy", label: "Fairy" }, { k: "bat", label: "Bat" }, { k: "angel", label: "Angel" },
+];
+export const HELD_ITEMS: Opt<NonNullable<AvatarConfig["tool"]>>[] = [
+  { k: "none", label: "None" }, { k: "staff", label: "Staff" }, { k: "wand", label: "Wand" },
 ];
 export const BODY_COLORS: Swatch[] = [
   { c: "#e2544f" }, { c: "#3a6ad0" }, { c: "#33a06a" }, { c: "#ff77a8" }, { c: "#7a4fd0" },
@@ -67,8 +76,10 @@ export const AURAS: Opt<AvatarAura>[] = [
 // always free — identity, not flair). "none"/first options stay free too.
 export const COSMETIC_PRICES: Record<string, number> = {
   "aura:violet": 20, "aura:gold": 25, "aura:rose": 20, "aura:mint": 20, "aura:sky": 20,
-  "hat:beanie": 15, "hat:band": 15, "hat:crown": 40,
+  "hat:beanie": 15, "hat:band": 15, "hat:crown": 40, "hat:witch": 50,
   "companion:cat": 20, "companion:bot": 30, "companion:moth": 25, "companion:sprite": 30, "companion:donut": 20, "companion:vinyl": 25, "companion:taco": 20,
+  // Boutique super-specials (Milestone F)
+  "wings:fairy": 60, "wings:bat": 55, "wings:angel": 70, "tool:staff": 45, "tool:wand": 40,
 };
 export const cosmeticCost = (id: string): number => COSMETIC_PRICES[id] ?? 0; // 0 = free
 
@@ -115,6 +126,8 @@ export function paintAvatar(p: AvatarPainter, x: number, y: number, cfg: AvatarC
   const lid = p.shade(skin, -0.32);   // closed-eye colour for the blink frame (I1)
   const bib = cfg.bib;
   const legs = "#2f4a8a";
+  // wings first (behind everything) — a Boutique special (F). Hidden from the back view.
+  if (dir !== "up") drawWings(p, x, y, cfg.wings);
   // legs + shoes
   p.rect(x - 3, y - 6, 2, 6, legs); p.rect(x + 1, y - 6, 2, 6, legs);
   p.rect(x - 3, y - 1, 2, 1, "#e0b088"); p.rect(x + 1, y - 1, 2, 1, "#e0b088");
@@ -168,6 +181,12 @@ function drawHat(p: AvatarPainter, x: number, y: number, hat: string, style: Hat
       p.rect(x - 4, y - 24, 2, 2, hat); p.rect(x - 1, y - 25, 2, 3, hat); p.rect(x + 2, y - 24, 2, 2, hat);
       p.px(x - 3, y - 24, "#fff1e8"); p.px(x, y - 25, "#fff1e8"); p.px(x + 3, y - 24, "#fff1e8");
       break;
+    case "witch": // wide brim + a tall, slightly leaning point + a band & buckle gem
+      p.rect(x - 6, y - 22, 12, 1, p.shade(hat, -0.35)); p.rect(x - 5, y - 21, 10, 1, p.shade(hat, -0.2)); // brim
+      p.rect(x - 4, y - 24, 8, 2, hat); p.rect(x - 3, y - 26, 6, 2, hat); p.rect(x - 1, y - 29, 3, 3, hat); p.px(x + 1, y - 30, hat);
+      p.rect(x - 4, y - 23, 8, 1, "#ffd24a"); p.px(x + 2, y - 23, "#7fffe6");   // band + buckle
+      p.px(x - 2, y - 25, p.shade(hat, 0.3));
+      break;
     case "cap":
     default: // dome + brim + pom (the classic arcade cap)
       p.rect(x - 4, y - 23, 8, 2, hat); p.rect(x - 3, y - 25, 6, 2, hat); p.px(x - 3, y - 23, p.shade(hat, 0.25));
@@ -184,7 +203,34 @@ function drawTool(p: AvatarPainter, x: number, y: number, tool: AvatarConfig["to
     case "wrench": p.rect(x + 6, y - 12, 2, 5, "#9aa4b0"); p.px(x + 6, y - 13, "#c2ccd6"); p.px(x + 8, y - 13, "#c2ccd6"); break;
     case "broom": p.rect(x + 6, y - 13, 1, 7, "#a86a1a"); p.rect(x + 5, y - 7, 3, 2, "#ffd24a"); break;
     case "spatula": p.rect(x + 6, y - 12, 1, 5, "#9aa4b0"); p.rect(x + 5, y - 13, 3, 2, "#c2ccd6"); break;
+    case "staff": // a tall wooden staff crowned with a glowing orb (Boutique special, F)
+      p.rect(x + 6, y - 16, 1, 12, "#8a5a2a"); p.px(x + 6, y - 5, "#6a4420");
+      p.ball(x + 6, y - 18, 2, "#b26cff"); p.px(x + 6, y - 18, "#e6ccff"); p.px(x + 5, y - 19, "#fff");
+      break;
+    case "wand": // a short wand with a twinkling star tip (Boutique special, F)
+      p.rect(x + 6, y - 13, 1, 7, "#5a3f1a");
+      p.px(x + 6, y - 15, "#ffd24a"); p.px(x + 5, y - 14, "#ffe98a"); p.px(x + 7, y - 14, "#ffe98a"); p.px(x + 6, y - 16, "#fff");
+      break;
     default: break;
+  }
+}
+
+// Back-worn wings (Boutique special, F) — drawn behind the figure at the shoulders.
+function drawWings(p: AvatarPainter, x: number, y: number, w: AvatarWings | undefined) {
+  if (!w || w === "none") return;
+  const b = y - 12;   // wing anchor, behind the shoulders
+  if (w === "fairy") {
+    const c = "#bfe6ff", e = "#7fc4ee";
+    p.disc(x - 7, b - 2, 3, c); p.disc(x - 8, b + 2, 2, c); p.px(x - 10, b - 2, e); p.px(x - 10, b + 3, e); p.px(x - 8, b - 4, "#ffffff");
+    p.disc(x + 7, b - 2, 3, c); p.disc(x + 8, b + 2, 2, c); p.px(x + 10, b - 2, e); p.px(x + 10, b + 3, e); p.px(x + 8, b - 4, "#ffffff");
+  } else if (w === "bat") {
+    const c = "#3a2a4a", e = "#5a3f6e";
+    p.disc(x - 7, b, 3, c); p.rect(x - 10, b - 1, 3, 4, c); p.px(x - 10, b + 3, e); p.px(x - 7, b + 3, e); p.px(x - 8, b - 3, e);
+    p.disc(x + 7, b, 3, c); p.rect(x + 7, b - 1, 3, 4, c); p.px(x + 9, b + 3, e); p.px(x + 6, b + 3, e); p.px(x + 7, b - 3, e);
+  } else { // angel — soft feathered white
+    const c = "#f4efe6", e = "#cfd6e2";
+    p.disc(x - 7, b - 1, 3, c); p.disc(x - 8, b + 2, 2, c); p.px(x - 10, b - 1, e); p.px(x - 10, b + 2, e); p.px(x - 9, b - 3, "#ffffff");
+    p.disc(x + 7, b - 1, 3, c); p.disc(x + 8, b + 2, 2, c); p.px(x + 10, b - 1, e); p.px(x + 10, b + 2, e); p.px(x + 9, b - 3, "#ffffff");
   }
 }
 

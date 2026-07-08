@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type AvatarConfig, DEFAULT_AVATAR, drawAvatarToCanvas, cosmeticCost,
-  SKINS, EYES, HAT_COLORS, HAT_STYLES, BODY_COLORS, SIDEKICKS, AURAS, AURA_COLORS,
+  SKINS, EYES, HAT_COLORS, HAT_STYLES, BODY_COLORS, SIDEKICKS, AURAS, AURA_COLORS, WINGS, HELD_ITEMS,
 } from "@/game/avatar";
 
 // CIRQL character creator (CHR-242/243). Shown on first entry (create) and from
@@ -21,10 +21,12 @@ interface Props {
   onCancel?: () => void;
 }
 
-type CatId = "skin" | "eye" | "hatColor" | "hatStyle" | "body" | "aura" | "companion";
+type CatId = "skin" | "eye" | "hatColor" | "hatStyle" | "body" | "wings" | "held" | "aura" | "companion";
 const CATS: { id: CatId; label: string }[] = [
   { id: "skin", label: "Skin" }, { id: "eye", label: "Eyes" }, { id: "hatColor", label: "Hat" },
-  { id: "hatStyle", label: "Shape" }, { id: "body", label: "Outfit" }, { id: "aura", label: "Aura" }, { id: "companion", label: "Friend" },
+  { id: "hatStyle", label: "Shape" }, { id: "body", label: "Outfit" },
+  { id: "wings", label: "Wings" }, { id: "held", label: "Magic" },
+  { id: "aura", label: "Aura" }, { id: "companion", label: "Friend" },
 ];
 
 export function CharacterCreator({ initial, initialName, mode = "create", sparks = 0, owned = [], onBuy, onConfirm, onCancel }: Props) {
@@ -94,6 +96,8 @@ export function CharacterCreator({ initial, initialName, mode = "create", sparks
       case "hatColor": return swatches(HAT_COLORS, "hat", cfg.hat);
       case "hatStyle": return chips(HAT_STYLES, cfg.hatStyle ?? "cap", (k) => set({ hatStyle: k }), undefined, "hat");
       case "body": return swatches(BODY_COLORS, "body", cfg.body);
+      case "wings": return chips(WINGS, cfg.wings ?? "none", (k) => set({ wings: k }), undefined, "wings");
+      case "held": return chips(HELD_ITEMS, (cfg.tool === "staff" || cfg.tool === "wand" ? cfg.tool : "none"), (k) => set({ tool: k }), undefined, "tool");
       case "aura": return chips(AURAS, cfg.aura ?? "none", (k) => set({ aura: k }), (k) => AURA_COLORS[k], "aura");
       case "companion": return chips(SIDEKICKS, cfg.sidekick ?? "none", (k) => set({ sidekick: k }), undefined, "companion");
     }
