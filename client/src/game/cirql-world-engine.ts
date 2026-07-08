@@ -1089,6 +1089,9 @@ export class CirqlWorldEngine extends RetroEngine {
       }
     }
 
+    // living creatures react to you (shy/curious fauna) — stateful, per sim step
+    this.ensureCreatures(); this.updateCreatures(dt);
+
     // camera easing
     this.camX += ((this.posX - this.LW / 2) - this.camX) * Math.min(1, dt * 8);
     this.camY += ((this.posY - this.LH / 2) - this.camY) * Math.min(1, dt * 8);
@@ -2206,6 +2209,119 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx, cy, 1.6, c); this.rect(cx - 1, cy - 2, 3, 1.2, shade(c, -0.2));   // body + head
     this.disc(cx - w, cy - 1, 1.3, c); this.disc(cx + w, cy - 1, 1.3, c);           // wings
   }
+
+  // ---------- LIVING CREATURES: stateful woodland fauna that REACT to you ----------
+  // Shy deer/rabbits flee when you rush them, then warm up if you hold still and let you pet
+  // them; a curious fox trails you at a gap. Real walk-cycle sprites + facing.
+  private creatures: { x: number; y: number; vx: number; vy: number; sp: "deer" | "rabbit" | "fox"; mode: string; trust: number; t: number; face: number; rest: number; wtx: number; wty: number; home: { x: number; y: number } }[] = [];
+  private creaturesRing = -999;
+  private ensureCreatures() {
+    if (this.creaturesRing === this.ringIdx) return;
+    this.creaturesRing = this.ringIdx; this.creatures = [];
+    if (this.reduce || this.curRing.biome !== "woodland") return;   // hero fauna per biome (woodland first)
+    const flora = this.curRing.props.filter((p) => p.t === "tree" || p.t === "fern" || p.t === "fairyring");
+    const spawn = (sp: "deer" | "rabbit" | "fox", n: number, k: number) => {
+      for (let i = 0; i < n; i++) {
+        const a = flora.length ? flora[(i * 7 + k) % flora.length] : { x: 0, y: 0 };
+        const hx = a.x + Math.sin(i * 2.3 + k) * 44, hy = a.y + 30 + Math.cos(i * 1.7 + k) * 34;
+        this.creatures.push({ x: hx, y: hy, vx: 0, vy: 0, sp, mode: "graze", trust: 0, t: i * 1.3, face: 1, rest: 0, wtx: hx, wty: hy, home: { x: hx, y: hy } });
+      }
+    };
+    spawn("deer", 2, 3); spawn("rabbit", 3, 5); spawn("fox", 1, 2);
+  }
+  private updateCreatures(dt: number) {
+    if (!this.creatures.length) return;
+    const px = this.posX, py = this.posY, calm = this.walk <= 0.05 && !this.dozing && !this.dialog;
+    for (const c of this.creatures) {
+      const dx = px - c.x, dy = py - c.y, dist = Math.hypot(dx, dy) || 1;
+      const base = c.sp === "rabbit" ? 34 : c.sp === "fox" ? 30 : 26;
+      let tx = c.wtx, ty = c.wty, spd = base * 0.45;
+      if (c.sp === "fox") {                                   // curious — trails you at a gap
+        if (dist < 240) { c.trust = Math.min(1, c.trust + dt * 0.15); c.mode = "curious"; const gap = 84;
+          if (dist > gap + 14) { tx = px; ty = py; spd = base * (dist > 160 ? 1.2 : 0.8); }
+          else if (dist < gap - 14) { tx = c.x - dx / dist * 30; ty = c.y - dy / dist * 30; spd = base * 0.9; }
+          else { tx = c.x; ty = c.y; spd = 0; c.mode = "watch"; }
+        } else { c.mode = "graze"; if (c.rest <= 0) { c.rest = 2 + Math.random() * 2.5; c.wtx = c.home.x + (Math.random() - 0.5) * 90; c.wty = c.home.y + (Math.random() - 0.5) * 70; } c.rest -= dt; tx = c.wtx; ty = c.wty; }
+      } else {                                                // deer / rabbit — shy, then warm up
+        const flee = c.sp === "rabbit" ? 54 : 66;
+        if (dist < flee && !calm) { c.mode = "flee"; tx = c.x - dx / dist * 140; ty = c.y - dy / dist * 140; spd = base * 2.2; c.trust = Math.max(0, c.trust - dt * 0.6); }
+        else if (dist < 130 && calm) { c.trust = Math.min(1, c.trust + dt * 0.32);
+          if (dist <= 30 && c.trust > 0.5) { c.mode = "petted"; spd = 0; }
+          else if (c.trust > 0.72) { c.mode = "approach"; tx = px; ty = py; spd = base * 0.5; }
+          else { c.mode = "curious"; spd = 0; }
+        } else { c.mode = "graze"; c.trust = Math.max(0, c.trust - dt * 0.08);
+          if (c.rest <= 0) { c.rest = 1.6 + Math.random() * 2.4; c.wtx = c.home.x + (Math.random() - 0.5) * 84; c.wty = c.home.y + (Math.random() - 0.5) * 64; } c.rest -= dt; tx = c.wtx; ty = c.wty; }
+      }
+      const mdx = tx - c.x, mdy = ty - c.y, md = Math.hypot(mdx, mdy) || 1;
+      const dvx = md < 5 ? 0 : (mdx / md) * spd, dvy = md < 5 ? 0 : (mdy / md) * spd;
+      c.vx += (dvx - c.vx) * Math.min(1, dt * 6); c.vy += (dvy - c.vy) * Math.min(1, dt * 6);
+      c.x += c.vx * dt; c.y += c.vy * dt;
+      if (Math.abs(c.vx) > 3) c.face = c.vx > 0 ? 1 : -1;
+      c.t += dt;
+      const lim = this.effR() * 0.92, rr = Math.hypot(c.x, c.y); if (rr > lim) { c.x = c.x / rr * lim; c.y = c.y / rr * lim; }
+    }
+  }
+  private drawCreatures() {
+    if (!this.creatures.length) return;
+    const camX = this.camX, camY = this.camY, W = this.LW, H = this.LH;
+    for (const c of [...this.creatures].sort((a, b) => a.y - b.y)) {
+      const sx = c.x - camX, sy = c.y - camY;
+      if (sx < -30 || sx > W + 30 || sy < -30 || sy > H + 30) continue;
+      const moving = Math.hypot(c.vx, c.vy) > 6, ph = c.t * 7;
+      if (c.sp === "deer") this.drawDeer(sx, sy, c.face, moving, ph, c.mode);
+      else if (c.sp === "fox") this.drawFox(sx, sy, c.face, moving, ph);
+      else this.drawBunny(sx, sy, c.face, moving, c.t, c.mode);
+      if (c.mode === "flee") this.q(sx, sy - 26, "!", "#ffd24a", 0.85, "c", true);
+      else if (c.mode === "curious" || c.mode === "watch") this.q(sx, sy - 26, "?", "#9fd0ff", 0.8, "c", true);
+      else if (c.mode === "petted" || (c.mode === "approach" && c.trust > 0.85)) { const hy = sy - 24 - Math.abs(Math.sin(this.t * 3)) * 2; this.q(sx, hy, "♥", "#ff6b8f", 0.9, "c", false, 0.95); }
+    }
+  }
+  private drawDeer(sx: number, sy: number, f: number, walk: boolean, ph: number, mode: string) {
+    const body = "#8a6a44", body2 = "#9a7a50", leg = "#5a4630";
+    const bob = walk ? Math.sin(ph) * 0.6 : Math.sin(this.t * 1.4) * 0.3;
+    this.disc(sx, sy + 2, 9, "#0a071440");
+    const ly = sy - 6 + bob, step = (i: number) => walk ? Math.max(0, Math.sin(ph + i * Math.PI)) * 2 : 0;
+    this.rect(sx - 9 * f, ly, 2, 7 - step(0), leg); this.rect(sx - 3 * f, ly, 2, 7 - step(1), leg);
+    this.rect(sx + 4 * f, ly, 2, 7 - step(1), leg); this.rect(sx + 9 * f, ly, 2, 7 - step(0), leg);
+    this.fillEll(sx, sy - 15 + bob, 11, 6, body);
+    this.fillEll(sx - 8 * f, sy - 15 + bob, 4, 3.5, this.curRing.palette.grass);   // moss on the back
+    this.rect(sx + 7 * f - 1, sy - 22 + bob, 3, 8, body);                           // neck
+    const headUp = mode !== "graze", hx = sx + 12 * f, hy = sy - (headUp ? 25 : 19) + bob;
+    this.fillEll(hx, hy, 5, 4, body2);
+    this.rect(hx - 2 * f, hy - 4, 1.6, 3, body);                                     // ear
+    this.neonPath([[hx + 1 * f, hy - 3], [hx + 2 * f, hy - 7], [hx + 4 * f, hy - 10]], "#b6ff6a", 3, 1.2, 0.5 + 0.4 * this.nightAmt);
+    this.neonPath([[hx + 3 * f, hy - 3], [hx + 5 * f, hy - 6], [hx + 6 * f, hy - 9]], "#b6ff6a", 3, 1.2, 0.5 + 0.4 * this.nightAmt);
+    this.glow(hx + 3 * f, hy - 7, 5, "#b6ff6a", 0.2 + 0.3 * this.nightAmt);
+    this.disc(hx + 2 * f, hy, 0.8, "#1a1208");                                       // eye
+    this.rect(sx - 11 * f, sy - 16 + bob, 1.5, 3, "#e8ddcf");                        // tail
+  }
+  private drawFox(sx: number, sy: number, f: number, walk: boolean, ph: number) {
+    const c = "#d87a3a", c2 = "#e89a54", dk = "#9a5024", leg = "#6a3a1c", white = "#f0e0d0";
+    const bob = walk ? Math.sin(ph) * 0.5 : 0;
+    this.disc(sx, sy + 2, 7, "#0a071440");
+    const ly = sy - 5 + bob, step = (i: number) => walk ? Math.max(0, Math.sin(ph + i * Math.PI)) * 2 : 0;
+    this.rect(sx - 7 * f, ly, 1.8, 6 - step(0), leg); this.rect(sx - 2 * f, ly, 1.8, 6 - step(1), leg);
+    this.rect(sx + 3 * f, ly, 1.8, 6 - step(1), leg); this.rect(sx + 7 * f, ly, 1.8, 6 - step(0), leg);
+    this.fillEll(sx - 10 * f, sy - 9 + bob, 5, 3.5, c); this.disc(sx - 13 * f, sy - 10 + bob, 2.2, white);   // bushy tail
+    this.fillEll(sx, sy - 9 + bob, 9, 5, c);
+    const hx = sx + 9 * f, hy = sy - 12 + bob;
+    this.rect(hx - 3 * f, hy - 5, 2, 3, c); this.rect(hx + 1 * f, hy - 5, 2, 3, c);   // ears
+    this.disc(hx - 2 * f, hy - 5, 0.9, dk); this.disc(hx + 2 * f, hy - 5, 0.9, dk);
+    this.fillEll(hx, hy, 5, 4, c2);
+    this.disc(hx + 5 * f, hy + 0.5, 1.4, dk);                                         // snout
+    this.disc(hx + 1.5 * f, hy - 1, 0.6, "#1a1208");                                  // eye
+  }
+  private drawBunny(sx: number, sy: number, f: number, walk: boolean, t: number, mode: string) {
+    const body = "#b8a890", ear = "#a89880";
+    const hop = walk ? -Math.abs(Math.sin(t * 9)) * 3 : 0;
+    this.disc(sx, sy + 1, 4, "#0a071438");
+    this.fillEll(sx, sy - 3 + hop, 4, 3.4, body);
+    this.disc(sx + 3 * f, sy - 5 + hop, 2.2, body);                                   // head
+    if (mode === "flee") { this.rect(sx + 1 * f, sy - 7 + hop, 3.6, 1.4, ear); this.rect(sx + 2 * f, sy - 8.6 + hop, 3.6, 1.4, ear); }   // ears back
+    else { this.rect(sx + 2 * f, sy - 9 + hop, 1.2, 4, ear); this.rect(sx + 4 * f, sy - 9 + hop, 1.2, 4, ear); }                          // ears up
+    this.disc(sx - 3 * f, sy - 2 + hop, 1.4, "#e8ddcf");                              // tail
+    this.disc(sx + 4 * f, sy - 5 + hop, 0.5, "#1a1208");                              // eye
+  }
   private drawCrystal(cx: number, cy: number, big: boolean | undefined, c: string) {
     const s = big ? 1.35 : 1;
     this.disc(cx, cy + 2, 5 * s, "#0a071440");
@@ -2413,28 +2529,14 @@ export class CirqlWorldEngine extends RetroEngine {
         const a = (0.1 + 0.22 * this.nightAmt) * (0.45 + 0.55 * Math.sin(t * 1.3 + i));
         this.glow(sx, sy, 3.5, "#a8ffe0", a); this.disc(sx, sy, 0.7, "#e8fff6");
       }
-      const fl = this.curRing.props.filter((p) => p.t === "tree" || p.t === "fairyring");
-      for (let d = 0; d < 2 && fl.length; d++) {
-        const an = fl[(d * 7 + 3) % fl.length], wx = an.x + Math.sin(t * 0.25 + d * 2) * 40, wy = an.y + 34 + Math.cos(t * 0.2 + d) * 22;
-        const sx = wx - camX, sy = wy - camY;
-        if (sx > -30 && sx < W + 30 && sy > -30 && sy < H + 30) this.drawMossDeer(sx, sy, t + d);
-      }
-      // rabbits hopping near the undergrowth (clumped by flora)
-      const gr = this.curRing.props.filter((p) => p.t === "tree" || p.t === "bush" || p.t === "fern");
-      for (let d = 0; d < 3 && gr.length; d++) {
-        const an = gr[(d * 13 + 5) % gr.length], cyc = 2.6 + (d % 3) * 0.4, prog = (t + d * 0.8) / cyc, hopN = Math.floor(prog), ph = prog - hopN;
-        const ra = hopN * 1.9 + d * 2.3, ra2 = (hopN + 1) * 1.9 + d * 2.3;
-        let rx = an.x + Math.cos(ra) * 24, ry = an.y + 22 + Math.sin(ra) * 14, hp = 0;
-        if (ph > 0.7) { const jt = (ph - 0.7) / 0.3; hp = jt * Math.PI; rx = an.x + Math.cos(ra) * 24 + (Math.cos(ra2) - Math.cos(ra)) * 24 * jt; ry = an.y + 22 + Math.sin(ra) * 14 + (Math.sin(ra2) - Math.sin(ra)) * 14 * jt; }
-        const sx = rx - camX, sy = ry - camY; if (sx > -20 && sx < W + 20 && sy > -20 && sy < H + 20) this.drawRabbit(sx, sy, ph > 0.7 ? hp : 0);
-      }
-      // birds flitting around the canopies
+      // birds flitting around the canopies (deer/rabbits/fox are now the stateful creatures)
       const tr = this.curRing.props.filter((p) => p.t === "tree");
       for (let d = 0; d < 4 && tr.length; d++) {
         const an = tr[(d * 17 + 2) % tr.length], bx = an.x + Math.sin(t * 0.8 + d * 1.7) * 30, by = an.y - 30 + Math.cos(t * 0.7 + d) * 16;
         const sx = bx - camX, sy = by - camY; if (sx > -20 && sx < W + 20 && sy > -20 && sy < H + 20) this.drawBird(sx, sy, t * 1.4 + d);
       }
     }
+    this.drawCreatures();   // the stateful, reacting fauna (any biome that has them)
   }
   private drawButterfly(x: number, y: number, ph: number, color: string) {
     x = Math.round(x); y = Math.round(y);
