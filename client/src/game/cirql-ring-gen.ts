@@ -187,6 +187,11 @@ export function generateRing(index: number): Ring {
     const portalKind: SubKind | null = (biome.key === "desert" || biome.key === "ember") ? "cave" : (biome.key === "woodland" || biome.key === "meadow" || biome.key === "autumn") ? "tree" : (biome.key === "coast") ? "cloud" : null;
     if (portalKind) { const c = clearSpot(); props.push({ t: "portal", x: c.x, y: c.y, to: subIndex(portalKind, index), sub: portalKind, label: portalKind === "cave" ? "cave" : portalKind === "tree" ? "hollow tree" : "cloud stair" }); }
   }
+  // a two-ended TUNNEL across the island (Milestone F) — enter one burrow, walk the passage,
+  // emerge at the other (a shortcut across the big outer rings). Mouths on opposite sides.
+  { const side = rng() > 0.5 ? 1 : -1, ti = tunnelIndex(index);
+    props.push({ t: "tunnel", x: side * radius * 0.4, y: -radius * 0.3, to: ti, end: "a", label: "burrow" });
+    props.push({ t: "tunnel", x: -side * radius * 0.4, y: radius * 0.34, to: ti, end: "b", label: "burrow" }); }
   // a dirt trail leading inland from the shore (along the arrival lane)
   if (biome.path) { const n = 5; for (let k = 0; k < n; k++) props.push({ t: "path", x: Math.sin(k * 1.3 + index) * 16, y: -radius * 0.6 + k * (radius * 0.42 / n) }); }
   if (biome.pond) {
@@ -243,6 +248,11 @@ export function generateRing(index: number): Ring {
 // return portal can point back at the parent. Sub-maps don't extend the fog / maxRing.
 const SUB_BASE = 100000;
 export const SUB_OFFSET = { cave: 100000, tree: 200000, cloud: 300000 } as const;
+// Tunnels (Milestone F) — a two-ended burrow that connects two points on a ring. Its own
+// index band (above the shop/home bands) so it's an instant-swap sub-map, no fog lift.
+export const TUNNEL_OFFSET = 600000;
+export const isTunnel = (index: number): boolean => index >= TUNNEL_OFFSET && index < TUNNEL_OFFSET + 100000;
+export const tunnelIndex = (parent: number): number => TUNNEL_OFFSET + parent;
 export type SubKind = keyof typeof SUB_OFFSET;
 export const isSubMap = (index: number) => index >= SUB_BASE;
 export const parentOf = (index: number) => index % SUB_BASE;
@@ -276,10 +286,32 @@ function generateSubMap(kind: SubKind, parent: number, index: number): Ring {
   return { index, name: m.name, sub: m.sub, radius, explorable: true, palette: m.palette, spawn: { x: 0, y: -radius * 0.55 }, props, ambient: m.ambient };
 }
 
+/** A two-ended tunnel sub-map — spawn in the middle, walk to either mouth (A north / B south). */
+function generateTunnel(parent: number, index: number): Ring {
+  const rng = rngFrom(Math.imul(index, 0x27d4eb2f) ^ 0x9e3779b9);
+  const radius = 300, props: Prop[] = [];
+  // the two exits back to the surface — each tagged with the mouth it returns to
+  props.push({ t: "portal", x: 0, y: -radius * 0.72, to: parent, sub: "up", end: "a", label: "↑ north exit" });
+  props.push({ t: "portal", x: 0, y: radius * 0.72, to: parent, sub: "up", end: "b", label: "↓ south exit" });
+  // a glimmering underground passage — crystals + wisps + a few rocks to weave around
+  const place = (t: Prop["t"], extra?: Partial<Prop>) => { const a = rng() * TAU, rr = radius * (0.2 + rng() * 0.42); props.push({ t, x: Math.cos(a) * rr, y: Math.sin(a) * rr * 0.7, ...extra }); };
+  for (let i = 0; i < 7; i++) place("crystal", { big: rng() > 0.6, accent: "#7fd8ff" });
+  for (let i = 0; i < 6; i++) place("rock", { big: rng() > 0.6 });
+  for (let i = 0; i < 5; i++) place("wisp", { accent: "#bfeaff" });
+  let ci = 0, wi = 0;
+  for (const p of props) { if (p.t === "crystal" && !p.id) p.id = `t${index}c${ci++}`; else if (p.t === "wisp" && !p.id) p.id = `t${index}w${wi++}`; }
+  return {
+    index, name: "The Tunnel", sub: "a passage through the dark", radius, explorable: true,
+    palette: { sky: ["#0e0a12", "#060409"], sea: "#0a0710", land: "#1c1622", grass: "#2a2030", sand: "#3a2e28", accent: "#7fd8ff", mote: "#bfeaff" },
+    spawn: { x: 0, y: 0 }, props, ambient: "firefly",
+  };
+}
+
 /** The ring at `index` — authored CIRQLSPACE (0) + Town (1), generated wilds (>=2), sub-map for big indices. */
 export function getRing(index: number): Ring {
   if (index <= 0) return RINGS[0];
   if (index === 1) return RINGS[1];   // the authored Town hub
+  if (isTunnel(index)) return generateTunnel(parentOf(index), index);   // Milestone F: two-ended tunnel
   if (isHome(index)) return homeInterior();                   // Milestone F: your home interior
   if (isShop(index)) return shopInterior(shopIdAt(index)!);   // Milestone F: authored shop interior
   if (isSubMap(index)) { const k = subKindOf(index)!; return generateSubMap(k, parentOf(index), index); }

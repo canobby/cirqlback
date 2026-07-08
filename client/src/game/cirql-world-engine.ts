@@ -10,7 +10,7 @@
 import { RetroEngine, shade, mix, type RetroHooks } from "./retro-engine";
 import { loadAvatarLS, DEFAULT_AVATAR, AURA_COLORS, type AvatarConfig } from "./avatar";
 import { RINGS, MINIMAP_RINGS, type Ring, type Prop, type RingPalette } from "./cirql-world";
-import { getRing, ringName, isSubMap, parentOf, subKindOf } from "./cirql-ring-gen";
+import { getRing, ringName, isSubMap, parentOf, subKindOf, isTunnel } from "./cirql-ring-gen";
 import { isShop } from "./cirql-shops";
 import { isHome } from "./cirql-home";
 import { CirqlOrchestra } from "./cirql-orchestra";
@@ -75,6 +75,7 @@ export class CirqlWorldEngine extends RetroEngine {
   } | null = null;
   // the tornado sweep (F weather entry): a short cinematic that lifts you into the sky realm
   private tornado: { dest: number; t: number; progress: number; accent: string; destName: string } | null = null;
+  private exitEnd: "a" | "b" | null = null;   // which tunnel mouth to emerge from (F)
   private posX = 0; private posY = 0;         // player world position
   private vx = 0; private vy = 0; private facing: "up" | "down" | "left" | "right" = "down"; private walk = 0;
   private jumpZ = 0; private jumpVel = 0;      // fake-Z hop (CHR-263): raised height + vertical velocity
@@ -408,8 +409,12 @@ export class CirqlWorldEngine extends RetroEngine {
     if (!wasFT && this.fastTravelReady()) this.toast("✦ Fast travel unlocked! Tap a ring on your sea chart to leap there.");   // reward for reaching ring 5
     this.ensureRingQuest();
     const r = this.curRing.radius;
-    // arrive at the dock/portal/storefront that leads back to where we came from
-    const back = this.curRing.props.find((p) => (p.t === "dock" || p.t === "portal" || p.t === "shop" || p.t === "home") && p.to === from);
+    // arrive at the dock/portal/storefront that leads back to where we came from. A tunnel
+    // exit emerges at the mouth matching its end (so you come out ACROSS the ring), else the
+    // first matching connector.
+    const end = this.exitEnd; this.exitEnd = null;
+    let back = end ? this.curRing.props.find((p) => p.t === "tunnel" && p.end === end) : undefined;
+    if (!back) back = this.curRing.props.find((p) => (p.t === "dock" || p.t === "portal" || p.t === "shop" || p.t === "home" || p.t === "tunnel") && p.to === from);
     if (back) { this.posX = back.x; this.posY = back.y + (back.t === "portal" ? 26 : 30); }
     else { const outward = dest > from; this.posX = 0; this.posY = outward ? -r * 0.68 : r * 0.7; }
     this.vx = this.vy = 0; this.facing = "down";
@@ -735,7 +740,8 @@ export class CirqlWorldEngine extends RetroEngine {
       else { this.onInteract?.("dock", p); this.sailTo(to); }
     }
     else if (p.t === "storm") { if (typeof p.to === "number") { const to = p.to; this.enterWithWave(() => this.startTornado(to)); } }   // brave the storm → tornado sweep into the sky (F)
-    else if (p.t === "portal") { if (typeof p.to === "number") { const to = p.to; this.sfx(p.sub === "up" ? "leave" : "enter"); this.enterWithWave(() => this.sailTo(to)); } }   // wave at the sub-map mouth (I6)
+    else if (p.t === "tunnel") { if (typeof p.to === "number") { const to = p.to; this.sfx("enter"); this.enterWithWave(() => this.sailTo(to)); } }   // duck into a burrow → the tunnel (F)
+    else if (p.t === "portal") { if (typeof p.to === "number") { const to = p.to, end = p.end ?? null; this.sfx(p.sub === "up" ? "leave" : "enter"); this.enterWithWave(() => { this.exitEnd = end; this.sailTo(to); }); } }   // sub-map mouth / tunnel exit (carries which mouth to emerge from)
   }
   /** Is the current ring's rune puzzle solved (exactly the target runes lit)? */
   private puzzleSolved(): boolean {
@@ -1024,7 +1030,7 @@ export class CirqlWorldEngine extends RetroEngine {
         const isQL = this.isQuestLantern(p);
         const puzzle = p.t === "rune" || p.t === "tablet" || p.t === "shrine";
         const social = p.t === "gathering" || p.t === "theater" || p.t === "landmark";
-        if (p.t !== "wonders" && p.t !== "shop" && p.t !== "home" && p.t !== "storm" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social) continue;
+        if (p.t !== "wonders" && p.t !== "shop" && p.t !== "home" && p.t !== "storm" && p.t !== "tunnel" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social) continue;
         const d = Math.hypot(this.posX - p.x, this.posY - p.y);
         const range = p.t === "landmark" ? 52 : p.r ?? (isQL || p.t === "rune" ? 26 : 40);
         if (d < range && d < best) { best = d; this.near = p; }
@@ -1183,6 +1189,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "shop": draws.push({ y: p.y + 22, f: () => this.drawShop(sxp, syp, p) }); break;
         case "home": draws.push({ y: p.y + 22, f: () => this.drawHome(sxp, syp, p) }); break;
         case "storm": draws.push({ y: p.y + 30, f: () => this.drawStorm(sxp, syp, p) }); break;
+        case "tunnel": draws.push({ y: p.y, f: () => this.drawTunnel(sxp, syp, p) }); break;
         case "npc": draws.push({ y: p.y, f: () => this.drawNpc(sxp, syp, p) }); break;
         case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big, this.treeKind(p.x, p.y)) }); break;
         case "bush": draws.push({ y: p.y, f: () => this.drawBush(sxp, syp) }); break;
@@ -1899,6 +1906,21 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(cx - 4, cy + 3, 9, 1, shade(ac, -0.2));                // lintel
     this.labelPill(cx, cy - 32, p.label || "Your Home", ac);
   }
+  // A tunnel/burrow mouth on the surface (F) — a dark opening in an earthy mound.
+  private drawTunnel(cx: number, cy: number, p: Prop) {
+    const near = this.near === p;
+    if (near) this.glow(cx, cy - 4, 26, "#7fd8ff", 0.22);
+    this.rect(cx - 14, cy + 6, 28, 4, "#0a071450");                  // ground shadow
+    // earthen mound
+    this.disc(cx, cy, 12, "#4a3b2c"); this.disc(cx, cy - 2, 11, "#5a4636");
+    this.disc(cx - 6, cy - 4, 3, "#6b5642"); this.disc(cx + 7, cy - 3, 2, "#6b5642"); // clods
+    // rocks framing the mouth
+    this.disc(cx - 11, cy + 1, 3, "#6a6a72"); this.disc(cx + 11, cy + 1, 3, "#6a6a72");
+    // the dark opening + a faint glimmer of the passage within
+    this.disc(cx, cy + 1, 7, "#0b0a12"); this.disc(cx, cy + 2, 5, "#05040a");
+    if (!this.reduce) { const g = 0.3 + 0.15 * Math.sin(this.t * 2); this.disc(cx, cy + 2, 1.5, `rgba(127,216,255,${g})`); }
+    this.labelPill(cx, cy - 16, p.label || "burrow", "#9fd8e6");
+  }
   private drawNpc(cx: number, cy: number, p: Prop) {
     const ac = p.accent || "#7fffe6";
     const L = npcLook(p.id, ac);
@@ -2474,6 +2496,7 @@ export class CirqlWorldEngine extends RetroEngine {
     else if (this.near && !this.dialog) {
       const label = this.near.t === "shop" ? `Enter ${this.near.label || "the shop"}`
         : this.near.t === "home" ? "Enter your Home"
+        : this.near.t === "tunnel" ? "Enter the burrow"
         : this.near.t === "storm" ? "Brave the storm"
         : this.near.t === "npc" && this.near.shopId ? `Browse ${this.near.label || "the"}'s wares`
         : this.near.t === "wonders" ? "Enter CirqlCade"
@@ -2486,7 +2509,7 @@ export class CirqlWorldEngine extends RetroEngine {
                     : this.near.t === "theater" ? "Watch the show"
                       : this.near.t === "gathering" ? "Rest a while"
                         : this.near.t === "landmark" ? `Visit ${this.near.label || "the landmark"}`
-                        : this.near.t === "portal" ? (this.near.sub === "up" ? (isHome(this.ringIdx) ? "Leave your home" : isShop(this.ringIdx) ? "Leave the shop" : "Return to the surface") : this.near.sub === "cave" ? "Descend into the cave" : this.near.sub === "tree" ? "Climb the great tree" : "Ascend the cloud stair")
+                        : this.near.t === "portal" ? (this.near.sub === "up" ? (isTunnel(this.ringIdx) ? (this.near.label || "Take the exit") : isHome(this.ringIdx) ? "Leave your home" : isShop(this.ringIdx) ? "Leave the shop" : "Return to the surface") : this.near.sub === "cave" ? "Descend into the cave" : this.near.sub === "tree" ? "Climb the great tree" : "Ascend the cloud stair")
                           : "Set sail";
       promptTxt = `E · ${label}`; promptAcc = this.near.accent || "#35e0d0";
     }

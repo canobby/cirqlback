@@ -33,6 +33,7 @@ export type PropType =
   | "shop"      // a Town storefront — walk in to enter the shop interior (Milestone F)
   | "home"      // your cottage on CIRQLSPACE — walk in to enter & decorate the interior (Milestone F)
   | "storm"     // a swirling storm — brave it to be swept up (tornado) into the sky realm (F: weather entry)
+  | "tunnel"    // a burrow mouth — walk through the tunnel sub-map to emerge at its OTHER mouth (F)
   | "portal";   // a cave/hollow-tree/cloud-stair — travel to a sub-map (CHR-265)
 
 export type LandmarkKind = "greattree" | "stonecircle" | "lighthouse" | "crystal" | "waterfall" | "ruin";
@@ -51,6 +52,7 @@ export interface Prop {
   sub?: "cave" | "tree" | "cloud" | "up";   // portal kind (CHR-265)
   lm?: LandmarkKind;    // landmark set-piece kind (Phase J4)
   shopId?: string;      // shop storefront/keeper this prop belongs to (Milestone F)
+  end?: "a" | "b";      // which mouth of a two-ended tunnel this is (Milestone F)
 }
 
 export interface RingPalette {
