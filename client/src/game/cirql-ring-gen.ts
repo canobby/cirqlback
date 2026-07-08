@@ -185,7 +185,7 @@ export function generateRing(index: number): Ring {
   // thicket HEDGES either side of the trail, with gaps for openings (biome-appropriate flora)
   for (let i = 1; i < spine.length - 1; i++) {
     const p = spine[i], q = spine[i + 1], dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
-    for (const sd of [1, -1]) { if (rng() < 0.34) continue; const d = corr + rng() * radius * 0.06; wallClump(props, p.x + nx * sd * d, p.y + ny * sd * d, biome, 2 + Math.floor(rng() * 2), rng); }
+    for (const sd of [1, -1]) { if (rng() < 0.2) continue; const d = corr + rng() * radius * 0.07; wallClump(props, p.x + nx * sd * d, p.y + ny * sd * d, biome, 3 + Math.floor(rng() * 2), rng); }
   }
   // a couple of denser INTERIOR clumps off the trail (a grove, a rock field) for variety
   if (biome.tree) { const p = spine[Math.round((spine.length - 1) * 0.3)], sd = rng() > 0.5 ? 1 : -1; placeGrove(props, p.x + sd * corr * 2, p.y + 20, 4 + Math.floor(rng() * 3), rng); }
@@ -208,6 +208,19 @@ export function generateRing(index: number): Ring {
     }
     { const p = spine[Math.round((spine.length - 1) * 0.5)], sd = rng() > 0.5 ? 1 : -1; props.push({ t: "fairyring", x: p.x + sd * corr * 1.9, y: p.y + (rng() - 0.5) * 30 }); }
     if (rng() > 0.5) { const p = spine[Math.round((spine.length - 1) * 0.82)], sd = rng() > 0.5 ? 1 : -1; props.push({ t: "fairyring", x: p.x + sd * corr * 1.6, y: p.y }); }
+    // an extra grove for a denser, TMW-fuller wood
+    { const p = spine[Math.round((spine.length - 1) * 0.58)], sd = rng() > 0.5 ? 1 : -1; placeGrove(props, p.x + sd * corr * 1.7, p.y - 10, 4 + Math.floor(rng() * 3), rng); }
+  }
+  // TMW-density fill-in (all biomes): geography (fallen logs + stumps = natural maze walls) in
+  // pockets, plus cheap tall-grass texture — all clumped, all OFF the clear trail.
+  for (let g = 0; g < 2 + Math.floor(rng() * 2); g++) {
+    const p = spine[1 + Math.floor(rng() * (spine.length - 2))], sd = rng() > 0.5 ? 1 : -1, gx = p.x + sd * corr * 1.5, gy = p.y + (rng() - 0.5) * 40;
+    props.push({ t: "log", x: gx, y: gy });
+    if (rng() > 0.4) props.push({ t: "stump", x: gx + (rng() - 0.5) * 30, y: gy + 18 });
+  }
+  for (let g = 0; g < 5 + scaled(5); g++) {
+    const p = spine[Math.floor(rng() * (spine.length - 1))], sd = rng() > 0.5 ? 1 : -1, gx = p.x + sd * (corr * 0.5 + rng() * corr * 1.5), gy = p.y + (rng() - 0.5) * 50;
+    for (let k = 0; k < 2 + Math.floor(rng() * 3); k++) props.push({ t: "tallgrass", x: gx + (rng() - 0.5) * 26, y: gy + (rng() - 0.5) * 22 });
   }
   // a PORTAL to a sub-map on many rings (an interactive voyage down/up — CHR-265).
   // Winter is the exception: instead of a calm "cloud stair" it gets a STORM you brave —

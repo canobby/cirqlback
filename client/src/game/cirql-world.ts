@@ -15,6 +15,9 @@ export type PropType =
   | "tree"
   | "fern"      // a cluster of fronds — a couple glow (woodland understory; soft — walk through)
   | "fairyring" // a ring of glowing toadstools with a soft ground glow (woodland; soft)
+  | "log"       // a fallen mossy log (solid — a natural maze wall you walk around)
+  | "stump"     // a tree stump, sometimes with a glowing cap (solid, small)
+  | "tallgrass" // a clump of tall grass / reeds (soft — walk through; density + texture)
   | "bush"      // a leafy bush (solid) — scatter + maze/labyrinth walls (CHR-259)
   | "lantern"   // a plain path lantern
   | "crystal"

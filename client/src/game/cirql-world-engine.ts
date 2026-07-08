@@ -695,6 +695,8 @@ export class CirqlWorldEngine extends RetroEngine {
       else if (p.t === "home") out.push({ x: p.x, y: p.y, r: 26 });   // walk around your cottage (F)
       else if (p.t === "tree") out.push({ x: p.x, y: p.y + 2, r: p.big ? 13 : 10 });
       else if (p.t === "bush") out.push({ x: p.x, y: p.y, r: 7 });
+      else if (p.t === "log") out.push({ x: p.x, y: p.y, r: 11 });     // a chunky maze wall
+      else if (p.t === "stump") out.push({ x: p.x, y: p.y, r: 6 });
       else if (p.t === "rock") out.push({ x: p.x, y: p.y, r: p.big ? 12 : 8 });
       else if (p.t === "pond") out.push({ x: p.x, y: p.y, r: (p.r ?? 20) - 2 });
       else if (p.t === "fence") out.push({ x: p.x, y: p.y, r: 9 });
@@ -1224,6 +1226,9 @@ export class CirqlWorldEngine extends RetroEngine {
         case "bush": draws.push({ y: p.y, f: () => this.drawBush(sxp, syp) }); break;
         case "fern": draws.push({ y: p.y, f: () => this.drawFern(sxp, syp) }); break;
         case "fairyring": draws.push({ y: p.y, f: () => this.drawFairyRing(sxp, syp) }); break;
+        case "log": draws.push({ y: p.y, f: () => this.drawLog(sxp, syp, this.seedOf(p.x, p.y)) }); break;
+        case "stump": draws.push({ y: p.y, f: () => this.drawStump(sxp, syp) }); break;
+        case "tallgrass": draws.push({ y: p.y, f: () => this.drawTallgrass(sxp, syp, this.seedOf(p.x, p.y)) }); break;
         case "crystal": draws.push({ y: p.y, f: () => this.drawCrystal(sxp, syp, p.big, p.accent || pal.accent) }); break;
         case "rock": draws.push({ y: p.y, f: () => this.drawRock(sxp, syp, p.big) }); break;
         case "flower": draws.push({ y: p.y, f: () => this.drawFlower(sxp, syp, p.accent || "#ff8fbf") }); break;
@@ -2160,6 +2165,47 @@ export class CirqlWorldEngine extends RetroEngine {
     this.glow(cx + 16, cy - 31 + bob, 5, "#b6ff6a", 0.2 + 0.3 * this.nightAmt);
     this.disc(cx + 15, cy - 24 + bob, 0.9, "#1a1208");             // eye
   }
+  // ---- geography (density fill-in): a fallen log, a stump, a tall-grass clump ----
+  private drawLog(cx: number, cy: number, seed: number) {
+    const len = 16 + (seed % 6), moss = this.curRing.palette.grass;
+    this.disc(cx, cy + 2, 8, "#0a071440");
+    this.fillEll(cx, cy - 3, len, 6, "#5a3f24");                              // trunk
+    this.fillEll(cx - len * 0.5, cy - 3, 5.5, 6, "#3c2a18"); this.fillEll(cx + len * 0.5, cy - 3, 5.5, 6, "#3c2a18");   // end rings
+    this.disc(cx - len * 0.5, cy - 3, 2.6, "#6e4e2c"); this.disc(cx + len * 0.5, cy - 3, 2.6, "#6e4e2c");
+    this.fillEll(cx, cy - 6, len * 0.8, 2.4, "#6e4e2c");                      // lit top
+    this.fillEll(cx - 4, cy - 6, 5, 2, shade(moss, 0.05)); this.fillEll(cx + 5, cy - 5, 3, 1.6, moss);   // moss
+    if (this.curRing.biome === "woodland") { this.disc(cx - 2, cy - 8, 1.4, "#ff7aa8"); this.glow(cx - 2, cy - 9, 4, "#ff7aa8", 0.14 + 0.24 * this.nightAmt); }   // a shelf mushroom
+  }
+  private drawStump(cx: number, cy: number) {
+    this.disc(cx, cy + 2, 6, "#0a071440");
+    this.rect(cx - 5, cy - 8, 10, 8, "#5a3f24"); this.rect(cx - 5, cy - 8, 2.5, 8, "#6e4e2c");
+    this.fillEll(cx, cy - 8, 6, 3, "#7a5a34"); this.fillEll(cx, cy - 8, 3.5, 1.8, "#8a6a44");     // rings
+    this.fillEll(cx - 1, cy - 6, 5, 1.6, shade(this.curRing.palette.grass, 0.05));                // moss
+    if (this.curRing.biome === "woodland" && (cx | 0) % 2 === 0) { this.disc(cx + 4, cy - 9, 1.3, "#54ffe0"); this.glow(cx + 4, cy - 10, 4, "#54ffe0", 0.14 + 0.24 * this.nightAmt); }
+  }
+  private drawTallgrass(cx: number, cy: number, seed: number) {
+    const g = this.curRing.palette.grass, hi = shade(g, 0.22), dk = shade(g, -0.22), n = 5 + (seed % 4);
+    for (let i = 0; i < n; i++) {
+      const bx = cx + (i - (n - 1) / 2) * 2.2 + (((seed >> i) % 3) - 1);
+      const h = 8 + ((seed >> (i + 3)) % 6), sw = this.reduce ? 0 : Math.sin(this.t * 1.5 + i + cx * 0.05) * 1.4;
+      this.neonPath([[bx, cy], [bx + sw * 0.5, cy - h * 0.6], [bx + sw, cy - h]], i % 3 ? g : (i % 2 ? hi : dk), 0, 1.2, 1);
+    }
+  }
+  // ---- more animals (density fill-in): a hopping rabbit, a flitting bird ----
+  private drawRabbit(cx: number, cy: number, hop: number) {
+    const body = "#b8a890", bob = hop ? -Math.abs(Math.sin(hop)) * 3 : 0;
+    this.disc(cx, cy + 1, 4, "#0a071438");
+    this.fillEll(cx, cy - 3 + bob, 4, 3.5, body);                             // body
+    this.disc(cx + 3, cy - 5 + bob, 2.2, body);                              // head
+    this.rect(cx + 2, cy - 9 + bob, 1.2, 4, "#a89880"); this.rect(cx + 4, cy - 9 + bob, 1.2, 4, "#a89880");   // ears
+    this.disc(cx - 3, cy - 2 + bob, 1.4, "#e8ddcf");                          // tail
+    this.disc(cx + 4, cy - 5 + bob, 0.5, "#1a1208");                          // eye
+  }
+  private drawBird(cx: number, cy: number, ph: number) {
+    const c = "#7fb0d8", w = 1.6 + Math.abs(Math.sin(ph * 7)) * 1.4;
+    this.disc(cx, cy, 1.6, c); this.rect(cx - 1, cy - 2, 3, 1.2, shade(c, -0.2));   // body + head
+    this.disc(cx - w, cy - 1, 1.3, c); this.disc(cx + w, cy - 1, 1.3, c);           // wings
+  }
   private drawCrystal(cx: number, cy: number, big: boolean | undefined, c: string) {
     const s = big ? 1.35 : 1;
     this.disc(cx, cy + 2, 5 * s, "#0a071440");
@@ -2372,6 +2418,21 @@ export class CirqlWorldEngine extends RetroEngine {
         const an = fl[(d * 7 + 3) % fl.length], wx = an.x + Math.sin(t * 0.25 + d * 2) * 40, wy = an.y + 34 + Math.cos(t * 0.2 + d) * 22;
         const sx = wx - camX, sy = wy - camY;
         if (sx > -30 && sx < W + 30 && sy > -30 && sy < H + 30) this.drawMossDeer(sx, sy, t + d);
+      }
+      // rabbits hopping near the undergrowth (clumped by flora)
+      const gr = this.curRing.props.filter((p) => p.t === "tree" || p.t === "bush" || p.t === "fern");
+      for (let d = 0; d < 3 && gr.length; d++) {
+        const an = gr[(d * 13 + 5) % gr.length], cyc = 2.6 + (d % 3) * 0.4, prog = (t + d * 0.8) / cyc, hopN = Math.floor(prog), ph = prog - hopN;
+        const ra = hopN * 1.9 + d * 2.3, ra2 = (hopN + 1) * 1.9 + d * 2.3;
+        let rx = an.x + Math.cos(ra) * 24, ry = an.y + 22 + Math.sin(ra) * 14, hp = 0;
+        if (ph > 0.7) { const jt = (ph - 0.7) / 0.3; hp = jt * Math.PI; rx = an.x + Math.cos(ra) * 24 + (Math.cos(ra2) - Math.cos(ra)) * 24 * jt; ry = an.y + 22 + Math.sin(ra) * 14 + (Math.sin(ra2) - Math.sin(ra)) * 14 * jt; }
+        const sx = rx - camX, sy = ry - camY; if (sx > -20 && sx < W + 20 && sy > -20 && sy < H + 20) this.drawRabbit(sx, sy, ph > 0.7 ? hp : 0);
+      }
+      // birds flitting around the canopies
+      const tr = this.curRing.props.filter((p) => p.t === "tree");
+      for (let d = 0; d < 4 && tr.length; d++) {
+        const an = tr[(d * 17 + 2) % tr.length], bx = an.x + Math.sin(t * 0.8 + d * 1.7) * 30, by = an.y - 30 + Math.cos(t * 0.7 + d) * 16;
+        const sx = bx - camX, sy = by - camY; if (sx > -20 && sx < W + 20 && sy > -20 && sy < H + 20) this.drawBird(sx, sy, t * 1.4 + d);
       }
     }
   }
