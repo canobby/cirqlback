@@ -73,7 +73,7 @@ export const TOWN_THEME: OTrack = {
 // ---- Wilds — the big anthem, sweeping & wide (D: vi–IV–I–V) ----------------------
 const WILD_CHORDS = [["D4", "F#4", "B4"], ["D4", "G4", "B4"], ["D4", "F#4", "A4"], ["C#4", "E4", "A4"]];
 export const WILDS_THEME: OTrack = {
-  bpm: 116,
+  bpm: 116, gain: 0.84,
   layers: [
     { inst: "strings", gain: 1.0, pattern: CHORD(WILD_CHORDS) },
     { inst: "pad", gain: 0.7, minIntensity: 0.3, pattern: CHORD(WILD_CHORDS) },
@@ -87,7 +87,7 @@ export const WILDS_THEME: OTrack = {
 // ---- Frost (winter) — a bittersweet synth ballad, airy & wistful (Am: vi–IV–I–V) -
 const FROST_CHORDS = [["A3", "C4", "E4"], ["A3", "C4", "F4"], ["C4", "E4", "G4"], ["B3", "D4", "G4"]];
 export const FROST_THEME: OTrack = {
-  bpm: 90,
+  bpm: 90, gain: 1.2,
   layers: [
     { inst: "pad", gain: 1.0, pattern: CHORD(FROST_CHORDS) },
     { inst: "strings", gain: 0.6, minIntensity: 0.5, pattern: CHORD(FROST_CHORDS) },
@@ -100,7 +100,7 @@ export const FROST_THEME: OTrack = {
 // ---- Ember (volcanic) — driving, tense but hopeful (Em: i–VI–III–VII) ------------
 const EMBER_CHORDS = [["E4", "G4", "B4"], ["C4", "E4", "G4"], ["D4", "G4", "B4"], ["D4", "F#4", "A4"]];
 export const EMBER_THEME: OTrack = {
-  bpm: 124,
+  bpm: 124, gain: 0.82,
   layers: [
     { inst: "strings", gain: 1.0, pattern: CHORD(EMBER_CHORDS) },
     { inst: "bass", gain: 1.0, pattern: PULSE(["E2", "C2", "G2", "D2"]) },
@@ -113,7 +113,7 @@ export const EMBER_THEME: OTrack = {
 // ---- Sub-maps (cave/canopy/cloud) — atmospheric synth, hushed & glimmering (Am) --
 const SUB_CHORDS = [["A3", "C4", "E4"], ["B3", "D4", "G4"], ["A3", "C4", "F4"], ["B3", "D4", "G4"]];
 export const SUBMAP_THEME: OTrack = {
-  bpm: 82,
+  bpm: 82, gain: 1.16,
   layers: [
     { inst: "pad", gain: 1.0, pattern: CHORD(SUB_CHORDS) },
     { inst: "bass", gain: 1.0, pattern: ROOT(["A1", "G2", "F2", "G2"]) },
@@ -137,7 +137,7 @@ export const SHOP_THEME: OTrack = {
 // ---- Voyage — the biggest, most sweeping anthem of all (D: I–V–vi–IV) ------------
 const VOY_CHORDS = [["D4", "F#4", "A4"], ["C#4", "E4", "A4"], ["D4", "F#4", "B4"], ["D4", "G4", "B4"]];
 export const VOYAGE_THEME: OTrack = {
-  bpm: 114,
+  bpm: 114, gain: 0.84,
   layers: [
     { inst: "strings", gain: 1.0, pattern: CHORD(VOY_CHORDS) },
     { inst: "pad", gain: 0.7, minIntensity: 0.3, pattern: CHORD(VOY_CHORDS) },
@@ -169,7 +169,7 @@ export const AURORA_THEME: OTrack = {
 // ---- NOCTURNE — dreamy, wistful, late-night new-wave ballad (Am: vi–IV–I–V). Cozy/hushed.
 const NOCT_CHORDS = [["A3", "C4", "E4"], ["F3", "A3", "C4"], ["C4", "E4", "G4"], ["G3", "B3", "D4"]];
 export const NOCTURNE_THEME: OTrack = {
-  bpm: 90,
+  bpm: 90, gain: 1.2,
   layers: [
     { inst: "pad", gain: 1.0, pattern: CHORD(NOCT_CHORDS) },
     { inst: "strings", gain: 0.5, minIntensity: 0.55, pattern: CHORD(NOCT_CHORDS) },
@@ -182,7 +182,7 @@ export const NOCTURNE_THEME: OTrack = {
 // ---- GROOVE — punchy, brassy, funky stabs & driving bass (E mixolydian vamp). Lively spots.
 const GROOVE_CHORDS = [["E4", "G#4", "B4"], ["D4", "F#4", "A4"], ["A3", "C#4", "E4"], ["D4", "F#4", "A4"]];
 export const GROOVE_THEME: OTrack = {
-  bpm: 112,
+  bpm: 112, gain: 0.86,
   layers: [
     { inst: "bass", gain: 1.0, pattern: PULSE(["E2", "D2", "A2", "D2"]) },
     { inst: "arp", gain: 0.7, minIntensity: 0.35, pattern: ARP(GROOVE_CHORDS) },
@@ -195,7 +195,7 @@ export const GROOVE_THEME: OTrack = {
 // ---- TRIUMPH — driving, anthemic "montage" energy, relentless pulse + big hits (Am: i–VII–VI–VII).
 const TRIUMPH_CHORDS = [["A3", "C4", "E4"], ["G3", "B3", "D4"], ["F3", "A3", "C4"], ["G3", "B3", "D4"]];
 export const TRIUMPH_THEME: OTrack = {
-  bpm: 116,
+  bpm: 116, gain: 0.8,
   layers: [
     { inst: "strings", gain: 1.0, pattern: CHORD(TRIUMPH_CHORDS) },
     { inst: "bass", gain: 1.0, pattern: PULSE(["A2", "G2", "F2", "G2"]) },
@@ -205,17 +205,22 @@ export const TRIUMPH_THEME: OTrack = {
   ],
 };
 
-/** Pick the theme for where the player is. `ambient` is the ring's biome proxy. Now rotates
- *  through the wider pool so the score varies as you move + lifts to high-energy on deep rings. */
-export function trackForContext(ring: number, ambient: string | undefined, isShop: boolean, isSubMap: boolean): OTrack {
-  if (isShop) return ring % 2 ? GROOVE_THEME : SHOP_THEME;         // lively — funk stabs alternate
-  if (isSubMap) return ring % 2 ? NOCTURNE_THEME : SUBMAP_THEME;   // hushed/dreamy alternate
-  if (ring <= 0) return CIRQLSPACE_THEME;
-  if (ring === 1) return TOWN_THEME;
+/** The POOL of themes suitable for where the player is — the score auto-rotates through it
+ *  (every ~minute, with a crossfade) so no one tune wears out. `ambient` is the biome proxy. */
+export function tracksForContext(ring: number, ambient: string | undefined, isShop: boolean, isSubMap: boolean): OTrack[] {
+  if (isShop) return [SHOP_THEME, GROOVE_THEME];                   // lively — bright pop + funk stabs
+  if (isSubMap) return [SUBMAP_THEME, NOCTURNE_THEME];             // hushed + dreamy
+  if (ring <= 0) return [CIRQLSPACE_THEME, NOCTURNE_THEME];        // home can drift to the late-night one
+  if (ring === 1) return [TOWN_THEME, GROOVE_THEME];              // town gets a funk turn
   const semis = [0, 2, -3, 5, -2, 3][((ring % 6) + 6) % 6];
-  if (ambient === "snow") return transpose(FROST_THEME, semis);   // biome-locked moods
-  if (ambient === "ember") return transpose(EMBER_THEME, semis);
-  // deeper rings = higher stakes → the montage energy joins the rotation; else sweeping/soaring
+  if (ambient === "snow") return [FROST_THEME, AURORA_THEME].map((t) => transpose(t, semis));
+  if (ambient === "ember") return [EMBER_THEME, TRIUMPH_THEME].map((t) => transpose(t, semis));
+  // deeper rings = higher stakes → the montage energy joins the sweeping/soaring rotation
   const pool = ring >= 8 ? [WILDS_THEME, AURORA_THEME, TRIUMPH_THEME] : [WILDS_THEME, AURORA_THEME];
-  return transpose(pool[((ring / 2) | 0) % pool.length], semis);
+  return pool.map((t) => transpose(t, semis));
+}
+
+/** The default theme for a context (the pool's first) — kept for callers that want one track. */
+export function trackForContext(ring: number, ambient: string | undefined, isShop: boolean, isSubMap: boolean): OTrack {
+  return tracksForContext(ring, ambient, isShop, isSubMap)[0];
 }

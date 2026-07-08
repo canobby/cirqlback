@@ -15,7 +15,7 @@ export type Inst = "strings" | "pad" | "lead" | "bass" | "harp" | "bell" | "boom
 /** A step: a note ("C4"), a CHORD (["E4","G4","B4"]), a drum-ish boom ("*"), or 0 (rest). `d` = 16th-note steps. */
 export interface OStep { n: string | string[] | 0; d: number }
 export interface OLayer { inst: Inst; gain?: number; minIntensity?: number; pattern: OStep[] }
-export interface OTrack { bpm: number; layers: OLayer[] }
+export interface OTrack { bpm: number; layers: OLayer[]; gain?: number }   // gain = per-track loudness trim (balance quiet vs loud tracks)
 
 const NOTE_IDX: Record<string, number> = { C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11 };
 function noteFreq(name: string): number {
@@ -129,6 +129,30 @@ export class CirqlOrchestra {
     if (this.timer == null) this.timer = window.setInterval(() => this.tick(), 25);
   }
 
+  /** Smoothly transition to a new track: dip the master, swap at the trough, lift back up.
+   *  The old track's long note releases keep ringing through the dip and overlap the new
+   *  track's attacks — so nothing starts or ends abruptly (a gentle crossfade). */
+  crossfadeTo(track: OTrack, fade = 1.5) {
+    const ac = this.ctx(); if (!ac) return;
+    if (ac.state === "suspended") ac.resume();
+    if (!this.track || this.timer == null || this.muted) { this.play(track); return; }   // from silence → just start
+    const m = this.master; if (!m) { this.play(track); return; }
+    const now = ac.currentTime, half = fade / 2, low = this.volume * 0.16;
+    m.gain.cancelScheduledValues(now);
+    m.gain.setValueAtTime(Math.max(0.0001, m.gain.value), now);
+    m.gain.linearRampToValueAtTime(Math.max(0.0001, low), now + half);          // dip (old notes tail out here)
+    window.setTimeout(() => {
+      const ac2 = this.ac, m2 = this.master; if (!ac2 || !m2 || this.muted) return;
+      this.track = track;
+      this.layers = track.layers.map((l) => { const steps = expand(l.pattern); return { ...l, steps, len: steps.length || 1 }; });
+      this.stepDur = 60 / track.bpm / 4;
+      this.step = 0; this.nextTime = ac2.currentTime + 0.05;
+      const t = ac2.currentTime;
+      m2.gain.cancelScheduledValues(t);
+      m2.gain.setValueAtTime(Math.max(0.0001, m2.gain.value), t);
+      m2.gain.linearRampToValueAtTime(this.volume, t + half);                   // lift the new track in
+    }, half * 1000);
+  }
   stop() { if (this.timer != null) { window.clearInterval(this.timer); this.timer = null; } this.track = null; this.layers = []; }
   setIntensity(x: number) { this.intensity = Math.max(0, Math.min(1, x)); }
   setVolume(v: number) { this.volume = Math.max(0, Math.min(1, v)); if (this.master && this.ac && !this.muted) this.master.gain.setTargetAtTime(this.volume, this.ac.currentTime, 0.05); }
@@ -152,7 +176,7 @@ export class CirqlOrchestra {
       if (!ev || ev.n === 0) continue;
       const dur = ev.d * this.stepDur;
       const notes = Array.isArray(ev.n) ? ev.n : [ev.n];
-      const layerGain = l.gain ?? 1;
+      const layerGain = (l.gain ?? 1) * (this.track?.gain ?? 1);   // per-track loudness trim
       for (const nm of notes) { const f = noteFreq(nm); if (f > 0) { this.voice(l.inst, f, when, dur, layerGain); this.notesScheduled++; } }
     }
   }

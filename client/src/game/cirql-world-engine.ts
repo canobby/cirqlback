@@ -14,7 +14,7 @@ import { getRing, ringName, isSubMap, parentOf, subKindOf, isTunnel } from "./ci
 import { isShop } from "./cirql-shops";
 import { isHome } from "./cirql-home";
 import { CirqlOrchestra } from "./cirql-orchestra";
-import { trackForContext } from "./cirql-music";
+import { tracksForContext } from "./cirql-music";
 import { cirqlSfx, type SfxKind } from "./cirql-sfx";
 import { MOVIES, REEL_SECONDS } from "./cirql-theater";
 import {
@@ -225,14 +225,31 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- G: music & SFX ----------
   private orchestra: CirqlOrchestra | null = null;
   private musicStarted = false; private musicVol = 0.7;
+  private musicKey = ""; private musicIdx = 0; private musicT = 0;   // rotation state (auto-rotate every ~minute)
   /** Begin (or resume) the adaptive soundtrack — call from a user gesture (start picker / confirm). */
   startAudio() { this.musicStarted = true; cirqlSfx.resume(); this.updateMusic(); }
-  /** Swap to the theme for the current ring/biome + set its intensity by context. */
+  private musicCtx() { return { shop: isShop(this.ringIdx) || isHome(this.ringIdx), sub: isSubMap(this.ringIdx) && !isHome(this.ringIdx) }; }
+  /** On a context change (new ring/shop/sub): crossfade to that context's first theme + reset
+   *  the ~minute rotation. Same context → no-op (the rotation keeps it fresh). */
   private updateMusic() {
     if (!this.musicStarted || !this.orchestra || this.musicVol <= 0) return;
-    const shop = isShop(this.ringIdx) || isHome(this.ringIdx), sub = isSubMap(this.ringIdx) && !isHome(this.ringIdx);
-    this.orchestra.play(trackForContext(this.ringIdx, this.curRing.ambient, shop, sub));
+    const { shop, sub } = this.musicCtx();
+    const key = `${shop ? 1 : 0}|${sub ? 1 : 0}|${this.ringIdx}`;
+    if (key === this.musicKey && this.orchestra.playing) return;   // already in this context
+    this.musicKey = key; this.musicIdx = 0; this.musicT = 0;
+    this.orchestra.crossfadeTo(tracksForContext(this.ringIdx, this.curRing.ambient, shop, sub)[0]);
     this.orchestra.setIntensity(this.ringIdx <= 0 ? 0.55 : shop ? 0.5 : sub ? 0.6 : this.ringIdx === 1 ? 0.8 : 0.9);
+  }
+  /** Every ~minute on the same context, crossfade to the next theme in the pool so no single
+   *  tune wears out. Called from the sim loop once the timer trips. */
+  private rotateMusic() {
+    this.musicT = 0;
+    if (!this.musicStarted || !this.orchestra || this.musicVol <= 0) return;
+    const { shop, sub } = this.musicCtx();
+    const pool = tracksForContext(this.ringIdx, this.curRing.ambient, shop, sub);
+    if (pool.length <= 1) return;
+    this.musicIdx = (this.musicIdx + 1) % pool.length;
+    this.orchestra.crossfadeTo(pool[this.musicIdx]);
   }
   /** Settings "Music" (0..1). 0 stops the soundtrack; raising it restarts the current theme. */
   setMusicVol(v: number) {
@@ -1095,6 +1112,9 @@ export class CirqlWorldEngine extends RetroEngine {
 
     // living creatures react to you (shy/curious fauna) — stateful, per sim step
     this.ensureCreatures(); this.updateCreatures(dt);
+
+    // auto-rotate the soundtrack every ~minute so no tune wears out (crossfaded)
+    if (this.musicStarted && this.orchestra && this.musicVol > 0) { this.musicT += dt; if (this.musicT >= 60) this.rotateMusic(); }
 
     // camera easing
     this.camX += ((this.posX - this.LW / 2) - this.camX) * Math.min(1, dt * 8);
