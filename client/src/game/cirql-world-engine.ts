@@ -2221,9 +2221,11 @@ export class CirqlWorldEngine extends RetroEngine {
     if (this.reduce || this.curRing.biome !== "woodland") return;   // hero fauna per biome (woodland first)
     const flora = this.curRing.props.filter((p) => p.t === "tree" || p.t === "fern" || p.t === "fairyring");
     const spawn = (sp: "deer" | "rabbit" | "fox", n: number, k: number) => {
+      const edge = this.effR() * 0.82;
       for (let i = 0; i < n; i++) {
         const a = flora.length ? flora[(i * 7 + k) % flora.length] : { x: 0, y: 0 };
-        const hx = a.x + Math.sin(i * 2.3 + k) * 44, hy = a.y + 30 + Math.cos(i * 1.7 + k) * 34;
+        let hx = a.x + Math.sin(i * 2.3 + k) * 44, hy = a.y + 30 + Math.cos(i * 1.7 + k) * 34;
+        const hr = Math.hypot(hx, hy); if (hr > edge) { hx = hx / hr * edge; hy = hy / hr * edge; }
         this.creatures.push({ x: hx, y: hy, vx: 0, vy: 0, sp, mode: "graze", trust: 0, t: i * 1.3, face: 1, rest: 0, wtx: hx, wty: hy, home: { x: hx, y: hy } });
       }
     };
@@ -2252,13 +2254,16 @@ export class CirqlWorldEngine extends RetroEngine {
         } else { c.mode = "graze"; c.trust = Math.max(0, c.trust - dt * 0.08);
           if (c.rest <= 0) { c.rest = 1.6 + Math.random() * 2.4; c.wtx = c.home.x + (Math.random() - 0.5) * 84; c.wty = c.home.y + (Math.random() - 0.5) * 64; } c.rest -= dt; tx = c.wtx; ty = c.wty; }
       }
+      // keep the TARGET — and the creature — on solid land (never wander/flee into the sea)
+      const edge = this.effR() * 0.85;
+      { const tr = Math.hypot(tx, ty); if (tr > edge) { tx = tx / tr * edge; ty = ty / tr * edge; } }
       const mdx = tx - c.x, mdy = ty - c.y, md = Math.hypot(mdx, mdy) || 1;
       const dvx = md < 5 ? 0 : (mdx / md) * spd, dvy = md < 5 ? 0 : (mdy / md) * spd;
       c.vx += (dvx - c.vx) * Math.min(1, dt * 6); c.vy += (dvy - c.vy) * Math.min(1, dt * 6);
       c.x += c.vx * dt; c.y += c.vy * dt;
       if (Math.abs(c.vx) > 3) c.face = c.vx > 0 ? 1 : -1;
       c.t += dt;
-      const lim = this.effR() * 0.92, rr = Math.hypot(c.x, c.y); if (rr > lim) { c.x = c.x / rr * lim; c.y = c.y / rr * lim; }
+      const rr = Math.hypot(c.x, c.y); if (rr > edge) { c.x = c.x / rr * edge; c.y = c.y / rr * edge; c.vx *= 0.4; c.vy *= 0.4; }   // shore barrier
     }
   }
   private drawCreatures() {
@@ -2530,9 +2535,11 @@ export class CirqlWorldEngine extends RetroEngine {
         this.glow(sx, sy, 3.5, "#a8ffe0", a); this.disc(sx, sy, 0.7, "#e8fff6");
       }
       // birds flitting around the canopies (deer/rabbits/fox are now the stateful creatures)
-      const tr = this.curRing.props.filter((p) => p.t === "tree");
+      const tr = this.curRing.props.filter((p) => p.t === "tree"), bEdge = R * 0.85;
       for (let d = 0; d < 4 && tr.length; d++) {
-        const an = tr[(d * 17 + 2) % tr.length], bx = an.x + Math.sin(t * 0.8 + d * 1.7) * 30, by = an.y - 30 + Math.cos(t * 0.7 + d) * 16;
+        const an = tr[(d * 17 + 2) % tr.length];
+        let bx = an.x + Math.sin(t * 0.8 + d * 1.7) * 30, by = an.y - 30 + Math.cos(t * 0.7 + d) * 16;
+        const br = Math.hypot(bx, by); if (br > bEdge) { bx = bx / br * bEdge; by = by / br * bEdge; }   // birds stay over the island
         const sx = bx - camX, sy = by - camY; if (sx > -20 && sx < W + 20 && sy > -20 && sy < H + 20) this.drawBird(sx, sy, t * 1.4 + d);
       }
     }
