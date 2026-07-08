@@ -1796,18 +1796,38 @@ export class CirqlWorldEngine extends RetroEngine {
   private isInterior() { return isShop(this.ringIdx) || isHome(this.ringIdx); }
   private roomBounds() { return { x0: -300, y0: -58, x1: 300, y1: 200 }; }   // walkable floor rect (in front of the counter)
   private static readonly ROOM_SOLID: Record<string, { hw: number; hh: number }> = {
-    counter: { hw: 150, hh: 11 }, backshelf: { hw: 52, hh: 10 }, barrel: { hw: 11, hh: 11 },
-    crate: { hw: 12, hh: 11 }, crateSm: { hw: 8, hh: 8 }, sacks: { hw: 24, hh: 13 },
+    counter: { hw: 150, hh: 11 }, backshelf: { hw: 52, hh: 10 }, arcaneshelf: { hw: 52, hh: 10 }, plantshelf: { hw: 52, hh: 10 }, toolrack: { hw: 52, hh: 10 },
+    barrel: { hw: 11, hh: 11 }, crate: { hw: 12, hh: 11 }, crateSm: { hw: 8, hh: 8 }, sacks: { hw: 24, hh: 13 },
+    mannequin: { hw: 9, hh: 11 }, wardrobe: { hw: 22, hh: 11 }, mirror: { hw: 10, hh: 7 },
+    bigplant: { hw: 13, hh: 13 }, indoorpond: { hw: 26, hh: 16 }, crystalball: { hw: 12, hh: 13 }, telescope: { hw: 13, hh: 13 },
+    workbench: { hw: 36, hh: 12 }, lumberstack: { hw: 28, hh: 13 },
   };
   private roomItems(): { kind: string; x: number; y: number }[] {
     const id = shopIdAt(this.ringIdx);
-    const F: { kind: string; x: number; y: number }[] = [{ kind: "hanglamp", x: -150, y: -182 }, { kind: "hanglamp", x: 150, y: -182 }];
-    if (id === "general") {
-      F.push({ kind: "backshelf", x: -100, y: -170 }, { kind: "backshelf", x: 100, y: -170 }, { kind: "counter", x: 0, y: -80 }, { kind: "rug", x: 0, y: 95 });
-      F.push({ kind: "crate", x: -250, y: 178 }, { kind: "crate", x: -214, y: 190 }, { kind: "crateSm", x: -250, y: 140 });
-      F.push({ kind: "barrel", x: 250, y: 174 }, { kind: "barrel", x: 214, y: 188 }, { kind: "barrel", x: 268, y: 138 }, { kind: "sacks", x: -258, y: 78 });
-    } else {   // generic cozy fallback until each shop is furnished
-      F.push({ kind: "counter", x: 0, y: -80 }, { kind: "rug", x: 0, y: 95 }, { kind: "barrel", x: 250, y: 174 }, { kind: "crate", x: -250, y: 178 });
+    const F: { kind: string; x: number; y: number }[] = [{ kind: "hanglamp", x: -150, y: -182 }, { kind: "hanglamp", x: 150, y: -182 }, { kind: "counter", x: 0, y: -80 }, { kind: "rug", x: 0, y: 110 }];
+    switch (id) {
+      case "general":
+        F.push({ kind: "backshelf", x: -100, y: -170 }, { kind: "backshelf", x: 100, y: -170 });
+        F.push({ kind: "crate", x: -250, y: 178 }, { kind: "crate", x: -214, y: 190 }, { kind: "crateSm", x: -250, y: 140 });
+        F.push({ kind: "barrel", x: 250, y: 174 }, { kind: "barrel", x: 214, y: 188 }, { kind: "barrel", x: 268, y: 138 }, { kind: "sacks", x: -258, y: 78 }); break;
+      case "boutique":
+        F.push({ kind: "backshelf", x: -100, y: -170 }, { kind: "backshelf", x: 100, y: -170 });
+        F.push({ kind: "mannequin", x: -246, y: 46 }, { kind: "mannequin", x: -200, y: 96 }, { kind: "mannequin", x: 250, y: 150 });
+        F.push({ kind: "wardrobe", x: 236, y: 34 }, { kind: "mirror", x: -244, y: 158 }); break;
+      case "garden":
+        F.push({ kind: "plantshelf", x: -100, y: -170 }, { kind: "plantshelf", x: 100, y: -170 });
+        F.push({ kind: "bigplant", x: -252, y: 58 }, { kind: "bigplant", x: 252, y: 50 }, { kind: "bigplant", x: 208, y: 156 });
+        F.push({ kind: "indoorpond", x: -232, y: 156 }, { kind: "crate", x: 258, y: 172 }); break;
+      case "curios":
+        F.push({ kind: "arcaneshelf", x: -100, y: -170 }, { kind: "arcaneshelf", x: 100, y: -170 });
+        F.push({ kind: "crystalball", x: 0, y: 60 }, { kind: "telescope", x: 244, y: 66 });
+        F.push({ kind: "crate", x: -252, y: 168 }, { kind: "crate", x: -216, y: 180 }); break;
+      case "building":
+        F.push({ kind: "toolrack", x: -100, y: -170 }, { kind: "toolrack", x: 100, y: -170 });
+        F.push({ kind: "workbench", x: -196, y: 60 }, { kind: "lumberstack", x: 238, y: 80 });
+        F.push({ kind: "barrel", x: 250, y: 176 }, { kind: "barrel", x: 214, y: 188 }, { kind: "crate", x: -252, y: 176 }); break;
+      default:
+        F.push({ kind: "backshelf", x: -100, y: -170 }, { kind: "barrel", x: 250, y: 174 }, { kind: "crate", x: -250, y: 178 });
     }
     return F;
   }
@@ -1864,6 +1884,49 @@ export class CirqlWorldEngine extends RetroEngine {
         for (let x = sx - 130; x < sx + 140; x += 50) this.rect(x, sy + 2, 2, 22, "#4a2e18");
         this.rect(sx - 96, sy - 16, 9, 8, "#ffd24a"); this.disc(sx + 70, sy - 12, 4, "#8fd0ff"); this.rect(sx + 6, sy - 15, 6, 7, "#ff9dd6"); this.disc(sx - 40, sy - 12, 3.5, ac);
         this.rect(sx + 110, sy - 18, 3, 10, "#c9c3d6"); this.rect(sx + 104, sy - 20, 15, 3, "#c9c3d6"); return;
+      case "plantshelf": {
+        this.rect(sx - 52, sy - 18, 104, 38, "#4a3a24"); this.rectLine(sx - 52, sy - 18, 104, 38, dk); this.rect(sx - 52, sy - 1, 104, 2.5, "#3a2c1a"); this.rect(sx - 52, sy - 18, 104, 2.5, shade("#4a3a24", 0.22));
+        for (let i = 0; i < 6; i++) { const px = sx - 42 + i * 17, row = i % 2, py = sy - 8 + row * 17; this.rect(px - 3, py, 6, 5, "#8a5a30"); this.fillEll(px, py - 2, 5, 4, i % 2 ? "#3fae5a" : "#59c46f"); this.disc(px + 1, py - 4, 2, "#7fd88a"); } return;
+      }
+      case "arcaneshelf": {
+        this.rect(sx - 52, sy - 18, 104, 38, "#3a2e50"); this.rectLine(sx - 52, sy - 18, 104, 38, dk); this.rect(sx - 52, sy - 1, 104, 2.5, "#2a2040"); this.rect(sx - 52, sy - 18, 104, 2.5, shade("#3a2e50", 0.24));
+        this.disc(sx - 42, sy - 6, 3, "#e8e0d0"); this.disc(sx - 43, sy - 7, 0.8, "#3a2e50"); this.disc(sx - 41, sy - 7, 0.8, "#3a2e50");
+        this.rect(sx - 26, sy - 10, 4, 8, "#8fe6a0"); this.rect(sx - 27, sy - 12, 6, 2, "#5a8a6a"); this.rect(sx - 8, sy - 8, 7, 5, "#d8c090");
+        this.rect(sx + 12, sy - 7, 5, 4, "#c79dff"); this.glow(sx + 14, sy - 5, 6, "#c79dff", 0.2); this.rect(sx + 30, sy - 12, 2, 8, "#e8e0d0"); this.disc(sx + 31, sy - 13, 1.4, "#ffd24a");
+        this.disc(sx - 30, sy + 11, 3, "#7fd8ff"); this.rect(sx - 6, sy + 7, 6, 6, "#ff9dd6"); this.disc(sx + 26, sy + 10, 2.5, "#ffab6a"); return;
+      }
+      case "toolrack": {
+        this.rect(sx - 52, sy - 16, 104, 34, "#5a4326"); this.rectLine(sx - 52, sy - 16, 104, 34, dk); this.rect(sx - 52, sy - 16, 104, 2.5, shade("#5a4326", 0.2));
+        this.rect(sx - 44, sy - 12, 2, 16, "#8a6a44"); this.triY(sx - 43, sy + 4, 8, 5, "#c9c3d6"); this.rect(sx - 20, sy - 12, 2, 14, "#6a4a24"); this.rect(sx - 24, sy - 12, 10, 4, "#4a4656");
+        this.rect(sx + 4, sy - 12, 2, 14, "#8a8a94"); this.disc(sx + 5, sy - 12, 3, "#8a8a94"); this.disc(sx + 5, sy - 12, 1.4, "#5a4326"); this.rect(sx + 24, sy - 6, 22, 4, "#ffd24a"); this.rect(sx + 33, sy - 5, 3, 2, "#7fd88a"); return;
+      }
+      case "mannequin":
+        this.rect(sx - 1, sy + 2, 2, 10, "#5a4632"); this.fillEll(sx, sy + 12, 6, 2.5, "#0a071440"); this.fillEll(sx, sy - 2, 8, 11, shade(ac, -0.1)); this.fillEll(sx, sy - 8, 5, 4, shade(ac, -0.2)); this.fillEll(sx, sy - 4, 6, 7, mix(ac, "#ffffff", 0.25)); return;
+      case "wardrobe":
+        this.rect(sx - 22, sy - 20, 44, 40, "#6a4a30"); this.rectLine(sx - 22, sy - 20, 44, 40, dk); this.rect(sx - 22, sy - 20, 44, 3, shade("#6a4a30", 0.2));
+        this.rect(sx - 21, sy - 18, 20, 36, "#7a5636"); this.rect(sx + 1, sy - 18, 20, 36, "#7a5636"); this.rect(sx - 0.5, sy - 18, 1, 36, dk); this.disc(sx - 4, sy, 1.4, "#ffd98a"); this.disc(sx + 4, sy, 1.4, "#ffd98a"); return;
+      case "mirror":
+        this.fillEll(sx, sy - 2, 10, 15, "#c99a5a"); this.fillEll(sx, sy - 2, 8, 13, mix(ac, "#eaf6ff", 0.7)); if (!this.reduce) this.rect(sx - 4, sy - 8, 2, 8, "#ffffff40"); this.rect(sx - 8, sy + 12, 16, 2, "#8a6a44"); return;
+      case "bigplant": {
+        this.fillEll(sx, sy + 12, 12, 3.5, "#0a071440"); this.rect(sx - 9, sy + 4, 18, 10, "#a86a3a"); this.rect(sx - 9, sy + 4, 18, 2, "#c08a4a"); this.fillEll(sx, sy + 4, 9, 2.5, "#7a4a26");
+        for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * 0.5; this.fillEll(sx + Math.cos(a) * 8, sy - 6 + Math.sin(a) * 8, 4, 8, i % 2 ? "#3fae5a" : "#59c46f"); } this.disc(sx, sy - 12, 5, "#7fd88a"); return;
+      }
+      case "indoorpond":
+        this.fillEll(sx, sy, 26, 15, "#3a5a4a"); this.fillEll(sx, sy, 22, 12, "#2f7a6a"); this.fillEll(sx, sy - 1, 16, 8, "#4fe0d0");
+        if (!this.reduce) { this.fillEll(sx - 5, sy - 2, 4, 2, "#bff0ff80"); this.ring(sx, sy, 6 + (this.t * 6 % 10), "#bff0ff30", 1); } return;
+      case "crystalball": {
+        this.rect(sx - 8, sy + 6, 16, 8, "#4a3a5a"); this.rect(sx - 5, sy - 2, 10, 10, "#3a2e50"); this.fillEll(sx, sy + 14, 9, 3, "#0a071440");
+        const cp = this.reduce ? 0.6 : 0.5 + 0.5 * Math.sin(this.t * 2); this.disc(sx, sy - 6, 8, "#1a1030"); this.disc(sx, sy - 6, 7, mix(ac, "#ffffff", 0.2)); this.disc(sx - 2, sy - 8, 2.5, "#ffffff80"); this.glow(sx, sy - 6, 16, ac, 0.2 + 0.16 * cp); return;
+      }
+      case "telescope":
+        this.rect(sx - 8, sy + 2, 4, 12, "#6a5038"); this.rect(sx + 4, sy + 2, 4, 12, "#6a5038"); this.fillEll(sx, sy + 14, 8, 2.5, "#0a071440");
+        this.rect(sx - 12, sy - 10, 22, 6, "#b8863a"); this.rect(sx - 12, sy - 10, 22, 2, "#e0b060"); this.disc(sx + 11, sy - 7, 4, "#8a6a30"); this.disc(sx - 13, sy - 7, 3, "#3a2e18"); this.glow(sx + 11, sy - 7, 6, ac, 0.14); return;
+      case "workbench":
+        this.rect(sx - 36, sy - 8, 72, 8, "#8a6038"); this.rect(sx - 36, sy, 72, 14, "#5a3f22"); this.rectLine(sx - 36, sy - 8, 72, 22, dk); this.rect(sx - 36, sy - 8, 72, 2.5, "#a4763e");
+        this.rect(sx - 32, sy + 2, 4, 12, "#4a3218"); this.rect(sx + 28, sy + 2, 4, 12, "#4a3218"); this.rect(sx - 30, sy - 16, 10, 8, "#8a8a94"); this.rect(sx - 30, sy - 12, 10, 3, "#5a5a64"); this.rect(sx + 6, sy - 13, 12, 3, "#c9a060"); this.rect(sx + 16, sy - 15, 3, 5, "#6a4a24"); return;
+      case "lumberstack":
+        this.fillEll(sx, sy + 14, 26, 4, "#0a071440");
+        for (let i = 0; i < 5; i++) { const yy = sy + 10 - i * 5, off = (i % 2) * 4; this.rect(sx - 26 + off, yy, 52, 4.5, i % 2 ? "#a9793f" : "#b98a4a"); this.rect(sx - 26 + off, yy, 52, 1, shade("#b98a4a", 0.2)); this.rect(sx + 24 + off, yy, 2, 4.5, "#6a4a24"); } return;
     }
   }
   protected render() {
