@@ -80,8 +80,7 @@ class TileLabEngine extends RetroEngine {
     //    channel straight through it (the bridge carries the road over the water).
     map.paintLine(9, ROAD_Y, 58, ROAD_Y - 1, "path", 3);
 
-    // 3) the wellspring: a cobble-rimmed round pool the river spills from
-    map.paintCircle(WELL.x, WELL.y, 3, "path");             // cobble plaza / rim
+    // 3) the wellspring: a round source pool (its stone plaza is drawn procedurally, round)
     map.paintCircle(WELL.x, WELL.y + 1, 1.6, "water");      // the round source pool
 
     // 4) the river of light — a gently MEANDERING channel of varied width, pool → south rim
@@ -190,7 +189,8 @@ class TileLabEngine extends RetroEngine {
     const SAND = [235, 221, 165], SANDD = [204, 185, 124];
     const FOAM = [212, 234, 240], SHAL = [118, 200, 228], DEEP = [26, 86, 132];
     const GDARK = [44, 94, 46], GLITE = [150, 202, 98];
-    const RWATER = [70, 174, 214], RFOAM = [202, 234, 240];   // the river of light + its foam banks
+    const RWATER = [58, 150, 198], RFOAM = [196, 230, 238];   // the river of light + its foam banks
+    const COBBLE = [150, 154, 160], COBBLED = [112, 116, 124]; // the round stone wellspring plaza
     for (let py = 0; py < ch; py++) for (let px = 0; px < cw; px++) {
       const tx = (px + 0.5) / (T * SS), ty = (py + 0.5) / (T * SS), g = this.landField(tx, ty);
       const n = hash2(px, py);
@@ -202,7 +202,13 @@ class TileLabEngine extends RetroEngine {
       } else if (rf > -0.4) {                                // smooth river bank fading into the land
         col = mix3(RWATER, RFOAM, smoothstep(0.35, -0.05, rf));
         a = Math.round(255 * smoothstep(-0.4, 0.1, rf));
-      } else if (g > 1.8) { const v = this.meadow(tx, ty); col = v < 0 ? GDARK : GLITE; a = Math.round(Math.abs(v) * 46); }
+      } else if (g > 1.8) {
+        const plazaF = 2.9 - Math.hypot(tx - WELL.x, ty - WELL.y);   // round stone plaza around the fountain
+        if (plazaF > -0.5) {
+          const grain = (n - 0.5) * 24, cob = mix3(COBBLED, COBBLE, 0.5 + 0.4 * Math.sin(tx * 2.7 + ty * 2.3));
+          col = [cob[0] + grain, cob[1] + grain, cob[2] + grain]; a = Math.round(255 * smoothstep(-0.5, 0.4, plazaF));
+        } else { const v = this.meadow(tx, ty); col = v < 0 ? GDARK : GLITE; a = Math.round(Math.abs(v) * 46); }
+      }
       else if (g > 0.12) {                                  // dry→wet sand, grainy
         const grain = (n - 0.5) * 46 + (hash2(px >> 1, py >> 1) - 0.5) * 22, base = mix3(SANDD, SAND, smoothstep(0.12, 1.1, g));
         col = [base[0] + grain, base[1] + grain, base[2] + grain * 0.8];
