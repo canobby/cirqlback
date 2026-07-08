@@ -67,13 +67,14 @@ class TileLabEngine extends RetroEngine {
     // 1) the grass plateau
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) if (this.land(tx, ty)) map.set(tx, ty, "grass");
 
-    // 2) wellspring plaza (cobble) + a straight river of light from its head to the
-    //    south rim (width 3 → clean grassy banks; no bends → cohesive channel)
+    // 2) wellspring plaza (cobble) + one straight cobble lane, west cove → east.
+    //    Paint the road FIRST so the river then cuts a continuous water channel
+    //    straight through it (the bridge carries the road over the water).
     map.paintCircle(WELL.x, WELL.y, 2, "path");
-    map.paintLine(RIVER_X, WELL.y + 2, RIVER_X, 47, "water", 3);
-
-    // 3) one straight cobble lane, west cove → east, crossing the river on a bridge
     map.paintLine(9, ROAD_Y, 58, ROAD_Y - 1, "path", 3);
+
+    // 3) the river of light: a straight width-3 channel, wellspring head → south rim
+    map.paintLine(RIVER_X, WELL.y + 2, RIVER_X, 47, "water", 3);
 
     // 4) authored structures (overlay) — the bridge over the river, the raised plateau rim
     this.placeBridge(map, ROAD_Y);
@@ -242,11 +243,13 @@ class TileLabEngine extends RetroEngine {
       const s = Math.max(1, cam.scale); c.fillRect(mx, my, s, s);
     }
     c.globalAlpha = 1;
-    // river shimmer — sparkles drifting straight down the channel
+    // river shimmer — sparkles drifting straight down the channel (only over WATER,
+    // never over the road/bridge that cross it)
     for (let i = 0; i < 30; i++) {
       const ph = (this.tsec * 0.45 + i * 0.11) % 1;
       const yy = WELL.y + 2 + ph * (47 - (WELL.y + 2));
       const tx = RIVER_X + 0.5 + Math.sin(yy * 0.5 + this.tsec) * 0.5;
+      if (this.map.get(Math.floor(tx), Math.floor(yy)) !== "water") continue;   // clip to the water
       const [sx, sy] = this.ren.w2s(cam, tx * T, yy * T);
       c.globalAlpha = 0.5 * (0.5 + 0.5 * Math.sin(this.tsec * 4 + i));
       c.fillStyle = "#cfeeff"; const s = Math.max(1, cam.scale * 0.8); c.fillRect(sx, sy, s, s);

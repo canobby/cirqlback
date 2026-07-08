@@ -9,7 +9,7 @@
 
 import type { Atlas } from "./tileset";
 import type { TileMap, Prop, Terrain } from "./tilemap";
-import { blobTile, BLOB_3x5, type BlobLayout } from "./autotile";
+import { blobTile, type BlobLayout } from "./autotile";
 
 export interface Camera {
   x: number; y: number;   // world px at the CENTRE of the viewport
@@ -31,7 +31,9 @@ export type TerrainConfig = Record<string, TerrainRender>;
 /** Default mapping for the P0/P1 meadow: grass base, water + cobble-path overlays, a rock fill for cliffs. */
 export const DEFAULT_TERRAIN: TerrainConfig = {
   grass: { fill: "grass", variants: ["grass", "grass_v1", "grass_v2", "grass_v3"] },
-  water: { fill: "water_middle", blob: { sheet: "water_blob", layout: BLOB_3x5 } },
+  // plain blue water; the shore is a soft light shallows drawn by drawWaterEdges
+  // (not the pack's heavy brown-reed pond border) so water fades into land.
+  water: { fill: "water_middle" },
   // cobble_blob bakes a tan dirt shoulder into its edges (ugly against grass), so the
   // road uses the sheet's border-free solid cobble tile (0,3) for a clean paved lane.
   path:  { fill: "cobble_blob", cell: [1, 1] },
@@ -121,6 +123,32 @@ export class TileRenderer {
     }
   }
 
+  /**
+   * Soft shore: where water meets land it shallows to a light rim that fades into
+   * the blue — a gentle "water fades into shore" edge instead of a hard rocky one.
+   * Drawn after the ground, before overlays (so a bridge still covers it).
+   */
+  drawWaterEdges(ctx: CanvasRenderingContext2D, map: TileMap, cam: Camera): void {
+    const t = this.tile, s = cam.scale, dsz = Math.ceil(t * s) + 1;
+    const band = Math.max(2, Math.round(6 * s));
+    const [wx0, wy0] = this.s2w(cam, 0, 0), [wx1, wy1] = this.s2w(cam, cam.vw, cam.vh);
+    const tx0 = Math.floor(wx0 / t) - 1, ty0 = Math.floor(wy0 / t) - 1;
+    const tx1 = Math.ceil(wx1 / t) + 1, ty1 = Math.ceil(wy1 / t) + 1;
+    const land = (x: number, y: number) => { const g = map.get(x, y); return map.inBounds(x, y) && g !== "water" && g !== "sea"; };
+    const C0 = "rgba(205,242,255,0.55)", C1 = "rgba(205,242,255,0)";
+    ctx.save();
+    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+      if (map.get(tx, ty) !== "water") continue;
+      const [sx, sy] = this.w2s(cam, tx * t, ty * t);
+      const dx = Math.round(sx), dy = Math.round(sy);
+      if (land(tx, ty - 1)) { const g = ctx.createLinearGradient(0, dy, 0, dy + band); g.addColorStop(0, C0); g.addColorStop(1, C1); ctx.fillStyle = g; ctx.fillRect(dx, dy, dsz, band); }
+      if (land(tx, ty + 1)) { const g = ctx.createLinearGradient(0, dy + dsz, 0, dy + dsz - band); g.addColorStop(0, C0); g.addColorStop(1, C1); ctx.fillStyle = g; ctx.fillRect(dx, dy + dsz - band, dsz, band); }
+      if (land(tx - 1, ty)) { const g = ctx.createLinearGradient(dx, 0, dx + band, 0); g.addColorStop(0, C0); g.addColorStop(1, C1); ctx.fillStyle = g; ctx.fillRect(dx, dy, band, dsz); }
+      if (land(tx + 1, ty)) { const g = ctx.createLinearGradient(dx + dsz, 0, dx + dsz - band, 0); g.addColorStop(0, C0); g.addColorStop(1, C1); ctx.fillStyle = g; ctx.fillRect(dx + dsz - band, dy, band, dsz); }
+    }
+    ctx.restore();
+  }
+
   /** Draw the hand-authored overlay tiles (cliff faces, bridges) above the ground. */
   drawOverlay(ctx: CanvasRenderingContext2D, map: TileMap, cam: Camera): void {
     ctx.imageSmoothingEnabled = false;
@@ -166,6 +194,7 @@ export class TileRenderer {
   render(ctx: CanvasRenderingContext2D, map: TileMap, cam: Camera, actors: Drawable[] = [],
          light?: (ctx: CanvasRenderingContext2D, cam: Camera) => void): void {
     this.drawGround(ctx, map, cam);
+    this.drawWaterEdges(ctx, map, cam);
     this.drawOverlay(ctx, map, cam);
     this.drawEntities(ctx, map, cam, actors);
     if (light) light(ctx, cam);
