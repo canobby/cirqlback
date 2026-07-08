@@ -12,6 +12,9 @@ import { loadAvatarLS, DEFAULT_AVATAR, AURA_COLORS, type AvatarConfig } from "./
 import { RINGS, MINIMAP_RINGS, type Ring, type Prop, type RingPalette } from "./cirql-world";
 import { getRing, ringName, isSubMap, parentOf, subKindOf } from "./cirql-ring-gen";
 import { isShop } from "./cirql-shops";
+import { MusicKit } from "./musickit";
+import { trackForContext } from "./cirql-music";
+import { cirqlSfx, type SfxKind } from "./cirql-sfx";
 import { MOVIES, REEL_SECONDS } from "./cirql-theater";
 import {
   allQuests, questById, offerableQuest, repeatableQuest, questStatusList, registerQuest,
@@ -201,8 +204,31 @@ export class CirqlWorldEngine extends RetroEngine {
     this.posX = this.curRing.spawn.x; this.posY = this.curRing.spawn.y;
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
     this.ensureRingQuest();
+    this.music = new MusicKit({ volume: 0.7 });   // G: the world soundtrack (starts on first gesture)
     this.running = true;
   }
+
+  // ---------- G: music & SFX ----------
+  private musicStarted = false; private musicVol = 0.7;
+  /** Begin (or resume) the adaptive soundtrack — call from a user gesture (start picker / confirm). */
+  startAudio() { this.musicStarted = true; cirqlSfx.resume(); this.updateMusic(); }
+  /** Swap to the theme for the current ring/biome + set its intensity by context. */
+  private updateMusic() {
+    if (!this.musicStarted || !this.music || this.musicVol <= 0) return;
+    const shop = isShop(this.ringIdx), sub = isSubMap(this.ringIdx);
+    this.music.play(trackForContext(this.ringIdx, this.curRing.ambient, shop, sub));
+    this.music.setIntensity(this.ringIdx <= 0 ? 0.55 : shop ? 0.5 : sub ? 0.6 : this.ringIdx === 1 ? 0.8 : 0.9);
+  }
+  /** Settings "Music" (0..1). 0 stops the soundtrack; raising it restarts the current theme. */
+  setMusicVol(v: number) {
+    this.musicVol = Math.max(0, Math.min(1, v)); this.music?.setVolume(this.musicVol);
+    if (this.musicVol <= 0) this.music?.stop();
+    else if (this.musicStarted && !this.music?.playing) this.updateMusic();
+  }
+  /** Settings "Sound FX" (0..1). */
+  setSfxVol(v: number) { cirqlSfx.setVolume(v); }
+  /** Play a one-shot cue (best-effort; silent until audio has started via a gesture). */
+  sfx(k: SfxKind) { cirqlSfx.play(k); }
 
   /** Register the current ring's generated quest so its keeper can offer it (CHR-256). */
   private ensureRingQuest() { const q = generateRingQuest(this.ringIdx); if (q) registerQuest(q); }
@@ -288,7 +314,7 @@ export class CirqlWorldEngine extends RetroEngine {
   /** The on-screen action button + the quest system call this to interact. */
   interact() { if (this.diorama) { this.closeDiorama(); return; } if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
   /** A little fake-Z hop (CHR-263) — raise the sprite; the shadow stays grounded. */
-  jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.standUp(); if (this.jumpZ <= 0.01 && this.jumpVel <= 0) this.jumpVel = 66; }
+  jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.standUp(); if (this.jumpZ <= 0.01 && this.jumpVel <= 0) { this.jumpVel = 66; this.sfx("hop"); } }
   /** Free-sit (Phase H1) — plop down where you stand; any movement stands you back up. */
   onSeatChange?: (seated: boolean) => void;
   toggleSit() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.seated = !this.seated; this.poseDirty = true; this.dozing = false; this.idleT = 0; if (this.seated) { this.vx = 0; this.vy = 0; this.moveTarget = null; } this.onSeatChange?.(this.seated); }
@@ -378,12 +404,14 @@ export class CirqlWorldEngine extends RetroEngine {
     this.resolvePartyWp();   // re-point the shared waypoint for the new ring
     if (firstShore) this.playCutscene(arrivalCutscene(this.curRing.name, this.curRing.sub, this.curRing.palette.accent));
     else { this.arriveT = 3.0; this.arriveName = this.curRing.name; this.arriveSub = this.curRing.sub; }   // quick card on revisits
+    this.updateMusic();   // G: swap to the theme for the new ring/biome/interior
     this.onSail?.(this.ringIdx, this.maxRing);
   }
   // ---------- sailing voyage (CHR-262) ----------
   /** Begin the interactive crossing to `dest`: steer the boat up-screen toward the far
    *  shore, gathering drifting light, then land (doSail runs the real ring change). */
   private startVoyage(dest: number) {
+    this.sfx("sail");
     const destRing = getRing(dest);
     const motes = Array.from({ length: 7 }, (_, i) => ({
       x: 0.12 + (((i * 97) % 76) / 100),          // spread across the lane, deterministic (no Math.random)
@@ -429,7 +457,7 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Show your own chat bubble over your avatar. */
   sayLocal(text: string) { this.myChat = text; this.myChatT = 5.5; }
   /** Play an emote locally + broadcast it (called by the emote wheel). */
-  playEmote(emote: string) { const def = EMOTE_BY_ID[emote]; if (!def) return; this.myEmote = emote; this.myEmoteT = def.hold ?? EMOTE_SECONDS; this.onEmote?.(emote); }
+  playEmote(emote: string) { const def = EMOTE_BY_ID[emote]; if (!def) return; this.myEmote = emote; this.myEmoteT = def.hold ?? EMOTE_SECONDS; this.sfx("emote"); this.onEmote?.(emote); }
   // ---- paired social gestures (Phase I4) — a two-person moment with the nearby traveller ----
   /** Offer a paired gesture to the traveller you're standing next to; the host relays it to both. */
   requestPair(g: string) { if (this.nearPlayer && PAIR_BY_ID[g]) this.onPairGesture?.(this.nearPlayer.id, g); }
@@ -538,6 +566,7 @@ export class CirqlWorldEngine extends RetroEngine {
     this.doneOnce.add(q.id);
     // lanterns lit for this quest become permanently lit (the path stays glowing)
     if (this.litForQuest.size) { for (const id of Array.from(this.litForQuest)) this.lit.add(id); this.litForQuest.clear(); }
+    this.sfx("quest");
     this.onQuestComplete?.(q, first);   // page grants the reward (reduced on repeat) + toast
     if (first) this.present("✦", "#ffd24a");   // item-get: raise the reward overhead (I6)
     this.onQuestChange?.();
@@ -669,16 +698,16 @@ export class CirqlWorldEngine extends RetroEngine {
     }
     if (p.t === "theater") { const m = this.nowShowing(); this.setDialog("Cirql Drive-In", "#7fd0ff", simpleDialog([`Now showing: "${m.title}"`, m.tagline, "Pull up a bench and stay a while."])); return; }
     if (p.t === "lantern" && p.id) { if (this.currentObjKind() === "lightLanterns" && !this.litForQuest.has(p.id)) { this.litForQuest.add(p.id); this.advanceObjective("lightLanterns"); this.onQuestChange?.(); } }
-    else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.enterWithWave(() => this.onInteract?.("wonders", p)); }   // wave/knock at the arcade doors (I6)
-    else if (p.t === "shop") { if (typeof p.to === "number") { const to = p.to; this.enterWithWave(() => this.sailTo(to)); } }   // walk into a storefront → its interior (F)
-    else if (p.t === "npc" && p.shopId) { this.onInteract?.("shopkeeper", p); }   // shop keeper → open the store (F)
-    else if (p.t === "npc") { this.openNpcDialog(p); this.onInteract?.("npc", p); }
+    else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.sfx("enter"); this.enterWithWave(() => this.onInteract?.("wonders", p)); }   // wave/knock at the arcade doors (I6)
+    else if (p.t === "shop") { if (typeof p.to === "number") { const to = p.to; this.sfx("enter"); this.enterWithWave(() => this.sailTo(to)); } }   // walk into a storefront → its interior (F)
+    else if (p.t === "npc" && p.shopId) { this.sfx("talk"); this.onInteract?.("shopkeeper", p); }   // shop keeper → open the store (F)
+    else if (p.t === "npc") { this.sfx("talk"); this.openNpcDialog(p); this.onInteract?.("npc", p); }
     else if (p.t === "dock") {
       const to = p.to ?? -1;
       if (to < 0) this.toast("Only open sea lies inward from the Hearth.");
       else { this.onInteract?.("dock", p); this.sailTo(to); }
     }
-    else if (p.t === "portal") { if (typeof p.to === "number") { const to = p.to; this.enterWithWave(() => this.sailTo(to)); } }   // wave at the sub-map mouth (I6)
+    else if (p.t === "portal") { if (typeof p.to === "number") { const to = p.to; this.sfx(p.sub === "up" ? "leave" : "enter"); this.enterWithWave(() => this.sailTo(to)); } }   // wave at the sub-map mouth (I6)
   }
   /** Is the current ring's rune puzzle solved (exactly the target runes lit)? */
   private puzzleSolved(): boolean {
@@ -980,7 +1009,7 @@ export class CirqlWorldEngine extends RetroEngine {
       if (this.currentObjKind() === "gather") {
         for (const p of this.curRing.props) {
           if (p.t === "wisp" && p.id && !this.gatheredWisps.has(p.id) && Math.hypot(this.posX - p.x, this.posY - p.y) < 15) {
-            this.gatheredWisps.add(p.id); this.advanceObjective("gather"); this.onQuestChange?.();
+            this.gatheredWisps.add(p.id); this.advanceObjective("gather"); this.onQuestChange?.(); this.sfx("wisp");
             if (!this.reduce) this.spawnGroundFx(p.x, p.y - 4, "puff");   // a little sparkle poof
             break;   // one per frame
           }

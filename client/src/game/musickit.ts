@@ -90,6 +90,8 @@ export class MusicKit {
   }
 
   setIntensity(x: number) { this.intensity = Math.max(0, Math.min(1, x)); }
+  /** Live master volume (0..1). CIRQL's Settings "Music" slider drives this. */
+  setVolume(v: number) { this.volume = Math.max(0, Math.min(1, v)); if (this.master && this.ac && !this.muted) this.master.gain.setTargetAtTime(this.volume, this.ac.currentTime, 0.02); }
   setMuted(m: boolean) { this.muted = m; if (this.master && this.ac) this.master.gain.setTargetAtTime(m ? 0 : this.volume, this.ac.currentTime, 0.02); }
   isMuted() { return this.muted; }
   get playing() { return this.timer != null && !!this.track; }

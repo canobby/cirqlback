@@ -17,6 +17,7 @@ import { EMOTES, PAIR_GESTURES } from "@/game/cirql-emotes";
 import { WAKE_CUTSCENE, campaignCutscene, worldEnergyCutscene } from "@/game/cirql-cutscenes";
 import { DECOR, decorById, decorPriceKey, CATEGORIES, type DecorCategory } from "@/game/cirql-decor";
 import { SHOPS, SHOP_OF, shopStock, gateCheck, type ShopId } from "@/game/cirql-shops";
+import { cirqlSfx } from "@/game/cirql-sfx";
 
 const SPARK_PER_PLAY = 2;
 // CIRQLSPACE land-growth tiers (Phase D) — cozy → estate. First two are free (a gift + a
@@ -314,7 +315,7 @@ export default function Cirql() {
     const before = renownStanding(renownRef.current).index;
     renownRef.current += amount; setRenownUi(renownRef.current);
     const after = renownStanding(renownRef.current);
-    if (after.index > before) engineRef.current?.toast(`★ You are now a ${after.rank.title}! (Renown ${renownRef.current})`);
+    if (after.index > before) { cirqlSfx.play("rankup"); engineRef.current?.toast(`★ You are now a ${after.rank.title}! (Renown ${renownRef.current})`); }
     return amount;
   };
   // Apply game settings to the engine (brightness + reduced motion) and remember them.
@@ -324,6 +325,8 @@ export default function Cirql() {
     engineRef.current?.setReduceMotion(s.reduce);
     engineRef.current?.setSmoothScale(s.smooth);
     engineRef.current?.setPixelSize(s.pixel);
+    engineRef.current?.setMusicVol(s.music);   // G: the soundtrack + SFX levels
+    engineRef.current?.setSfxVol(s.sfx);
     if (persistNow) persist();
   };
   // Apply a startup destination (from the picker) + sync the ring-dependent UI.
@@ -338,6 +341,7 @@ export default function Cirql() {
   const pickStart = (dest: StartDest) => {
     if (startRemember) startPrefRef.current = dest; else startPrefRef.current = "ask";
     applyStart(dest); setStartPick(null);
+    engineRef.current?.startAudio();   // G: this tap is our gesture — begin the soundtrack
     presenceReadyRef.current = true;
     if (joinedRef.current) { const st = engineRef.current!.getState(); wsSend({ t: "move", ring: st.ring, x: st.x, y: st.y, dir: "down", pose: "stand" }); }
     else tryJoin();
@@ -387,7 +391,7 @@ export default function Cirql() {
         if (!isNaN(ring) && !graduatedRef.current.has(ring)) {
           graduatedRef.current.add(ring); setGraduatedUi(graduatedRef.current.size);
           const bonus = grantRenown(3 + (q.tier ?? 1));   // a graduation Renown bonus on top
-          eng.present("★", "#b26cff");
+          cirqlSfx.play("graduate"); eng.present("★", "#b26cff");
           setTimeout(() => eng.toast(`★ Circle graduated! ${graduatedRef.current.size} circle${graduatedRef.current.size === 1 ? "" : "s"} earned · +${bonus} Renown`), 900);
         }
       }
@@ -595,6 +599,7 @@ export default function Cirql() {
     // guide NPC (Cirqla) teaches building; the world tutorials wait for Ferra in the Town.
     if (firstRun) engineRef.current?.playCutscene(WAKE_CUTSCENE);
     setShowCreator(false); persist();
+    engineRef.current?.startAudio();   // G: confirming the creator is a gesture — begin the soundtrack
     presenceReadyRef.current = true; tryJoin();   // now safe to appear to other travellers
   };
 
@@ -635,6 +640,7 @@ export default function Cirql() {
     sparksRef.current -= cost; setSparksUi(sparksRef.current);
     ownedRef.current = [...ownedRef.current, id]; setOwned(ownedRef.current);
     engineRef.current?.setStats({ sparks: sparksRef.current });
+    cirqlSfx.play("buy");   // G: a bright coin/chime on any purchase (shop or creator)
     engineRef.current?.present("🎁", "#b26cff");   // item-get: raise your new unlock overhead (I6)
     persist();
     return true;
@@ -647,8 +653,8 @@ export default function Cirql() {
     const def = decorById[itemId]; const eng = engineRef.current; if (!def || !eng) return;
     if (decorOwned(itemId)) { eng.toast(`You already own the ${def.name}`); return; }
     const g = gateCheck(itemId, renownRef.current);
-    if (!g.ok) { eng.toast(`★ The ${def.name} needs Renown rank ${g.needRank}`); return; }
-    if (!buyCosmetic(decorPriceKey(itemId), def.price)) { eng.toast(`Need ${def.price} sparqs for the ${def.name}`); return; }
+    if (!g.ok) { cirqlSfx.play("deny"); eng.toast(`★ The ${def.name} needs Renown rank ${g.needRank}`); return; }
+    if (!buyCosmetic(decorPriceKey(itemId), def.price)) { cirqlSfx.play("deny"); eng.toast(`Need ${def.price} sparqs for the ${def.name}`); return; }
     eng.toast(`✦ ${def.name} bought — place it on your CIRQLSPACE`);
   };
   // Share your whole CIRQLSPACE build (décor + terrain + land tier) so friends can drop in live (Phase E).
@@ -682,6 +688,7 @@ export default function Cirql() {
       sparksRef.current -= m.cost; setSparksUi(sparksRef.current); eng.setStats({ sparks: sparksRef.current });
     }
     landTierRef.current = next; setLandTierUi(next); eng.setLandTier(next);
+    cirqlSfx.play("expand");
     eng.toast(`✦ Your CIRQLSPACE grew — ${m.label}!`);
     checkJourneys();   // growing your homestead may cross a journey milestone (K5)
     persist();
@@ -696,6 +703,7 @@ export default function Cirql() {
       const blob: Blob | null = await new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
       if (!blob) throw new Error("no blob");
       const file = new File([blob], "my-cirqlspace.png", { type: "image/png" });
+      cirqlSfx.play("postcard");
       const nav = navigator as any;
       if (nav.canShare && nav.canShare({ files: [file] })) {
         await nav.share({ files: [file], title: "My CIRQLSPACE", text: "Come visit my CIRQLSPACE in CIRQLVERSE ✦" });
@@ -1540,8 +1548,8 @@ export default function Cirql() {
             </div>
             {([
               { key: "brightness", icon: <Sun className="h-3.5 w-3.5" />, label: "Brightness", min: 0.5, max: 1.5, step: 0.05, fmt: (v: number) => `${Math.round(v * 100)}%` },
-              { key: "music", icon: <Music className="h-3.5 w-3.5" />, label: "Music", min: 0, max: 1, step: 0.05, fmt: (v: number) => `${Math.round(v * 100)}%`, soon: true },
-              { key: "sfx", icon: <Volume2 className="h-3.5 w-3.5" />, label: "Sound FX", min: 0, max: 1, step: 0.05, fmt: (v: number) => `${Math.round(v * 100)}%`, soon: true },
+              { key: "music", icon: <Music className="h-3.5 w-3.5" />, label: "Music", min: 0, max: 1, step: 0.05, fmt: (v: number) => `${Math.round(v * 100)}%` },
+              { key: "sfx", icon: <Volume2 className="h-3.5 w-3.5" />, label: "Sound FX", min: 0, max: 1, step: 0.05, fmt: (v: number) => `${Math.round(v * 100)}%` },
             ] as const).map((row) => (
               <div key={row.key} className="mb-3">
                 <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold text-slate-200">
@@ -1573,7 +1581,7 @@ export default function Cirql() {
                 onChange={(e) => applySettings({ ...settingsRef.current, reduce: e.target.checked }, true)} />
               Reduced motion <span className="text-[10px] text-slate-500">(calmer animation)</span>
             </label>
-            <p className="mt-2 text-[9.5px] leading-snug text-slate-500">Music &amp; Sound FX levels are saved now and take effect once the world's soundtrack ships.</p>
+            <p className="mt-2 text-[9.5px] leading-snug text-slate-500">The soundtrack adapts as you travel — home, town, the wilds, shops &amp; the deep places each have their own theme.</p>
           </div>
         </div>
       )}
