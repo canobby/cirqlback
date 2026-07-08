@@ -2049,11 +2049,18 @@ export class CirqlWorldEngine extends RetroEngine {
     b.stroke(); b.restore();
   }
   private static readonly SHROOM_HUES = ["#ff5fe0", "#c8a2ff", "#54ffe0", "#ff7aa8"];
-  /** Which canopy to draw for a tree at world (x,y). Woodland gets the fanciful kit. */
+  /** Which canopy to draw for a tree at world (x,y). Species CLUSTER by region so a grove
+   *  reads as one stand (ecological clumping), with light per-tree variation to avoid monotony. */
   private canopyStyle(x: number, y: number): "round" | "pine" | "mushroom" | "willow" {
-    const h = (Math.abs((x | 0) * 3 + (y | 0) * 7) | 0) % 10;
-    if (this.curRing.biome === "woodland") { if (h < 3) return "mushroom"; if (h < 5) return "willow"; return "round"; }
-    return h < 3 ? "pine" : "round";
+    const rx = Math.round(x / 130), ry = Math.round(y / 130);
+    const region = (Math.abs(rx * 92837 ^ ry * 689287) >>> 0) % 10;
+    const jit = (Math.abs((x | 0) * 3 + (y | 0) * 7) | 0) % 10;
+    if (this.curRing.biome === "woodland") {
+      if (region < 4) return jit < 8 ? "mushroom" : "willow";   // a mushroom grove
+      if (region < 7) return jit < 8 ? "willow" : "mushroom";   // a willow stand
+      return jit < 2 ? "mushroom" : "round";                    // ordinary wood, a few shrooms
+    }
+    return jit < 3 ? "pine" : "round";
   }
   private seedOf(x: number, y: number) { return (Math.abs((x | 0) * 73856093 ^ (y | 0) * 19349663) >>> 0); }
   private triY(cx: number, apexY: number, halfW: number, h: number, color: string) {
@@ -2807,6 +2814,7 @@ export class CirqlWorldEngine extends RetroEngine {
   protected onOverlay(g: CanvasRenderingContext2D) {
     if (!this.ui.length) return;
     const sc = this.dispW / this.LW;                       // logical → CSS px
+    const q = this.SS;                                     // the pixel-buffer lattice
     g.textBaseline = "top";
     g.shadowColor = "rgba(0,0,0,0.85)"; g.shadowOffsetX = 0; g.shadowOffsetY = Math.max(1, sc);
     for (const it of this.ui) {
@@ -2814,15 +2822,19 @@ export class CirqlWorldEngine extends RetroEngine {
       g.font = `${it.bold ? 700 : 600} ${fs}px "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif`;
       g.textAlign = it.align === "c" ? "center" : it.align === "r" ? "right" : "left";
       g.globalAlpha = it.alpha ?? 1;
+      // Snap the label to the SAME buffer-pixel lattice the nearest-neighbour world blit uses,
+      // so a label steps in lockstep with its object instead of swimming over it as the
+      // camera scrolls sub-pixel (fixes "names drift toward/away from their object").
+      const lx = Math.round(it.x * q) / q * sc, ly = Math.round(it.y * q) / q * sc;
       // haloed text (names) reads on ANY background via a thin dark outline instead of a box
       if (it.halo) {
         g.shadowBlur = 0;
         g.strokeStyle = "rgba(6,6,16,0.9)"; g.lineJoin = "round"; g.lineWidth = Math.max(1.5, fs * 0.18);
-        g.strokeText(it.s, it.x * sc, it.y * sc);
+        g.strokeText(it.s, lx, ly);
         g.shadowColor = "rgba(0,0,0,0.9)"; g.shadowBlur = 3;
       } else g.shadowBlur = 2 * sc;
       g.fillStyle = it.c;
-      g.fillText(it.s, it.x * sc, it.y * sc);
+      g.fillText(it.s, lx, ly);
     }
     g.globalAlpha = 1; g.shadowBlur = 0; g.shadowOffsetY = 0; g.textAlign = "left";
   }

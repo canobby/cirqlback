@@ -117,6 +117,29 @@ function placeFenceRow(props: Prop[], cx: number, cy: number, len: number, vert:
   const n = Math.max(2, Math.round(len / 22));
   for (let i = 0; i < n; i++) { const off = (i - (n - 1) / 2) * 22; props.push(vert ? { t: "fence", x: cx, y: cy + off, vert: true } : { t: "fence", x: cx + off, y: cy }); }
 }
+// A winding "spine": a readable route from near the inward dock (north) to near the onward
+// dock (south), bending through a central beacon hub. Every ring is COMPOSED around it so the
+// terrain gently funnels you toward the keeper / landmark / quests (maze-ish, never trapping).
+function buildSpine(index: number, radius: number, rng: () => number): { x: number; y: number }[] {
+  const pts: { x: number; y: number }[] = [];
+  const N = 8, dir = rng() > 0.5 ? 1 : -1, amp = radius * (0.2 + rng() * 0.16);
+  for (let i = 0; i <= N; i++) {
+    const f = i / N;
+    const y = -radius * 0.72 + radius * 1.5 * f;
+    const x = Math.sin(f * Math.PI) * amp * dir + Math.sin(f * Math.PI * 2 + index) * radius * 0.08;
+    pts.push({ x, y });
+  }
+  return pts;
+}
+// A clump of the biome's "hedge" flora — trees in wooded biomes, rocks in bare ones (plus the
+// odd bush). Species cluster by region (see canopyStyle) so a clump reads as one grove/stand.
+function wallClump(props: Prop[], cx: number, cy: number, biome: Biome, n: number, rng: () => number) {
+  for (let i = 0; i < n; i++) {
+    const a = rng() * TAU, r = 6 + rng() * 18, x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r * 0.7;
+    props.push(biome.tree ? { t: "tree", x, y, big: rng() > 0.6 } : { t: "rock", x, y, big: rng() > 0.6 });
+    if (rng() > 0.66) props.push({ t: "bush", x: x + (rng() - 0.5) * 12, y: y + 6 });
+  }
+}
 
 /** Generate the ring at `index` (>= 2 — the wilds beyond CIRQLSPACE + Town). Deterministic. */
 export function generateRing(index: number): Ring {
@@ -133,22 +156,15 @@ export function generateRing(index: number): Ring {
   props.push({ t: "dock", x: 0, y: -radius * 0.86, to: index - 1, label: "↩ inward", id: "dock-in" });
   props.push({ t: "dock", x: 0, y: radius * 0.9, to: index + 1, label: "sail onward →", id: "dock-out" });
 
-  // a keeper NPC to greet arrivals (templated quests hang off this later — CHR-256)
-  const keeper = pick(rng, KEEPERS);
-  props.push({ t: "npc", x: (rng() - 0.5) * radius * 0.5, y: (rng() - 0.4) * radius * 0.4, id: `keeper-${index}`, label: keeper, accent: biome.palette.accent });
-  // a second wandering townsfolk — more life + the target for errand/delivery quests (K3)
-  props.push({ t: "npc", x: (rng() - 0.5) * radius * 0.7, y: radius * (0.12 + rng() * 0.28), id: `wanderer-${index}`, label: pick(rng, WANDERERS), accent: biome.palette.mote });
+  // the winding spine + its central beacon hub — the ring is composed around these
+  const spine = buildSpine(index, radius, rng);
+  const hub = spine[Math.round((spine.length - 1) * 0.42)];
+  // the keeper greets you AT the beacon hub (so the trail leads you right to them + their
+  // quests); the wanderer waits in a nook further down the trail (errand/delivery target — K3)
+  props.push({ t: "npc", x: hub.x - 28, y: hub.y + 22, id: `keeper-${index}`, label: pick(rng, KEEPERS), accent: biome.palette.accent });
+  { const wp = spine[Math.round((spine.length - 1) * 0.78)], wdir = rng() > 0.5 ? 1 : -1;
+    props.push({ t: "npc", x: wp.x + wdir * radius * 0.16, y: wp.y + 16, id: `wanderer-${index}`, label: pick(rng, WANDERERS), accent: biome.palette.mote }); }
 
-  // scattered scenery, deterministic + kept off the north/south dock lanes
-  const place = (t: Prop["t"], extra?: Partial<Prop>) => {
-    for (let tries = 0; tries < 8; tries++) {
-      const a = rng() * Math.PI * 2, rr = radius * (0.28 + rng() * 0.5);
-      const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
-      if (Math.abs(x) < radius * 0.16 && Math.abs(y) > radius * 0.55) continue;  // keep dock lanes clear
-      props.push({ t, x, y, ...extra });
-      return;
-    }
-  };
   // scale scenery with the island's size so bigger rings don't feel empty
   const sizeScale = radius / 460;
   const scaled = (n: number) => n <= 0 ? 0 : Math.max(1, Math.round(n * sizeScale));
@@ -161,24 +177,29 @@ export function generateRing(index: number): Ring {
     }
     return { x: radius * 0.3, y: radius * 0.1 };
   };
-  // trees: a couple of GROVES (clumps) + a little loose scatter
-  if (biome.tree) {
-    for (let g = 0; g < scaled(2); g++) { const c = clearSpot(); placeGrove(props, c.x, c.y, 3 + Math.floor(rng() * 3), rng); }
-    for (let i = 0; i < scaled(2); i++) place("tree", { big: rng() > 0.6 });
+  // ---- GUIDED, ECOLOGICAL placement: everything clusters in the same pockets and hedges the
+  // trail, composed around the spine so terrain funnels you along (never sealing you in). ----
+  const corr = radius * 0.14;
+  // the trail itself, laid along the spine (the desire-path the eye follows)
+  if (biome.path) for (let i = 0; i < spine.length - 1; i++) { const a = spine[i], b = spine[i + 1]; for (let k = 0; k < 3; k++) props.push({ t: "path", x: a.x + (b.x - a.x) * k / 3, y: a.y + (b.y - a.y) * k / 3 }); }
+  // thicket HEDGES either side of the trail, with gaps for openings (biome-appropriate flora)
+  for (let i = 1; i < spine.length - 1; i++) {
+    const p = spine[i], q = spine[i + 1], dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+    for (const sd of [1, -1]) { if (rng() < 0.34) continue; const d = corr + rng() * radius * 0.06; wallClump(props, p.x + nx * sd * d, p.y + ny * sd * d, biome, 2 + Math.floor(rng() * 2), rng); }
   }
-  // rocks: a CAIRN formation (+ scatter for rocky biomes like desert)
-  if (biome.rocks > 0) { const c = clearSpot(); placeRockCairn(props, c.x, c.y, Math.min(6, scaled(biome.rocks)), rng); for (let i = 0; i < scaled(Math.max(0, biome.rocks - 4)); i++) place("rock", { big: rng() > 0.6 }); }
-  // flowers: BEDS (clusters), not lone scatter
-  if (biome.flowers > 0) { const beds = Math.max(1, Math.round(scaled(biome.flowers) / 5)); for (let b = 0; b < beds; b++) { const c = clearSpot(); placeFlowerBed(props, c.x, c.y, 5, rng); } }
-  for (let i = 0; i < scaled(biome.crystals); i++) place("crystal", { big: rng() > 0.5, accent: biome.palette.accent });
-  for (let i = 0; i < scaled(biome.lanterns); i++) place("lantern");
-  // bushes: a little clump — scenery + reusable as maze/labyrinth walls for quests (CHR-259)
-  { const c = clearSpot(); const bn = scaled(biome.tree ? 4 : 2); for (let i = 0; i < bn; i++) props.push({ t: "bush", x: c.x + (rng() - 0.5) * 44, y: c.y + (rng() - 0.5) * 44 }); }
-  // drifting collectible WISPS scattered across the ring — the "gather" quest targets (Phase K3)
-  for (let i = 0; i < Math.max(6, scaled(7)); i++) place("wisp", { accent: biome.palette.mote });
-  // larger rings get extra pockets of a DIFFERENT feel (a little grove + flowerbed — an
-  // oasis even on a desert ring) so a big island isn't one uniform scene throughout
-  if (radius > 620) { const g = clearSpot(); placeGrove(props, g.x, g.y, 3 + Math.floor(rng() * 2), rng); const f = clearSpot(); placeFlowerBed(props, f.x, f.y, 6, rng); if (rng() > 0.5) { const p = clearSpot(); props.push({ t: "pond", x: p.x, y: p.y, r: 20 + Math.floor(rng() * 10) }); } }
+  // a couple of denser INTERIOR clumps off the trail (a grove, a rock field) for variety
+  if (biome.tree) { const p = spine[Math.round((spine.length - 1) * 0.3)], sd = rng() > 0.5 ? 1 : -1; placeGrove(props, p.x + sd * corr * 2, p.y + 20, 4 + Math.floor(rng() * 3), rng); }
+  if (biome.rocks > 0) { const p = spine[Math.round((spine.length - 1) * 0.65)], sd = rng() > 0.5 ? 1 : -1; placeRockCairn(props, p.x + sd * corr * 2, p.y, Math.min(5, scaled(biome.rocks)), rng); }
+  // flower beds tucked BESIDE the trail (clustered, same pockets)
+  for (let b = 0; b < Math.max(1, Math.round(scaled(biome.flowers) / 5) + 1); b++) { const p = spine[1 + Math.floor(rng() * (spine.length - 2))], sd = rng() > 0.5 ? 1 : -1; placeFlowerBed(props, p.x + sd * corr * 0.75, p.y, 5, rng); }
+  // crystals in a nook further off the corridor
+  for (let i = 0; i < scaled(biome.crystals); i++) { const p = spine[1 + Math.floor(rng() * (spine.length - 2))], sd = rng() > 0.5 ? 1 : -1; props.push({ t: "crystal", x: p.x + sd * corr * 2.4, y: p.y + (rng() - 0.5) * 30, big: rng() > 0.5, accent: biome.palette.accent }); }
+  // lanterns strung along the trail as guiding LIGHTS
+  for (let i = 0; i < biome.lanterns; i++) { const p = spine[Math.min(spine.length - 1, 1 + i * 2)]; props.push({ t: "lantern", x: p.x + (i % 2 ? 11 : -11), y: p.y }); }
+  // a bush understory clumped near the beacon hub
+  { const bn = scaled(biome.tree ? 4 : 2); for (let i = 0; i < bn; i++) props.push({ t: "bush", x: hub.x + (rng() - 0.5) * 100, y: hub.y + 36 + (rng() - 0.5) * 46 }); }
+  // WISPS strung down the spine — a gather-quest walks you the whole trail (Phase K3)
+  for (let i = 0; i < Math.max(6, scaled(7)); i++) { const p = spine[Math.floor(rng() * (spine.length - 1))]; props.push({ t: "wisp", x: p.x + (rng() - 0.5) * corr * 1.3, y: p.y + (rng() - 0.5) * 46, accent: biome.palette.mote }); }
   // a PORTAL to a sub-map on many rings (an interactive voyage down/up — CHR-265).
   // Winter is the exception: instead of a calm "cloud stair" it gets a STORM you brave —
   // a tornado sweeps you up into the icy Cloud Reach (the dramatic weather entry, F).
@@ -194,24 +215,15 @@ export function generateRing(index: number): Ring {
   { const side = rng() > 0.5 ? 1 : -1, ti = tunnelIndex(index);
     props.push({ t: "tunnel", x: side * radius * 0.4, y: -radius * 0.3, to: ti, end: "a", label: "burrow" });
     props.push({ t: "tunnel", x: -side * radius * 0.4, y: radius * 0.34, to: ti, end: "b", label: "burrow" }); }
-  // a dirt trail leading inland from the shore (along the arrival lane)
-  if (biome.path) { const n = 5; for (let k = 0; k < n; k++) props.push({ t: "path", x: Math.sin(k * 1.3 + index) * 16, y: -radius * 0.6 + k * (radius * 0.42 / n) }); }
-  if (biome.pond) {
-    for (let tries = 0; tries < 8; tries++) {
-      const a = rng() * Math.PI * 2, rr = radius * (0.3 + rng() * 0.32);
-      const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
-      if (Math.abs(x) < radius * 0.16 && Math.abs(y) > radius * 0.55) continue;   // keep the dock lanes clear
-      props.push({ t: "pond", x, y, r: 20 + Math.floor(rng() * 12) });
-      break;
-    }
-  }
+  // a pond as a soft barrier the trail curves past (placed off the corridor, near the hub)
+  if (biome.pond) { const p = spine[Math.round((spine.length - 1) * 0.6)], sd = rng() > 0.5 ? 1 : -1; props.push({ t: "pond", x: p.x + sd * corr * 1.7, y: p.y, r: 22 + Math.floor(rng() * 12) }); }
 
   // the biome's FOCAL LANDMARK (Phase J4) — a memorable set-piece that doubles as a quest
   // home + postcard subject + meeting spot. Placed prominently to one side, off the dock lanes.
   {
-    const lm = biome.landmark, lmSide = rng() > 0.5 ? 1 : -1;
+    const lm = biome.landmark;
     const lmLabel: Record<LandmarkKind, string> = { greattree: "The Great Tree", stonecircle: "The Stone Circle", lighthouse: "The Lighthouse", crystal: "The Great Crystal", waterfall: "The Falls", ruin: "The Old Ruin" };
-    props.push({ t: "landmark", x: lmSide * radius * (0.34 + rng() * 0.12), y: (rng() - 0.5) * radius * 0.3, lm, id: `landmark-${index}`, label: lmLabel[lm], accent: biome.palette.accent, r: 46 });
+    props.push({ t: "landmark", x: hub.x, y: hub.y - 10, lm, id: `landmark-${index}`, label: lmLabel[lm], accent: biome.palette.accent, r: 46 });   // BEACON at the hub
   }
   // a social gathering spot on every ring — ring 2's is the Cirql Drive-In (an outdoor
   // movie screen); the rest get a bonfire commons. Placed east/west, off the dock lanes.
