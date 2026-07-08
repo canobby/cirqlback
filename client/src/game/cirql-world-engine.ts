@@ -2571,7 +2571,9 @@ export class CirqlWorldEngine extends RetroEngine {
       const dvx = md < 5 ? 0 : (mdx / md) * spd, dvy = md < 5 ? 0 : (mdy / md) * spd;
       c.vx += (dvx - c.vx) * Math.min(1, dt * 6); c.vy += (dvy - c.vy) * Math.min(1, dt * 6);
       c.x += c.vx * dt; c.y += c.vy * dt;
-      if (Math.abs(c.vx) > 3) c.face = c.vx > 0 ? 1 : -1;
+      // face the way you're actually HEADING: flip on any real left/right intent (using the
+      // desired direction, not the eased velocity) but hold facing on near-pure-vertical moves
+      if (md >= 5 && Math.abs(mdx) > Math.abs(mdy) * 0.35) c.face = mdx > 0 ? 1 : -1;
       c.t += dt;
       const rr = Math.hypot(c.x, c.y); if (rr > edge) { c.x = c.x / rr * edge; c.y = c.y / rr * edge; c.vx *= 0.4; c.vy *= 0.4; }   // shore barrier
     }
