@@ -2446,7 +2446,12 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(cx - 1, cy, 2, 2, "#7ff5e8");
   }
   private drawPortal(cx: number, cy: number, p: Prop) {
-    const near = this.near === p, kind = p.sub || "cave";
+    const near = this.near === p;
+    // The "up" exit themes itself to the sub-map it sits in — a rock hole in a cave,
+    // but a bright cloud-stair on the all-white Cloud Reach (a grey cave there was
+    // easy to miss / didn't read as the way out).
+    let kind: string = p.sub || "cave";
+    if (kind === "up" && subKindOf(this.ringIdx) === "cloud") kind = "cloud-exit";
     if (kind === "cave" || kind === "up") {
       // a cave mouth in the rock (or a hole down/up)
       const c = kind === "up" ? "#ffe0a0" : "#7fd8ff";
@@ -2465,6 +2470,16 @@ export class CirqlWorldEngine extends RetroEngine {
       this.glow(cx, cy - 8, 14, "#b6ff6a", 0.2 + (near ? 0.16 : 0));
       for (let i = 0; i < 4; i++) this.rect(cx - 3, cy - 2 - i * 3, 6, 1, "#6e5030");   // rungs
       this.labelPill(cx, cy - 52, p.label || "hollow tree", "#b6ff6a");
+    } else if (kind === "cloud-exit") {
+      // the way DOWN off the Cloud Reach — a gap in the clouds onto the blue sky below.
+      // Deliberately high-contrast (blues on white) so it reads as the exit on a white realm.
+      this.disc(cx, cy, 15, "#2f6db0");                                   // sky-hole rim
+      this.disc(cx, cy, 12, "#4f97dc");                                   // open sky below
+      this.disc(cx, cy - 1, 9, "#8fc4f2");
+      for (let i = 0; i < 4; i++) { const yy = cy + i * 5 - 6, w = 16 - i * 3; this.rect(cx - w / 2, yy, w, 3, i % 2 ? "#3f7fc0" : "#5aa0e0"); }   // steps descending
+      this.rect(cx - 4, cy + 9, 8, 2, "#dff0ff"); this.rect(cx - 2, cy + 11, 4, 2, "#dff0ff");   // down chevron
+      this.glow(cx, cy, 22, "#bfe0ff", 0.3 + (near ? 0.2 : 0));
+      this.labelPill(cx, cy - 22, p.label || "↓ to the surface", "#dff0ff");
     } else {
       // a shimmering cloud stair up into the sky
       this.glow(cx, cy - 10, 26, "#eaf4ff", 0.25 + (near ? 0.18 : 0));

@@ -781,8 +781,10 @@ export default function Cirql() {
           <span className="tracking-[0.35em]" style={{ fontSize: "1.05rem", color: "#fff", textShadow: "0 0 10px rgba(53,224,208,.6), 0 0 22px rgba(178,108,255,.35)" }}>CIRQL</span>
           <span className="tracking-[0.15em]" style={{ fontSize: "0.63rem", color: "#b26cff", textShadow: "0 0 9px rgba(178,108,255,.8)" }}>VERSE</span>
         </div>
+        {/* the action cluster — wraps to a second row on narrow screens so it never runs off the edge */}
+        <div className="pointer-events-none ml-auto flex flex-wrap items-center justify-end gap-2">
         <button onClick={() => { setShowBoard((v) => { if (!v) wsSend({ t: "board:get" }); return !v; }); }} data-testid="btn-board" title="Campaign Board"
-          className="pointer-events-auto relative ml-auto flex h-7 w-7 items-center justify-center rounded-full border text-teal-200/90" style={{ borderColor: party ? "rgba(53,224,208,.7)" : "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
+          className="pointer-events-auto relative flex h-7 w-7 items-center justify-center rounded-full border text-teal-200/90" style={{ borderColor: party ? "rgba(53,224,208,.7)" : "rgba(53,224,208,.3)", background: "rgba(10,18,38,.5)" }}>
           <Compass className="h-3.5 w-3.5" />
           {(asks.length + invites.length) > 0 && <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-black text-slate-900" style={{ background: "#ffc46b" }}>{asks.length + invites.length}</span>}
         </button>
@@ -822,6 +824,7 @@ export default function Cirql() {
           className="pointer-events-auto flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-bold text-amber-200/90" style={{ borderColor: "rgba(255,196,107,.3)", background: "rgba(10,18,38,.5)" }}>
           <Users className="h-3.5 w-3.5" /> {members}
         </button>
+        </div>
       </div>
 
       {/* live chat — a slim bar below the header + a short feed (in-world speech bubbles
@@ -1196,7 +1199,7 @@ export default function Cirql() {
       <div ref={controlsRef} className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-w-[680px] items-end justify-between gap-4 px-5 pb-[calc(14px+env(safe-area-inset-bottom))] pt-6"
         style={{ background: "linear-gradient(0deg, rgba(6,11,26,.78) 40%, rgba(6,11,26,0))", touchAction: "none", display: dioramaOn ? "none" : undefined }}>
         <Joystick press={(b) => engineRef.current?.press(b)} release={(b) => engineRef.current?.release(b)} color="#35e0d0" size={128} />
-        <div className="mb-1 flex items-end gap-3">
+        <div className="mb-1 flex min-w-0 flex-wrap items-end justify-end gap-2">
           <button onPointerDown={(e) => { e.preventDefault(); setShowEmotes((v) => !v); }} data-testid="btn-emotes" title="Emotes"
             className="flex h-12 w-12 flex-col items-center justify-center rounded-full border-[1.5px] text-[8px] font-extrabold active:scale-90"
             style={{ borderColor: showEmotes ? "#b26cff" : "rgba(178,108,255,.55)", color: "#d9c2ff", background: "rgba(178,108,255,.12)", boxShadow: "0 0 14px rgba(178,108,255,.18) inset", touchAction: "none" }}>
