@@ -116,6 +116,23 @@ export class TileRenderer {
     }
   }
 
+  /** Draw the hand-authored overlay tiles (cliff faces, bridges) above the ground. */
+  drawOverlay(ctx: CanvasRenderingContext2D, map: TileMap, cam: Camera): void {
+    ctx.imageSmoothingEnabled = false;
+    const t = this.tile, s = cam.scale;
+    const dsz = Math.ceil(t * s) + 1;
+    const [wx0, wy0] = this.s2w(cam, 0, 0);
+    const [wx1, wy1] = this.s2w(cam, cam.vw, cam.vh);
+    const tx0 = Math.floor(wx0 / t) - 1, ty0 = Math.floor(wy0 / t) - 1;
+    const tx1 = Math.ceil(wx1 / t) + 1, ty1 = Math.ceil(wy1 / t) + 1;
+    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+      const o = map.getOverlay(tx, ty);
+      if (!o || !this.atlas.has(o.sheet)) continue;
+      const [sx, sy] = this.w2s(cam, tx * t, ty * t);
+      this.atlas.get(o.sheet).cell(ctx, o.cell, o.col, o.row, Math.round(sx), Math.round(sy), dsz, dsz);
+    }
+  }
+
   /** Draw one prop feet-anchored. */
   drawProp(ctx: CanvasRenderingContext2D, cam: Camera, p: Prop): void {
     if (!this.atlas.has(p.sheet)) return;
@@ -144,6 +161,7 @@ export class TileRenderer {
   render(ctx: CanvasRenderingContext2D, map: TileMap, cam: Camera, actors: Drawable[] = [],
          light?: (ctx: CanvasRenderingContext2D, cam: Camera) => void): void {
     this.drawGround(ctx, map, cam);
+    this.drawOverlay(ctx, map, cam);
     this.drawEntities(ctx, map, cam, actors);
     if (light) light(ctx, cam);
   }

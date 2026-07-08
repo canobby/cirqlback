@@ -25,9 +25,14 @@ export interface Prop {
   ax?: number; ay?: number; // anchor override (0..1 within frame; default 0.5,1.0 = feet)
 }
 
+/** A hand-placed tile drawn above the autotiled ground (authored structures:
+ *  cliff faces, bridge decks, road corners — things the autotiler shouldn't touch). */
+export interface OverlayCell { sheet: string; col: number; row: number; cell: number; }
+
 export class TileMap {
   readonly ground: Terrain[];
   private readonly solid: Uint8Array;
+  readonly overlay: (OverlayCell | undefined)[];
   props: Prop[] = [];
   /** Terrains that block walking unless a cell overrides. */
   solidTerrain = new Set<Terrain>(["water", "cliff"]);
@@ -42,6 +47,20 @@ export class TileMap {
   ) {
     this.ground = new Array(w * h).fill(fill);
     this.solid = new Uint8Array(w * h);
+    this.overlay = new Array(w * h);
+  }
+
+  // ---- overlay layer (authored structures above ground) ----
+  setOverlay(tx: number, ty: number, sheet: string, col: number, row: number, cell = 16): void {
+    if (this.inBounds(tx, ty)) this.overlay[this.idx(tx, ty)] = { sheet, col, row, cell };
+  }
+  getOverlay(tx: number, ty: number): OverlayCell | undefined {
+    return this.inBounds(tx, ty) ? this.overlay[this.idx(tx, ty)] : undefined;
+  }
+  /** Place a rectangular block of a sheet's cells (col0..,row0.. → tx..,ty..). */
+  overlayBlock(tx: number, ty: number, sheet: string, col0: number, row0: number, cols: number, rows: number, cell = 16): void {
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++)
+      this.setOverlay(tx + c, ty + r, sheet, col0 + c, row0 + r, cell);
   }
 
   // ---- indexing ----

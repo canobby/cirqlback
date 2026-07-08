@@ -20,12 +20,36 @@ export const CF_SHEETS: Record<string, string> = {
   path_middle: `${CF}/tiles/path_middle.png`,
   cobble_blob: `${CF}/tiles/cobble_blob.png`,
   beach_blob: `${CF}/tiles/beach_blob.png`,
+  beach_tiles: `${CF}/tiles/beach_tiles.png`,
   cliff: `${CF}/tiles/cliff.png`,
+  bridge_wood: `${CF}/tiles/bridge_wood.png`,
   // actors
   player: `${CF}/actors/player.png`,
   // props
   tree_oak: `${CF}/props/tree_oak.png`,
   tree_oak_med: `${CF}/props/tree_oak_med.png`,
+  // buildings (single sprites, feet-anchored)
+  house1: `${CF}/buildings/house1_blue.png`,
+  house2: `${CF}/buildings/house2_red.png`,
+  house3: `${CF}/buildings/house3_green.png`,
+  house4: `${CF}/buildings/house4_black.png`,
+  inn: `${CF}/buildings/inn_blue.png`,
+  windmill: `${CF}/buildings/windmill.png`,
+  fisherman: `${CF}/buildings/fisherman.png`,
+  // decoration
+  well: `${CF}/decor/well.png`,
+  fountain: `${CF}/decor/fountain.png`,
+  flowers: `${CF}/decor/flowers.png`,
+  signs: `${CF}/decor/signs.png`,
+  fences: `${CF}/decor/fences.png`,
+  lanterns: `${CF}/decor/lanterns.png`,
+  benches: `${CF}/decor/benches.png`,
+  outdoor_decor: `${CF}/decor/outdoor_decor.png`,
+  // life
+  sheep: `${CF}/animals/sheep.png`,
+  chicken: `${CF}/animals/chicken.png`,
+  farmer: `${CF}/npc/farmer_bob.png`,
+  fisher: `${CF}/npc/fisherman_fin.png`,
   // light layer (P3)
   waterfall1: `${CF}/waterfall/Waterfall_1.png`,
   waterfall2: `${CF}/waterfall/Waterfall_2.png`,
