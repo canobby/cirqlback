@@ -2219,32 +2219,32 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- LIVING CREATURES: stateful woodland fauna that REACT to you ----------
   // Shy deer/rabbits flee when you rush them, then warm up if you hold still and let you pet
   // them; a curious fox trails you at a gap. Real walk-cycle sprites + facing.
-  private creatures: { x: number; y: number; vx: number; vy: number; sp: "deer" | "rabbit" | "fox"; mode: string; trust: number; t: number; face: number; rest: number; wtx: number; wty: number; home: { x: number; y: number } }[] = [];
+  private creatures: { x: number; y: number; vx: number; vy: number; sp: "deer" | "rabbit" | "fox" | "salamander"; mode: string; trust: number; t: number; face: number; rest: number; wtx: number; wty: number; home: { x: number; y: number } }[] = [];
   private creaturesRing = -999;
   private ensureCreatures() {
     if (this.creaturesRing === this.ringIdx) return;
     this.creaturesRing = this.ringIdx; this.creatures = [];
-    if (this.reduce || this.curRing.biome !== "woodland") return;   // hero fauna per biome (woodland first)
-    const flora = this.curRing.props.filter((p) => p.t === "tree" || p.t === "fern" || p.t === "fairyring");
-    const spawn = (sp: "deer" | "rabbit" | "fox", n: number, k: number) => {
-      const edge = this.effR() * 0.82;
+    if (this.reduce) return;
+    const biome = this.curRing.biome, edge = this.effR() * 0.82;
+    const spawn = (sp: "deer" | "rabbit" | "fox" | "salamander", n: number, k: number, anchors: { x: number; y: number }[]) => {
       for (let i = 0; i < n; i++) {
-        const a = flora.length ? flora[(i * 7 + k) % flora.length] : { x: 0, y: 0 };
+        const a = anchors.length ? anchors[(i * 7 + k) % anchors.length] : { x: 0, y: 0 };
         let hx = a.x + Math.sin(i * 2.3 + k) * 44, hy = a.y + 30 + Math.cos(i * 1.7 + k) * 34;
         const hr = Math.hypot(hx, hy); if (hr > edge) { hx = hx / hr * edge; hy = hy / hr * edge; }
         this.creatures.push({ x: hx, y: hy, vx: 0, vy: 0, sp, mode: "graze", trust: 0, t: i * 1.3, face: 1, rest: 0, wtx: hx, wty: hy, home: { x: hx, y: hy } });
       }
     };
-    spawn("deer", 2, 3); spawn("rabbit", 3, 5); spawn("fox", 1, 2);
+    if (biome === "woodland") { const flora = this.curRing.props.filter((p) => p.t === "tree" || p.t === "fern" || p.t === "fairyring"); spawn("deer", 2, 3, flora); spawn("rabbit", 3, 5, flora); spawn("fox", 1, 2, flora); }
+    else if (biome === "ember") { const geo = this.curRing.props.filter((p) => p.t === "crystal" || p.t === "rock" || p.t === "pond"); spawn("salamander", 3, 4, geo); }
   }
   private updateCreatures(dt: number) {
     if (!this.creatures.length) return;
     const px = this.posX, py = this.posY, calm = this.walk <= 0.05 && !this.dozing && !this.dialog;
     for (const c of this.creatures) {
       const dx = px - c.x, dy = py - c.y, dist = Math.hypot(dx, dy) || 1;
-      const base = c.sp === "rabbit" ? 34 : c.sp === "fox" ? 30 : 26;
+      const base = c.sp === "rabbit" ? 34 : c.sp === "fox" ? 30 : c.sp === "salamander" ? 18 : 26;
       let tx = c.wtx, ty = c.wty, spd = base * 0.45;
-      if (c.sp === "fox") {                                   // curious — trails you at a gap
+      if (c.sp === "fox" || c.sp === "salamander") {          // curious — trails you at a gap (salamander basks slower)
         if (dist < 240) { c.trust = Math.min(1, c.trust + dt * 0.15); c.mode = "curious"; const gap = 84;
           if (dist > gap + 14) { tx = px; ty = py; spd = base * (dist > 160 ? 1.2 : 0.8); }
           else if (dist < gap - 14) { tx = c.x - dx / dist * 30; ty = c.y - dy / dist * 30; spd = base * 0.9; }
@@ -2281,6 +2281,7 @@ export class CirqlWorldEngine extends RetroEngine {
       const moving = Math.hypot(c.vx, c.vy) > 6, ph = c.t * 7;
       if (c.sp === "deer") this.drawDeer(sx, sy, c.face, moving, ph, c.mode);
       else if (c.sp === "fox") this.drawFox(sx, sy, c.face, moving, ph);
+      else if (c.sp === "salamander") this.drawSalamander(sx, sy, c.face, moving, c.t);
       else this.drawBunny(sx, sy, c.face, moving, c.t, c.mode);
       if (c.mode === "flee") this.q(sx, sy - 26, "!", "#ffd24a", 0.85, "c", true);
       else if (c.mode === "curious" || c.mode === "watch") this.q(sx, sy - 26, "?", "#9fd0ff", 0.8, "c", true);
@@ -2322,6 +2323,20 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(hx + 5 * f, hy + 0.5, 1.4, dk);                                         // snout
     this.disc(hx + 1.5 * f, hy - 1, 0.6, "#1a1208");                                  // eye
   }
+  // A salamander — the ember biome's hero fauna: a fiery lizard with glowing dorsal spots.
+  private drawSalamander(sx: number, sy: number, f: number, walk: boolean, t: number) {
+    const body = "#c2401a", body2 = "#e05a24", dk = "#7a2410", sway = walk ? Math.sin(t * 4) * 1 : 0;
+    this.disc(sx, sy + 2, 8, "#0a071440");
+    this.fillEll(sx - 8 * f, sy - 2 + sway * 0.3, 4, 2.4, body);            // tail base
+    this.fillEll(sx - 13 * f, sy - 1 + sway * 0.5, 2.6, 1.6, body);         // tail tip
+    this.fillEll(sx, sy - 3, 9, 3.6, body);                                 // body
+    this.fillEll(sx - 2 * f, sy - 4, 6, 2.4, body2);
+    this.fillEll(sx + 8 * f, sy - 3.5, 4, 3, body2);                        // head
+    const lp = walk ? Math.sin(t * 4) * 2 : 0;
+    this.rect(sx - 5 * f, sy - 1, 1.4, 3 + lp * 0.3, dk); this.rect(sx + 4 * f, sy - 1, 1.4, 3 - lp * 0.3, dk);
+    for (let i = 0; i < 4; i++) { const dx = sx - 8 * f + i * 5 * f; this.glow(dx, sy - 6, 3.5, "#ffab3a", 0.3 + 0.4 * this.nightAmt); this.disc(dx, sy - 6, 1.1, "#ffe27a"); }
+    this.disc(sx + 10 * f, sy - 4, 0.6, "#1a0a06");                         // eye
+  }
   private drawBunny(sx: number, sy: number, f: number, walk: boolean, t: number, mode: string) {
     const body = "#b8a890", ear = "#a89880";
     const hop = walk ? -Math.abs(Math.sin(t * 9)) * 3 : 0;
@@ -2333,7 +2348,47 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(sx - 3 * f, sy - 2 + hop, 1.4, "#e8ddcf");                              // tail
     this.disc(sx + 4 * f, sy - 5 + hop, 0.5, "#1a1208");                              // eye
   }
+  // An obsidian spire — the ember biome's "crystal": dark angular shards with a magenta sheen.
+  private drawObsidianSpire(cx: number, cy: number, big: boolean | undefined) {
+    const k = big ? 1.3 : 1, dk = "#160f16", ob = "#26182a", hi = "#3c2842", mag = "#ff4fd8", b = this.b, s = this.SS;
+    this.disc(cx, cy + 2, 6 * k, "#0a071440");
+    const tri = (x: number, w: number, h: number, col: string) => { b.fillStyle = col; b.beginPath(); b.moveTo(x * s, (cy - h) * s); b.lineTo((x - w) * s, cy * s); b.lineTo((x + w) * s, cy * s); b.closePath(); b.fill(); };
+    tri(cx - 6 * k, 5 * k, 26 * k, dk); tri(cx + 7 * k, 5 * k, 30 * k, ob); tri(cx, 7 * k, 40 * k, ob); tri(cx - 2 * k, 4 * k, 44 * k, hi);
+    this.neonPath([[cx - 2 * k, cy - 44 * k], [cx + 7 * k, cy]], mag, 4 * k, 1.2 * k, 0.5 + 0.4 * this.nightAmt);
+    this.neonPath([[cx - 2 * k, cy - 44 * k], [cx - 7 * k, cy - 2 * k]], mag, 4 * k, 1.2 * k, 0.5 + 0.4 * this.nightAmt);
+    this.glow(cx, cy - 30 * k, 14 * k, mag, 0.08 + 0.18 * this.nightAmt);
+  }
+  // A stack of hexagonal basalt columns — the ember biome's "rock".
+  private drawBasaltColumn(cx: number, cy: number, big: boolean | undefined) {
+    const k = big ? 1.3 : 1;
+    this.disc(cx, cy + 2, 8 * k, "#0a071440");
+    for (let i = 0; i < 3; i++) {
+      const cw = 6 * k, x = cx + (i - 1) * 7 * k, h = (18 + (i === 1 ? 8 : 0)) * k;
+      this.rect(x - cw / 2, cy - h, cw, h, "#3a2c26"); this.rect(x - cw / 2, cy - h, 2 * k, h, "#4a3a30"); this.rect(x - cw / 2, cy - h, cw, 3 * k, "#2a201c");
+      this.triY(x, cy - h - 3 * k, cw / 2, 3 * k, "#52413a");
+    }
+  }
+  // An ember-poppy — the ember flower: charred petals with a molten glowing core.
+  private drawEmberPoppy(cx: number, cy: number) {
+    this.rect(cx, cy - 4, 1, 5, "#3a241c");
+    const R = 2.1; for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * (TAU / 5); this.disc(cx + Math.cos(a) * R, cy - 5 + Math.sin(a) * R, 1.5, "#2a1810"); }
+    const pulse = this.reduce ? 0.7 : 0.6 + 0.4 * Math.sin(this.t * 2.2 + cx);
+    this.glow(cx, cy - 5, 7, "#ff6a1a", (0.18 + 0.34 * this.nightAmt) * pulse + 0.12); this.disc(cx, cy - 5, 1.4, "#ffe27a");
+  }
+  // A lava pool — the ember biome's "pond": organic magma, molten core, glowing edge (solid).
+  private drawLavaPool(cx: number, cy: number, r: number) {
+    const lobes: [number, number, number][] = [[0, 0, 1], [0.55, -0.12, 0.72], [-0.5, 0.14, 0.64], [0.28, 0.36, 0.5]];
+    const el = (dx: number, dy: number, sc: number, ry: number, col: string) => this.fillEll(cx + dx * r * 0.72, cy + dy * r * 0.62, r * sc, r * sc * ry, col);
+    for (const L of lobes) el(L[0], L[1] + 0.06, L[2] * 1.05, 0.66, "#241611");
+    for (const L of lobes) el(L[0], L[1], L[2], 0.6, "#c23a08");
+    for (const L of lobes) el(L[0], L[1], L[2] * 0.8, 0.5, "#ff6a1a");
+    for (const L of lobes) this.fillEll(cx + L[0] * r * 0.72 - r * 0.08, cy + L[1] * r * 0.62 - r * 0.06, r * L[2] * 0.45, r * L[2] * 0.28, "#ffe27a");
+    if (!this.reduce) for (let i = 0; i < 5; i++) { const L = lobes[i % lobes.length], bx = cx + L[0] * r * 0.72 + Math.sin(this.t * 1.3 + i) * r * 0.3, by = cy + L[1] * r * 0.62 + Math.cos(this.t * 1.1 + i * 2) * r * 0.2, bl = 0.5 + 0.5 * Math.sin(this.t * 3 + i * 2); this.glow(bx, by, 3 + bl * 3, "#ffe27a", 0.35 * bl); }
+    this.glow(cx, cy, r * 1.6, "#ff6a1a", 0.12 + 0.14 * this.nightAmt);
+    for (const L of lobes) this.neonEllipse(cx + L[0] * r * 0.72, cy + L[1] * r * 0.62, r * L[2], r * L[2] * 0.62, "#ffab3a", 3, 1.2, 0.4 + 0.4 * this.nightAmt);
+  }
   private drawCrystal(cx: number, cy: number, big: boolean | undefined, c: string) {
+    if (this.curRing.biome === "ember") { this.drawObsidianSpire(cx, cy, big); return; }
     const s = big ? 1.35 : 1;
     this.disc(cx, cy + 2, 5 * s, "#0a071440");
     this.glow(cx, cy - 6 * s, 16 * s, c, this.reduce ? 0.35 : 0.28 + 0.12 * Math.sin(this.t * 1.7 + cx));
@@ -2345,6 +2400,7 @@ export class CirqlWorldEngine extends RetroEngine {
   }
   // ---- landscape: rocks + ponds ----
   private drawRock(cx: number, cy: number, big?: boolean) {
+    if (this.curRing.biome === "ember") { this.drawBasaltColumn(cx, cy, big); return; }
     const s = big ? 1.5 : 1;
     this.disc(cx, cy + 2, 6 * s, "#0a071440");
     this.disc(cx, cy - 2 * s, 6 * s, "#565663");
@@ -2367,6 +2423,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (!this.reduce) { const a = (this.t + cx) % 1.4; this.q(cx + Math.sin(this.t * 2 + cy) * 3, y - 4 - a * 5, "·", c, 0.8, "c", false, (1 - a / 1.4) * 0.8); }
   }
   private drawFlower(cx: number, cy: number, c: string) {
+    if (this.curRing.biome === "ember") { this.drawEmberPoppy(cx, cy); return; }
     // stem + a little leaf, then a rounded 5-petal bloom + centre (reads as a flower,
     // not a jewel — CHR-259 landscape pass)
     this.rect(cx, cy - 4, 1, 5, "#3a6a34");
@@ -2405,6 +2462,7 @@ export class CirqlWorldEngine extends RetroEngine {
   // "trampoline" rings): deep centre → shallow edge, drifting ripples, and a tight
   // bioluminescent shoreline that breathes with night.
   private drawPond(cx: number, cy: number, r: number) {
+    if (this.curRing.biome === "ember") { this.drawLavaPool(cx, cy, r); return; }
     const sea = this.curRing.palette.sea, deep = shade(sea, -0.28), shallow = mix(sea, "#3fb0b8", 0.5);
     const edge = mix(this.curRing.palette.accent, "#5ff2ff", 0.4);
     // deterministic lobe shape (stable per pond via its x): [dx, dy, scale]

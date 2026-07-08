@@ -64,9 +64,10 @@ const BIOMES: Biome[] = [
   // sunlit coast — beach, gulls, rocks
   { key: "coast", tree: true, crystals: 0, lanterns: 5, rocks: 5, pond: false, flowers: 2, fence: false, path: false, ambient: "gull", landmark: "lighthouse",
     palette: { sky: ["#183048", "#0e1c34"], sea: "#0a5578", land: "#20464a", grass: "#2f7a6a", sand: "#f0dca0", accent: "#6fd8ff", mote: "#bff0ff" } },
-  // ember reach — volcanic, rising embers
-  { key: "ember", tree: false, crystals: 2, lanterns: 3, rocks: 5, pond: false, flowers: 0, fence: false, path: true, ambient: "ember", landmark: "ruin",
-    palette: { sky: ["#2e1622", "#1a0f16"], sea: "#241016", land: "#4a2020", grass: "#6a3028", sand: "#caa070", accent: "#ff7a4c", mote: "#ffb890" } },
+  // ember reach — volcanic: dark basalt veined with glowing lava (biome-kit). Obsidian spires,
+  // basalt columns, ember-poppies, a lava pool + a salamander. crystals=obsidian, rocks=basalt.
+  { key: "ember", tree: false, crystals: 3, lanterns: 3, rocks: 6, pond: true, flowers: 6, fence: false, path: true, ambient: "ember", landmark: "ruin",
+    palette: { sky: ["#2a1410", "#160a08"], sea: "#1a0c08", land: "#3a2620", grass: "#4a342c", sand: "#6a4a3a", accent: "#ff6a1a", mote: "#ffab3a" } },
 ];
 
 const FLOWER_COLS = ["#ff8fbf", "#ffd24a", "#ffffff", "#e0a0ff", "#ff6b6b", "#8fd0ff"];
