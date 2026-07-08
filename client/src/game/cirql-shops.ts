@@ -124,19 +124,15 @@ export function gateCheck(itemId: string, renown: number): { ok: boolean; needRa
 export function shopInterior(id: ShopId): Ring {
   const s = SHOPS[id];
   const radius = 210;
+  // The interior is now drawn as a real four-walled ROOM (the engine's interior render mode uses
+  // the room renderer for shop/home indices) — so we only need the two interactive props: the
+  // keeper behind the counter (north) + the exit doorway (south). Furniture lives in the renderer.
   const props: Prop[] = [
-    // the way back out to the Town storefront (south) — quick fade back
-    { t: "portal", x: 0, y: radius * 0.62, to: 1, sub: "up", label: `↩ leave ${s.name}` },
-    // the keeper behind the counter (north) — talk to shop
-    { t: "npc", x: 0, y: -radius * 0.34, id: s.keeper.id, label: s.keeper.label, accent: s.keeper.accent, r: 40, shopId: id },
-    // cozy interior flavour — a couple of props framing the counter
-    { t: "lantern", x: -radius * 0.5, y: -radius * 0.28, id: `${id}-l0`, accent: s.accent },
-    { t: "lantern", x: radius * 0.5, y: -radius * 0.28, id: `${id}-l1`, accent: s.accent },
-    { t: "flower", x: -radius * 0.62, y: radius * 0.1, accent: s.accent },
-    { t: "flower", x: radius * 0.62, y: radius * 0.1, accent: s.accent },
+    { t: "portal", x: 0, y: 200, to: 1, sub: "up", label: `↩ leave ${s.name}` },
+    { t: "npc", x: 0, y: -98, id: s.keeper.id, label: s.keeper.label, accent: s.keeper.accent, r: 48, shopId: id },
   ];
   return {
     index: shopIndex(id), name: s.name, sub: s.sub, radius, explorable: true,
-    palette: s.palette, spawn: { x: 0, y: radius * 0.42 }, props, ambient: "firefly",
+    palette: s.palette, spawn: { x: 0, y: 150 }, props, ambient: "firefly",
   };
 }

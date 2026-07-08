@@ -11,7 +11,7 @@ import { RetroEngine, shade, mix, type RetroHooks } from "./retro-engine";
 import { loadAvatarLS, DEFAULT_AVATAR, AURA_COLORS, type AvatarConfig } from "./avatar";
 import { RINGS, MINIMAP_RINGS, type Ring, type Prop, type RingPalette } from "./cirql-world";
 import { getRing, ringName, isSubMap, parentOf, subKindOf, isTunnel } from "./cirql-ring-gen";
-import { isShop } from "./cirql-shops";
+import { isShop, shopIdAt } from "./cirql-shops";
 import { isHome } from "./cirql-home";
 import { CirqlOrchestra } from "./cirql-orchestra";
 import { tracksForContext } from "./cirql-music";
@@ -1660,18 +1660,32 @@ export class CirqlWorldEngine extends RetroEngine {
         else { this.posX = preX; this.posY = preY; }
       }
 
-      // solid props — push the player out of them; bumping one gives a little recoil + puff (I2)
-      for (const s of this.solids()) {
-        const ox = this.posX - s.x, oy = this.posY - s.y, d = Math.hypot(ox, oy);
-        const min = s.r + 5;
-        if (d < min && d > 0.001) {
-          const k = min / d; this.posX = s.x + ox * k; this.posY = s.y + oy * k;
-          if (moving && this.bumpT <= 0) { this.bumpT = 0.16; if (!this.reduce) this.spawnGroundFx(this.posX, this.posY, "dust"); }
+      if (this.isInterior()) {
+        // room furniture collision (AABB push-out along the shallowest axis) + keep inside the walls
+        for (const rct of this.roomSolids()) {
+          const pr = 7;
+          if (this.posX > rct.x0 - pr && this.posX < rct.x1 + pr && this.posY > rct.y0 - pr && this.posY < rct.y1 + pr) {
+            const dl = this.posX - (rct.x0 - pr), dR = (rct.x1 + pr) - this.posX, dU = this.posY - (rct.y0 - pr), dD = (rct.y1 + pr) - this.posY;
+            const m = Math.min(dl, dR, dU, dD);
+            if (m === dl) this.posX = rct.x0 - pr; else if (m === dR) this.posX = rct.x1 + pr; else if (m === dU) this.posY = rct.y0 - pr; else this.posY = rct.y1 + pr;
+          }
         }
+        const rm = this.roomBounds();
+        this.posX = Math.max(rm.x0, Math.min(rm.x1, this.posX)); this.posY = Math.max(rm.y0, Math.min(rm.y1, this.posY));
+      } else {
+        // solid props — push the player out of them; bumping one gives a little recoil + puff (I2)
+        for (const s of this.solids()) {
+          const ox = this.posX - s.x, oy = this.posY - s.y, d = Math.hypot(ox, oy);
+          const min = s.r + 5;
+          if (d < min && d > 0.001) {
+            const k = min / d; this.posX = s.x + ox * k; this.posY = s.y + oy * k;
+            if (moving && this.bumpT <= 0) { this.bumpT = 0.16; if (!this.reduce) this.spawnGroundFx(this.posX, this.posY, "dust"); }
+          }
+        }
+        // island edge — keep the player on the (tier-limited) land
+        const rr = Math.hypot(this.posX, this.posY), lim = this.effR() * 0.9;
+        if (rr > lim) { this.posX = this.posX / rr * lim; this.posY = this.posY / rr * lim; }
       }
-      // island edge — keep the player on the (tier-limited) land
-      const rr = Math.hypot(this.posX, this.posY), lim = this.effR() * 0.9;
-      if (rr > lim) { this.posX = this.posX / rr * lim; this.posY = this.posY / rr * lim; }
 
       this.walk = Math.hypot(this.vx, this.vy) > 8 ? this.walk + dt * 10 : 0;
       // emotive locomotion: lean the body into the direction of travel, ease back on stop (I7)
@@ -1736,9 +1750,11 @@ export class CirqlWorldEngine extends RetroEngine {
     // auto-rotate the soundtrack every ~minute so no tune wears out (crossfaded)
     if (this.musicStarted && this.orchestra && this.musicVol > 0) { this.musicT += dt; if (this.musicT >= 60) this.rotateMusic(); }
 
-    // camera easing
-    this.camX += ((this.posX - this.LW / 2) - this.camX) * Math.min(1, dt * 8);
-    this.camY += ((this.posY - this.LH / 2) - this.camY) * Math.min(1, dt * 8);
+    // camera easing — indoors the camera locks on the room centre (a fixed-camera room)
+    const camTX = (this.isInterior() ? 0 : this.posX) - this.LW / 2;
+    const camTY = (this.isInterior() ? 6 : this.posY) - this.LH / 2;
+    this.camX += (camTX - this.camX) * Math.min(1, dt * 8);
+    this.camY += (camTY - this.camY) * Math.min(1, dt * 8);
 
     // throttled autosave hook
     if (this.t - this.lastSent > 1.2 && (Math.abs(this.posX - this.lastX) > 3 || Math.abs(this.posY - this.lastY) > 3)) {
@@ -1773,6 +1789,83 @@ export class CirqlWorldEngine extends RetroEngine {
   }
 
   // ---------- render ----------
+  // ================= INTERIOR ROOMS =================
+  // Indoors we drop the circular-island world and draw a bounded, furnished RECTANGULAR room
+  // (TMW-style): a tiled plank floor, walls with height, a doorway, and shop-specific furniture with
+  // collision. Only active for shop/home ring indices; the outdoor world is untouched.
+  private isInterior() { return isShop(this.ringIdx) || isHome(this.ringIdx); }
+  private roomBounds() { return { x0: -300, y0: -58, x1: 300, y1: 200 }; }   // walkable floor rect (in front of the counter)
+  private static readonly ROOM_SOLID: Record<string, { hw: number; hh: number }> = {
+    counter: { hw: 150, hh: 11 }, backshelf: { hw: 52, hh: 10 }, barrel: { hw: 11, hh: 11 },
+    crate: { hw: 12, hh: 11 }, crateSm: { hw: 8, hh: 8 }, sacks: { hw: 24, hh: 13 },
+  };
+  private roomItems(): { kind: string; x: number; y: number }[] {
+    const id = shopIdAt(this.ringIdx);
+    const F: { kind: string; x: number; y: number }[] = [{ kind: "hanglamp", x: -150, y: -182 }, { kind: "hanglamp", x: 150, y: -182 }];
+    if (id === "general") {
+      F.push({ kind: "backshelf", x: -100, y: -170 }, { kind: "backshelf", x: 100, y: -170 }, { kind: "counter", x: 0, y: -80 }, { kind: "rug", x: 0, y: 95 });
+      F.push({ kind: "crate", x: -250, y: 178 }, { kind: "crate", x: -214, y: 190 }, { kind: "crateSm", x: -250, y: 140 });
+      F.push({ kind: "barrel", x: 250, y: 174 }, { kind: "barrel", x: 214, y: 188 }, { kind: "barrel", x: 268, y: 138 }, { kind: "sacks", x: -258, y: 78 });
+    } else {   // generic cozy fallback until each shop is furnished
+      F.push({ kind: "counter", x: 0, y: -80 }, { kind: "rug", x: 0, y: 95 }, { kind: "barrel", x: 250, y: 174 }, { kind: "crate", x: -250, y: 178 });
+    }
+    return F;
+  }
+  private roomSolids() {
+    const out: { x0: number; y0: number; x1: number; y1: number }[] = [];
+    for (const it of this.roomItems()) { const s = CirqlWorldEngine.ROOM_SOLID[it.kind]; if (s) out.push({ x0: it.x - s.hw, y0: it.y - s.hh, x1: it.x + s.hw, y1: it.y + s.hh }); }
+    return out;
+  }
+  private drawRoom(camX: number, camY: number) {
+    const id = shopIdAt(this.ringIdx), pal = this.curRing.palette;
+    const fx0 = -312, fx1 = 312, fyTop = -140, fy1 = 220, wx0 = -340, wx1 = 340, wyTop = -200;
+    const plank = pal.sand || "#6b4e30", plank2 = shade(plank, -0.12), seam = shade(plank, -0.32);
+    const wall = shade(pal.land || "#3a2a1c", -0.05), wallHi = shade(wall, 0.16), wallLo = shade(wall, -0.24);
+    this.rect(wx0 - camX, wyTop - camY, wx1 - wx0, fy1 - wyTop, wallLo);                                   // wall backdrop
+    this.rect(wx0 - camX, wyTop - camY, wx1 - wx0, fyTop - wyTop, wall);                                   // back wall
+    for (let x = wx0 + 4; x < wx1; x += 30) this.rect(x - camX, wyTop - camY + 4, 1, (fyTop - wyTop) - 8, wallHi);   // panel seams
+    this.rect(wx0 - camX, wyTop - camY, wx1 - wx0, 4, shade(wall, 0.22));                                  // crown molding
+    this.rect(wx0 - camX, fyTop - camY - 4, wx1 - wx0, 5, shade(wall, -0.4));                              // wall-foot shadow
+    this.rect(fx0 - camX, fyTop - camY, fx1 - fx0, fy1 - fyTop, plank);                                    // floor base
+    for (let y = fyTop; y < fy1; y += 15) this.rect(fx0 - camX, y - camY, fx1 - fx0, 1, seam);             // plank rows
+    for (let y = fyTop, row = 0; y < fy1; y += 15, row++) { const off = (row % 2) * 26; for (let x = fx0 + off; x < fx1; x += 52) this.rect(x - camX, y - camY, 1, 15, seam); }   // staggered board ends
+    this.rect(fx0 - camX, fyTop - camY, fx1 - fx0, 5, shade(plank, 0.08));                                 // floor sheen
+    this.rect(wx0 - camX, fyTop - camY, fx0 - wx0, fy1 - fyTop, wallLo); this.rect(fx0 - camX - 2, fyTop - camY, 2, fy1 - fyTop, wallHi);   // left wall
+    this.rect(fx1 - camX, fyTop - camY, wx1 - fx1, fy1 - fyTop, wallLo); this.rect(fx1 - camX, fyTop - camY, 2, fy1 - fyTop, wallHi);       // right wall
+    this.rect(-34 - camX, fy1 - camY - 8, 68, 10, shade(plank, -0.42)); this.rect(-30 - camX, fy1 - camY - 6, 60, 3, shade(plank, 0.12));   // doorway threshold
+    for (const it of this.roomItems().slice().sort((a, b) => a.y - b.y)) this.drawFurniture(it.kind, it.x - camX, it.y - camY, pal.accent, id);
+  }
+  private drawFurniture(kind: string, sx: number, sy: number, ac: string, shopId: string | null) {
+    const dk = "#241609";
+    switch (kind) {
+      case "hanglamp":
+        this.rect(sx - 0.5, sy - 20, 1, 18, "#3a2a1a"); this.disc(sx, sy, 5, "#6a4a2a"); this.disc(sx, sy + 1, 3.5, "#ffe6a8");
+        if (!this.reduce) this.glow(sx, sy + 3, 30, "#ffcf7a", 0.16 + 0.05 * Math.sin(this.t * 2 + sx)); return;
+      case "rug":
+        this.fillEll(sx, sy, 104, 58, shade(ac, -0.2)); this.fillEll(sx, sy, 92, 48, ac); this.fillEll(sx, sy, 66, 32, shade(ac, 0.14)); this.fillEll(sx, sy, 40, 18, shade(ac, -0.1)); return;
+      case "barrel":
+        this.fillEll(sx, sy + 15, 12, 4, "#0a071440"); this.rect(sx - 11, sy - 14, 22, 28, "#7a4a24"); this.fillEll(sx, sy - 14, 11, 4, "#8a5a2e"); this.fillEll(sx, sy + 14, 11, 4, "#5a3418");
+        this.rect(sx - 11, sy - 8, 22, 2.5, "#4a2e18"); this.rect(sx - 11, sy + 5, 22, 2.5, "#4a2e18"); this.rect(sx - 11, sy - 14, 4, 28, shade("#7a4a24", 0.16)); return;
+      case "crate": case "crateSm": {
+        const h = kind === "crate" ? 22 : 15;
+        this.fillEll(sx, sy + h / 2 + 2, h * 0.6, 3, "#0a071440"); this.rect(sx - h / 2, sy - h / 2, h, h, "#8a5a30"); this.rectLine(sx - h / 2, sy - h / 2, h, h, dk);
+        this.rect(sx - h / 2, sy - 1, h, 2, "#5a3a1e"); this.rect(sx - 1, sy - h / 2, 2, h, "#5a3a1e"); this.rect(sx - h / 2, sy - h / 2, h, 2.5, shade("#8a5a30", 0.22)); return;
+      }
+      case "sacks":
+        for (const o of [[-11, 4], [9, 1], [-1, -9]]) { const x = sx + o[0], y = sy + o[1]; this.fillEll(x, y + 8, 11, 3.5, "#0a071440"); this.fillEll(x, y, 11, 13, "#b89a5c"); this.fillEll(x, y - 9, 5, 4, "#a88a4c"); } return;
+      case "backshelf": {
+        this.rect(sx - 52, sy - 18, 104, 38, "#5a3c22"); this.rectLine(sx - 52, sy - 18, 104, 38, dk);
+        this.rect(sx - 52, sy - 1, 104, 2.5, "#4a2e18"); this.rect(sx - 52, sy - 18, 104, 2.5, shade("#5a3c22", 0.22));
+        const jars = ["#8fd0ff", "#ff9dd6", "#8fe6a0", "#ffd24a", "#c79dff", "#ffab6a"];
+        for (let i = 0; i < 11; i++) { const jx = sx - 46 + i * 9, row = i % 2, jy = sy - 8 + row * 17; this.rect(jx, jy - 6, 6, 9, jars[(i + (shopId?.length || 0)) % jars.length]); this.rect(jx, jy - 7, 6, 2, "#eee4d2"); } return;
+      }
+      case "counter":
+        this.rect(sx - 150, sy - 8, 300, 10, "#8a5c32"); this.rect(sx - 150, sy + 2, 300, 22, "#6a4424"); this.rectLine(sx - 150, sy - 8, 300, 32, dk); this.rect(sx - 150, sy - 8, 300, 2.5, "#a06e3c");
+        for (let x = sx - 130; x < sx + 140; x += 50) this.rect(x, sy + 2, 2, 22, "#4a2e18");
+        this.rect(sx - 96, sy - 16, 9, 8, "#ffd24a"); this.disc(sx + 70, sy - 12, 4, "#8fd0ff"); this.rect(sx + 6, sy - 15, 6, 7, "#ff9dd6"); this.disc(sx - 40, sy - 12, 3.5, ac);
+        this.rect(sx + 110, sy - 18, 3, 10, "#c9c3d6"); this.rect(sx + 104, sy - 20, 15, 3, "#c9c3d6"); return;
+    }
+  }
   protected render() {
     this.ui.length = 0; this.uiZoom = false;   // reset the smooth-text queue for this frame
     if (this.tornado) { this.drawTornado(); this.drawFx(); return; }   // the storm sweep owns the screen (F)
@@ -1782,7 +1875,8 @@ export class CirqlWorldEngine extends RetroEngine {
     const b = this.b, s = this.SS, W = this.LW * s, H = this.LH * s, pal = this.curRing.palette;
     const dn = this.dayNight();   // day/night cycle (J3/J5)
     this.nightAmt = dn.night;     // per-object neon glow "breathes" up at night (biome kit)
-    // sky/sea backdrop
+    // backdrop — outdoors is sky/sea; indoors is a dark surround (the room renderer fills the rest)
+    if (this.isInterior()) { b.fillStyle = "#0a0806"; b.fillRect(0, 0, W, H); } else {
     const g = b.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, pal.sky[0]); g.addColorStop(0.5, pal.sky[1]); g.addColorStop(1, pal.sea);
     b.fillStyle = g; b.fillRect(0, 0, W, H);
@@ -1807,6 +1901,7 @@ export class CirqlWorldEngine extends RetroEngine {
     // water specular
     b.fillStyle = "rgba(255,255,255,0.02)";
     for (let i = 0; i < 7; i++) b.fillRect(0, ((i * 40 + (this.t * 30) % 40) * s) % H, W, 2 * s);
+    }
 
     const camX = this.camX, camY = this.camY;
     const scx = -camX, scy = -camY; // island centre (world 0,0) on screen
@@ -1817,8 +1912,9 @@ export class CirqlWorldEngine extends RetroEngine {
     if (zoomed) { const fx = this.LW / 2 * s, fy = this.LH / 2 * s; b.save(); b.translate(fx, fy); b.scale(this.zoom, this.zoom); b.translate(-fx, -fy); }
     this.uiZoom = true;   // labels queued now are inside the zoom → onOverlay scales them to match
 
-    // island landmass — grows with the land tier on CIRQLSPACE (Phase D)
+    // island landmass — grows with the land tier on CIRQLSPACE (Phase D). Indoors: a room instead.
     const R = this.effR();
+    if (this.isInterior()) { this.drawRoom(camX, camY); } else {
     this.fillCirc(scx + 4, scy + 6, R, "rgba(0,0,0,0.30)");   // soft cast
     this.fillCirc(scx, scy, R, pal.sand);
     this.fillCirc(scx, scy, R - 22, pal.land);
@@ -1837,6 +1933,7 @@ export class CirqlWorldEngine extends RetroEngine {
     // faint path ring
     b.strokeStyle = "rgba(255,220,150,0.10)"; b.lineWidth = 20 * s;
     b.beginPath(); b.arc(scx * s, scy * s, R * 0.42 * s, 0, TAU); b.stroke();
+    }
 
     // painted terrain — the base ground layer under everything (Phase C, CIRQLSPACE only)
     if (this.ringIdx === 0 && this.curTerrain().size) this.drawTerrain(camX, camY);
