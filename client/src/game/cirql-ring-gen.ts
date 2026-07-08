@@ -355,6 +355,26 @@ export function generateRing(index: number): Ring {
   if (index === 6) props.push({ t: "curio", curio: "relic", x: hub.x - 58, y: hub.y - 44, id: "curio-6", label: "The ash-stone", accent: "#ff9a3c" });   // riddle
   if (index === 7) props.push({ t: "curio", curio: "blight", x: hub.x + 40, y: hub.y - 58, id: "curio-7", label: "Blighted ground", accent: "#a05cff" });
 
+  // ── WORLD REDESIGN — vertical slice (MEADOW first): a raised PLATEAU with a wellspring→river→
+  // waterfall WATERSHED + a hamlet of huts around the well + a bold road. Layered onto the ring;
+  // quests key on ids so they're unaffected. Rolls out to other biomes once the look is approved.
+  let watershed: Ring["watershed"] | undefined, road: Ring["road"] | undefined, plateau = false;
+  if (biome.key === "meadow") {
+    plateau = true;
+    const spring = { x: hub.x, y: hub.y - 6 };
+    props.push({ t: "well", x: spring.x, y: spring.y, id: `well-${index}`, accent: biome.palette.mote });
+    const hutN = 5;
+    for (let i = 0; i < hutN; i++) { const a = i / hutN * TAU + 0.5; props.push({ t: "hut", x: hub.x + Math.cos(a) * 82, y: hub.y + Math.sin(a) * 62, accent: biome.palette.accent }); }
+    const fallA = Math.atan2(1, 0.55) + (rng() - 0.5) * 0.5;   // toward the lower-right rim
+    const fx = Math.cos(fallA), fy = Math.sin(fallA), fall = { x: fx * radius * 0.99, y: fy * radius * 0.99 };   // right at the rim, so it pours over
+    const nx = -fy, ny = fx, river = [spring];
+    for (let k = 1; k <= 5; k++) { const t = k / 6, wob = Math.sin(t * Math.PI * 1.6) * radius * 0.12 * (k % 2 ? 1 : -1); river.push({ x: spring.x + (fall.x - spring.x) * t + nx * wob, y: spring.y + (fall.y - spring.y) * t + ny * wob }); }
+    river.push(fall);
+    watershed = { spring, river, fall };
+    road = [{ x: 0, y: -radius * 0.82 }, { x: hub.x * 0.5, y: -radius * 0.28 }, { x: hub.x, y: hub.y + 34 }, { x: hub.x * 0.4, y: radius * 0.42 }, { x: 0, y: radius * 0.86 }];
+    props.push({ t: "signpost", x: hub.x + 34, y: hub.y + 50, accent: biome.palette.accent });
+  }
+
   // stable ids so the quest-template generator (CHR-256) can target this ring's own
   // lanterns + crystals; unique per ring so the lit-set never collides across rings
   let li = 0, ci = 0, wi = 0;
@@ -375,6 +395,7 @@ export function generateRing(index: number): Ring {
     props,
     ambient: biome.ambient,               // the critter that belongs to this scene
     biome: biome.key,                     // drives the per-biome flora/geo/glow kit
+    plateau, watershed, road,             // world redesign (meadow slice)
   };
 }
 

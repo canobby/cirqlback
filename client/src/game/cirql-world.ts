@@ -45,7 +45,10 @@ export type PropType =
   | "petshop"   // the Pet Stall — buy a companion for your CIRQLSPACE (Pets P1)
   | "stylist"   // the Style Studio — restyle your CIRQLSPACE's biome/colour palette (home customization)
   | "barber"    // the Barber — restyle your hair/look (opens the character editor on hair) (Town business)
-  | "ride";     // an ATTRACTION you actually ride — a scripted cutscene (ferris wheel first); one per ring
+  | "ride"      // an ATTRACTION you actually ride — a scripted cutscene (ferris wheel first); one per ring
+  | "well"      // the ring's WELLSPRING of light (the village heart / watershed source) — world redesign
+  | "hut"       // a village dwelling (the biome hamlet around the wellspring) — world redesign
+  | "signpost"; // a road signpost that points you onward (guides you TMW-style) — world redesign
 
 export type LandmarkKind = "greattree" | "stonecircle" | "lighthouse" | "crystal" | "waterfall" | "ruin";
 export type CurioKind = "relic" | "blight" | "star" | "cache";
@@ -95,6 +98,11 @@ export interface Ring {
   // circular island: a grid of cells, grid[r*cols+c] === true means a WALL. Presence flips the
   // engine to maze render + wall collision.
   maze?: { cols: number; rows: number; cell: number; grid: boolean[] };
+  // World redesign: a ring is a raised luminous PLATEAU with a WATERSHED — light wells up at the
+  // spring (village heart), runs a river across the land, and pours over the rim as a waterfall.
+  plateau?: boolean;
+  watershed?: { spring: { x: number; y: number }; river: { x: number; y: number }[]; fall: { x: number; y: number } };
+  road?: { x: number; y: number }[];   // the bold road that leads dock → village → dock
 }
 
 // ---- Ring 0: CIRQLSPACE — the player's blank, buildable home island ----------

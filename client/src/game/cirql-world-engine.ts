@@ -1984,6 +1984,58 @@ export class CirqlWorldEngine extends RetroEngine {
       if (!this.reduce && ((c * 7 + r * 3) % 5 === 0)) { this.glow(sx, sy - 8, 10, pal.accent, 0.14 + 0.06 * Math.sin(this.t * 2 + c)); this.disc(sx, sy - 8, 1.6, mix(pal.accent, "#ffffff", 0.3)); }   // vein/moss glimmer
     }
   }
+  // ---- World redesign: the bold road, the wellspring watershed, and the village props ----
+  private drawRoad(camX: number, camY: number) {
+    const road = this.curRing.road; if (!road || road.length < 2) return;
+    const b = this.b, s = this.SS;
+    const trace = () => { b.beginPath(); for (let i = 0; i < road.length; i++) { const x = (road[i].x - camX) * s, y = (road[i].y - camY) * s; if (i) b.lineTo(x, y); else b.moveTo(x, y); } };
+    b.lineJoin = "round"; b.lineCap = "round";
+    b.strokeStyle = "#2e2214"; b.lineWidth = 24 * s; trace(); b.stroke();
+    b.strokeStyle = "#a98a52"; b.lineWidth = 18 * s; trace(); b.stroke();
+    b.strokeStyle = "#c2a468"; b.lineWidth = 6 * s; trace(); b.stroke();
+  }
+  private drawWatershed(camX: number, camY: number) {
+    const ws = this.curRing.watershed; if (!ws) return;
+    const b = this.b, s = this.SS, ac = this.curRing.palette.mote;
+    const trace = () => { b.beginPath(); for (let i = 0; i < ws.river.length; i++) { const x = (ws.river[i].x - camX) * s, y = (ws.river[i].y - camY) * s; if (i) b.lineTo(x, y); else b.moveTo(x, y); } };
+    b.lineJoin = "round"; b.lineCap = "round";
+    b.strokeStyle = hexA("#0a2230", 0.5); b.lineWidth = 18 * s; trace(); b.stroke();
+    b.strokeStyle = "#2f6f82"; b.lineWidth = 13 * s; trace(); b.stroke();
+    b.strokeStyle = hexA(mix(ac, "#ffffff", 0.4), 0.85); b.lineWidth = 5 * s; trace(); b.stroke();
+    if (!this.reduce) for (let i = 0; i < ws.river.length - 1; i++) { const a = ws.river[i], bp = ws.river[i + 1], t = (this.t * 0.4 + i * 0.23) % 1; this.disc(a.x + (bp.x - a.x) * t - camX, a.y + (bp.y - a.y) * t - camY, 1.4, "#eaffff"); }
+    // the waterfall pouring OVER the rim (radially outward) into the sea below
+    const fx = ws.fall.x - camX, fy = ws.fall.y - camY;
+    const flen = Math.hypot(ws.fall.x, ws.fall.y) || 1, ox = ws.fall.x / flen, oy = ws.fall.y / flen, px = -oy, py = ox;   // outward + perpendicular
+    this.fillEll(fx, fy, 15, 8, "#2f6f82"); this.glow(fx, fy, 28, ac, 0.34);   // the lip pool
+    for (let i = 0; i < 16; i++) { const o = (i - 7.5) * 3, drop = ((this.t * 150 + i * 13) % 78); const bx = fx + px * o + ox * drop, by = fy + py * o + oy * drop; this.rect(bx, by, 2.4, 10, hexA("#e6faff", 0.72)); }
+    if (!this.reduce) for (let i = 0; i < 8; i++) { const m = 74; this.disc(fx + ox * m + px * (i - 3.5) * 8, fy + oy * m + py * (i - 3.5) * 8, 5.5, hexA("#eaf6ff", 0.1)); }
+  }
+  private drawWell(cx: number, cy: number, p: Prop) {
+    const ac = p.accent || "#e0ffb0", near = this.near === p;
+    this.disc(cx, cy + 6, 13, "#0a071440");
+    this.fillEll(cx, cy + 2, 13, 6.5, "#8a8378"); this.fillEll(cx, cy + 2, 13, 5.5, "#6a6358"); this.fillEll(cx, cy, 10, 5, "#241f18");
+    const pulse = this.reduce ? 0.7 : 0.6 + 0.4 * Math.sin(this.t * 2);
+    this.fillEll(cx, cy, 8.5, 4, mix(ac, "#ffffff", 0.35)); this.glow(cx, cy - 2, 24, ac, 0.2 + 0.16 * pulse + (near ? 0.08 : 0));
+    if (!this.reduce) for (let i = 0; i < 5; i++) { const prog = (this.t * 9 + i * 7) % 22; this.disc(cx + Math.sin(this.t + i) * 3, cy - 4 - prog, Math.max(0.4, 1.6 - prog / 15), "#eaffd0"); }
+    this.rect(cx - 12, cy - 17, 2.5, 17, "#6a4a24"); this.rect(cx + 9.5, cy - 17, 2.5, 17, "#6a4a24");
+    for (let i = 0; i < 9; i++) this.rect(cx - 15 + i * 1.7, cy - 19 - i, (15 - i * 1.7) * 2, 1, i % 2 ? "#b5843f" : "#a5762f");
+    this.labelPill(cx, cy - 32, p.label || "The Wellspring", ac);
+  }
+  private drawHut(cx: number, cy: number, p: Prop) {
+    this.rect(cx - 14, cy + 10, 28, 4, "#0a071440");
+    this.rect(cx - 12, cy - 6, 24, 18, "#d8c4a0"); this.rectLine(cx - 12, cy - 6, 24, 18, "#5a4630");
+    this.rect(cx + 7, cy - 16, 3, 9, "#8a6a4a");
+    for (let i = 0; i < 13; i++) this.rect(cx - 16 + i, cy - 6 - i, (16 - i) * 2, 1, i % 2 ? "#b5843f" : "#a5762f");
+    this.rect(cx - 3, cy + 2, 7, 10, "#6a4a28"); this.rect(cx - 2, cy + 3, 5, 9, "#8a5a30");
+    this.disc(cx - 8, cy + 1, 2.4, "#ffe6a8"); this.disc(cx + 8, cy + 1, 2.4, "#ffe6a8");
+    if (!this.reduce) for (let i = 0; i < 2; i++) { const yy = cy - 24 - i * 4 - (this.t * 5 % 4); this.disc(cx + 8.5 + Math.sin(this.t + i) * 1.5, yy, 1.3 + i * 0.4, "#c9bfb0"); }
+  }
+  private drawSignpost(cx: number, cy: number, p: Prop) {
+    this.disc(cx, cy + 4, 4, "#0a071440");
+    this.rect(cx - 1.5, cy - 16, 3, 20, "#6a4a24");
+    this.rect(cx - 1, cy - 13, 12, 5, "#b5843f"); this.rectLine(cx - 1, cy - 13, 12, 5, "#5a3a18");
+    this.rect(cx - 11, cy - 6, 12, 5, "#b5843f"); this.rectLine(cx - 11, cy - 6, 12, 5, "#5a3a18");
+  }
   protected render() {
     this.ui.length = 0; this.uiZoom = false;   // reset the smooth-text queue for this frame
     if (this.tornado) { this.drawTornado(); this.drawFx(); return; }   // the storm sweep owns the screen (F)
@@ -2033,7 +2085,10 @@ export class CirqlWorldEngine extends RetroEngine {
     // island landmass — grows with the land tier on CIRQLSPACE (Phase D). Indoors: a room instead.
     const R = this.effR();
     if (this.isInterior()) { this.drawRoom(camX, camY); } else if (this.isMazeRealm()) { this.drawMaze(camX, camY); } else {
-    this.fillCirc(scx + 4, scy + 6, R, "rgba(0,0,0,0.30)");   // soft cast
+    if (this.curRing.plateau) {   // raised luminous plateau — a dark cliff base peeks below the land + a deep cast shadow
+      this.fillCirc(scx + 6, scy + 20, R + 2, "rgba(0,0,0,0.34)");
+      this.fillCirc(scx, scy + 12, R + 4, "#2e2416"); this.fillCirc(scx, scy + 18, R + 1, "#221a0e");
+    } else this.fillCirc(scx + 4, scy + 6, R, "rgba(0,0,0,0.30)");   // soft cast
     this.fillCirc(scx, scy, R, pal.sand);
     this.fillCirc(scx, scy, R - 22, pal.land);
     // grass patches (deterministic)
@@ -2059,6 +2114,8 @@ export class CirqlWorldEngine extends RetroEngine {
     // ground decoration — paths + ponds, under the depth-sorted props
     for (const p of this.curRing.props) if (p.t === "path") this.drawPath(p.x - camX, p.y - camY);
     for (const p of this.curRing.props) if (p.t === "pond") this.drawPond(p.x - camX, p.y - camY, p.r ?? 22);
+    if (this.curRing.road) this.drawRoad(camX, camY);              // the bold road that leads you (world redesign)
+    if (this.curRing.watershed) this.drawWatershed(camX, camY);    // the wellspring→river→waterfall (world redesign)
     // ground-layer décor (paths walk on, ponds walk around) — CIRQLSPACE / Home (Phase B / F)
     if (this.canDecorate()) for (const d of this.curDecorList()) {
       const r = decorById[d.item]?.render;
@@ -2115,6 +2172,9 @@ export class CirqlWorldEngine extends RetroEngine {
         case "stylist": draws.push({ y: p.y, f: () => this.drawStylist(sxp, syp, p) }); break;
         case "barber": draws.push({ y: p.y + 6, f: () => this.drawBarber(sxp, syp, p) }); break;
         case "ride": draws.push({ y: p.y + 10, f: () => this.drawRideProp(sxp, syp, p) }); break;
+        case "well": draws.push({ y: p.y, f: () => this.drawWell(sxp, syp, p) }); break;
+        case "hut": draws.push({ y: p.y + 12, f: () => this.drawHut(sxp, syp, p) }); break;
+        case "signpost": draws.push({ y: p.y, f: () => this.drawSignpost(sxp, syp, p) }); break;
         case "marker": { const isTarget = this.objTargetProp() === p; if (isTarget) draws.push({ y: p.y - 1, f: () => this.drawMarker(sxp, syp) }); break; }
         default: break;
       }
