@@ -93,11 +93,29 @@ const NAME_A = ["Whisper", "Ember", "Frost", "Gleam", "Coral", "Dusk", "Mist", "
 // suffixes — no "hollow"/"hearth" so we never double a stem or collide with the home ring
 const NAME_B = ["wood", "fall", "reach", "cove", "spire", "marsh", "strand", "vale", "expanse", "shoal", "haven", "wilds", "bazaar", "tide", "crest", "moor"];
 
-function ringNameFor(rng: () => number): string {
-  const a = pick(rng, NAME_A);
-  let b = pick(rng, NAME_B);
-  // avoid a suffix that repeats the stem's ending (e.g. "Coral" + "reach" is fine, but guard doublings)
-  if (a.toLowerCase().endsWith(b)) b = pick(rng, NAME_B);
+// BIOME-AWARE NAMING (retro-fit): each shore's name is drawn from its OWN biome's word pools,
+// so "Frostreach" can't land on a meadow. Still deterministic from the ring's rng.
+const BIOME_NAMES: Record<string, { pre: string[]; suf: string[] }> = {
+  meadow:   { pre: ["Bloom", "Clover", "Petal", "Honey", "Willow", "Daisy", "Verdant", "Meadow"], suf: ["vale", "field", "glen", "dale", "haven", "brook", "meadow", "hollow"] },
+  tropical: { pre: ["Coral", "Palm", "Lagoon", "Azure", "Sun", "Reef", "Isla", "Tide"],           suf: ["cove", "reach", "shoal", "lagoon", "strand", "isle", "bay", "tide"] },
+  winter:   { pre: ["Frost", "Snow", "Glacier", "Rime", "Hoar", "Icicle", "Winter", "Pale"],       suf: ["reach", "crest", "fell", "drift", "peak", "vale", "expanse", "hollow"] },
+  desert:   { pre: ["Dune", "Sand", "Scorch", "Mirage", "Sun", "Amber", "Dust", "Ochre"],          suf: ["waste", "flats", "reach", "expanse", "mesa", "span", "strand", "hollow"] },
+  autumn:   { pre: ["Amber", "Auburn", "Maple", "Umber", "Harvest", "Ochre", "Rust", "Bramble"],   suf: ["wood", "fall", "grove", "vale", "glen", "reach", "crest", "hollow"] },
+  woodland: { pre: ["Whisper", "Fern", "Thorn", "Moss", "Gleam", "Elder", "Verdant", "Hollow"],    suf: ["wood", "wilds", "grove", "thicket", "vale", "glen", "reach", "hollow"] },
+  coast:    { pre: ["Gull", "Salt", "Tide", "Pearl", "Wind", "Silver", "Foam", "Drift"],           suf: ["strand", "cove", "reach", "shoal", "bay", "point", "cliff", "tide"] },
+  ember:    { pre: ["Cinder", "Ember", "Ash", "Magma", "Char", "Obsidian", "Scoria", "Pyre"],      suf: ["reach", "forge", "spire", "waste", "crag", "vale", "expanse", "hollow"] },
+  marsh:    { pre: ["Bog", "Fen", "Mire", "Wisp", "Murk", "Sedge", "Peat", "Willow"],              suf: ["marsh", "mire", "fen", "moor", "mere", "reach", "wilds", "hollow"] },
+  canyon:   { pre: ["Cinder", "Rust", "Crystal", "Mesa", "Vermeil", "Gorge", "Amber", "Flint"],    suf: ["mesa", "gorge", "canyon", "strand", "reach", "span", "crag", "expanse"] },
+  savanna:  { pre: ["Gold", "Sun", "Acacia", "Amber", "Wheat", "Bramble", "Dusk", "Ochre"],        suf: ["reach", "expanse", "plain", "veldt", "vale", "span", "crest", "savanna"] },
+  aurora:   { pre: ["Aurora", "Lumen", "Star", "Mist", "Glimmer", "Halcyon", "Boreal", "Twilight"], suf: ["crest", "reach", "vale", "spire", "light", "haven", "fell", "expanse"] },
+};
+
+function ringNameFor(rng: () => number, biomeKey: string): string {
+  const pool = BIOME_NAMES[biomeKey] ?? { pre: NAME_A, suf: NAME_B };
+  const a = pick(rng, pool.pre);
+  let b = pick(rng, pool.suf);
+  // avoid a suffix that repeats the stem's ending (e.g. "Bog" + "marsh" is fine; guard "Fen" + "fen")
+  if (a.toLowerCase().endsWith(b) || b.startsWith(a.toLowerCase())) b = pick(rng, pool.suf);
   return a + b;
 }
 const KEEPERS = ["Sable", "Wren", "Cass", "Orin", "Vale", "Pip", "Rook", "Ilse", "Bram", "Nyx", "Fen", "Lune"];
@@ -185,7 +203,7 @@ export function generateRing(index: number): Ring {
   // stride through the biomes so consecutive rings are always a different scene and all
   // biomes get used (5 is coprime with 12 → cycles through every biome, no adjacent repeats)
   const biome = BIOMES[(index * 5 + 1) % BIOMES.length];
-  const name = ringNameFor(rng);
+  const name = ringNameFor(rng, biome.key);
   // rings grow the farther out you sail — more room to roam + populate (Hearth is 430)
   const radius = 440 + index * 55 + Math.floor(rng() * 70);
   const props: Prop[] = [];
