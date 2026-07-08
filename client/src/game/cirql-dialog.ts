@@ -14,6 +14,7 @@ export interface DialogChoice {
   answer?: string;       // answer the pending RIDDLE with this option id (correct → completes; wrong → retry)
   buy?: string;          // Pet Stall: "type:cost" — adopt this pet (host takes the sparqs)
   petact?: string;       // pet interaction: "pet" | "play" | "rename"
+  style?: string;        // Style Studio: "id:cost" — restyle your CIRQLSPACE (host checks owned/sparqs)
   // (no goto + accept + pick + answer + buy + petact) → the choice closes the conversation
 }
 export interface DialogNode {

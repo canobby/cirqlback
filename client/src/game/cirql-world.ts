@@ -42,7 +42,8 @@ export type PropType =
   | "portal"    // a cave/hollow-tree/cloud-stair — travel to a sub-map (CHR-265)
   | "curio"     // a DISCOVERABLE object (relic / blight / star / cache) — inspect to trigger a hidden/emergent quest (Phase K7)
   | "bounty"    // a bounty board — a rotating "pick your next task" hub (Phase K7 "chosen" delivery)
-  | "petshop";  // the Pet Stall — buy a companion for your CIRQLSPACE (Pets P1)
+  | "petshop"   // the Pet Stall — buy a companion for your CIRQLSPACE (Pets P1)
+  | "stylist";  // the Style Studio — restyle your CIRQLSPACE's biome/colour palette (home customization)
 
 export type LandmarkKind = "greattree" | "stonecircle" | "lighthouse" | "crystal" | "waterfall" | "ruin";
 export type CurioKind = "relic" | "blight" | "star" | "cache";
@@ -116,6 +117,8 @@ const CIRQLSPACE: Ring = {
     { t: "home", x: 120, y: -40, to: 500000, id: "home", label: "Your Home", accent: "#ffc46b" },
     // the Pet Stall — adopt a companion that lives here at your CIRQLSPACE (Pets P1)
     { t: "petshop", x: -140, y: -30, id: "petshop", label: "Pet Stall", accent: "#ffd24a" },
+    // the Style Studio — restyle your CIRQLSPACE's biome/colour palette (home customization)
+    { t: "stylist", x: -100, y: 96, id: "stylist", label: "Style Studio", accent: "#c9a0ff" },
     // the dock out to the Town (ring 1) — where all the game lives
     { t: "dock", x: 0, y: 400, to: 1, label: "the Town", id: "dock-out" },
   ],

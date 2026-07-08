@@ -448,6 +448,15 @@ export default function Cirql() {
     };
     eng.onRenamePet = (id, cur) => { const n = window.prompt("Name your pet", cur); if (n && n.trim()) eng.renamePet(id, n); };
     eng.onPetsChange = () => { persist(); };
+    // Space styles: owned styles switch free; a new paid style costs sparqs once, then it's owned
+    eng.onSelectStyle = (id, cost) => {
+      const key = `style:${id}`, owned = cost === 0 || exploreRef.current || ownedRef.current.includes(key);
+      if (owned) { eng.setSpaceStyle(id); persist(); return; }
+      if (sparksRef.current < cost) { cirqlSfx.play("deny"); eng.toast(`Need ${cost} sparqs for that style`); return; }
+      sparksRef.current -= cost; eng.setStats({ sparks: sparksRef.current }); setSparksUi(sparksRef.current);
+      ownedRef.current = [...ownedRef.current, key]; setOwned(ownedRef.current);
+      eng.setSpaceStyle(id); persist();
+    };
     eng.onDecorChange = () => { setDecorCount(eng.getDecor().length); broadcastBuild(); persist(); };   // place/paint/expand → live to visitors (Phase E)
 
     // M8 — live presence socket: broadcast our position + share-a-light, and render

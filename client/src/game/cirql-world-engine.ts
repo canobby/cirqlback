@@ -50,6 +50,21 @@ const PET_CATALOG: { type: string; label: string; cost: number; sp: Species; var
 const PET_NAMES = ["Pip", "Mochi", "Biscuit", "Nova", "Clover", "Sunny", "Pepper", "Waffle", "Ziggy", "Luna", "Bramble", "Tofu"];
 const petSpec = (type: string) => PET_CATALOG.find((p) => p.type === type);
 
+// SPACE STYLES (Pets-era home customization): reskin your CIRQLSPACE (ring 0) with a biome's
+// palette. Two free starters; the rest cost sparqs (then owned). Applied as a palette override.
+const SPACE_STYLES: { id: string; label: string; cost: number; palette: RingPalette }[] = [
+  { id: "hearth", label: "Hearth (default)", cost: 0, palette: { sky: ["#241640", "#12163a"], sea: "#0c2036", land: "#243a2f", grass: "#2f5340", sand: "#c9ad74", accent: "#ffc46b", mote: "#ffd98a" } },
+  { id: "meadow", label: "Spring Meadow", cost: 0, palette: { sky: ["#20331f", "#12241a"], sea: "#0e2c33", land: "#2a5a30", grass: "#43884a", sand: "#cdb87a", accent: "#a6f06a", mote: "#e0ffb0" } },
+  { id: "woodland", label: "Enchanted Wood", cost: 40, palette: { sky: ["#18402a", "#0d2114"], sea: "#0c2036", land: "#245e3a", grass: "#38975c", sand: "#a89060", accent: "#8ef0a0", mote: "#c8ffd6" } },
+  { id: "tropical", label: "Tropical Lagoon", cost: 50, palette: { sky: ["#0e3040", "#0a2233"], sea: "#0a5f70", land: "#1f5a52", grass: "#2f8a6a", sand: "#f0e0a0", accent: "#4fe0d0", mote: "#bafff0" } },
+  { id: "winter", label: "Winter Frost", cost: 40, palette: { sky: ["#1b2740", "#101a30"], sea: "#173a56", land: "#3a4a60", grass: "#5a6f88", sand: "#dfeaf6", accent: "#bfe6ff", mote: "#eef7ff" } },
+  { id: "ember", label: "Ember Reach", cost: 60, palette: { sky: ["#2a1410", "#160a08"], sea: "#1a0c08", land: "#3a2620", grass: "#4a342c", sand: "#6a4a3a", accent: "#ff6a1a", mote: "#ffab3a" } },
+  { id: "aurora", label: "Aurora Night", cost: 60, palette: { sky: ["#101a34", "#0a1024"], sea: "#122844", land: "#26324e", grass: "#3a5270", sand: "#dfeaf6", accent: "#5cffb0", mote: "#b0ffd8" } },
+  { id: "marsh", label: "Mushroom Marsh", cost: 50, palette: { sky: ["#12242e", "#0a151c"], sea: "#0c2a2e", land: "#1c3a34", grass: "#2c6656", sand: "#7a7a5a", accent: "#c85cff", mote: "#ff9ae0" } },
+  { id: "desert", label: "Golden Desert", cost: 50, palette: { sky: ["#3a2414", "#20140c"], sea: "#243026", land: "#6a4526", grass: "#8a6a34", sand: "#e8c485", accent: "#ffb058", mote: "#ffe0a8" } },
+];
+const spaceStyleById = (id: string) => SPACE_STYLES.find((s) => s.id === id);
+
 // A four-legged animal's build — fed to drawQuadruped, which renders it in ANY of the 4
 // facings (toward you / away / left / right) with articulated, swinging legs.
 interface QuadSpec {
@@ -219,6 +234,25 @@ export class CirqlWorldEngine extends RetroEngine {
   onRenamePet?: (id: string, current: string) => void;
   onPetsChange?: () => void;
   getPets() { return this.pets.map((p) => ({ ...p })); }
+  // ---- Space styles: reskin your CIRQLSPACE's palette (Pets-era home customization) ----
+  private spaceStyle = "hearth";
+  onSelectStyle?: (id: string, cost: number) => void;   // host checks owned/sparqs, then calls setSpaceStyle
+  getSpaceStyle() { return this.spaceStyle; }
+  /** Apply a space style (host has cleared the cost). Re-skins CIRQLSPACE immediately. */
+  setSpaceStyle(id: string) {
+    if (!spaceStyleById(id)) return;
+    this.spaceStyle = id;
+    if (this.ringIdx === 0) this.curRing = this.styleRing(getRing(0));
+    const st = spaceStyleById(id); this.toast(`Your CIRQLSPACE is now styled "${st?.label}".`);
+    this.onPetsChange?.();
+  }
+  /** Ring 0 gets the chosen style's palette (a clone; never mutates the shared ring). */
+  private styleRing(r: Ring): Ring {
+    if (r.index === 0 && this.spaceStyle && this.spaceStyle !== "hearth") {
+      const st = spaceStyleById(this.spaceStyle); if (st) return { ...r, palette: st.palette };
+    }
+    return r;
+  }
   /** Adopt a pet (called by the host after it takes the sparqs). Appears at your CIRQLSPACE. */
   addPet(type: string, name?: string) {
     const spec = petSpec(type); if (!spec) return;
@@ -454,7 +488,7 @@ export class CirqlWorldEngine extends RetroEngine {
   startAt(dest: "home" | "last" | "arcade") {
     if (dest === "last") return;
     if (dest === "home") {
-      this.ringIdx = 0; this.curRing = getRing(0);
+      this.ringIdx = 0; this.curRing = this.styleRing(getRing(0));
       this.posX = this.curRing.spawn.x; this.posY = this.curRing.spawn.y; this.facing = "down";
     } else {   // arcade — stand facing the CirqlCade building on the Town ring
       this.ringIdx = 1; this.curRing = getRing(1); this.maxRing = Math.max(this.maxRing, 1); this.ensureRingQuest();
@@ -480,7 +514,7 @@ export class CirqlWorldEngine extends RetroEngine {
   openDiorama() { if (this.ringIdx !== 0 || this.cs || this.voyage) return; this.diorama = true; this.dioramaT = 0; this.dioramaAng = -0.5; this.editDecor = false; this.editPaint = false; this.onDioramaChange?.(true); }
   closeDiorama() { if (!this.diorama) return; this.diorama = false; this.onDioramaChange?.(false); }
   isDiorama() { return this.diorama; }
-  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), homeDecor: this.homeDecor.slice(), terrain: this.getTerrain(), landTier: this.landTier, codex: Array.from(this.codex), healed: Array.from(this.healed), pets: this.pets.slice(), petStarter: this.petStarter }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), homeDecor: this.homeDecor.slice(), terrain: this.getTerrain(), landTier: this.landTier, codex: Array.from(this.codex), healed: Array.from(this.healed), pets: this.pets.slice(), petStarter: this.petStarter, spaceStyle: this.spaceStyle }; }
   applyState(s: any) {
     if (!s) return;
     if (Array.isArray(s.doneOnce)) this.doneOnce = new Set(s.doneOnce);
@@ -492,7 +526,8 @@ export class CirqlWorldEngine extends RetroEngine {
     if (Array.isArray(s.litForQuest)) this.litForQuest = new Set(s.litForQuest);
     if (Array.isArray(s.gatheredWisps)) this.gatheredWisps = new Set(s.gatheredWisps);
     if (typeof s.maxRing === "number") this.maxRing = Math.max(this.maxRing, s.maxRing);
-    if (typeof s.ring === "number" && s.ring >= 0) { this.ringIdx = s.ring; this.curRing = getRing(s.ring); this.maxRing = Math.max(this.maxRing, s.ring); this.ensureRingQuest(); }
+    if (typeof s.spaceStyle === "string") this.spaceStyle = s.spaceStyle;
+    if (typeof s.ring === "number" && s.ring >= 0) { this.ringIdx = s.ring; this.curRing = this.styleRing(getRing(s.ring)); this.maxRing = Math.max(this.maxRing, s.ring); this.ensureRingQuest(); }
     if (typeof s.x === "number" && typeof s.y === "number") { this.posX = s.x; this.posY = s.y; }
     if (s.quests && typeof s.quests === "object") this.quests = s.quests;
     if (Array.isArray(s.lit)) this.lit = new Set(s.lit);
@@ -521,7 +556,7 @@ export class CirqlWorldEngine extends RetroEngine {
     const firstShore = !isSubMap(dest) && dest > this.maxRing;
     const wasFT = this.fastTravelReady();
     this.ringIdx = dest;
-    this.curRing = getRing(dest);
+    this.curRing = this.styleRing(getRing(dest));
     if (!isSubMap(dest)) this.maxRing = Math.max(this.maxRing, dest);   // sub-maps don't lift the fog
     if (!wasFT && this.fastTravelReady()) this.toast("✦ Fast travel unlocked! Tap a ring on your sea chart to leap there.");   // reward for reaching ring 5
     this.ensureRingQuest();
@@ -939,6 +974,7 @@ export class CirqlWorldEngine extends RetroEngine {
     else if (c.answer) { this.resolveRiddle(c.answer); }    // answer a riddle
     else if (c.buy) { const [type, cost] = c.buy.split(":"); this.dialog = null; this.onBuyPet?.(type, parseInt(cost, 10)); }   // adopt a pet
     else if (c.petact) { this.resolvePetAction(c.petact); }   // pet / play / rename
+    else if (c.style) { const [id, cost] = c.style.split(":"); this.dialog = null; this.onSelectStyle?.(id, parseInt(cost, 10)); }   // restyle your space
     else if (c.goto && d.tree.nodes[c.goto]) { d.nodeId = c.goto; d.i = 0; }
     else this.dialog = null;   // plain choice → end the chat
   }
@@ -948,6 +984,12 @@ export class CirqlWorldEngine extends RetroEngine {
     choices.push({ label: "Maybe later" });
     const owned = this.pets.length;
     this.setDialog("Pet Stall", "#ffd24a", { nodes: { start: { lines: ["Welcome to the Pet Stall!", "A companion to share your CIRQLSPACE — pick a friend.", owned ? `You've ${owned} already; room for more!` : "Take one home today."], choices } }, start: "start" });
+  }
+  private openStyleStudio() {
+    const cur = this.spaceStyle;
+    const choices: DialogChoice[] = SPACE_STYLES.map((s) => ({ label: `${s.id === cur ? "✓ " : ""}${s.label}${s.cost ? `  (${s.cost}✦)` : "  (free)"}`, style: `${s.id}:${s.cost}` }));
+    choices.push({ label: "Leave" });
+    this.setDialog("Style Studio", "#c9a0ff", { nodes: { start: { lines: ["Make your CIRQLSPACE your own.", "Pick a look — a whole biome's colours for your shore.", "Owned styles are free to switch back to anytime."], choices } }, start: "start" });
   }
   private openPetDialog(c: (typeof this.creatures)[number]) {
     this.petTalk = c.pet || null;
@@ -993,6 +1035,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (p.t === "curio") { this.tryDiscover(p); return; }        // inspect a discoverable → grant its hidden/emergent quest
     if (p.t === "bounty") { this.openBounty(p); return; }         // a bounty board → pick a task
     if (p.t === "petshop") { this.openPetShop(); return; }        // the Pet Stall → adopt a companion
+    if (p.t === "stylist") { this.openStyleStudio(); return; }    // the Style Studio → restyle your space
     if (p.t === "gathering") { this.toast("A good place to rest and meet fellow travellers."); return; }
     if (p.t === "landmark") {   // a focal set-piece — a meeting spot + (later) a quest home (J4)
       const flavor: Record<string, string> = { greattree: "The Great Tree — older than the ring itself.", stonecircle: "The Stone Circle hums with a quiet, ancient charge.", lighthouse: "The Lighthouse sweeps the dark water for wanderers.", crystal: "The Great Crystal glows from somewhere deep within.", waterfall: "The Falls thunder into a cool, misted pool.", ruin: "The Old Ruin keeps the secrets of who built it." };
@@ -1314,7 +1357,7 @@ export class CirqlWorldEngine extends RetroEngine {
         const isQL = this.isQuestLantern(p);
         const puzzle = p.t === "rune" || p.t === "tablet" || p.t === "shrine";
         const social = p.t === "gathering" || p.t === "theater" || p.t === "landmark";
-        const discover = p.t === "curio" || p.t === "bounty" || p.t === "petshop";   // Phase K7 discoverable / bounty board / pet stall
+        const discover = p.t === "curio" || p.t === "bounty" || p.t === "petshop" || p.t === "stylist";   // K7 discoverable / bounty / pet stall / style studio
         if (p.t !== "wonders" && p.t !== "shop" && p.t !== "home" && p.t !== "storm" && p.t !== "tunnel" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social && !discover) continue;
         const d = Math.hypot(this.posX - p.x, this.posY - p.y);
         const range = p.t === "landmark" ? 52 : p.r ?? (isQL || p.t === "rune" ? 26 : 40);
@@ -1509,6 +1552,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "curio": draws.push({ y: p.y, f: () => this.drawCurio(sxp, syp, p) }); break;
         case "bounty": draws.push({ y: p.y, f: () => this.drawBounty(sxp, syp, p) }); break;
         case "petshop": draws.push({ y: p.y, f: () => this.drawPetShop(sxp, syp, p) }); break;
+        case "stylist": draws.push({ y: p.y, f: () => this.drawStylist(sxp, syp, p) }); break;
         case "marker": { const isTarget = this.objTargetProp() === p; if (isTarget) draws.push({ y: p.y - 1, f: () => this.drawMarker(sxp, syp) }); break; }
         default: break;
       }
@@ -2565,6 +2609,20 @@ export class CirqlWorldEngine extends RetroEngine {
     this.disc(cx, cy - 31, 2.6, ac); this.glow(cx, cy - 31, 9, ac, 0.1 + 0.14 * this.nightAmt);   // pawprint sign
     this.disc(cx - 1.4, cy - 33.4, 0.9, "#3a2410"); this.disc(cx + 1.4, cy - 33.4, 0.9, "#3a2410"); this.disc(cx - 0.6, cy - 34, 0.8, "#3a2410"); this.disc(cx + 0.6, cy - 34, 0.8, "#3a2410");
     if (near) this.q(cx, cy - 42, "✦", ac, 0.9, "c", true);
+  }
+  // The Style Studio — a painter's easel with a palette (restyle your CIRQLSPACE).
+  private drawStylist(cx: number, cy: number, p: Prop) {
+    const near = this.near === p, ac = p.accent || "#c9a0ff", b = this.b, s = this.SS;
+    this.disc(cx, cy + 3, 9, "#0a071440");
+    // tripod legs
+    b.strokeStyle = "#6a4a2c"; b.lineWidth = 2 * s; b.lineCap = "round"; b.beginPath();
+    b.moveTo(cx * s, (cy - 18) * s); b.lineTo((cx - 6) * s, (cy + 3) * s); b.moveTo(cx * s, (cy - 18) * s); b.lineTo((cx + 6) * s, (cy + 3) * s); b.moveTo(cx * s, (cy - 18) * s); b.lineTo(cx * s, (cy + 4) * s); b.stroke(); b.lineCap = "butt";
+    // canvas board with a few colour swatches
+    this.rect(cx - 8, cy - 30, 16, 16, "#efe6d0"); this.rect(cx - 8, cy - 30, 16, 16, "#efe6d0");
+    this.rect(cx - 8, cy - 30, 16, 2, "#d8c9a8");
+    const sw = ["#8ef0a0", "#ff6a1a", "#bfe6ff", "#c85cff"]; for (let i = 0; i < 4; i++) this.disc(cx - 5 + (i % 2) * 6, cy - 26 + Math.floor(i / 2) * 6, 1.8, sw[i]);
+    this.glow(cx, cy - 22, 12, ac, 0.08 + 0.12 * this.nightAmt);
+    if (near) this.q(cx, cy - 40, "✦", ac, 0.9, "c", true);
   }
   // ---- geography (density fill-in): a fallen log, a stump, a tall-grass clump ----
   private drawLog(cx: number, cy: number, seed: number) {
