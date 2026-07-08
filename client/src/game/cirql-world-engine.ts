@@ -12,7 +12,7 @@ import { loadAvatarLS, DEFAULT_AVATAR, AURA_COLORS, type AvatarConfig } from "./
 import { RINGS, MINIMAP_RINGS, type Ring, type Prop, type RingPalette } from "./cirql-world";
 import { getRing, ringName, isSubMap, parentOf, subKindOf } from "./cirql-ring-gen";
 import { isShop } from "./cirql-shops";
-import { MusicKit } from "./musickit";
+import { CirqlOrchestra } from "./cirql-orchestra";
 import { trackForContext } from "./cirql-music";
 import { cirqlSfx, type SfxKind } from "./cirql-sfx";
 import { MOVIES, REEL_SECONDS } from "./cirql-theater";
@@ -206,27 +206,29 @@ export class CirqlWorldEngine extends RetroEngine {
     this.posX = this.curRing.spawn.x; this.posY = this.curRing.spawn.y;
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
     this.ensureRingQuest();
-    this.music = new MusicKit({ volume: 0.7 });   // G: the world soundtrack (starts on first gesture)
+    this.orchestra = new CirqlOrchestra({ volume: 0.7 });   // G: the cinematic world score (starts on first gesture)
     this.running = true;
   }
 
   // ---------- G: music & SFX ----------
+  private orchestra: CirqlOrchestra | null = null;
   private musicStarted = false; private musicVol = 0.7;
   /** Begin (or resume) the adaptive soundtrack — call from a user gesture (start picker / confirm). */
   startAudio() { this.musicStarted = true; cirqlSfx.resume(); this.updateMusic(); }
   /** Swap to the theme for the current ring/biome + set its intensity by context. */
   private updateMusic() {
-    if (!this.musicStarted || !this.music || this.musicVol <= 0) return;
+    if (!this.musicStarted || !this.orchestra || this.musicVol <= 0) return;
     const shop = isShop(this.ringIdx), sub = isSubMap(this.ringIdx);
-    this.music.play(trackForContext(this.ringIdx, this.curRing.ambient, shop, sub));
-    this.music.setIntensity(this.ringIdx <= 0 ? 0.55 : shop ? 0.5 : sub ? 0.6 : this.ringIdx === 1 ? 0.8 : 0.9);
+    this.orchestra.play(trackForContext(this.ringIdx, this.curRing.ambient, shop, sub));
+    this.orchestra.setIntensity(this.ringIdx <= 0 ? 0.55 : shop ? 0.5 : sub ? 0.6 : this.ringIdx === 1 ? 0.8 : 0.9);
   }
   /** Settings "Music" (0..1). 0 stops the soundtrack; raising it restarts the current theme. */
   setMusicVol(v: number) {
-    this.musicVol = Math.max(0, Math.min(1, v)); this.music?.setVolume(this.musicVol);
-    if (this.musicVol <= 0) this.music?.stop();
-    else if (this.musicStarted && !this.music?.playing) this.updateMusic();
+    this.musicVol = Math.max(0, Math.min(1, v)); this.orchestra?.setVolume(this.musicVol);
+    if (this.musicVol <= 0) this.orchestra?.stop();
+    else if (this.musicStarted && !this.orchestra?.playing) this.updateMusic();
   }
+  protected onDestroy() { this.orchestra?.dispose(); }
   /** Settings "Sound FX" (0..1). */
   setSfxVol(v: number) { cirqlSfx.setVolume(v); }
   /** Play a one-shot cue (best-effort; silent until audio has started via a gesture). */
