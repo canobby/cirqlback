@@ -33,9 +33,9 @@ export const DEFAULT_TERRAIN: TerrainConfig = {
   // single grass tile (no blocky tone-variant patches); soft meadow shading is a
   // procedural overlay the host draws on top, so the grass reads natural not gridded.
   grass: { fill: "grass" },
-  // plain blue water; the shore is a soft light shallows drawn by drawWaterEdges
-  // (not the pack's heavy brown-reed pond border) so water fades into land.
-  water: { fill: "water_middle" },
+  // the river is drawn procedurally (smooth banks) by the host's coast layer, so
+  // the water tile itself renders nothing here (grass shows under it) — no blocky edges.
+  water: {},
   // cobble_blob bakes a tan dirt shoulder into its edges (ugly against grass), so the
   // road uses the sheet's border-free solid cobble tile (0,3) for a clean paved lane.
   path:  { fill: "cobble_blob", cell: [1, 1] },
