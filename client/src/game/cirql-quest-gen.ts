@@ -31,17 +31,24 @@ export const ringQuestId = (index: number) => `ring-${index}-q`;
  * Picks a template valid for the ring's props (kindle its lanterns / seek a shard /
  * scout the onward shore) and scales the reward by how far out you've sailed.
  */
-export function generateRingQuest(index: number): QuestDef | null {
+/** How many SIDE quests a ring offers (beyond the main one) — scales with ring size so the
+ *  big outer rings become full destinations, not one-quest fly-bys. */
+export function ringSideQuestCount(index: number): number { return index <= 1 ? 0 : Math.min(5, Math.floor(index / 2)); }
+
+// Build one quest for a ring. variant 0 = the MAIN quest (keeper at the hub, the onward
+// through-line + escalation); variant >=1 = a shorter, focused SIDE quest from a 'sider' NPC.
+function buildRingQuest(index: number, variant: number): QuestDef | null {
   if (index <= 1) return null;                       // ring 0 (CIRQLSPACE) + ring 1 (authored Town) use authored quests
   const ring = getRing(index);
-  const rng = rngFrom(Math.imul(index, 0x9e3779b1) ^ 0xC0FFEE);
-  const giver = `keeper-${index}`;
+  const rng = rngFrom(Math.imul(index, 0x9e3779b1) ^ Math.imul(variant + 1, 0x27d4eb2f) ^ 0xC0FFEE);
+  const isMain = variant === 0;
+  const giver = isMain ? `keeper-${index}` : `sider-${index}-${variant}`;
+  const id = isMain ? ringQuestId(index) : `ring-${index}-q${variant}`;
   const name = ring.name;
-  // DIFFICULTY + REWARD scale with how far out you've sailed (Phase K, owner-locked): the
-  // ring index is the tier. Deeper rings = harder quests (more objectives / bigger counts /
-  // longer chains) AND richer rewards. Sub-maps borrow their parent surface ring's tier.
+  // DIFFICULTY + REWARD scale with how far out you've sailed (Phase K). Ring index = tier.
   const tier = Math.max(1, (index >= 100000 ? index % 100000 : index) - 1);
-  const reward = { sparks: Math.min(60, Math.round(6 + tier * 3)), renown: questRenown(tier) };
+  const baseSp = Math.min(60, Math.round(6 + tier * 3));
+  const reward = { sparks: isMain ? baseSp : Math.max(4, Math.round(baseSp * 0.7)), renown: isMain ? questRenown(tier) : Math.max(1, Math.round(questRenown(tier) * 0.6)) };
 
   const lanterns = ring.props.filter((p) => p.t === "lantern" && p.id);
   const crystals = ring.props.filter((p) => p.t === "crystal" && p.id);
@@ -56,7 +63,7 @@ export function generateRingQuest(index: number): QuestDef | null {
   if (crystals.length >= 1) options.push("discover");
   if (wisps.length >= 3) options.push("gather");
   if (wanderer) { options.push("errand"); options.push("delivery"); }
-  options.push("wayfind");                            // always possible (every ring has an onward dock)
+  if (isMain || options.length === 0) options.push("wayfind");   // only the MAIN quest is the onward through-line
   const shape = options[Math.floor(rng() * options.length)];
 
   const objectives: Objective[] = []; let title: string; let intro: string[];
@@ -74,7 +81,7 @@ export function generateRingQuest(index: number): QuestDef | null {
     title = `Word for ${wandererName}`;
     intro = [`A moment, traveller?`, `${wandererName} wanders the far side of ${name} and hasn't checked in.`, `Hear what news they carry, then bring it back to me.`];
     objectives.push({ kind: "interact", target: `wanderer-${index}`, label: `Hear ${wandererName}'s news` });
-    objectives.push({ kind: "interact", target: giver, label: `Bring word back to the keeper` });
+    objectives.push({ kind: "interact", target: giver, label: `Bring word back` });
   } else if (shape === "delivery") {
     title = `A Parcel for ${wandererName}`;
     intro = [`Well timed — I've a parcel to send.`, `Carry it to ${wandererName}, out across ${name}.`, `Mind you don't dawdle; follow the glimmer to them.`];
@@ -83,17 +90,35 @@ export function generateRingQuest(index: number): QuestDef | null {
     const c = crystals[Math.floor(rng() * crystals.length)];
     title = `The ${name} Shard`;
     intro = [`You've reached ${name}.`, `A singing shard hums somewhere on this shore.`, `Seek it out — follow the glimmer on your map.`];
-    objectives.push({ kind: "reach", target: c.id, label: `Find the shard of ${name}` });
+    objectives.push({ kind: "reach", target: c.id!, label: `Find the shard of ${name}` });
   } else {
     title = `Chart ${name}`;
     intro = [`${name} greets you, wayfarer.`, `Scout ${name} for me, then the onward shore.`, `Sail on whenever you're ready.`];
     objectives.push({ kind: "reach", target: "dock-out", label: `Scout ${name}'s onward shore` });
   }
 
-  // ESCALATION: deeper rings stack extra objectives → longer, tougher expeditions.
-  if (tier >= 2 && landmark) objectives.push({ kind: "reach", target: `landmark-${index}`, label: `Pay respects at ${landmark.label}` });
-  if (tier >= 4 && shape !== "wayfind") objectives.push({ kind: "reach", target: "dock-out", label: `Chart ${name}'s onward shore` });
-  if (objectives.length > 1) intro = [...intro.slice(0, -1), `It's a fair task — ${objectives.length} steps in all. The far rings ask more, but give more.`];
+  // ESCALATION (main quest only): deeper rings stack extra objectives → longer expeditions.
+  if (isMain) {
+    if (tier >= 2 && landmark) objectives.push({ kind: "reach", target: `landmark-${index}`, label: `Pay respects at ${landmark.label}` });
+    if (tier >= 4 && shape !== "wayfind") objectives.push({ kind: "reach", target: "dock-out", label: `Chart ${name}'s onward shore` });
+  }
+  if (objectives.length > 1) intro = [...intro.slice(0, -1), `It's a fair task — ${objectives.length} steps in all.`];
 
-  return { id: ringQuestId(index), name: title, giver, intro, objectives, reward, tier };
+  return { id, name: title, giver, intro, objectives, reward, tier };
+}
+
+/**
+ * The MAIN quest for procedural ring `index` (>= 2), or null for the authored rings.
+ * Offered by the ring's keeper at the beacon hub; carries the onward through-line.
+ */
+export function generateRingQuest(index: number): QuestDef | null { return buildRingQuest(index, 0); }
+
+/** Every quest offered on a ring — the main + a scaling number of side quests (from extra
+ *  'sider' NPCs spread along the trail). This is what the engine registers per ring. */
+export function generateRingQuests(index: number): QuestDef[] {
+  const out: QuestDef[] = [];
+  const main = buildRingQuest(index, 0); if (main) out.push(main);
+  const extra = ringSideQuestCount(index);
+  for (let v = 1; v <= extra; v++) { const q = buildRingQuest(index, v); if (q) out.push(q); }
+  return out;
 }

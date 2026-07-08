@@ -21,7 +21,7 @@ import {
   allQuests, questById, offerableQuest, repeatableQuest, questStatusList, registerQuest,
   type QuestDef, type QuestProgress, type ObjectiveKind, type QuestStatus,
 } from "./cirql-quests";
-import { generateRingQuest } from "./cirql-quest-gen";
+import { generateRingQuests } from "./cirql-quest-gen";
 import { EMOTE_BY_ID, EMOTE_SECONDS, PAIR_BY_ID } from "./cirql-emotes";
 import { arrivalCutscene, BEAT_SECONDS, type Cutscene, type CutsceneBeat, type CutsceneFx } from "./cirql-cutscenes";
 import { decorById, DECOR_SOLID } from "./cirql-decor";
@@ -243,7 +243,7 @@ export class CirqlWorldEngine extends RetroEngine {
   sfx(k: SfxKind) { cirqlSfx.play(k); }
 
   /** Register the current ring's generated quest so its keeper can offer it (CHR-256). */
-  private ensureRingQuest() { const q = generateRingQuest(this.ringIdx); if (q) registerQuest(q); }
+  private ensureRingQuest() { for (const q of generateRingQuests(this.ringIdx)) registerQuest(q); }
 
   // ---------- host API ----------
   setLocal(name: string, avatar?: AvatarConfig) { this.myName = (name || "You").slice(0, 16); if (avatar) this.hero = avatar; }
@@ -637,7 +637,7 @@ export class CirqlWorldEngine extends RetroEngine {
       .filter((s) => s.status !== "locked")
       // keep authored quests + any you've started/finished + the current ring's offer;
       // hide stale "available" ring quests from rings you've sailed past
-      .filter((s) => !s.quest.id.startsWith("ring-") || this.quests[s.quest.id] || s.quest.giver === curGiver)
+      .filter((s) => !s.quest.id.startsWith("ring-") || this.quests[s.quest.id] || s.quest.id.startsWith(`ring-${this.ringIdx}-`) || s.quest.giver === curGiver)
       .map(({ quest, status }) => {
         const p = this.quests[quest.id];
         let objective = quest.objectives[0]?.label ?? "";

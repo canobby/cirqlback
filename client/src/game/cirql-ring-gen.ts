@@ -198,8 +198,22 @@ export function generateRing(index: number): Ring {
   for (let i = 0; i < biome.lanterns; i++) { const p = spine[Math.min(spine.length - 1, 1 + i * 2)]; props.push({ t: "lantern", x: p.x + (i % 2 ? 11 : -11), y: p.y }); }
   // a bush understory clumped near the beacon hub
   { const bn = scaled(biome.tree ? 4 : 2); for (let i = 0; i < bn; i++) props.push({ t: "bush", x: hub.x + (rng() - 0.5) * 100, y: hub.y + 36 + (rng() - 0.5) * 46 }); }
-  // WISPS strung down the spine — a gather-quest walks you the whole trail (Phase K3)
-  for (let i = 0; i < Math.max(6, scaled(7)); i++) { const p = spine[Math.floor(rng() * (spine.length - 1))]; props.push({ t: "wisp", x: p.x + (rng() - 0.5) * corr * 1.3, y: p.y + (rng() - 0.5) * 46, accent: biome.palette.mote }); }
+  // WISPS strung down the spine (a gather-quest walks you the whole trail, Phase K3). Kept
+  // TIGHT on the clear trail + off the crowded hub so they never end up stuck inside a
+  // thicket/solid where they'd be un-gatherable.
+  const hubIdx = Math.round((spine.length - 1) * 0.42);
+  for (let i = 0; i < Math.max(6, scaled(7)); i++) {
+    let si = Math.floor(rng() * (spine.length - 1)); if (si === hubIdx) si = (si + 1) % (spine.length - 1);
+    const p = spine[si];
+    props.push({ t: "wisp", x: p.x + (rng() - 0.5) * 34, y: p.y + (rng() - 0.5) * 34, accent: biome.palette.mote });
+  }
+  // SIDE-QUEST givers scale with ring size (mini-continents) — spread along the trail so the
+  // big outer rings become full destinations; each offers one of the ring's extra quests.
+  const sideN = Math.min(5, Math.floor(index / 2));
+  for (let v = 1; v <= sideN; v++) {
+    const p = spine[Math.max(1, Math.min(spine.length - 2, Math.round((spine.length - 1) * (0.22 + 0.56 * (v / (sideN + 1))))))], sd = v % 2 ? 1 : -1;
+    props.push({ t: "npc", x: p.x + sd * corr * 1.25, y: p.y + 12, id: `sider-${index}-${v}`, label: pick(rng, WANDERERS), accent: biome.palette.mote });
+  }
   // woodland SIGNATURE understory: fern patches (clustered) + a fairy-ring or two
   if (biome.key === "woodland") {
     for (let f = 0; f < 2 + Math.floor(rng() * 2); f++) {
@@ -246,7 +260,18 @@ export function generateRing(index: number): Ring {
     const lm = biome.landmark;
     const lmLabel: Record<LandmarkKind, string> = { greattree: "The Great Tree", stonecircle: "The Stone Circle", lighthouse: "The Lighthouse", crystal: "The Great Crystal", waterfall: "The Falls", ruin: "The Old Ruin" };
     props.push({ t: "landmark", x: hub.x, y: hub.y - 10, lm, id: `landmark-${index}`, label: lmLabel[lm], accent: biome.palette.accent, r: 46 });   // BEACON at the hub
+    // secondary landmarks on the bigger rings — more beacons + postcard subjects
+    const LM_ALL: LandmarkKind[] = ["greattree", "stonecircle", "lighthouse", "crystal", "waterfall", "ruin"];
+    const extraLm = Math.floor(index / 5);
+    for (let k = 1; k <= extraLm; k++) {
+      const sp = spine[Math.round((spine.length - 1) * (0.3 + 0.4 * (k / (extraLm + 1))))], sd = k % 2 ? 1 : -1, lm2 = LM_ALL[(index + k) % LM_ALL.length];
+      props.push({ t: "landmark", x: sp.x + sd * corr * 2.2, y: sp.y + (rng() - 0.5) * 30, lm: lm2, id: `landmark-${index}-${k}`, label: lmLabel[lm2], accent: biome.palette.accent, r: 40 });
+    }
   }
+  // extra SUB-REALMS on the bigger rings — more places to duck into (distinct kinds)
+  { const subN = Math.min(2, Math.floor(index / 6)); const kinds: SubKind[] = ["cave", "tree", "cloud"]; let done = 0;
+    for (const kk of kinds) { if (done >= subN) break; const sp = spine[Math.round((spine.length - 1) * (0.32 + 0.28 * done))], sd = done % 2 ? 1 : -1;
+      props.push({ t: "portal", x: sp.x + sd * corr * 2.6, y: sp.y, to: subIndex(kk, index), sub: kk, label: kk === "cave" ? "cave" : kk === "tree" ? "hollow tree" : "cloud stair" }); done++; } }
   // a social gathering spot on every ring — ring 2's is the Cirql Drive-In (an outdoor
   // movie screen); the rest get a bonfire commons. Placed east/west, off the dock lanes.
   if (index === 2) {
