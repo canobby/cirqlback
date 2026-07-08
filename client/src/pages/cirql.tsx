@@ -40,7 +40,7 @@ const CADE_GAMES = ARCADE_GAMES.filter((g) => g.status === "live");
 const INTRO_LS = "cirql_intro_v1";
 
 type StartDest = "home" | "last" | "arcade";
-interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; gatheredWisps?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; renown?: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; homeDecor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; graduated?: number[]; journeys?: string[]; }
+interface CirqlState { ring: number; maxRing?: number; x: number; y: number; quests?: any; lit?: string[]; litForQuest?: string[]; gatheredWisps?: string[]; doneOnce?: string[]; doneCampaigns?: string[]; avatar: AvatarConfig; name: string; seenIntro: boolean; sparks: number; renown?: number; cirqlMembers?: number; worldEnergy?: number; playsToday?: number; playDay?: string; owned?: string[]; decor?: { item: string; x: number; y: number }[]; homeDecor?: { item: string; x: number; y: number }[]; terrain?: Record<string, string>; landTier?: number; daily?: { day: string; done: boolean; streak: number; lastDone: string }; arcadeVisited?: boolean; startPref?: StartDest | "ask"; settings?: GameSettings; graduated?: number[]; journeys?: string[]; explore?: boolean; exploreSaved?: number; }
 interface GameSettings { brightness: number; music: number; sfx: number; reduce: boolean; smooth: boolean; pixel: number; }
 const DEFAULT_SETTINGS: GameSettings = { brightness: 1, music: 0.7, sfx: 0.8, reduce: false, smooth: false, pixel: 1.5 };
 const todayUTC = () => new Date().toISOString().slice(0, 10);
@@ -58,6 +58,13 @@ export default function Cirql() {
   const seenIntroRef = useRef<boolean>(false);
   const sparksRef = useRef<number>(0);
   const renownRef = useRef<number>(0);           // Renown — personal earned-not-spent standing (Phase K4)
+  // Explore Mode (owner/beta walkthrough): infinite sparqs + every gate open + quest-skip.
+  const [explore, setExplore] = useState(false);
+  const exploreRef = useRef(false);
+  const savedSparqsRef = useRef(0);              // real balance stashed while Explore is on
+  const EXPLORE_SPARQS = 999999;
+  const gRenown = () => (exploreRef.current ? 999999 : renownRef.current);        // effective Renown for gate checks
+  const gRenownUi = () => (exploreRef.current ? 999999 : renownUi);
   const [renownUi, setRenownUi] = useState(0);
   const graduatedRef = useRef<Set<number>>(new Set());   // ring indices whose quest you've completed = "circles graduated" (K2)
   const [graduatedUi, setGraduatedUi] = useState(0);
@@ -260,7 +267,7 @@ export default function Cirql() {
   // M9 board + party actions
   const postRequest = () => {
     const camp = campaignById(postCampaign);
-    if (postDir === "host" && camp && (camp.minRenownRank ?? 0) > renownStanding(renownRef.current).index) {
+    if (postDir === "host" && camp && (camp.minRenownRank ?? 0) > renownStanding(gRenown()).index) {
       engineRef.current?.toast(`★ ${camp.title} unlocks at ${rankTitle(camp.minRenownRank!)} — earn more Renown first`); return;
     }
     wsSend({ t: "board:post", dir: postDir, campaignId: postDir === "host" ? postCampaign : "", steps: camp?.steps.length ?? 1, max: camp?.maxParty ?? 4, tags: postTags, newbie: postNewbie });
@@ -287,7 +294,7 @@ export default function Cirql() {
 
   const buildState = (): CirqlState => {
     const s = engineRef.current?.getState() ?? posRef.current;
-    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, gatheredWisps: (s as any).gatheredWisps, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], homeDecor: (s as any).homeDecor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current, renown: renownRef.current, graduated: Array.from(graduatedRef.current), journeys: Array.from(journeyClaimsRef.current) };
+    return { ring: s.ring, maxRing: (s as any).maxRing ?? 0, x: s.x, y: s.y, quests: (s as any).quests, lit: (s as any).lit, litForQuest: (s as any).litForQuest, gatheredWisps: (s as any).gatheredWisps, doneOnce: (s as any).doneOnce, doneCampaigns: Array.from(doneCampaignsRef.current), avatar: avatarRef.current, name: nameRef.current, seenIntro: seenIntroRef.current, sparks: sparksRef.current, cirqlMembers: membersRef.current, worldEnergy: energyRef.current, playsToday: playsRef.current.n, playDay: playsRef.current.day, owned: ownedRef.current, decor: (s as any).decor ?? [], homeDecor: (s as any).homeDecor ?? [], terrain: (s as any).terrain ?? {}, landTier: landTierRef.current, daily: dailyRef.current, arcadeVisited: arcadeVisitedRef.current, startPref: startPrefRef.current, settings: settingsRef.current, renown: renownRef.current, graduated: Array.from(graduatedRef.current), journeys: Array.from(journeyClaimsRef.current), explore: exploreRef.current, exploreSaved: savedSparqsRef.current };
   };
   // The live metric values the K5 journeys track (all from state the game already keeps).
   const journeyMetrics = (): Record<JourneyMetric, number> => ({
@@ -329,6 +336,23 @@ export default function Cirql() {
     engineRef.current?.setMusicVol(s.music);   // G: the soundtrack + SFX levels
     engineRef.current?.setSfxVol(s.sfx);
     if (persistNow) persist();
+  };
+  // Explore Mode (owner/beta walkthrough): infinite sparqs + every gate open + quest-skip.
+  // Reversible — the real balance is stashed on enable and restored on disable.
+  const toggleExplore = (on: boolean) => {
+    exploreRef.current = on; setExplore(on);
+    const eng = engineRef.current;
+    if (on) { savedSparqsRef.current = sparksRef.current; sparksRef.current = EXPLORE_SPARQS; }
+    else { sparksRef.current = savedSparqsRef.current; }
+    setSparksUi(sparksRef.current); eng?.setStats({ sparks: sparksRef.current }); eng?.setExplore(on);
+    eng?.toast(on ? "✨ Explore Mode ON — everything's unlocked & free" : "Explore Mode off — real balance restored");
+    persist();
+  };
+  // Force-complete the active quest (Explore Mode) — unstick a tester at a hard spot.
+  const skipQuest = () => {
+    const eng = engineRef.current; if (!eng) return;
+    if (eng.completeActiveQuest()) { setQuestRows(eng.getQuestLog()); persist(); }
+    else eng.toast("No active quest to complete");
   };
   // Apply a startup destination (from the picker) + sync the ring-dependent UI.
   const applyStart = (dest: StartDest) => {
@@ -505,6 +529,9 @@ export default function Cirql() {
       arcadeVisitedRef.current = !!st?.arcadeVisited; startPrefRef.current = st?.startPref ?? "ask";
       renownRef.current = st?.renown ?? 0; setRenownUi(renownRef.current);
       graduatedRef.current = new Set(Array.isArray(st?.graduated) ? st!.graduated! : []); setGraduatedUi(graduatedRef.current.size);
+      // Explore Mode persists across sessions (so a walkthrough survives reloads).
+      exploreRef.current = !!st?.explore; setExplore(exploreRef.current); savedSparqsRef.current = st?.exploreSaved ?? sparksRef.current;
+      eng.setExplore(exploreRef.current);
       applySettings({ ...DEFAULT_SETTINGS, ...(st?.settings || {}) });   // brightness + reduced-motion prefs
       ownedRef.current = Array.isArray(st?.owned) ? st!.owned! : []; setOwned(ownedRef.current); setSparksUi(sparksRef.current);
       maxRingRef.current = st?.maxRing ?? 0; setCurRingUi(st?.ring ?? 0);
@@ -635,10 +662,10 @@ export default function Cirql() {
   };
 
   // Spend sparks to unlock a cosmetic (CHR-246). Returns false if you can't afford it.
+  // Explore Mode: everything is FREE (no spend), so the huge balance stays.
   const buyCosmetic = (id: string, cost: number): boolean => {
     if (ownedRef.current.includes(id)) return true;
-    if (sparksRef.current < cost) return false;
-    sparksRef.current -= cost; setSparksUi(sparksRef.current);
+    if (!exploreRef.current) { if (sparksRef.current < cost) return false; sparksRef.current -= cost; setSparksUi(sparksRef.current); }
     ownedRef.current = [...ownedRef.current, id]; setOwned(ownedRef.current);
     engineRef.current?.setStats({ sparks: sparksRef.current });
     cirqlSfx.play("buy");   // G: a bright coin/chime on any purchase (shop or creator)
@@ -647,13 +674,13 @@ export default function Cirql() {
     return true;
   };
 
-  // ---- Hearth décor (CHR-259) ----
-  const decorOwned = (id: string) => { const def = decorById[id]; return !!def && (def.price === 0 || ownedRef.current.includes(decorPriceKey(id))); };
+  // ---- Hearth décor (CHR-259) ----   (Explore Mode: everything counts as owned)
+  const decorOwned = (id: string) => { if (exploreRef.current) return true; const def = decorById[id]; return !!def && (def.price === 0 || ownedRef.current.includes(decorPriceKey(id))); };
   // ---- Milestone F: buy a shop item (Renown-gated for Curios showpieces) ----
   const buyShopItem = (itemId: string) => {
     const def = decorById[itemId]; const eng = engineRef.current; if (!def || !eng) return;
-    if (decorOwned(itemId)) { eng.toast(`You already own the ${def.name}`); return; }
-    const g = gateCheck(itemId, renownRef.current);
+    if (decorOwned(itemId) && !exploreRef.current) { eng.toast(`You already own the ${def.name}`); return; }
+    const g = gateCheck(itemId, gRenown());
     if (!g.ok) { cirqlSfx.play("deny"); eng.toast(`★ The ${def.name} needs Renown rank ${g.needRank}`); return; }
     if (!buyCosmetic(decorPriceKey(itemId), def.price)) { cirqlSfx.play("deny"); eng.toast(`Need ${def.price} sparqs for the ${def.name}`); return; }
     eng.toast(`✦ ${def.name} bought — place it on your CIRQLSPACE`);
@@ -683,10 +710,12 @@ export default function Cirql() {
     const next = landTierRef.current + 1;
     if (next >= LAND_META.length) { eng.toast("Your CIRQLSPACE is at its full size ✦"); return; }
     const m = LAND_META[next];
-    if (m.milestone === "build10" && (eng.getDecor().length < 10)) { eng.toast("Place 10 things first to earn this expansion"); return; }
-    if (m.cost > 0) {
-      if (sparksRef.current < m.cost) { eng.toast(`Need ${m.cost} sparqs to expand to ${m.label}`); return; }
-      sparksRef.current -= m.cost; setSparksUi(sparksRef.current); eng.setStats({ sparks: sparksRef.current });
+    if (!exploreRef.current) {   // Explore Mode skips the build/spend milestones
+      if (m.milestone === "build10" && (eng.getDecor().length < 10)) { eng.toast("Place 10 things first to earn this expansion"); return; }
+      if (m.cost > 0) {
+        if (sparksRef.current < m.cost) { eng.toast(`Need ${m.cost} sparqs to expand to ${m.label}`); return; }
+        sparksRef.current -= m.cost; setSparksUi(sparksRef.current); eng.setStats({ sparks: sparksRef.current });
+      }
     }
     landTierRef.current = next; setLandTierUi(next); eng.setLandTier(next);
     cirqlSfx.play("expand");
@@ -957,7 +986,7 @@ export default function Cirql() {
               {/* stock grid */}
               <div className="grid grid-cols-3 gap-2 overflow-y-auto p-4 sm:grid-cols-4">
                 {stock.map((d) => {
-                  const owned = decorOwned(d.id); const g = gateCheck(d.id, renownUi); const locked = !owned && !g.ok;
+                  const owned = decorOwned(d.id); const g = gateCheck(d.id, gRenownUi()); const locked = !owned && !g.ok;
                   const afford = sparksUi >= d.price;
                   return (
                     <button key={d.id} onClick={() => buyShopItem(d.id)} disabled={owned || locked} data-testid={`shop-item-${d.id}`} title={d.name}
@@ -1238,6 +1267,12 @@ export default function Cirql() {
             <span className="text-[11px] font-bold uppercase tracking-widest text-amber-300">Quests</span>
             <button onClick={() => setShowQuests(false)} className="text-xs text-slate-400 hover:text-slate-200">✕</button>
           </div>
+          {/* Explore Mode: force-complete the active quest to unstick a tester (still grants the reward) */}
+          {explore && (
+            <button onClick={skipQuest} data-testid="quest-skip" className="mb-2 w-full rounded-lg py-1.5 text-[11.5px] font-extrabold text-slate-900" style={{ background: "linear-gradient(90deg,#ffc46b,#ffd98a)" }}>
+              ✨ Complete active quest
+            </button>
+          )}
           {/* Renown — your personal standing + rank progress (Phase K4) */}
           {(() => { const rs = renownStanding(renownUi); return (
             <div className="mb-2 rounded-lg border p-2.5" data-testid="renown-card" style={{ borderColor: "rgba(178,108,255,.4)", background: "rgba(178,108,255,.07)" }}>
@@ -1386,7 +1421,7 @@ export default function Cirql() {
                   <div className="mb-2 flex flex-col gap-1.5">
                     {CAMPAIGNS.map((c) => {
                       const dm = difficultyMeta[c.difficulty];
-                      const myRank = renownStanding(renownUi).index;
+                      const myRank = renownStanding(gRenownUi()).index;
                       const locked = (c.minRenownRank ?? 0) > myRank;
                       return (
                         <button key={c.id} disabled={locked}
@@ -1583,6 +1618,15 @@ export default function Cirql() {
               Reduced motion <span className="text-[10px] text-slate-500">(calmer animation)</span>
             </label>
             <p className="mt-2 text-[9.5px] leading-snug text-slate-500">The soundtrack adapts as you travel — home, town, the wilds, shops &amp; the deep places each have their own theme.</p>
+            {/* Explore Mode — walkthrough / beta helper: unlock everything, keep awards on */}
+            <div className="mt-3 rounded-lg border p-2" style={{ borderColor: explore ? "rgba(255,196,107,.5)" : "rgba(255,255,255,.1)", background: explore ? "rgba(255,196,107,.08)" : "transparent" }}>
+              <label className="flex items-center gap-2 text-[12px] font-bold text-amber-100">
+                <input type="checkbox" checked={explore} data-testid="set-explore" className="h-3.5 w-3.5 accent-amber-400"
+                  onChange={(e) => toggleExplore(e.target.checked)} />
+                ✨ Explore Mode <span className="text-[9px] font-normal uppercase tracking-wide text-amber-300/70">walkthrough</span>
+              </label>
+              <p className="mt-1 text-[9.5px] leading-snug text-slate-400">Infinite sparqs · every shop, cosmetic, décor &amp; land tier free · all Renown gates &amp; fast-travel open · a <b className="text-amber-200">Complete Quest</b> button in Quests. Awards &amp; accomplishments still count, so you can check off every level &amp; quest. Toggle off to restore your real balance.</p>
+            </div>
           </div>
         </div>
       )}

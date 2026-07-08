@@ -140,8 +140,12 @@ export class CirqlWorldEngine extends RetroEngine {
   private chartZoom = 1;        // sea-chart zoom (spread rings for easy tapping ↔ fit them all)
   private chartBtn(which: "in" | "out") { return { x: 22, y: Math.round(this.LH * 0.44) + (which === "in" ? 0 : 28), r: 11 }; }   // left edge, clear of the React controls
   private pDownPrev = false;    // pointer edge for tap detection
-  /** Fast travel (tap a chart ring to leap there) unlocks once you've sailed out to ring 5. */
-  fastTravelReady() { return this.maxRing >= 5; }
+  /** Explore Mode (owner/beta walkthrough): unlock everything, skip gates. */
+  private explore = false;
+  setExplore(on: boolean) { this.explore = !!on; }
+  isExplore() { return this.explore; }
+  /** Fast travel (tap a chart ring to leap there) unlocks at ring 5 — or always in Explore Mode. */
+  fastTravelReady() { return this.explore || this.maxRing >= 5; }
   private minimapCx() { return this.LW - 26; }
   private minimapCy() { return this.itop() + 34; }
   private inMinimap(x: number, y: number) { return Math.hypot(x - this.minimapCx(), y - this.minimapCy()) < 24; }
@@ -571,6 +575,14 @@ export class CirqlWorldEngine extends RetroEngine {
   private activeQuest(): QuestDef | null {
     for (const q of allQuests()) if (this.quests[q.id]?.status === "active") return q;
     return null;
+  }
+  /** Explore Mode: force-complete the active quest (fills objectives + fires the reward). */
+  completeActiveQuest(): boolean {
+    const q = this.activeQuest(); if (!q) return false;
+    const p = this.quests[q.id]; if (!p) return false;
+    q.objectives.forEach((o, i) => { p.obj[i] = (o.count ?? 1); });
+    this.completeQuest(q);
+    return true;
   }
   /** The active quest's current (first unfinished) objective index, or -1. */
   private currentObjIndex(q: QuestDef): number {
