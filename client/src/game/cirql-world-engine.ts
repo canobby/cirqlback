@@ -113,6 +113,7 @@ export class CirqlWorldEngine extends RetroEngine {
   // (Phase I5 adds biome-flavoured kinds: pale "snow" prints, dark "ash" puffs, rising "puff" breath)
   private groundFx: { x: number; y: number; life: number; max: number; kind: "dust" | "splash" | "print" | "snow" | "ash" | "puff"; foot: number }[] = [];
   private stepT = 0; private stepFoot = 1; private squashT = 0; private wasAir = false; private bumpT = 0;
+  private lean = 0;      // eased body lean into movement (emotive locomotion) — radians
   private breathT = 2;   // cold-biome breath-puff cadence (Phase I5)
   // world interactions (Phase I6): a knock/wave beat before entering, and an item-get "present" pose
   private entryAction: { at: number; fn: () => void } | null = null;
@@ -1288,6 +1289,9 @@ export class CirqlWorldEngine extends RetroEngine {
       if (rr > lim) { this.posX = this.posX / rr * lim; this.posY = this.posY / rr * lim; }
 
       this.walk = Math.hypot(this.vx, this.vy) > 8 ? this.walk + dt * 10 : 0;
+      // emotive locomotion: lean the body into the direction of travel, ease back on stop (I7)
+      const leanTgt = (this.walk > 0 && !this.seated) ? Math.max(-1, Math.min(1, this.vx / 90)) * 0.17 : 0;
+      this.lean += (leanTgt - this.lean) * Math.min(1, dt * 8);
 
       // footstep FX (I2): a step mark each stride — splash on water, prints on sand, dust otherwise
       if (moving && !this.seated && this.walk > 0) {
@@ -1755,7 +1759,7 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(cx - 4, feet + 2, 8, 1, "#1a1530");
   }
   private drawHero(cx: number, cy: number) {
-    const walkBob = (!this.seated && this.walk > 0) ? Math.round(Math.sin(this.walk)) : 0;
+    const walkBob = (!this.seated && this.walk > 0) ? -Math.round(Math.abs(Math.sin(this.walk)) * 2) : 0;   // a livelier bounce each stride
     const z = Math.round(this.jumpZ);
     const sit = this.seated ? 3 : 0;   // settle the sprite down when seated (Phase H1)
     // idle life (I1): a gentle breath, a look-around/stretch fidget, a blink
@@ -1781,8 +1785,12 @@ export class CirqlWorldEngine extends RetroEngine {
     const bdy = bump * (this.facing === "up" ? 1 : this.facing === "down" ? -1 : 0);
     // body-gesture transform (I3): bow/twirl/dance-sway tip or spin the whole sprite
     const gx = this.myEmoteT > 0 ? this.emoteXform(this.myEmote, this.myEmoteT) : null;
+    // emotive locomotion (I7): tip the body into the direction of travel + a gentle step wobble
+    const wobble = (this.walk > 0 && !this.reduce && !this.seated) ? Math.sin(this.walk * 0.5) * 0.025 : 0;
+    const leanX = this.reduce ? 0 : this.lean + wobble;
     const paintBody = () => this.avatar(cx + bdx, cy + bob + bdy, this.hero, face, this.blinking > 0);
-    const drawBody = gx ? () => this.withXform(cx, cy, gx, paintBody) : paintBody;
+    const drawBody = gx ? () => this.withXform(cx, cy, gx, paintBody)
+      : (leanX ? () => this.withXform(cx, cy, { rot: leanX, sx: 1, sy: 1 }, paintBody) : paintBody);
     if (sq > 0) { const b = this.b, s = this.SS; b.save(); b.translate(cx * s, cy * s); b.scale(1 + 0.16 * sq, 1 - 0.24 * sq); b.translate(-cx * s, -cy * s); drawBody(); b.restore(); } else drawBody();
     this.nameTag(cx, cy, this.myName, "#ffd24a");
     if (this.dozing) this.drawZzz(cx + 7, cy - 30 + bob);
