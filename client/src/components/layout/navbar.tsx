@@ -22,6 +22,7 @@ import {
   Shield,
   Globe,
   Settings,
+  KeyRound,
   LogOut,
   Menu,
   type LucideIcon,
@@ -162,6 +163,11 @@ export default function Navbar() {
                   <DropdownMenuItem asChild>
                     <Link href="/settings" className="flex items-center gap-2 w-full">
                       <Settings className="h-4 w-4" /> Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/change-password" className="flex items-center gap-2 w-full" data-testid="menu-change-password">
+                      <KeyRound className="h-4 w-4" /> Change password
                     </Link>
                   </DropdownMenuItem>
                   {role === "admin" && (

@@ -190,6 +190,13 @@ export default function AuthPage() {
                 ? "New to Cirqlback? Create an account"
                 : "Already have an account? Sign in"}
             </button>
+
+            {mode === "login" && (
+              <p className="text-center text-xs text-muted-foreground">
+                To change your password, sign in, then open the account menu (top-right) →{" "}
+                <span className="font-medium text-foreground">Change password</span>.
+              </p>
+            )}
           </CardFooter>
         </form>
       </Card>
