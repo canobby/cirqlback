@@ -107,6 +107,7 @@ export default function Cirql() {
   const [visiting, setVisiting] = useState<string | null>(null);   // name of the CIRQLSPACE you're visiting (Phase E)
   const [seated, setSeated] = useState(false);                     // free-sit pose (Phase H1) — mirrors engine for the button
   const [zoomUi, setZoomUi] = useState(1);                         // live zoom level (Phase H2) — mirrors engine for the control
+  const [compact, setCompact] = useState(false);                  // short viewport (phone landscape / short portrait): reflow controls clear of the minimap
   const [dioramaOn, setDioramaOn] = useState(false);               // tilted-3/4 beauty shot open (Phase H3)
   const [spaceOpen, setSpaceOpen] = useState(true);                // your space: open to anyone (true) or invite-only
   const [spaceInvites, setSpaceInvites] = useState<{ fromId: string; fromName: string }[]>([]);   // pending invites to visit
@@ -652,6 +653,7 @@ export default function Cirql() {
   // Full-screen: keep the in-engine HUD clear of the floating header + controls.
   useEffect(() => {
     const update = () => {
+      setCompact(window.innerHeight < 560);   // short screens (phone landscape) need the reflow
       const eng = engineRef.current; if (!eng) return;
       eng.setHudInsets(headerRef.current?.offsetHeight ?? 0, controlsRef.current?.offsetHeight ?? 0);
     };
@@ -1207,7 +1209,7 @@ export default function Cirql() {
 
       {/* live zoom control (Phase H2) — a floating +/- on the right; hidden while building/diorama */}
       {!showDecor && !showInventory && !dioramaOn && (
-        <div className="pointer-events-auto absolute right-3 top-1/2 z-[16] flex -translate-y-1/2 flex-col items-center gap-1.5" data-testid="zoom-control">
+        <div className={`pointer-events-auto absolute right-3 z-[16] flex flex-col items-center gap-1.5 ${compact ? "top-[168px]" : "top-1/2 -translate-y-1/2"}`} data-testid="zoom-control">
           <button onPointerDown={(e) => { e.preventDefault(); engineRef.current?.zoomBy(1.15); setZoomUi(engineRef.current?.getZoom() ?? 1); }} data-testid="btn-zoom-in" title="Zoom in"
             className="flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] active:scale-90" style={{ borderColor: "rgba(53,224,208,.5)", color: "#7be0ff", background: "rgba(10,18,38,.55)" }}>
             <ZoomIn className="h-4 w-4" />
@@ -1220,7 +1222,7 @@ export default function Cirql() {
             className="flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] active:scale-90" style={{ borderColor: "rgba(53,224,208,.5)", color: "#7be0ff", background: "rgba(10,18,38,.55)" }}>
             <ZoomOut className="h-4 w-4" />
           </button>
-          {curRingUi === 0 && !visiting && (
+          {curRingUi === 0 && !visiting && !compact && (
             <button onPointerDown={(e) => { e.preventDefault(); engineRef.current?.openDiorama(); }} data-testid="btn-diorama" title="Diorama view"
               className="mt-1 flex h-11 w-11 items-center justify-center rounded-full border-[1.5px] active:scale-90" style={{ borderColor: "rgba(255,206,140,.6)", color: "#ffce8c", background: "rgba(40,28,8,.5)", boxShadow: "0 0 14px rgba(255,206,140,.2) inset" }}>
               <Camera className="h-5 w-5" />
@@ -1238,7 +1240,7 @@ export default function Cirql() {
       )}
 
       {/* controls tray — captures all taps in this band so only the controls move the character */}
-      <div ref={controlsRef} className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-w-[680px] items-end justify-between gap-4 px-5 pb-[calc(14px+env(safe-area-inset-bottom))] pt-6"
+      <div ref={controlsRef} className={`absolute inset-x-0 bottom-0 z-10 mx-auto flex items-end justify-between gap-4 px-5 pb-[calc(14px+env(safe-area-inset-bottom))] pt-6 ${compact ? "max-w-none" : "max-w-[680px]"}`}
         style={{ background: "linear-gradient(0deg, rgba(6,11,26,.78) 40%, rgba(6,11,26,0))", touchAction: "none", display: dioramaOn ? "none" : undefined }}>
         <Joystick press={(b) => engineRef.current?.press(b)} release={(b) => engineRef.current?.release(b)} color="#35e0d0" size={128} floatOrigin />
         <div className="mb-1 flex min-w-0 flex-wrap items-end justify-end gap-2">
