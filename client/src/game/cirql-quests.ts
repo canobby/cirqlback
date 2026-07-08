@@ -10,7 +10,8 @@
 export type ObjectiveKind = "reach" | "interact" | "enterWonders" | "lightLanterns" | "solvePuzzle" | "gather" | "deliver"
   | "escort"    // lead a follower to a destination prop (Phase K7 Phase 2)
   | "riddle"    // answer a riddle correctly (via a dialog choice)
-  | "census";   // spot N distinct creature variants on the ring (naturalist)
+  | "census"    // spot N distinct creature variants on the ring (naturalist)
+  | "act";      // perform an avatar ACTION — hop / run / sit / an emote id (dance/wave/cheer/…), optionally near a prop
 
 export interface Objective {
   kind: ObjectiveKind;
@@ -19,6 +20,7 @@ export interface Objective {
   label: string;     // shown in the tracker / log
   ring?: number;     // if set, this objective is on that ring — advances only there; off-ring the waypoint points to the dock (cross-ring quests)
   from?: string;     // escort: the prop id the follower starts at (defaults to the giver / player)
+  act?: string;      // "act" objective: which action to perform — "hop"/"run"/"sit" or an emote id; `target` (if set) = the prop you must be near
 }
 
 // A branching MYSTERY/CHOICE quest (the ring 14-25 marquee model): after the clue-trail
@@ -179,6 +181,26 @@ export const QUESTS: QuestDef[] = [
         { id: "yourverse", label: "Weave in a verse of your own", blurb: "your name joins the song", reward: { sparks: 12, renown: 9 }, grants: "birdhouse", toast: "You add a line of your own. Lio grins — from now the welcome-song carries your verse too." },
       ],
     },
+  },
+
+  // ── ACTION-VERB showcase (the new `act` objective). Follows Lio's song: once the words are
+  // back, he wants to rehearse the welcome-dance at the Commons — teaching the emote wheel as a
+  // quest input. Each step is an avatar action performed near the Commons. ──
+  {
+    id: "festival-rehearsal", name: "The Welcome Dance", giver: "bard", tier: 1,
+    require: { flag: "lio-song" },   // only after you've brought the song back
+    intro: [
+      "The song's whole again — now we rehearse the welcome-dance to go with it!",
+      "Meet me at the Commons. Open your feelings wheel (the 🙂 button) and follow along:",
+      "a wave to say hello, twirl twice to warm up, then a big cheer to finish.",
+    ],
+    objectives: [
+      { kind: "act", act: "wave", target: "commons", ring: 1, label: "Wave hello at the Commons (🙂 → Wave)" },
+      { kind: "act", act: "twirl", target: "commons", ring: 1, count: 2, label: "Twirl twice to warm up (🙂 → Twirl)" },
+      { kind: "act", act: "cheer", target: "commons", ring: 1, label: "Finish with a cheer (🙂 → Cheer)" },
+    ],
+    reward: { sparks: 16, renown: 4 }, grants: "fairylights",
+    codex: { id: "codex-welcome", title: "The Welcome Dance", text: "A wave, a turn, a cheer — the whole town learns it as children. Now you know it too." },
   },
 
   // ── The FIRST mystery/choice quest (pilot for the ring 14-25 marquee model). Given by the

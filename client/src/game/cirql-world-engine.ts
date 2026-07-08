@@ -520,10 +520,10 @@ export class CirqlWorldEngine extends RetroEngine {
   /** The on-screen action button + the quest system call this to interact. */
   interact() { if (this.diorama) { this.closeDiorama(); return; } if (this.tornado) { this.endTornado(); return; } if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
   /** A little fake-Z hop (CHR-263) — raise the sprite; the shadow stays grounded. */
-  jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.standUp(); if (this.jumpZ <= 0.01 && this.jumpVel <= 0) { this.jumpVel = 66; this.sfx("hop"); } }
+  jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.standUp(); if (this.jumpZ <= 0.01 && this.jumpVel <= 0) { this.jumpVel = 66; this.sfx("hop"); this.fireAction("hop"); } }
   /** Free-sit (Phase H1) — plop down where you stand; any movement stands you back up. */
   onSeatChange?: (seated: boolean) => void;
-  toggleSit() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.seated = !this.seated; this.poseDirty = true; this.dozing = false; this.idleT = 0; if (this.seated) { this.vx = 0; this.vy = 0; this.moveTarget = null; } this.onSeatChange?.(this.seated); }
+  toggleSit() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.seated = !this.seated; this.poseDirty = true; this.dozing = false; this.idleT = 0; if (this.seated) { this.vx = 0; this.vy = 0; this.moveTarget = null; this.fireAction("sit"); } this.onSeatChange?.(this.seated); }
   private standUp() { this.dozing = false; this.idleT = 0; if (this.seated) { this.seated = false; this.poseDirty = true; this.onSeatChange?.(false); } }
   isSeated() { return this.seated; }
   /** How many distinct quests you've completed at least once (feeds the K5 journeys). */
@@ -687,7 +687,7 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Show your own chat bubble over your avatar. */
   sayLocal(text: string) { this.myChat = text; this.myChatT = 5.5; }
   /** Play an emote locally + broadcast it (called by the emote wheel). */
-  playEmote(emote: string) { const def = EMOTE_BY_ID[emote]; if (!def) return; this.myEmote = emote; this.myEmoteT = def.hold ?? EMOTE_SECONDS; this.sfx("emote"); this.onEmote?.(emote); }
+  playEmote(emote: string) { const def = EMOTE_BY_ID[emote]; if (!def) return; this.myEmote = emote; this.myEmoteT = def.hold ?? EMOTE_SECONDS; this.sfx("emote"); this.onEmote?.(emote); this.fireAction(emote); }
   // ---- paired social gestures (Phase I4) — a two-person moment with the nearby traveller ----
   /** Offer a paired gesture to the traveller you're standing next to; the host relays it to both. */
   requestPair(g: string) { if (this.nearPlayer && PAIR_BY_ID[g]) this.onPairGesture?.(this.nearPlayer.id, g); }
@@ -786,6 +786,18 @@ export class CirqlWorldEngine extends RetroEngine {
     this.completeQuest(q);
     return true;
   }
+  /** Is the player standing near the prop with this id on the current ring? (for `act` objectives) */
+  private nearProp(id: string): boolean {
+    const p = this.curRing.props.find((x) => x.id === id);
+    return !!p && Math.hypot(this.posX - p.x, this.posY - p.y) < ((p.r ?? 30) + 30);
+  }
+  /** An avatar ACTION was performed (hop / run / sit / an emote id). The action-verb primitive:
+   *  advances any active quest whose current objective is `act` and matches (+ optional prop range).
+   *  Mini-games can subscribe by watching the same call. */
+  private fireAction(actId: string) { this.advanceObjective("act", actId); this.onAction?.(actId); }
+  /** Fired on every avatar action — hop/run/sit/emote id — so the host (and future mini-games) can react. */
+  onAction?: (actId: string) => void;
+  private runT = 0; private runFired = false;   // edge-detect a sustained run for the `run` action
   /** The active quest's current (first unfinished) objective index, or -1. */
   private currentObjIndex(q: QuestDef): number {
     const p = this.quests[q.id]; if (!p) return -1;
@@ -802,6 +814,10 @@ export class CirqlWorldEngine extends RetroEngine {
       if (o.kind !== kind) continue;
       if (o.ring != null && o.ring !== this.ringIdx) continue;   // cross-ring: advance only on the objective's ring
       if ((kind === "reach" || kind === "interact" || kind === "deliver" || kind === "escort") && o.target && o.target !== targetId) continue;
+      if (kind === "act") {
+        if (o.act && o.act !== targetId) continue;               // targetId carries the action id for `act` events
+        if (o.target && !this.nearProp(o.target)) continue;      // optional: the action must be performed near this prop
+      }
       p.obj[oi] = Math.min(o.count ?? 1, (p.obj[oi] || 0) + 1);
       this.onQuestChange?.();
       if (this.currentObjIndex(q) < 0) {
@@ -1412,6 +1428,9 @@ export class CirqlWorldEngine extends RetroEngine {
       const mag = Math.hypot(dx, dy) || 1; dx /= mag; dy /= mag;
       const moving = (this.btn.right || this.btn.left || this.btn.up || this.btn.down || !!this.moveTarget);
       if (moving && this.seated) this.standUp();   // any movement input stands you up (Phase H1)
+      // `run` action: fire once per sustained running burst (holding RUN while moving for ~0.5s)
+      if (moving && this.btn.b) { this.runT += dt; if (this.runT > 0.5 && !this.runFired) { this.runFired = true; this.fireAction("run"); } }
+      else { this.runT = 0; this.runFired = false; }
       const spd = this.btn.b ? 118 : 80;
       const tvx = moving ? dx * spd : 0, tvy = moving ? dy * spd : 0;
       // ice-slide (I5): a winter ring is slippery — you build up + glide out of speed (low friction)
