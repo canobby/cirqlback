@@ -31,6 +31,7 @@ export type PropType =
   | "path"      // a dirt/stone trail patch (ground decoration — walk over)
   | "landmark"  // a focal set-piece (Great Tree, stone circle, lighthouse…) — quest home + meeting spot (Phase J4)
   | "shop"      // a Town storefront — walk in to enter the shop interior (Milestone F)
+  | "storm"     // a swirling storm — brave it to be swept up (tornado) into the sky realm (F: weather entry)
   | "portal";   // a cave/hollow-tree/cloud-stair — travel to a sub-map (CHR-265)
 
 export type LandmarkKind = "greattree" | "stonecircle" | "lighthouse" | "crystal" | "waterfall" | "ruin";

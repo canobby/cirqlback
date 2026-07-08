@@ -72,6 +72,8 @@ export class CirqlWorldEngine extends RetroEngine {
     motes: { x: number; y: number; vy: number; got: boolean }[];   // drifting light to gather
     gathered: number; wake: number;
   } | null = null;
+  // the tornado sweep (F weather entry): a short cinematic that lifts you into the sky realm
+  private tornado: { dest: number; t: number; progress: number; accent: string; destName: string } | null = null;
   private posX = 0; private posY = 0;         // player world position
   private vx = 0; private vy = 0; private facing: "up" | "down" | "left" | "right" = "down"; private walk = 0;
   private jumpZ = 0; private jumpVel = 0;      // fake-Z hop (CHR-263): raised height + vertical velocity
@@ -312,7 +314,7 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Full-screen safe-area: keep the HUD below the floating header + above the controls (CSS px). */
   setHudInsets(topCss: number, botCss: number) { this.insetTopCss = Math.max(0, topCss); this.insetBotCss = Math.max(0, botCss); }
   /** The on-screen action button + the quest system call this to interact. */
-  interact() { if (this.diorama) { this.closeDiorama(); return; } if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
+  interact() { if (this.diorama) { this.closeDiorama(); return; } if (this.tornado) { this.endTornado(); return; } if (this.voyage) { this.endVoyage(); return; } if (this.cs) { if (this.csClosing <= 0) this.csClosing = 0.35; return; } this.doInteract(); }
   /** A little fake-Z hop (CHR-263) — raise the sprite; the shadow stays grounded. */
   jump() { if (this.cs || this.voyage || this.dialog || this.mapOpen) return; this.standUp(); if (this.jumpZ <= 0.01 && this.jumpVel <= 0) { this.jumpVel = 66; this.sfx("hop"); } }
   /** Free-sit (Phase H1) — plop down where you stand; any movement stands you back up. */
@@ -430,6 +432,17 @@ export class CirqlWorldEngine extends RetroEngine {
     if (v.gathered > 0) this.onVoyageReward?.(v.gathered);   // light gathered → sparqs (host caps)
     this.doSail(v.dest);                                     // now actually land
   }
+  // ---------- tornado sweep (F weather entry) ----------
+  /** Brave a storm: a tornado cinematic lifts you up, then lands you in the sky realm. */
+  private startTornado(dest: number) {
+    this.sfx("storm");
+    const d = getRing(dest);
+    this.tornado = { dest, t: 0, progress: 0, accent: d.palette.accent, destName: d.name };
+    this.vx = this.vy = 0; this.moveTarget = null; this.dialog = null; this.near = null; this.mapOpen = false;
+  }
+  /** Is the tornado sweep playing (the world is suspended)? */
+  tornadoActive() { return !!this.tornado; }
+  private endTornado() { const t = this.tornado; this.tornado = null; if (t) this.doSail(t.dest); }
   toast(text: string) { this.msg = text; this.msgT = 4.6; }
   /** Play a skippable, letterboxed cutscene (CHR-264). `onDone` fires when it finishes/skips. */
   playCutscene(cs: Cutscene, onDone?: () => void) {
@@ -707,6 +720,7 @@ export class CirqlWorldEngine extends RetroEngine {
       if (to < 0) this.toast("Only open sea lies inward from the Hearth.");
       else { this.onInteract?.("dock", p); this.sailTo(to); }
     }
+    else if (p.t === "storm") { if (typeof p.to === "number") { const to = p.to; this.enterWithWave(() => this.startTornado(to)); } }   // brave the storm → tornado sweep into the sky (F)
     else if (p.t === "portal") { if (typeof p.to === "number") { const to = p.to; this.sfx(p.sub === "up" ? "leave" : "enter"); this.enterWithWave(() => this.sailTo(to)); } }   // wave at the sub-map mouth (I6)
   }
   /** Is the current ring's rune puzzle solved (exactly the target runes lit)? */
@@ -834,6 +848,13 @@ export class CirqlWorldEngine extends RetroEngine {
     }
 
     // sailing voyage (CHR-262): steer up-screen toward the far shore, gather light, land
+    if (this.tornado) {
+      const tn = this.tornado; tn.t += dt;
+      tn.progress = Math.min(1, tn.t / (this.reduce ? 0.4 : 3.4));
+      if ((justDown || this.pressed.a) && tn.progress > 0.12) { this.endTornado(); return; }   // tap / E skips
+      if (tn.progress >= 1) { this.endTornado(); return; }
+      return;
+    }
     if (this.voyage) {
       const v = this.voyage; v.t += dt; v.wob += dt; v.wake += dt;
       if (justDown || this.pressed.a) { this.endVoyage(); return; }   // tap / E skips to the shore
@@ -988,7 +1009,7 @@ export class CirqlWorldEngine extends RetroEngine {
         const isQL = this.isQuestLantern(p);
         const puzzle = p.t === "rune" || p.t === "tablet" || p.t === "shrine";
         const social = p.t === "gathering" || p.t === "theater" || p.t === "landmark";
-        if (p.t !== "wonders" && p.t !== "shop" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social) continue;
+        if (p.t !== "wonders" && p.t !== "shop" && p.t !== "storm" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social) continue;
         const d = Math.hypot(this.posX - p.x, this.posY - p.y);
         const range = p.t === "landmark" ? 52 : p.r ?? (isQL || p.t === "rune" ? 26 : 40);
         if (d < range && d < best) { best = d; this.near = p; }
@@ -1056,6 +1077,7 @@ export class CirqlWorldEngine extends RetroEngine {
   // ---------- render ----------
   protected render() {
     this.ui.length = 0;   // reset the smooth-text queue for this frame
+    if (this.tornado) { this.drawTornado(); this.drawFx(); return; }   // the storm sweep owns the screen (F)
     if (this.voyage) { this.drawVoyage(); this.drawFx(); return; }   // the sailing crossing owns the screen
     if (this.diorama) { this.drawDiorama(); this.drawFx(); return; }   // the beauty shot owns the screen (Phase H3)
     const b = this.b, s = this.SS, W = this.LW * s, H = this.LH * s, pal = this.curRing.palette;
@@ -1144,6 +1166,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "hearth": draws.push({ y: p.y + 28, f: () => this.drawHearth(sxp, syp, p) }); break;
         case "wonders": draws.push({ y: p.y + 30, f: () => this.drawWonders(sxp, syp, p) }); break;
         case "shop": draws.push({ y: p.y + 22, f: () => this.drawShop(sxp, syp, p) }); break;
+        case "storm": draws.push({ y: p.y + 30, f: () => this.drawStorm(sxp, syp, p) }); break;
         case "npc": draws.push({ y: p.y, f: () => this.drawNpc(sxp, syp, p) }); break;
         case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big, this.treeKind(p.x, p.y)) }); break;
         case "bush": draws.push({ y: p.y, f: () => this.drawBush(sxp, syp) }); break;
@@ -1365,6 +1388,42 @@ export class CirqlWorldEngine extends RetroEngine {
     b.moveTo(cx * s, (cy - 12) * s); b.lineTo((cx + 3) * s, (cy - 6) * s); b.lineTo(cx * s, (cy - 5) * s); b.closePath(); b.fill();
     this.glow(cx, cy - 6, 12, accent, this.reduce ? 0.25 : 0.2 + 0.08 * Math.sin(this.t * 3));
   }
+  /** The tornado sweep cinematic (F weather entry) — you're spun up into the sky realm. */
+  private drawTornado() {
+    const tn = this.tornado!; const W = this.LW, H = this.LH, s = this.SS, b = this.b, pr = tn.progress;
+    // brooding stormy sky
+    const g = b.createLinearGradient(0, 0, 0, H * s);
+    g.addColorStop(0, "#141a2b"); g.addColorStop(0.6, "#212a41"); g.addColorStop(1, "#2c3656");
+    b.fillStyle = g; b.fillRect(0, 0, W * s, H * s);
+    const cxp = W / 2, vy = H * (0.86 - pr * 0.5);   // the vortex focus rises as you're lifted
+    // swirling wind spiral toward the top
+    if (!this.reduce) {
+      b.strokeStyle = "rgba(200,214,240,0.16)"; b.lineWidth = 1 * s;
+      for (let i = 0; i < 10; i++) {
+        const ph = tn.t * 3 + i * 0.63, rad = 20 + i * 10 + Math.sin(ph) * 6;
+        b.beginPath();
+        for (let a = 0; a <= TAU; a += 0.3) { const rr = rad * (1 - a / (TAU * 1.6)); const x = cxp + Math.cos(a + ph) * rr, y = vy + a * 6 + Math.sin(a + ph) * rr * 0.35; if (a === 0) b.moveTo(x * s, y * s); else b.lineTo(x * s, y * s); }
+        b.stroke();
+      }
+      // debris + icy flecks spiralling up the funnel
+      for (let i = 0; i < 24; i++) { const ph = tn.t * 4 + i, rr = 8 + (i % 6) * 9, yy = vy + ((i * 37) % 160) - pr * 40, x = cxp + Math.cos(ph) * rr; this.px(Math.round(x), Math.round(yy), i % 4 ? "#dfeaff" : "#aebfe0"); }
+      // occasional lightning
+      if (Math.sin(tn.t * 6) > 0.7) { b.fillStyle = hexA("#eaf6ff", 0.5); b.fillRect((cxp - 1) * s, 0, 2 * s, vy * s); }
+    }
+    // you — lifted, spun, shrinking into the funnel (a small stand-in figure; the world hero is camera-bound)
+    const hx = cxp + Math.sin(tn.t * 6) * (18 * (1 - pr)), hy = H * 0.82 - pr * (H * 0.52), sc = 1 - pr * 0.7;
+    b.save(); b.translate(hx * s, hy * s); b.rotate(Math.sin(tn.t * 7) * 0.5 + pr * 6); b.scale(sc * s, sc * s);
+    b.fillStyle = "#0a071440"; b.fillRect(-5, 7, 10, 2);
+    b.fillStyle = this.hero.body || "#e2544f"; b.fillRect(-4, -2, 8, 9);
+    b.fillStyle = this.hero.skin || "#f4c79a"; b.fillRect(-3, -9, 6, 6);
+    b.fillStyle = this.hero.hat || "#33b0e0"; b.fillRect(-4, -11, 8, 2);
+    b.restore();
+    // whiteout as you burst up into the clouds
+    if (pr > 0.8) { b.fillStyle = hexA("#eef4ff", (pr - 0.8) / 0.2); b.fillRect(0, 0, W * s, H * s); }
+    // HUD
+    this.q(W / 2, this.itop() + 8, "Swept into the storm!", "#eaf6ff", 1.2, "c", true);
+    this.q(W / 2, H - this.ibot() - 12, `up to ${tn.destName} · tap to skip`, "#c8d4f0", 0.82, "c", false, 0.8);
+  }
 
   // ---------- props ----------
   // A small folded-legs cushion drawn under a seated avatar so a lowered sprite clearly
@@ -1445,7 +1504,7 @@ export class CirqlWorldEngine extends RetroEngine {
   // midnight; `twilight` (0..1) peaks at dawn/dusk. Sub-maps + set-piece screens keep their
   // own light. Drives a screen tint, stars, and night fireflies.
   private dayNight(): { night: number; twilight: number } {
-    if (isSubMap(this.ringIdx) || this.diorama || this.voyage) return { night: 0, twilight: 0 };
+    if (isSubMap(this.ringIdx) || this.diorama || this.voyage || this.tornado) return { night: 0, twilight: 0 };
     const ph = ((this.t / 600) + 0.28) % 1, sun = Math.sin(ph * TAU);
     return { night: Math.max(0, -sun), twilight: Math.max(0, 1 - Math.abs(sun) * 3) };
   }
@@ -1779,6 +1838,30 @@ export class CirqlWorldEngine extends RetroEngine {
     this.rect(cx - 5, cy + 4, 10, 12, shade(ac, 0.1)); this.rect(cx - 4, cy + 6, 8, 10, "#7a4a1e");
     this.px(cx + 2, cy + 11, "#ffd98a");                             // door knob
     this.labelPill(cx, cy - 30, p.label || "Shop", ac);
+  }
+  // A brooding storm you can brave (F weather entry) — dark churning cloud puffs, a hint of
+  // a funnel, flickering lightning + icy flecks swirling. Interact → the tornado sweep.
+  private drawStorm(cx: number, cy: number, p: Prop) {
+    const ac = p.accent || "#dfeaff";
+    const near = this.near === p;
+    const spin = this.reduce ? 0 : this.t * 2.2;
+    this.glow(cx, cy - 8, 48, "#5b6a8a", 0.26 + (near ? 0.14 : 0));
+    this.rect(cx - 20, cy + 12, 40, 5, "#0a071455");                 // ground shadow
+    // a funnel hint — stacked, wobbling ellipses narrowing to the ground
+    for (let i = 0; i < 5; i++) { const w = 4 + i * 3.2, yy = cy + 8 - i * 5, off = Math.sin(spin + i * 0.9) * (i * 0.8); this.disc(cx + off, yy, w * 0.5, i < 2 ? "#3a465e" : "#4a5872"); }
+    // churning cloud puffs on top
+    const puff = (dx: number, dy: number, r: number, c: string) => this.disc(cx + dx, cy + dy, r, c);
+    puff(-16, -11, 6, "#242a3a"); puff(-10, -14, 8, "#2b3346"); puff(0, -20, 10, "#3c4761"); puff(8, -16, 9, "#333c52"); puff(14, -12, 7, "#2b3346");
+    puff(-4, -13, 5, "#46536f");   // a lit underside curl
+    // flickering lightning
+    if (!this.reduce && Math.sin(this.t * 9) > 0.62) {
+      const lx = cx + Math.sin(this.t * 3) * 4;
+      this.rect(lx, cy - 8, 1, 6, "#eaf6ff"); this.rect(lx - 2, cy - 2, 3, 1, "#bfe0ff"); this.rect(lx, cy + 1, 1, 5, "#eaf6ff");
+      this.glow(lx, cy, 12, "#cfe6ff", 0.4);
+    }
+    // icy flecks swirling around the storm
+    if (!this.reduce) for (let i = 0; i < 7; i++) { const a = spin + i * (TAU / 7), rr = 14 + (i % 3) * 4; this.px(Math.round(cx + Math.cos(a) * rr), Math.round(cy - 6 + Math.sin(a) * rr * 0.5), "#dfeaff"); }
+    this.labelPill(cx, cy - 34, p.label || "the storm", ac);
   }
   private drawNpc(cx: number, cy: number, p: Prop) {
     const ac = p.accent || "#7fffe6";
@@ -2354,6 +2437,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (this.nearPlayer && !this.dialog) { promptTxt = `E · Share a light with ${this.nearPlayer.name}`; promptAcc = "#ffc46b"; }
     else if (this.near && !this.dialog) {
       const label = this.near.t === "shop" ? `Enter ${this.near.label || "the shop"}`
+        : this.near.t === "storm" ? "Brave the storm"
         : this.near.t === "npc" && this.near.shopId ? `Browse ${this.near.label || "the"}'s wares`
         : this.near.t === "wonders" ? "Enter CirqlCade"
         : this.near.t === "npc" ? `Talk to ${this.near.label || ""}`

@@ -11,7 +11,7 @@ interface Note { f: number; t: number; d: number; w?: Wave; g?: number }   // t 
 
 export type SfxKind =
   | "talk" | "buy" | "quest" | "graduate" | "rankup" | "sail" | "hop"
-  | "emote" | "wisp" | "enter" | "leave" | "expand" | "deny" | "postcard";
+  | "emote" | "wisp" | "enter" | "leave" | "expand" | "deny" | "postcard" | "storm";
 
 // Each cue as a short note list (freqs in Hz). Noise-based cues add a `sweep` flag.
 const CUES: Record<SfxKind, { notes?: Note[]; sweep?: { from: number; to: number; d: number; g: number } }> = {
@@ -29,6 +29,7 @@ const CUES: Record<SfxKind, { notes?: Note[]; sweep?: { from: number; to: number
   deny:     { notes: [{ f: 330, t: 0, d: 0.08, w: "square", g: 0.2 }, { f: 247, t: 0.08, d: 0.14, w: "square", g: 0.18 }] },
   postcard: { sweep: { from: 400, to: 2000, d: 0.28, g: 0.14 } },
   sail:     { sweep: { from: 900, to: 200, d: 0.5, g: 0.16 } },
+  storm:    { sweep: { from: 180, to: 1300, d: 1.1, g: 0.2 } },   // a rising wind/updraft — the tornado sweep
 };
 
 class CirqlSfx {

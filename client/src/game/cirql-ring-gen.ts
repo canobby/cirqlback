@@ -176,9 +176,16 @@ export function generateRing(index: number): Ring {
   // larger rings get extra pockets of a DIFFERENT feel (a little grove + flowerbed — an
   // oasis even on a desert ring) so a big island isn't one uniform scene throughout
   if (radius > 620) { const g = clearSpot(); placeGrove(props, g.x, g.y, 3 + Math.floor(rng() * 2), rng); const f = clearSpot(); placeFlowerBed(props, f.x, f.y, 6, rng); if (rng() > 0.5) { const p = clearSpot(); props.push({ t: "pond", x: p.x, y: p.y, r: 20 + Math.floor(rng() * 10) }); } }
-  // a PORTAL to a sub-map on many rings (an interactive voyage down/up — CHR-265)
-  const portalKind: SubKind | null = (biome.key === "desert" || biome.key === "ember") ? "cave" : (biome.key === "woodland" || biome.key === "meadow" || biome.key === "autumn") ? "tree" : (biome.key === "winter" || biome.key === "coast") ? "cloud" : null;
-  if (portalKind) { const c = clearSpot(); props.push({ t: "portal", x: c.x, y: c.y, to: subIndex(portalKind, index), sub: portalKind, label: portalKind === "cave" ? "cave" : portalKind === "tree" ? "hollow tree" : "cloud stair" }); }
+  // a PORTAL to a sub-map on many rings (an interactive voyage down/up — CHR-265).
+  // Winter is the exception: instead of a calm "cloud stair" it gets a STORM you brave —
+  // a tornado sweeps you up into the icy Cloud Reach (the dramatic weather entry, F).
+  if (biome.key === "winter") {
+    const c = clearSpot();
+    props.push({ t: "storm", x: c.x, y: c.y, to: subIndex("cloud", index), sub: "cloud", label: "the storm", accent: "#dfeaff" });
+  } else {
+    const portalKind: SubKind | null = (biome.key === "desert" || biome.key === "ember") ? "cave" : (biome.key === "woodland" || biome.key === "meadow" || biome.key === "autumn") ? "tree" : (biome.key === "coast") ? "cloud" : null;
+    if (portalKind) { const c = clearSpot(); props.push({ t: "portal", x: c.x, y: c.y, to: subIndex(portalKind, index), sub: portalKind, label: portalKind === "cave" ? "cave" : portalKind === "tree" ? "hollow tree" : "cloud stair" }); }
+  }
   // a dirt trail leading inland from the shore (along the arrival lane)
   if (biome.path) { const n = 5; for (let k = 0; k < n; k++) props.push({ t: "path", x: Math.sin(k * 1.3 + index) * 16, y: -radius * 0.6 + k * (radius * 0.42 / n) }); }
   if (biome.pond) {
