@@ -31,6 +31,7 @@ export type PropType =
   | "path"      // a dirt/stone trail patch (ground decoration — walk over)
   | "landmark"  // a focal set-piece (Great Tree, stone circle, lighthouse…) — quest home + meeting spot (Phase J4)
   | "shop"      // a Town storefront — walk in to enter the shop interior (Milestone F)
+  | "home"      // your cottage on CIRQLSPACE — walk in to enter & decorate the interior (Milestone F)
   | "storm"     // a swirling storm — brave it to be swept up (tornado) into the sky realm (F: weather entry)
   | "portal";   // a cave/hollow-tree/cloud-stair — travel to a sub-map (CHR-265)
 
@@ -98,6 +99,8 @@ const CIRQLSPACE: Ring = {
   props: [
     // your guide — teaches building; then the how-to lives in your Inventory (CHR-269)
     { t: "npc", x: -50, y: 96, id: "guide", label: "Cirqla", accent: "#7fffe6", r: 34 },
+    // your cottage — walk in to enter & decorate your Home interior (Milestone F)
+    { t: "home", x: 120, y: -40, to: 500000, id: "home", label: "Your Home", accent: "#ffc46b" },
     // the dock out to the Town (ring 1) — where all the game lives
     { t: "dock", x: 0, y: 400, to: 1, label: "the Town", id: "dock-out" },
   ],

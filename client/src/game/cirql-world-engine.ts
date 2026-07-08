@@ -12,6 +12,7 @@ import { loadAvatarLS, DEFAULT_AVATAR, AURA_COLORS, type AvatarConfig } from "./
 import { RINGS, MINIMAP_RINGS, type Ring, type Prop, type RingPalette } from "./cirql-world";
 import { getRing, ringName, isSubMap, parentOf, subKindOf } from "./cirql-ring-gen";
 import { isShop } from "./cirql-shops";
+import { isHome } from "./cirql-home";
 import { CirqlOrchestra } from "./cirql-orchestra";
 import { trackForContext } from "./cirql-music";
 import { cirqlSfx, type SfxKind } from "./cirql-sfx";
@@ -93,6 +94,7 @@ export class CirqlWorldEngine extends RetroEngine {
   private presentPose: { glyph: string; color: string; t: number } | null = null;
   // Hearth décor (CHR-259): your placed decorations, an edit mode, and a "visiting" overlay
   private decor: { item: string; x: number; y: number }[] = [];
+  private homeDecor: { item: string; x: number; y: number }[] = [];   // your indoor Home furniture (Milestone F)
   private editDecor = false; private editSel = "";     // placing this item; "" = remove-on-tap
   private snapGrid = false;                             // snap placement to a grid (CHR-273)
   // terrain paint (Phase C): sparse tile grid + paint mode
@@ -218,7 +220,7 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Swap to the theme for the current ring/biome + set its intensity by context. */
   private updateMusic() {
     if (!this.musicStarted || !this.orchestra || this.musicVol <= 0) return;
-    const shop = isShop(this.ringIdx), sub = isSubMap(this.ringIdx);
+    const shop = isShop(this.ringIdx) || isHome(this.ringIdx), sub = isSubMap(this.ringIdx) && !isHome(this.ringIdx);
     this.orchestra.play(trackForContext(this.ringIdx, this.curRing.ambient, shop, sub));
     this.orchestra.setIntensity(this.ringIdx <= 0 ? 0.55 : shop ? 0.5 : sub ? 0.6 : this.ringIdx === 1 ? 0.8 : 0.9);
   }
@@ -246,9 +248,16 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Fired when the player places/removes décor (host persists + rebroadcasts). */
   onDecorChange?: () => void;
   getDecor() { return this.decor.slice(); }
-  setDecor(list: { item: string; x: number; y: number }[]) { this.decor = Array.isArray(list) ? list.filter((d) => d && decorById[d.item]).map((d) => ({ item: d.item, x: +d.x, y: +d.y })) : []; }
+  setDecor(list: { item: string; x: number; y: number }[]) { this.decor = this.cleanDecor(list); }
+  getHomeDecor() { return this.homeDecor.slice(); }
+  setHomeDecor(list: { item: string; x: number; y: number }[]) { this.homeDecor = this.cleanDecor(list); }
+  private cleanDecor(list: any) { return Array.isArray(list) ? list.filter((d) => d && decorById[d.item]).map((d: any) => ({ item: d.item, x: +d.x, y: +d.y })) : []; }
+  /** Décor can be placed/rendered on your CIRQLSPACE (ring 0) OR inside your Home (F). */
+  private canDecorate() { return this.ringIdx === 0 || isHome(this.ringIdx); }
+  /** The décor list for the current space: a friend's build while visiting, else home vs outdoor. */
+  private curDecorList() { return this.visiting ? this.visiting.decor : (isHome(this.ringIdx) ? this.homeDecor : this.decor); }
   /** Enter décor edit mode; `itemId` is the piece to place, or "" to remove-on-tap. */
-  beginDecorEdit(itemId: string) { if (this.ringIdx !== 0 || this.visiting) return; this.editDecor = true; this.editPaint = false; this.editSel = decorById[itemId] ? itemId : ""; this.setZoomTarget(1); }
+  beginDecorEdit(itemId: string) { if (!this.canDecorate() || this.visiting) return; this.editDecor = true; this.editPaint = false; this.editSel = decorById[itemId] ? itemId : ""; this.setZoomTarget(1); }
   setDecorTool(itemId: string) { this.editSel = decorById[itemId] ? itemId : ""; }
   setSnap(on: boolean) { this.snapGrid = !!on; }
   endDecorEdit() { this.editDecor = false; }
@@ -358,11 +367,12 @@ export class CirqlWorldEngine extends RetroEngine {
   openDiorama() { if (this.ringIdx !== 0 || this.cs || this.voyage) return; this.diorama = true; this.dioramaT = 0; this.dioramaAng = -0.5; this.editDecor = false; this.editPaint = false; this.onDioramaChange?.(true); }
   closeDiorama() { if (!this.diorama) return; this.diorama = false; this.onDioramaChange?.(false); }
   isDiorama() { return this.diorama; }
-  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), terrain: this.getTerrain(), landTier: this.landTier }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), homeDecor: this.homeDecor.slice(), terrain: this.getTerrain(), landTier: this.landTier }; }
   applyState(s: any) {
     if (!s) return;
     if (Array.isArray(s.doneOnce)) this.doneOnce = new Set(s.doneOnce);
     if (Array.isArray(s.decor)) this.setDecor(s.decor);
+    if (Array.isArray(s.homeDecor)) this.setHomeDecor(s.homeDecor);
     if (s.terrain && typeof s.terrain === "object") this.setTerrain(s.terrain);
     if (typeof s.landTier === "number") this.landTier = Math.max(0, Math.min(LAND_TIERS.length - 1, s.landTier | 0));
     if (Array.isArray(s.litForQuest)) this.litForQuest = new Set(s.litForQuest);
@@ -399,7 +409,7 @@ export class CirqlWorldEngine extends RetroEngine {
     this.ensureRingQuest();
     const r = this.curRing.radius;
     // arrive at the dock/portal/storefront that leads back to where we came from
-    const back = this.curRing.props.find((p) => (p.t === "dock" || p.t === "portal" || p.t === "shop") && p.to === from);
+    const back = this.curRing.props.find((p) => (p.t === "dock" || p.t === "portal" || p.t === "shop" || p.t === "home") && p.to === from);
     if (back) { this.posX = back.x; this.posY = back.y + (back.t === "portal" ? 26 : 30); }
     else { const outward = dest > from; this.posX = 0; this.posY = outward ? -r * 0.68 : r * 0.7; }
     this.vx = this.vy = 0; this.facing = "down";
@@ -649,6 +659,7 @@ export class CirqlWorldEngine extends RetroEngine {
       if (p.t === "hearth") out.push({ x: p.x, y: p.y, r: 40 });
       else if (p.t === "wonders") out.push({ x: p.x, y: p.y, r: 34 });
       else if (p.t === "shop") out.push({ x: p.x, y: p.y, r: 28 });   // walk around the storefront (F)
+      else if (p.t === "home") out.push({ x: p.x, y: p.y, r: 26 });   // walk around your cottage (F)
       else if (p.t === "tree") out.push({ x: p.x, y: p.y + 2, r: p.big ? 13 : 10 });
       else if (p.t === "bush") out.push({ x: p.x, y: p.y, r: 7 });
       else if (p.t === "rock") out.push({ x: p.x, y: p.y, r: p.big ? 12 : 8 });
@@ -659,8 +670,8 @@ export class CirqlWorldEngine extends RetroEngine {
       else if (p.t === "gathering") out.push({ x: p.x, y: p.y - 2, r: 11 });
       else if (p.t === "landmark") out.push({ x: p.x, y: p.y, r: p.lm === "waterfall" || p.lm === "stonecircle" ? 20 : 12 });   // walk around the set-piece base (J4)
     }
-    // solid décor on CIRQLSPACE — yours, or the host's while you visit (Phase B / E)
-    if (this.ringIdx === 0) for (const d of (this.visiting ? this.visiting.decor : this.decor)) {
+    // solid décor on CIRQLSPACE/Home — yours, or the host's while you visit (Phase B / E / F)
+    if (this.canDecorate()) for (const d of this.curDecorList()) {
       const def = decorById[d.item]; const r = def?.render;
       if (!r || !DECOR_SOLID[r]) continue;
       const rad = r === "tree" ? (def!.big ? 13 : 10) : r === "stone" ? (def!.big ? 12 : 7) : r === "pond" ? 20 : r === "bush" ? 7 : 9;
@@ -715,6 +726,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (p.t === "lantern" && p.id) { if (this.currentObjKind() === "lightLanterns" && !this.litForQuest.has(p.id)) { this.litForQuest.add(p.id); this.advanceObjective("lightLanterns"); this.onQuestChange?.(); } }
     else if (p.t === "wonders") { this.advanceObjective("enterWonders"); this.sfx("enter"); this.enterWithWave(() => this.onInteract?.("wonders", p)); }   // wave/knock at the arcade doors (I6)
     else if (p.t === "shop") { if (typeof p.to === "number") { const to = p.to; this.sfx("enter"); this.enterWithWave(() => this.sailTo(to)); } }   // walk into a storefront → its interior (F)
+    else if (p.t === "home") { if (typeof p.to === "number") { const to = p.to; this.sfx("enter"); this.enterWithWave(() => this.sailTo(to)); } }   // walk into your cottage → the Home interior (F)
     else if (p.t === "npc" && p.shopId) { this.sfx("talk"); this.onInteract?.("shopkeeper", p); }   // shop keeper → open the store (F)
     else if (p.t === "npc") { this.sfx("talk"); this.openNpcDialog(p); this.onInteract?.("npc", p); }
     else if (p.t === "dock") {
@@ -925,15 +937,16 @@ export class CirqlWorldEngine extends RetroEngine {
     const tapEdit = this.editDecor && justDown && !tapMap && !this.dialog;
     if (tapEdit) {
       const wx = this.pointer.x + this.camX, wy = this.pointer.y + this.camY;
+      const list = isHome(this.ringIdx) ? this.homeDecor : this.decor;   // place into the active space (F)
       if (this.editSel) {
         const rr = Math.hypot(wx, wy), lim = this.effR() * 0.82;
         let px = rr > lim ? (wx / rr) * lim : wx, py = rr > lim ? (wy / rr) * lim : wy;
         if (this.snapGrid) { px = Math.round(px / 20) * 20; py = Math.round(py / 20) * 20; }   // grid snap (CHR-273)
-        if (this.decor.length < 120) { this.decor.push({ item: this.editSel, x: Math.round(px), y: Math.round(py) }); this.onDecorChange?.(); }
+        if (list.length < 120) { list.push({ item: this.editSel, x: Math.round(px), y: Math.round(py) }); this.onDecorChange?.(); }
       } else {
         let bi = -1, bd = 22 * 22;
-        for (let i = 0; i < this.decor.length; i++) { const dd = (this.decor[i].x - wx) ** 2 + (this.decor[i].y - wy) ** 2; if (dd < bd) { bd = dd; bi = i; } }
-        if (bi >= 0) { this.decor.splice(bi, 1); this.onDecorChange?.(); }
+        for (let i = 0; i < list.length; i++) { const dd = (list[i].x - wx) ** 2 + (list[i].y - wy) ** 2; if (dd < bd) { bd = dd; bi = i; } }
+        if (bi >= 0) { list.splice(bi, 1); this.onDecorChange?.(); }
       }
       this.moveTarget = null;
     }
@@ -1011,7 +1024,7 @@ export class CirqlWorldEngine extends RetroEngine {
         const isQL = this.isQuestLantern(p);
         const puzzle = p.t === "rune" || p.t === "tablet" || p.t === "shrine";
         const social = p.t === "gathering" || p.t === "theater" || p.t === "landmark";
-        if (p.t !== "wonders" && p.t !== "shop" && p.t !== "storm" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social) continue;
+        if (p.t !== "wonders" && p.t !== "shop" && p.t !== "home" && p.t !== "storm" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social) continue;
         const d = Math.hypot(this.posX - p.x, this.posY - p.y);
         const range = p.t === "landmark" ? 52 : p.r ?? (isQL || p.t === "rune" ? 26 : 40);
         if (d < range && d < best) { best = d; this.near = p; }
@@ -1143,8 +1156,8 @@ export class CirqlWorldEngine extends RetroEngine {
     // ground decoration — paths + ponds, under the depth-sorted props
     for (const p of this.curRing.props) if (p.t === "path") this.drawPath(p.x - camX, p.y - camY);
     for (const p of this.curRing.props) if (p.t === "pond") this.drawPond(p.x - camX, p.y - camY, p.r ?? 22);
-    // ground-layer décor (paths walk on, ponds walk around) — CIRQLSPACE only (Phase B)
-    if (this.ringIdx === 0) for (const d of (this.visiting ? this.visiting.decor : this.decor)) {
+    // ground-layer décor (paths walk on, ponds walk around) — CIRQLSPACE / Home (Phase B / F)
+    if (this.canDecorate()) for (const d of this.curDecorList()) {
       const r = decorById[d.item]?.render;
       if (r === "path") this.drawPath(d.x - camX, d.y - camY);
       else if (r === "pond") this.drawPond(d.x - camX, d.y - camY, 22);
@@ -1168,6 +1181,7 @@ export class CirqlWorldEngine extends RetroEngine {
         case "hearth": draws.push({ y: p.y + 28, f: () => this.drawHearth(sxp, syp, p) }); break;
         case "wonders": draws.push({ y: p.y + 30, f: () => this.drawWonders(sxp, syp, p) }); break;
         case "shop": draws.push({ y: p.y + 22, f: () => this.drawShop(sxp, syp, p) }); break;
+        case "home": draws.push({ y: p.y + 22, f: () => this.drawHome(sxp, syp, p) }); break;
         case "storm": draws.push({ y: p.y + 30, f: () => this.drawStorm(sxp, syp, p) }); break;
         case "npc": draws.push({ y: p.y, f: () => this.drawNpc(sxp, syp, p) }); break;
         case "tree": draws.push({ y: p.y, f: () => this.drawTree(sxp, syp, p.big, this.treeKind(p.x, p.y)) }); break;
@@ -1190,9 +1204,9 @@ export class CirqlWorldEngine extends RetroEngine {
         default: break;
       }
     }
-    // Hearth décor (CHR-259) — your placed pieces, or the host's while visiting (Hearth only)
-    if (this.ringIdx === 0) {
-      const list = this.visiting ? this.visiting.decor : this.decor;
+    // Placed décor (CHR-259 / F) — your CIRQLSPACE pieces, your Home furniture, or a host's while visiting
+    if (this.canDecorate()) {
+      const list = this.curDecorList();
       const pacc = this.curRing.palette.accent;
       for (const d of list) {
         const def = decorById[d.item]; if (!def) continue;
@@ -1865,6 +1879,26 @@ export class CirqlWorldEngine extends RetroEngine {
     if (!this.reduce) for (let i = 0; i < 7; i++) { const a = spin + i * (TAU / 7), rr = 14 + (i % 3) * 4; this.px(Math.round(cx + Math.cos(a) * rr), Math.round(cy - 6 + Math.sin(a) * rr * 0.5), "#dfeaff"); }
     this.labelPill(cx, cy - 34, p.label || "the storm", ac);
   }
+  // Your cottage on CIRQLSPACE (F) — a warm little home with a smoking chimney + lit windows.
+  private drawHome(cx: number, cy: number, p: Prop) {
+    const ac = p.accent || "#ffc46b";
+    const near = this.near === p;
+    this.glow(cx, cy - 4, 50, ac, 0.16 + (near ? 0.14 : 0));
+    this.rect(cx - 24, cy + 14, 48, 6, "#0a071450");                 // ground shadow
+    // walls
+    this.rect(cx - 22, cy - 12, 44, 28, "#e6d3b0");
+    this.rectLine(cx - 22, cy - 12, 44, 28, shade(ac, -0.4));
+    // pitched thatch roof + chimney with a curl of smoke
+    for (let i = 0; i < 15; i++) this.rect(cx - 27 + i, cy - 12 - i, (27 - i) * 2, 1, i % 2 ? "#b5662f" : "#a85a28");
+    this.rect(cx + 12, cy - 26, 5, 10, "#7a3f28");                   // chimney
+    if (!this.reduce) { for (let i = 0; i < 3; i++) { const yy = cy - 28 - i * 4 - (this.t * 6 % 4); this.disc(cx + 14 + Math.sin(this.t * 1.5 + i) * 2, yy, 1.5 + i * 0.4, "#c9bfb0"); } }
+    // door + warm lit windows
+    this.disc(cx - 12, cy - 2, 3, "#ffe6a8"); this.disc(cx + 12, cy - 2, 3, "#ffe6a8");
+    this.rect(cx - 4, cy + 3, 9, 13, "#8a5a2e"); this.rect(cx - 3, cy + 4, 7, 11, "#a06a34");
+    this.px(cx + 3, cy + 10, "#ffd98a");                             // door knob
+    this.rect(cx - 4, cy + 3, 9, 1, shade(ac, -0.2));                // lintel
+    this.labelPill(cx, cy - 32, p.label || "Your Home", ac);
+  }
   private drawNpc(cx: number, cy: number, p: Prop) {
     const ac = p.accent || "#7fffe6";
     const L = npcLook(p.id, ac);
@@ -2439,6 +2473,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (this.nearPlayer && !this.dialog) { promptTxt = `E · Share a light with ${this.nearPlayer.name}`; promptAcc = "#ffc46b"; }
     else if (this.near && !this.dialog) {
       const label = this.near.t === "shop" ? `Enter ${this.near.label || "the shop"}`
+        : this.near.t === "home" ? "Enter your Home"
         : this.near.t === "storm" ? "Brave the storm"
         : this.near.t === "npc" && this.near.shopId ? `Browse ${this.near.label || "the"}'s wares`
         : this.near.t === "wonders" ? "Enter CirqlCade"
@@ -2451,7 +2486,7 @@ export class CirqlWorldEngine extends RetroEngine {
                     : this.near.t === "theater" ? "Watch the show"
                       : this.near.t === "gathering" ? "Rest a while"
                         : this.near.t === "landmark" ? `Visit ${this.near.label || "the landmark"}`
-                        : this.near.t === "portal" ? (this.near.sub === "up" ? (isShop(this.ringIdx) ? "Leave the shop" : "Return to the surface") : this.near.sub === "cave" ? "Descend into the cave" : this.near.sub === "tree" ? "Climb the great tree" : "Ascend the cloud stair")
+                        : this.near.t === "portal" ? (this.near.sub === "up" ? (isHome(this.ringIdx) ? "Leave your home" : isShop(this.ringIdx) ? "Leave the shop" : "Return to the surface") : this.near.sub === "cave" ? "Descend into the cave" : this.near.sub === "tree" ? "Climb the great tree" : "Ascend the cloud stair")
                           : "Set sail";
       promptTxt = `E · ${label}`; promptAcc = this.near.accent || "#35e0d0";
     }
@@ -2535,7 +2570,7 @@ export class CirqlWorldEngine extends RetroEngine {
       b.fillStyle = "#ffffff"; b.beginPath(); b.arc((cx + Math.cos(ang) * dr) * s, (cy + Math.sin(ang) * dr) * s, 1.8 * s, 0, TAU); b.fill();
     }
     // current place name + tappable hint under the minimap
-    const subHint = isShop(this.ringIdx) ? "inside · tap to leave" : inSub ? (subKindOf(this.ringIdx) === "cave" ? "underground" : subKindOf(this.ringIdx) === "tree" ? "in the trees" : "in the clouds") : "tap · chart";
+    const subHint = isHome(this.ringIdx) ? "home · tap to leave" : isShop(this.ringIdx) ? "inside · tap to leave" : inSub ? (subKindOf(this.ringIdx) === "cave" ? "underground" : subKindOf(this.ringIdx) === "tree" ? "in the trees" : "in the clouds") : "tap · chart";
     if (this.ringIdx === 0) {   // CIRQLSPACE — styled like the logo (CIRQL big + SPACE small)
       this.q(cx - 1, cy + R + 1, "CIRQL", "#ffffff", 1.05, "r", true);
       this.q(cx + 1, cy + R + 3, "SPACE", this.curRing.palette.accent, 0.7, "l", true);

@@ -9,6 +9,7 @@
 
 import { RINGS, type Ring, type Prop, type RingPalette, type LandmarkKind } from "./cirql-world";
 import { isShop, shopIdAt, shopInterior } from "./cirql-shops";
+import { isHome, homeInterior } from "./cirql-home";
 
 // deterministic RNG seeded from an integer (mulberry32)
 function rngFrom(seed: number) {
@@ -279,6 +280,7 @@ function generateSubMap(kind: SubKind, parent: number, index: number): Ring {
 export function getRing(index: number): Ring {
   if (index <= 0) return RINGS[0];
   if (index === 1) return RINGS[1];   // the authored Town hub
+  if (isHome(index)) return homeInterior();                   // Milestone F: your home interior
   if (isShop(index)) return shopInterior(shopIdAt(index)!);   // Milestone F: authored shop interior
   if (isSubMap(index)) { const k = subKindOf(index)!; return generateSubMap(k, parentOf(index), index); }
   return generateRing(index);
