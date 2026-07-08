@@ -33,6 +33,8 @@ export const CF_SHEETS: Record<string, string> = {
   cliff4: `${CF}/tiles/cliff4.png`,
   water_foam: `${CF}/tiles/water_foam.png`,
   bridge_wood: `${CF}/tiles/bridge_wood.png`,
+  // brand — the CIRQLBACK circular-arrow mark (spun as the wellspring emblem)
+  logo: `${CF}/logo.png`,
   // actors
   player: `${CF}/actors/player.png`,
   // props
@@ -55,6 +57,13 @@ export const CF_SHEETS: Record<string, string> = {
   lanterns: `${CF}/decor/lanterns.png`,
   benches: `${CF}/decor/benches.png`,
   outdoor_decor: `${CF}/decor/outdoor_decor.png`,
+  // water-edge decor (8-frame 16×16 strips; we use frame 0)
+  cattail: `${CF}/decor/cattail.png`,
+  lilypad1: `${CF}/decor/lilypad1.png`,
+  lilypad2: `${CF}/decor/lilypad2.png`,
+  watergrass: `${CF}/decor/watergrass.png`,
+  waterrock1: `${CF}/decor/waterrock1.png`,
+  waterrock2: `${CF}/decor/waterrock2.png`,
   // life
   sheep: `${CF}/animals/sheep.png`,
   chicken: `${CF}/animals/chicken.png`,

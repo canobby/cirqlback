@@ -30,7 +30,9 @@ export type TerrainConfig = Record<string, TerrainRender>;
 
 /** Default mapping for the P0/P1 meadow: grass base, water + cobble-path overlays, a rock fill for cliffs. */
 export const DEFAULT_TERRAIN: TerrainConfig = {
-  grass: { fill: "grass", variants: ["grass", "grass_v1", "grass_v2", "grass_v3"] },
+  // single grass tile (no blocky tone-variant patches); soft meadow shading is a
+  // procedural overlay the host draws on top, so the grass reads natural not gridded.
+  grass: { fill: "grass" },
   // plain blue water; the shore is a soft light shallows drawn by drawWaterEdges
   // (not the pack's heavy brown-reed pond border) so water fades into land.
   water: { fill: "water_middle" },
