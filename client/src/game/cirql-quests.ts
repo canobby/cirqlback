@@ -139,6 +139,48 @@ export const QUESTS: QuestDef[] = [
     ],
     reward: { sparks: 14 },
   },
+  // ── EARLY DISCOVERY (rings 0-1 rework) — the first discovery a new player meets, right on the
+  // Town shore (no night-gate, unlike Starfall). Inspect the tide-buried cache → a short keepsake
+  // hunt to the old pond, paying a décor + a codex line about who lived here before you. ──
+  {
+    id: "tide-keepsake", name: "What the Tide Kept", giver: "", tier: 0,
+    discover: { at: "curio-town", ring: 1 },
+    intro: [
+      "The tide's uncovered an old cache, its lid worn smooth.",
+      "Inside: a child's paper boat, and a chart drawn in a careful hand.",
+      "It marks the town pond — where someone, long ago, used to play. Go and see what they left.",
+    ],
+    objectives: [{ kind: "reach", ring: 1, target: "town-pond", label: "Follow the chart to the town pond" }],
+    reward: { sparks: 10, renown: 2 }, grants: "fairylights",
+    codex: { id: "codex-tide", title: "Who Was Here Before", text: "Someone loved this shore enough to bury a keepsake for the tide to keep. Now it keeps you." },
+  },
+  // ── EARLY CHOICE (rings 0-1 rework) — the first branching fork, given by Lio the bard in Town,
+  // so a new player meets a real choice within the first ring instead of waiting for ring 11. ──
+  {
+    id: "lio-song", name: "Lio's Half-Remembered Song", giver: "bard", tier: 1,
+    intro: [
+      "Oh — good, a fresh pair of ears!",
+      "There's a welcome-song this town has sung for ages, but I've lost the second verse.",
+      "Marin the cartographer has a memory like a map — ask her. Then the old words are cut into the Town Hall stone.",
+      "Bring it back and we'll sing it right. Four steps and a small choice at the end.",
+    ],
+    objectives: [
+      { kind: "interact", ring: 1, target: "cartographer", label: "Ask Marin for the lost verse" },
+      { kind: "reach", ring: 1, target: "townhall", label: "Read the founding words on the Town Hall stone" },
+    ],
+    reward: { sparks: 12, renown: 3 },   // fallback (unused once a choice is picked)
+    choice: {
+      prompt: [
+        "You have the verse whole again. Lio hands you the first note.",
+        "How will you give the song back?",
+      ],
+      options: [
+        { id: "faithful", label: "Sing it as the founders wrote it", blurb: "the town beams — a tradition kept", reward: { sparks: 20, renown: 3 }, toast: "The old verse rings out true. Elders mouth the words along with you — a tradition kept alive." },
+        { id: "yourverse", label: "Weave in a verse of your own", blurb: "your name joins the song", reward: { sparks: 12, renown: 9 }, grants: "birdhouse", toast: "You add a line of your own. Lio grins — from now the welcome-song carries your verse too." },
+      ],
+    },
+  },
+
   // ── The FIRST mystery/choice quest (pilot for the ring 14-25 marquee model). Given by the
   // marsh ring's keeper; a clue-trail of NPCs + the landmark, then a branching fork. ──
   {

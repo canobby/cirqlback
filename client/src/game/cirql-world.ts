@@ -154,7 +154,7 @@ const TOWN: Ring = {
     { t: "tree", x: 300, y: 220 }, { t: "tree", x: 255, y: -55 }, { t: "tree", x: -300, y: -55, big: true }, { t: "tree", x: 350, y: 60 },
     { t: "bush", x: -110, y: 200 }, { t: "bush", x: 240, y: -140 }, { t: "bush", x: 315, y: 175 },
     { t: "rock", x: 285, y: 130 }, { t: "rock", x: -285, y: 200, big: true }, { t: "rock", x: 175, y: -150 },
-    { t: "pond", x: -320, y: 55, r: 26 },
+    { t: "pond", x: -320, y: 55, r: 26, id: "town-pond" },
     { t: "flower", x: 100, y: 110, accent: "#ff8fbf" }, { t: "flower", x: 114, y: 120, accent: "#ffd24a" }, { t: "flower", x: 90, y: 124, accent: "#e0a0ff" },
     { t: "flower", x: -150, y: -60, accent: "#8fd0ff" }, { t: "flower", x: -138, y: -50, accent: "#ffd24a" }, { t: "flower", x: 185, y: -55, accent: "#ffd24a" },
     // a dirt path up to the hall
@@ -184,6 +184,8 @@ const TOWN: Ring = {
     { t: "shop", x: -160, y: 330, to: 400005, shopId: "building", id: "shop-building", label: "Timber & Stone",  accent: "#ffb877" },
     // the Barber — a Town business that restyles your hair/look (opens the character editor on hair)
     { t: "barber", x: 210, y: 300, id: "barber", label: "The Snip & Sparq", accent: "#ff7ea8" },
+    // an early DISCOVERY: a tide-buried cache on the north shore → "What the Tide Kept" (rings 0-1 rework)
+    { t: "curio", x: -300, y: -300, id: "curio-town", curio: "cache", label: "Tide-worn Cache", accent: "#ffd24a" },
   ],
   puzzleTarget: ["rn0", "rn2", "rn3"],
   ambient: "butterfly",

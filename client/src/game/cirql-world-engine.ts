@@ -826,7 +826,9 @@ export class CirqlWorldEngine extends RetroEngine {
     const opt = q.choice.options.find((o) => o.id === optionId) ?? q.choice.options[0];
     p.pick = opt.id;
     this.pendingChoice = null; this.dialog = null;
+    const first = !this.doneOnce.has(q.id);
     this.completeQuest(q, opt.reward);
+    if (first && opt.grants) { this.onGrant?.(opt.grants); this.toast(`✦ Unlocked for your Cirql: ${opt.grants}`); }   // the chosen fork's own décor/cosmetic
     if (opt.toast) this.toast(opt.toast);
   }
   private completeQuest(q: QuestDef, rewardOverride?: { sparks: number; renown?: number }) {
