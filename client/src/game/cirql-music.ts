@@ -148,13 +148,74 @@ export const VOYAGE_THEME: OTrack = {
   ],
 };
 
-/** Pick the theme for where the player is. `ambient` is the ring's biome proxy. */
+// ======= extra tracks for VARIETY (new, so the score doesn't loop one feel). Each is an
+// ORIGINAL composition in the *energy/era/idiom* of a track the owner loves — never a copy of
+// any melody or recording; only the emotional DNA of the genre. =======
+
+// ---- AURORA — warm, soaring, open worldbeat-synth (A: I–V–vi–IV). Big-hearted exploration.
+const AURORA_CHORDS = [["C#4", "E4", "A4"], ["E4", "G#4", "B4"], ["F#4", "A4", "C#4"], ["D4", "F#4", "A4"]];
+export const AURORA_THEME: OTrack = {
+  bpm: 100,
+  layers: [
+    { inst: "pad", gain: 0.9, pattern: CHORD(AURORA_CHORDS) },
+    { inst: "strings", gain: 0.8, minIntensity: 0.4, pattern: CHORD(AURORA_CHORDS) },
+    { inst: "bass", gain: 1.0, pattern: PULSE(["A2", "E2", "F#2", "D2"], 4, 4) },
+    { inst: "arp", gain: 0.55, minIntensity: 0.45, pattern: ARP(AURORA_CHORDS) },
+    { inst: "lead", gain: 0.9, pattern: LINE([["E4", 8], ["A4", 4], ["B4", 4], ["C#5", 8], ["E5", 8], ["D5", 8], ["C#5", 4], ["B4", 4], ["A4", 8], ["E4", 8]]) },
+    { inst: "boom", gain: 0.7, minIntensity: 0.6, pattern: BOOM("A2", 4, 16) },
+  ],
+};
+
+// ---- NOCTURNE — dreamy, wistful, late-night new-wave ballad (Am: vi–IV–I–V). Cozy/hushed.
+const NOCT_CHORDS = [["A3", "C4", "E4"], ["F3", "A3", "C4"], ["C4", "E4", "G4"], ["G3", "B3", "D4"]];
+export const NOCTURNE_THEME: OTrack = {
+  bpm: 90,
+  layers: [
+    { inst: "pad", gain: 1.0, pattern: CHORD(NOCT_CHORDS) },
+    { inst: "strings", gain: 0.5, minIntensity: 0.55, pattern: CHORD(NOCT_CHORDS) },
+    { inst: "bass", gain: 0.95, pattern: ROOT(["A2", "F2", "C2", "G2"]) },
+    { inst: "bell", gain: 0.6, minIntensity: 0.4, pattern: ARP(NOCT_CHORDS, 4, 4) },
+    { inst: "lead", gain: 0.78, minIntensity: 0.5, pattern: LINE([[0, 8], ["E4", 8], ["G4", 4], ["A4", 4], ["G4", 8], [0, 8], ["C5", 8], ["B4", 4], ["G4", 4], ["E4", 8]]) },
+  ],
+};
+
+// ---- GROOVE — punchy, brassy, funky stabs & driving bass (E mixolydian vamp). Lively spots.
+const GROOVE_CHORDS = [["E4", "G#4", "B4"], ["D4", "F#4", "A4"], ["A3", "C#4", "E4"], ["D4", "F#4", "A4"]];
+export const GROOVE_THEME: OTrack = {
+  bpm: 112,
+  layers: [
+    { inst: "bass", gain: 1.0, pattern: PULSE(["E2", "D2", "A2", "D2"]) },
+    { inst: "arp", gain: 0.7, minIntensity: 0.35, pattern: ARP(GROOVE_CHORDS) },
+    { inst: "strings", gain: 0.55, minIntensity: 0.6, pattern: CHORD(GROOVE_CHORDS) },
+    { inst: "lead", gain: 0.9, pattern: LINE([["E5", 4], [0, 4], ["G5", 4], [0, 4], ["B4", 4], ["A4", 4], ["E5", 8], [0, 8], ["E5", 4], ["D5", 4], ["G5", 4], ["A5", 4], [0, 8]]) },
+    { inst: "boom", gain: 0.95, minIntensity: 0.4, pattern: BOOM("E2", 8, 8) },
+  ],
+};
+
+// ---- TRIUMPH — driving, anthemic "montage" energy, relentless pulse + big hits (Am: i–VII–VI–VII).
+const TRIUMPH_CHORDS = [["A3", "C4", "E4"], ["G3", "B3", "D4"], ["F3", "A3", "C4"], ["G3", "B3", "D4"]];
+export const TRIUMPH_THEME: OTrack = {
+  bpm: 116,
+  layers: [
+    { inst: "strings", gain: 1.0, pattern: CHORD(TRIUMPH_CHORDS) },
+    { inst: "bass", gain: 1.0, pattern: PULSE(["A2", "G2", "F2", "G2"]) },
+    { inst: "arp", gain: 0.75, minIntensity: 0.3, pattern: ARP(TRIUMPH_CHORDS) },
+    { inst: "lead", gain: 0.95, pattern: LINE([["A4", 8], ["A4", 4], ["C5", 4], ["D5", 8], ["E5", 8], ["E5", 4], ["D5", 4], ["C5", 8], ["A4", 8], [0, 8]]) },
+    { inst: "boom", gain: 1.0, minIntensity: 0.4, pattern: BOOM("A1", 8, 8) },
+  ],
+};
+
+/** Pick the theme for where the player is. `ambient` is the ring's biome proxy. Now rotates
+ *  through the wider pool so the score varies as you move + lifts to high-energy on deep rings. */
 export function trackForContext(ring: number, ambient: string | undefined, isShop: boolean, isSubMap: boolean): OTrack {
-  if (isShop) return SHOP_THEME;
-  if (isSubMap) return SUBMAP_THEME;
+  if (isShop) return ring % 2 ? GROOVE_THEME : SHOP_THEME;         // lively — funk stabs alternate
+  if (isSubMap) return ring % 2 ? NOCTURNE_THEME : SUBMAP_THEME;   // hushed/dreamy alternate
   if (ring <= 0) return CIRQLSPACE_THEME;
   if (ring === 1) return TOWN_THEME;
-  const tune = ambient === "snow" ? FROST_THEME : ambient === "ember" ? EMBER_THEME : WILDS_THEME;
   const semis = [0, 2, -3, 5, -2, 3][((ring % 6) + 6) % 6];
-  return semis ? transpose(tune, semis) : tune;
+  if (ambient === "snow") return transpose(FROST_THEME, semis);   // biome-locked moods
+  if (ambient === "ember") return transpose(EMBER_THEME, semis);
+  // deeper rings = higher stakes → the montage energy joins the rotation; else sweeping/soaring
+  const pool = ring >= 8 ? [WILDS_THEME, AURORA_THEME, TRIUMPH_THEME] : [WILDS_THEME, AURORA_THEME];
+  return transpose(pool[((ring / 2) | 0) % pool.length], semis);
 }
