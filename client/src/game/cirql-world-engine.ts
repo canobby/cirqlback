@@ -16,6 +16,7 @@ import { isHome } from "./cirql-home";
 import { CirqlOrchestra } from "./cirql-orchestra";
 import { tracksForContext } from "./cirql-music";
 import { cirqlSfx, type SfxKind } from "./cirql-sfx";
+import { activeEvent } from "./cirql-daily";
 import { MOVIES, REEL_SECONDS } from "./cirql-theater";
 import {
   allQuests, questById, offerableQuest, repeatableQuest, questStatusList, registerQuest,
@@ -178,6 +179,16 @@ export class CirqlWorldEngine extends RetroEngine {
   onQuestComplete?: (quest: QuestDef, firstTime: boolean) => void;
   /** Fired when quest progress changes (accept / advance / complete) — host may persist. */
   onQuestChange?: () => void;
+  /** Fired when a quest grants a décor/cosmetic item — host adds it to the owned set (free). */
+  onGrant?: (itemId: string) => void;
+  // ---- Phase K7 delivery/reward state ----
+  private playerRank = 0;                  // Renown rank index (host keeps it in sync) — for require.minRenownRank
+  private codex = new Set<string>();       // recorded lore/collection entries
+  private healed = new Set<string>();      // curio ids "healed" by an emergent quest (drawn as mended)
+  /** Host pushes the player's Renown rank index so time/rank-gated quests can evaluate. */
+  setRenownRank(i: number) { this.playerRank = Math.max(0, i | 0); }
+  /** Recorded codex entry ids (for a future codex panel). */
+  getCodex() { return Array.from(this.codex); }
   private lastSent = 0; private lastX = 1e9; private lastY = 1e9;
 
   // ---- M8 live presence (host wires these to the /ws/cirql socket) ----
@@ -409,7 +420,7 @@ export class CirqlWorldEngine extends RetroEngine {
   openDiorama() { if (this.ringIdx !== 0 || this.cs || this.voyage) return; this.diorama = true; this.dioramaT = 0; this.dioramaAng = -0.5; this.editDecor = false; this.editPaint = false; this.onDioramaChange?.(true); }
   closeDiorama() { if (!this.diorama) return; this.diorama = false; this.onDioramaChange?.(false); }
   isDiorama() { return this.diorama; }
-  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), homeDecor: this.homeDecor.slice(), terrain: this.getTerrain(), landTier: this.landTier }; }
+  getState() { return { ring: this.ringIdx, maxRing: this.maxRing, x: Math.round(this.posX), y: Math.round(this.posY), quests: this.quests, lit: Array.from(this.lit), litForQuest: Array.from(this.litForQuest), gatheredWisps: Array.from(this.gatheredWisps), doneOnce: Array.from(this.doneOnce), decor: this.decor.slice(), homeDecor: this.homeDecor.slice(), terrain: this.getTerrain(), landTier: this.landTier, codex: Array.from(this.codex), healed: Array.from(this.healed) }; }
   applyState(s: any) {
     if (!s) return;
     if (Array.isArray(s.doneOnce)) this.doneOnce = new Set(s.doneOnce);
@@ -425,6 +436,8 @@ export class CirqlWorldEngine extends RetroEngine {
     if (typeof s.x === "number" && typeof s.y === "number") { this.posX = s.x; this.posY = s.y; }
     if (s.quests && typeof s.quests === "object") this.quests = s.quests;
     if (Array.isArray(s.lit)) this.lit = new Set(s.lit);
+    if (Array.isArray(s.codex)) this.codex = new Set(s.codex);
+    if (Array.isArray(s.healed)) this.healed = new Set(s.healed);
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
   }
   /** How many concentric rings are "known" (lit on the chart) — grows as you explore. */
@@ -675,9 +688,62 @@ export class CirqlWorldEngine extends RetroEngine {
     if (this.litForQuest.size) { for (const id of Array.from(this.litForQuest)) this.lit.add(id); this.litForQuest.clear(); }
     this.sfx("quest");
     this.onQuestComplete?.(q, first);   // page grants the reward (reduced on repeat) + toast
-    if (first) this.present("✦", "#ffd24a");   // item-get: raise the reward overhead (I6)
+    if (first) {
+      // Phase K7 reward grants (first completion only): a free décor/cosmetic, a codex entry,
+      // and — for emergent quests — the world visibly mends where the problem was.
+      if (q.grants) { this.onGrant?.(q.grants); this.toast(`✦ Unlocked for your Cirql: ${q.grants}`); }
+      if (q.codex && !this.codex.has(q.codex.id)) { this.codex.add(q.codex.id); this.toast(`📖 Codex — "${q.codex.title}" recorded`); }
+      if (q.heals) { this.healed.add(q.heals); }
+      this.present("✦", "#ffd24a");   // item-get: raise the reward overhead (I6)
+    }
     this.onQuestChange?.();
     if (q.next) this.acceptQuest(q.next);   // chain onward (re-accepting resets a repeated chain)
+  }
+  // ---- Phase K7: delivery-condition evaluation (time / rank / holiday / choice flags) ----
+  /** Is a flag set? "<questId>" → that quest is done; "<questId>:<pick>" → that fork was chosen. */
+  private hasFlag(flag: string): boolean {
+    const [qid, pick] = flag.split(":");
+    const p = this.quests[qid]; if (!p) return false;
+    return pick ? p.pick === pick : p.status === "done";
+  }
+  /** Does the world currently satisfy a quest's availability condition? */
+  private meetsRequire(q: QuestDef): boolean {
+    const r = q.require; if (!r) return true;
+    if (r.timeOfDay === "night" && this.nightAmt < 0.5) return false;
+    if (r.timeOfDay === "day" && this.nightAmt >= 0.5) return false;
+    if (r.minRenownRank != null && this.playerRank < r.minRenownRank) return false;
+    if (r.holiday && !activeEvent()) return false;
+    if (r.flag && !this.hasFlag(r.flag)) return false;
+    if (r.notFlag && this.hasFlag(r.notFlag)) return false;
+    return true;
+  }
+  /** DISCOVERED / EMERGENT delivery: inspecting a curio grants the quest tied to it. */
+  private tryDiscover(p: Prop) {
+    const cid = p.id || "", kind = p.curio || "relic";
+    const flavor = kind === "blight" ? "A sickness has taken this ground." : kind === "star" ? "A fallen star, still faintly warm." : kind === "cache" ? "A hidden cache, half-buried in the earth." : "An old relic, humming with something unspoken.";
+    const q = allQuests().find((x) => x.discover && x.discover.at === cid && (x.discover.ring == null || x.discover.ring === this.ringIdx));
+    if (!q) { this.toast(flavor); return; }
+    const pr = this.quests[q.id];
+    if (pr?.status === "done") { this.toast(kind === "blight" && this.healed.has(cid) ? "The ground has mended — green returns." : "You've already unravelled this one."); return; }
+    if (pr?.status === "active") { this.toast(`${flavor} — your task here is underway.`); return; }
+    if (!this.meetsRequire(q)) { this.toast(q.require?.timeOfDay === "night" ? `${flavor} Something more may show once it's dark…` : `${flavor} It isn't the moment yet.`); return; }
+    this.setDialog(p.label || (kind === "blight" ? "Blighted ground" : "A discovery"), p.accent || "#c9a0ff", simpleDialog(q.intro, q.id));
+  }
+  /** CHOSEN delivery: a bounty board offers a rotating pool of tasks (repeatable, refresh daily). */
+  private openBounty(p: Prop) {
+    const pool = allQuests().filter((q) => q.bounty && this.meetsRequire(q) && this.quests[q.id]?.status !== "active");
+    let choices: DialogChoice[]; let lines: string[];
+    if (pool.length) {
+      const day = Math.floor(Date.now() / 86400000), n = pool.length;
+      const shown = n <= 3 ? pool : [0, 1, 2].map((i) => pool[(((day % n) + n) % n + i) % n]);
+      choices = shown.map((q) => ({ label: `✦ ${q.name}  (+${q.reward.sparks})`, accept: q.id }));
+      choices.push({ label: "Leave the board" });
+      lines = ["The bounty board — tasks posted by the wilds.", "Take what suits you; new bounties are pinned each day."];
+    } else {
+      choices = [{ label: "Leave the board" }];
+      lines = ["The bounty board is quiet just now.", "Sail on — the wilds always need something."];
+    }
+    this.setDialog(p.label || "Bounty Board", p.accent || "#ffd24a", { nodes: { start: { lines, choices } }, start: "start" });
   }
   /** Rows for the quest-log panel (available/active/done, with the current objective). */
   getQuestLog(): QuestLogRow[] {
@@ -687,6 +753,8 @@ export class CirqlWorldEngine extends RetroEngine {
       // keep authored quests + any you've started/finished + the current ring's offer;
       // hide stale "available" ring quests from rings you've sailed past
       .filter((s) => !s.quest.id.startsWith("ring-") || this.quests[s.quest.id] || s.quest.id.startsWith(`ring-${this.ringIdx}-`) || s.quest.giver === curGiver)
+      // Phase K7: discover/bounty-delivered quests stay hidden until you actually take them
+      .filter((s) => this.quests[s.quest.id] || !(s.quest.discover || s.quest.bounty))
       .map(({ quest, status }) => {
         const p = this.quests[quest.id];
         let objective = quest.objectives[0]?.label ?? "";
@@ -801,6 +869,8 @@ export class CirqlWorldEngine extends RetroEngine {
       else this.toast("Sealed. The runes must match the stone.");
       return;
     }
+    if (p.t === "curio") { this.tryDiscover(p); return; }        // inspect a discoverable → grant its hidden/emergent quest
+    if (p.t === "bounty") { this.openBounty(p); return; }         // a bounty board → pick a task
     if (p.t === "gathering") { this.toast("A good place to rest and meet fellow travellers."); return; }
     if (p.t === "landmark") {   // a focal set-piece — a meeting spot + (later) a quest home (J4)
       const flavor: Record<string, string> = { greattree: "The Great Tree — older than the ring itself.", stonecircle: "The Stone Circle hums with a quiet, ancient charge.", lighthouse: "The Lighthouse sweeps the dark water for wanderers.", crystal: "The Great Crystal glows from somewhere deep within.", waterfall: "The Falls thunder into a cool, misted pool.", ruin: "The Old Ruin keeps the secrets of who built it." };
@@ -851,8 +921,10 @@ export class CirqlWorldEngine extends RetroEngine {
       const pr = this.quests[q.id];
       if (pr && pr.status === "active" && !pr.pick && this.currentObjIndex(q) < 0) { this.presentQuestChoice(q); return; }
     }
-    // a quest this keeper can offer (fresh, or a repeatable re-offer for a slighter reward)
-    const fresh = offerableQuest(npcId, this.quests);
+    // a quest this keeper can offer (fresh, or a repeatable re-offer for a slighter reward);
+    // gated quests (require: night / rank / holiday / flag) only offer when their condition is met
+    const freshRaw = offerableQuest(npcId, this.quests);
+    const fresh = freshRaw && this.meetsRequire(freshRaw) ? freshRaw : undefined;
     const offer = fresh || repeatableQuest(npcId, this.quests);
     const active = this.activeQuest();
     // named cast (Phase K2) speak with their own voice + system-teaching topics; unnamed
@@ -1117,7 +1189,8 @@ export class CirqlWorldEngine extends RetroEngine {
         const isQL = this.isQuestLantern(p);
         const puzzle = p.t === "rune" || p.t === "tablet" || p.t === "shrine";
         const social = p.t === "gathering" || p.t === "theater" || p.t === "landmark";
-        if (p.t !== "wonders" && p.t !== "shop" && p.t !== "home" && p.t !== "storm" && p.t !== "tunnel" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social) continue;
+        const discover = p.t === "curio" || p.t === "bounty";   // Phase K7 discoverable / bounty board
+        if (p.t !== "wonders" && p.t !== "shop" && p.t !== "home" && p.t !== "storm" && p.t !== "tunnel" && p.t !== "npc" && p.t !== "dock" && p.t !== "portal" && !isQL && !puzzle && !social && !discover) continue;
         const d = Math.hypot(this.posX - p.x, this.posY - p.y);
         const range = p.t === "landmark" ? 52 : p.r ?? (isQL || p.t === "rune" ? 26 : 40);
         if (d < range && d < best) { best = d; this.near = p; }
@@ -1307,6 +1380,8 @@ export class CirqlWorldEngine extends RetroEngine {
         case "shrine": draws.push({ y: p.y + 8, f: () => this.drawShrine(sxp, syp, this.puzzleSolved()) }); break;
         case "gathering": draws.push({ y: p.y, f: () => this.drawGathering(sxp, syp, p) }); break;
         case "theater": draws.push({ y: p.y + 6, f: () => this.drawTheater(sxp, syp, p) }); break;
+        case "curio": draws.push({ y: p.y, f: () => this.drawCurio(sxp, syp, p) }); break;
+        case "bounty": draws.push({ y: p.y, f: () => this.drawBounty(sxp, syp, p) }); break;
         case "marker": { const isTarget = this.objTargetProp() === p; if (isTarget) draws.push({ y: p.y - 1, f: () => this.drawMarker(sxp, syp) }); break; }
         default: break;
       }
@@ -2314,6 +2389,39 @@ export class CirqlWorldEngine extends RetroEngine {
     this.neonPath([[cx + 16, cy - 27 + bob], [cx + 18, cy - 31 + bob], [cx + 19, cy - 33 + bob]], "#b6ff6a", 3, 1.2, 0.5 + 0.4 * this.nightAmt);
     this.glow(cx + 16, cy - 31 + bob, 5, "#b6ff6a", 0.2 + 0.3 * this.nightAmt);
     this.disc(cx + 15, cy - 24 + bob, 0.9, "#1a1208");             // eye
+  }
+  // ---- Phase K7 discoverables + bounty board ----
+  // A discoverable curio: a relic / a fallen star / a buried cache / a blight (mends when healed).
+  private drawCurio(cx: number, cy: number, p: Prop) {
+    const kind = p.curio || "relic", near = this.near === p;
+    const healed = kind === "blight" && !!p.id && this.healed.has(p.id);
+    const ac = p.accent || (kind === "blight" ? (healed ? "#8ef0a0" : "#a05cff") : kind === "star" ? "#bfe6ff" : kind === "cache" ? "#ffd24a" : "#c9a0ff");
+    this.disc(cx, cy + 2, 7, "#0a071440");
+    if (kind === "star") {
+      this.glow(cx, cy - 5, 16, ac, 0.28 + 0.14 * Math.sin(this.t * 2));
+      for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * (TAU / 5); this.triY(cx + Math.cos(a) * 2, cy - 6 + Math.sin(a) * 2, 2, 6, ac); }
+      this.disc(cx, cy - 6, 2, "#ffffff");
+    } else if (kind === "cache") {
+      this.fillEll(cx, cy, 9, 4, "#4a3320"); this.rect(cx - 7, cy - 6, 14, 6, "#7a5a34"); this.rect(cx - 7, cy - 6, 14, 2, "#96703f");
+      this.rect(cx - 1, cy - 6, 2, 6, "#5a3f24"); this.disc(cx, cy - 3, 1.3, ac); this.glow(cx, cy - 3, 8, ac, 0.14 + 0.12 * Math.sin(this.t * 2));
+    } else if (kind === "blight") {
+      if (healed) { for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; this.disc(cx + Math.cos(a) * 4, cy - 3 + Math.sin(a) * 3, 2, "#8ef0a0"); } this.disc(cx, cy - 3, 2, "#eaffd0"); this.glow(cx, cy - 3, 9, "#8ef0a0", 0.12 + 0.1 * this.nightAmt); }
+      else { this.fillEll(cx, cy - 1, 11, 6, "#241a2e"); this.fillEll(cx, cy - 2, 7, 4, "#3a2450"); for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + this.t * 0.3; this.disc(cx + Math.cos(a) * 6, cy - 2 + Math.sin(a) * 3, 1.2, ac); } this.glow(cx, cy - 3, 13, ac, 0.14 + 0.12 * Math.sin(this.t * 1.6)); }
+    } else {   // relic — a small standing stone with a glowing glyph
+      this.rect(cx - 4, cy - 14, 8, 15, "#5a5566"); this.rect(cx - 4, cy - 14, 3, 15, "#6a6577"); this.triY(cx, cy - 17, 4, 3, "#4a4656");
+      this.neonEllipse(cx, cy - 8, 3, 4, ac, 4, 1.2, 0.5 + 0.4 * this.nightAmt); this.glow(cx, cy - 8, 9, ac, 0.1 + 0.2 * this.nightAmt);
+    }
+    if (near) this.q(cx, cy - 24, "?", ac, 0.9, "c", true);
+  }
+  // A bounty board — a pinned notice board you inspect to pick a task.
+  private drawBounty(cx: number, cy: number, p: Prop) {
+    const near = this.near === p, ac = p.accent || "#ffd24a";
+    this.disc(cx, cy + 3, 9, "#0a071440");
+    this.rect(cx - 13, cy - 8, 4, 10, "#5a3f24"); this.rect(cx + 9, cy - 8, 4, 10, "#5a3f24");   // legs
+    this.rect(cx - 13, cy - 26, 26, 20, "#6a4a2c"); this.rect(cx - 13, cy - 26, 26, 3, "#835a34"); this.rect(cx - 13, cy - 26, 3, 20, "#7a5230");   // board frame
+    for (let i = 0; i < 3; i++) { const px = cx - 9 + i * 8, py = cy - 23 + (i % 2) * 3; this.rect(px, py, 6, 8, "#efe6d0"); this.rect(px, py, 6, 2, "#d8c9a8"); this.disc(px + 3, py, 0.8, "#b03a3a"); }   // pinned papers
+    this.glow(cx, cy - 16, 12, ac, 0.08 + 0.12 * this.nightAmt);
+    if (near) this.q(cx, cy - 34, "✦", ac, 0.9, "c", true);
   }
   // ---- geography (density fill-in): a fallen log, a stump, a tall-grass clump ----
   private drawLog(cx: number, cy: number, seed: number) {

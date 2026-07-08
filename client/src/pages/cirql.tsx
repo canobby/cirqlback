@@ -323,6 +323,7 @@ export default function Cirql() {
     const before = renownStanding(renownRef.current).index;
     renownRef.current += amount; setRenownUi(renownRef.current);
     const after = renownStanding(renownRef.current);
+    engineRef.current?.setRenownRank(after.index);   // keep rank-gated quests (require.minRenownRank) in sync
     if (after.index > before) { cirqlSfx.play("rankup"); engineRef.current?.toast(`★ You are now a ${after.rank.title}! (Renown ${renownRef.current})`); }
     return amount;
   };
@@ -434,6 +435,11 @@ export default function Cirql() {
       persist();
     };
     eng.onQuestChange = () => { setQuestRows(eng.getQuestLog()); scheduleSave(); };
+    // Phase K7: a quest granted a free décor/cosmetic → add it to the owned set (persist)
+    eng.onGrant = (itemId) => {
+      const key = decorPriceKey(itemId);
+      if (!ownedRef.current.includes(key)) { ownedRef.current = [...ownedRef.current, key]; setOwned(ownedRef.current); persist(); }
+    };
     eng.onDecorChange = () => { setDecorCount(eng.getDecor().length); broadcastBuild(); persist(); };   // place/paint/expand → live to visitors (Phase E)
 
     // M8 — live presence socket: broadcast our position + share-a-light, and render
@@ -538,6 +544,7 @@ export default function Cirql() {
       playsRef.current = { day: st?.playDay ?? "", n: st?.playsToday ?? 0 };
       arcadeVisitedRef.current = !!st?.arcadeVisited; startPrefRef.current = st?.startPref ?? "ask";
       renownRef.current = st?.renown ?? 0; setRenownUi(renownRef.current);
+      eng.setRenownRank(renownStanding(renownRef.current).index);   // seed rank-gated quests on load
       graduatedRef.current = new Set(Array.isArray(st?.graduated) ? st!.graduated! : []); setGraduatedUi(graduatedRef.current.size);
       // Explore Mode persists across sessions (so a walkthrough survives reloads).
       exploreRef.current = !!st?.explore; setExplore(exploreRef.current); savedSparqsRef.current = st?.exploreSaved ?? sparksRef.current;

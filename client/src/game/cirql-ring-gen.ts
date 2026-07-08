@@ -337,6 +337,16 @@ export function generateRing(index: number): Ring {
     props.push({ t: "gathering", x: side * radius * 0.42, y: (rng() - 0.5) * radius * 0.22, id: "commons", label: "The Commons" });
   }
 
+  // ── Phase K7: varied quest DELIVERY ──
+  // A bounty board by the beacon hub on every wild ring (the "chosen" delivery — pick a task).
+  props.push({ t: "bounty", x: hub.x + 48, y: hub.y + 34, id: "bounty", label: "Bounty Board", accent: biome.palette.accent });
+  // Authored DISCOVERABLES (fixed coords so they don't shift other props):
+  //  ring 2 → a fallen star (night-only discovery) · ring 4 → a buried cache (discovery) ·
+  //  ring 7 → blighted ground (emergent; heals on completion).
+  if (index === 2) props.push({ t: "curio", curio: "star", x: hub.x + 72, y: hub.y - 30, id: "curio-2", label: "A fallen star", accent: "#bfe6ff" });
+  if (index === 4) props.push({ t: "curio", curio: "cache", x: hub.x - 62, y: hub.y - 40, id: "curio-4", label: "A buried cache", accent: "#ffd24a" });
+  if (index === 7) props.push({ t: "curio", curio: "blight", x: hub.x + 40, y: hub.y - 58, id: "curio-7", label: "Blighted ground", accent: "#a05cff" });
+
   // stable ids so the quest-template generator (CHR-256) can target this ring's own
   // lanterns + crystals; unique per ring so the lit-set never collides across rings
   let li = 0, ci = 0, wi = 0;

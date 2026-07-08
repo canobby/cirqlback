@@ -39,9 +39,12 @@ export type PropType =
   | "home"      // your cottage on CIRQLSPACE — walk in to enter & decorate the interior (Milestone F)
   | "storm"     // a swirling storm — brave it to be swept up (tornado) into the sky realm (F: weather entry)
   | "tunnel"    // a burrow mouth — walk through the tunnel sub-map to emerge at its OTHER mouth (F)
-  | "portal";   // a cave/hollow-tree/cloud-stair — travel to a sub-map (CHR-265)
+  | "portal"    // a cave/hollow-tree/cloud-stair — travel to a sub-map (CHR-265)
+  | "curio"     // a DISCOVERABLE object (relic / blight / star / cache) — inspect to trigger a hidden/emergent quest (Phase K7)
+  | "bounty";   // a bounty board — a rotating "pick your next task" hub (Phase K7 "chosen" delivery)
 
 export type LandmarkKind = "greattree" | "stonecircle" | "lighthouse" | "crystal" | "waterfall" | "ruin";
+export type CurioKind = "relic" | "blight" | "star" | "cache";
 
 export interface Prop {
   t: PropType;
@@ -58,6 +61,7 @@ export interface Prop {
   lm?: LandmarkKind;    // landmark set-piece kind (Phase J4)
   shopId?: string;      // shop storefront/keeper this prop belongs to (Milestone F)
   end?: "a" | "b";      // which mouth of a two-ended tunnel this is (Milestone F)
+  curio?: CurioKind;    // curio: which discoverable kind to draw (relic / blight / star / cache) — Phase K7
 }
 
 export interface RingPalette {

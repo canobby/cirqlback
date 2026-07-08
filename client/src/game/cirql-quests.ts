@@ -33,16 +33,36 @@ export interface QuestChoice {
   options: QuestChoiceOption[];
 }
 
+// ---- DELIVERY & REWARD framework (Phase K7 — how a quest ARRIVES + what it grants) ----
+// A quest's availability condition. Evaluated by the engine (which knows time/rank/holiday/flags).
+export interface QuestRequire {
+  timeOfDay?: "day" | "night";   // only available in daylight / at night
+  minRenownRank?: number;        // Renown rank index required (0 = Newcomer)
+  holiday?: boolean;             // only during a real-world holiday / weekend festival
+  flag?: string;                 // requires a set flag — "<questId>" done, or "<questId>:<pick>"
+  notFlag?: string;              // hidden once this flag is set (one-shot / mutually-exclusive)
+}
+// A codex entry recorded on completion (the world's fillable lore/collection log).
+export interface CodexEntry { id: string; title: string; text: string; }
+
 export interface QuestDef {
   id: string;
   name: string;
-  giver: string;         // NPC prop id that offers it
+  giver: string;         // NPC prop id that offers it ("" = not giver-delivered)
   intro: string[];       // giver dialog when offering
   objectives: Objective[];
   reward: { sparks: number; renown?: number };
   next?: string;         // quest auto-offered on completion (the chain)
   tier?: number;         // difficulty tier — grows the farther out you sail (Phase K); undefined = authored/onboarding
   choice?: QuestChoice;  // if set, the quest ends on a branching fork instead of auto-completing
+  // delivery (Phase K7): how this quest ARRIVES, beyond a keeper offering it
+  discover?: { at: string; ring?: number };   // granted by INSPECTING curio prop `at` (on `ring`) — discovered/emergent
+  bounty?: boolean;      // appears in the rotating bounty-board pool (chosen delivery)
+  require?: QuestRequire;   // availability condition (triggered delivery: time/rank/holiday/flag)
+  // rewards (Phase K7): beyond sparqs/Renown
+  grants?: string;       // décor/cosmetic id unlocked FREE on completion (build-reward tie)
+  codex?: CodexEntry;    // a lore/collection entry recorded on completion
+  heals?: string;        // a curio id this quest "heals" on completion (emergent → the world visibly mends)
 }
 
 // The onboarding chain (M4): Find Your Feet → The Lantern Path → The Wonders Door.
@@ -143,6 +163,43 @@ export const QUESTS: QuestDef[] = [
       ],
     },
   },
+
+  // ── Phase K7 delivery examples (one per mode) ──
+  // DISCOVERED — inspect the buried cache on ring 4 (canyon) → a short hunt + a décor + codex.
+  {
+    id: "flint-cache", name: "The Flintstrand Cache", giver: "", tier: 3,
+    discover: { at: "curio-4", ring: 4 },
+    intro: ["Half-buried here: a traveller's cache, its owner long gone.", "A scrap of map inside points to the old ruin on the strand.", "Follow the glimmer — what's found is yours to keep."],
+    objectives: [{ kind: "reach", ring: 4, target: "landmark-4", label: "Follow the map to the landmark" }],
+    reward: { sparks: 18, renown: 4 }, grants: "statue",
+    codex: { id: "codex-flint", title: "The Lost Cartographer", text: "Someone charted these shards before you — and never sailed home." },
+  },
+  // DISCOVERED + TRIGGERED (night-only) — the fallen star on ring 2 only reveals its quest after dark.
+  {
+    id: "starfall", name: "Starfall", giver: "", tier: 1,
+    discover: { at: "curio-2", ring: 2 }, require: { timeOfDay: "night" },
+    intro: ["A fallen star, still warm to the touch.", "It hums when its light is carried toward something greater.", "Bear it to the Great Crystal at the heart of the shore."],
+    objectives: [{ kind: "reach", ring: 2, target: "landmark-2", label: "Carry the star's light to the Great Crystal" }],
+    reward: { sparks: 14, renown: 3 }, grants: "fairylights",
+    codex: { id: "codex-star", title: "Why Stars Fall", text: "They fall to be carried. Light passed hand to hand is how the dark is answered." },
+  },
+  // EMERGENT — the blighted ground on ring 7 (meadow) is a world-problem with no giver; healing it mends the world.
+  {
+    id: "wilting-meadow", name: "The Wilting Meadow", giver: "", tier: 6,
+    discover: { at: "curio-7", ring: 7 },
+    intro: ["The ground here is sick — the bloom has gone grey.", "Old roots whisper that warmth and light can wake the soil.", "Kindle the nearby lanterns, then bring that warmth back to the blight."],
+    objectives: [
+      { kind: "lightLanterns", ring: 7, count: 2, label: "Kindle 2 lanterns to warm the air" },
+      { kind: "reach", ring: 7, target: "curio-7", label: "Return the warmth to the blighted ground" },
+    ],
+    reward: { sparks: 22, renown: 6 }, grants: "flower", heals: "curio-7",
+    codex: { id: "codex-blight", title: "What Greys the Ground", text: "Blight is only forgotten light. Return it, and the meadow remembers how to bloom." },
+  },
+  // CHOSEN — the bounty-board pool (repeatable, biome-agnostic objectives; refreshes daily).
+  { id: "bounty-kindle", name: "Kindle the Dark", giver: "", bounty: true, tier: 2, intro: ["A warden's bounty: light our lanterns."], objectives: [{ kind: "lightLanterns", count: 3, label: "Kindle any 3 lanterns" }], reward: { sparks: 10, renown: 2 } },
+  { id: "bounty-gather", name: "Scattered Light", giver: "", bounty: true, tier: 2, intro: ["A warden's bounty: gather the loose wisps."], objectives: [{ kind: "gather", count: 4, label: "Gather any 4 wisps" }], reward: { sparks: 10, renown: 2 } },
+  { id: "bounty-scout", name: "Scout Ahead", giver: "", bounty: true, tier: 1, intro: ["A warden's bounty: chart the onward shore."], objectives: [{ kind: "reach", target: "dock-out", label: "Reach the onward dock" }], reward: { sparks: 8, renown: 1 } },
+  { id: "bounty-nightwatch", name: "Nightwatch", giver: "", bounty: true, tier: 3, require: { timeOfDay: "night" }, intro: ["A warden's bounty, posted by night: gather the night-wisps."], objectives: [{ kind: "gather", count: 3, label: "Gather 3 wisps under the night sky" }], reward: { sparks: 14, renown: 3 } },
 ];
 
 export type QuestProgress = Record<string, { status: "active" | "done"; obj: number[]; pick?: string }>;
