@@ -213,6 +213,7 @@ export class CirqlWorldEngine extends RetroEngine {
     this.posX = this.curRing.spawn.x; this.posY = this.curRing.spawn.y;
     this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2;
     this.ensureRingQuest();
+    this.syncHomeDock();   // pin the Town dock to the land edge so it's reachable at any tier
     this.orchestra = new CirqlOrchestra({ volume: 0.7 });   // G: the cinematic world score (starts on first gesture)
     this.running = true;
   }
@@ -279,7 +280,14 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Effective buildable/walkable radius — the land tier on CIRQLSPACE, else the full ring. */
   private effR() { const tier = this.visiting ? this.visiting.landTier : this.landTier; return this.ringIdx === 0 ? LAND_TIERS[Math.max(0, Math.min(LAND_TIERS.length - 1, tier))] : this.curRing.radius; }
   getLandTier() { return this.landTier; }
-  setLandTier(n: number) { this.landTier = Math.max(0, Math.min(LAND_TIERS.length - 1, n | 0)); this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2; }
+  setLandTier(n: number) { this.landTier = Math.max(0, Math.min(LAND_TIERS.length - 1, n | 0)); this.syncHomeDock(); this.camX = this.posX - this.LW / 2; this.camY = this.posY - this.LH / 2; }
+  /** Keep the CIRQLSPACE → Town dock pinned to the current land edge so it's ALWAYS
+   *  reachable — at low land tiers the fixed dock sat far out in the sea, stranding you. */
+  private syncHomeDock() {
+    const lr = LAND_TIERS[Math.max(0, Math.min(LAND_TIERS.length - 1, this.landTier))];
+    const d = RINGS[0].props.find((p) => p.t === "dock" && p.to === 1);
+    if (d) d.y = Math.round(lr * 0.84);   // just inside the walkable edge (walk limit ≈ radius*0.9)
+  }
   private tileAtWorld(wx: number, wy: number) { return this.curTerrain().get(CK(Math.round(wx / TILE), Math.round(wy / TILE))) ?? "g"; }
   /** Parse a { numericKey | "gx,gy": tile } terrain blob into the engine's numeric-CK map. */
   private parseTerrain(obj: any): Map<number, string> {
@@ -380,6 +388,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (Array.isArray(s.homeDecor)) this.setHomeDecor(s.homeDecor);
     if (s.terrain && typeof s.terrain === "object") this.setTerrain(s.terrain);
     if (typeof s.landTier === "number") this.landTier = Math.max(0, Math.min(LAND_TIERS.length - 1, s.landTier | 0));
+    this.syncHomeDock();   // re-pin the Town dock to the loaded land edge
     if (Array.isArray(s.litForQuest)) this.litForQuest = new Set(s.litForQuest);
     if (Array.isArray(s.gatheredWisps)) this.gatheredWisps = new Set(s.gatheredWisps);
     if (typeof s.maxRing === "number") this.maxRing = Math.max(this.maxRing, s.maxRing);
