@@ -1678,6 +1678,12 @@ export class CirqlWorldEngine extends RetroEngine {
         }
         const rm = this.roomBounds();
         this.posX = Math.max(rm.x0, Math.min(rm.x1, this.posX)); this.posY = Math.max(rm.y0, Math.min(rm.y1, this.posY));
+      } else if (this.isMazeRealm()) {
+        // maze wall collision — resolve per-axis so you slide along walls (border cells keep you in)
+        const pr = 11;
+        if (this.mazeBlocked(this.posX, preY, pr)) this.posX = preX;
+        if (this.mazeBlocked(preX, this.posY, pr)) this.posY = preY;
+        if (this.mazeBlocked(this.posX, this.posY, pr)) { this.posX = preX; this.posY = preY; }
       } else {
         // solid props — push the player out of them; bumping one gives a little recoil + puff (I2)
         for (const s of this.solids()) {
@@ -1942,6 +1948,42 @@ export class CirqlWorldEngine extends RetroEngine {
         for (let i = 0; i < 5; i++) { const yy = sy + 10 - i * 5, off = (i % 2) * 4; this.rect(sx - 26 + off, yy, 52, 4.5, i % 2 ? "#a9793f" : "#b98a4a"); this.rect(sx - 26 + off, yy, 52, 1, shade("#b98a4a", 0.2)); this.rect(sx + 24 + off, yy, 2, 4.5, "#6a4a24"); } return;
     }
   }
+  // ---- MAZE sub-realms (caves/dungeons/canopy/clouds) — drawn as a TMW top-down maze, not a circle ----
+  private isMazeRealm() { return !!this.curRing.maze; }
+  /** Does an axis-aligned player box (half-size pr) at (x,y) overlap any WALL cell? */
+  private mazeBlocked(x: number, y: number, pr: number): boolean {
+    const mz = this.curRing.maze; if (!mz) return false;
+    const cw = (mz.cols - 1) / 2, ch = (mz.rows - 1) / 2;
+    for (const ox of [-pr, pr]) for (const oy of [-pr, pr]) {
+      const c = Math.round((x + ox) / mz.cell + cw), r = Math.round((y + oy) / mz.cell + ch);
+      if (c < 0 || r < 0 || c >= mz.cols || r >= mz.rows) return true;
+      if (mz.grid[r * mz.cols + c]) return true;
+    }
+    return false;
+  }
+  private drawMaze(camX: number, camY: number) {
+    const mz = this.curRing.maze!; const pal = this.curRing.palette;
+    const { cols, rows, cell, grid } = mz, cw = (cols - 1) / 2, ch = (rows - 1) / 2, W = this.LW, H = this.LH;
+    const floorA = shade(pal.land, 0.08), floorB = shade(pal.land, -0.02), seam = shade(pal.land, -0.22);
+    const wallTop = shade(pal.grass, 0.06), wallFace = shade(pal.land, -0.42), wallEdge = shade(pal.land, -0.6), wallHi = shade(pal.grass, 0.2);
+    // floors first
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      if (grid[r * cols + c]) continue;
+      const sx = (c - cw) * cell - camX, sy = (r - ch) * cell - camY;
+      if (sx < -cell || sx > W + cell || sy < -cell || sy > H + cell) continue;
+      this.rect(sx - cell / 2, sy - cell / 2, cell, cell, (c + r) % 2 ? floorA : floorB);
+      this.rect(sx - cell / 2, sy - cell / 2, cell, 1, seam); this.rect(sx - cell / 2, sy - cell / 2, 1, cell, seam);
+    }
+    // walls after (their raised top overlaps the floor to the south → height)
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      if (!grid[r * cols + c]) continue;
+      const sx = (c - cw) * cell - camX, sy = (r - ch) * cell - camY;
+      if (sx < -cell || sx > W + cell || sy < -cell * 2 || sy > H + cell) continue;
+      if (r + 1 < rows && !grid[(r + 1) * cols + c]) this.rect(sx - cell / 2, sy + cell / 2 - 6, cell, cell * 0.28, wallFace);   // front face
+      this.rect(sx - cell / 2, sy - cell / 2 - 4, cell, cell, wallTop); this.rectLine(sx - cell / 2, sy - cell / 2 - 4, cell, cell, wallEdge); this.rect(sx - cell / 2, sy - cell / 2 - 4, cell, 3, wallHi);
+      if (!this.reduce && ((c * 7 + r * 3) % 5 === 0)) { this.glow(sx, sy - 8, 10, pal.accent, 0.14 + 0.06 * Math.sin(this.t * 2 + c)); this.disc(sx, sy - 8, 1.6, mix(pal.accent, "#ffffff", 0.3)); }   // vein/moss glimmer
+    }
+  }
   protected render() {
     this.ui.length = 0; this.uiZoom = false;   // reset the smooth-text queue for this frame
     if (this.tornado) { this.drawTornado(); this.drawFx(); return; }   // the storm sweep owns the screen (F)
@@ -1951,8 +1993,8 @@ export class CirqlWorldEngine extends RetroEngine {
     const b = this.b, s = this.SS, W = this.LW * s, H = this.LH * s, pal = this.curRing.palette;
     const dn = this.dayNight();   // day/night cycle (J3/J5)
     this.nightAmt = dn.night;     // per-object neon glow "breathes" up at night (biome kit)
-    // backdrop — outdoors is sky/sea; indoors is a dark surround (the room renderer fills the rest)
-    if (this.isInterior()) { b.fillStyle = "#0a0806"; b.fillRect(0, 0, W, H); } else {
+    // backdrop — outdoors is sky/sea; indoors a dark surround; a maze fills gaps with its own gloom
+    if (this.isInterior() || this.isMazeRealm()) { b.fillStyle = this.isMazeRealm() ? pal.sky[1] : "#0a0806"; b.fillRect(0, 0, W, H); } else {
     const g = b.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, pal.sky[0]); g.addColorStop(0.5, pal.sky[1]); g.addColorStop(1, pal.sea);
     b.fillStyle = g; b.fillRect(0, 0, W, H);
@@ -1990,7 +2032,7 @@ export class CirqlWorldEngine extends RetroEngine {
 
     // island landmass — grows with the land tier on CIRQLSPACE (Phase D). Indoors: a room instead.
     const R = this.effR();
-    if (this.isInterior()) { this.drawRoom(camX, camY); } else {
+    if (this.isInterior()) { this.drawRoom(camX, camY); } else if (this.isMazeRealm()) { this.drawMaze(camX, camY); } else {
     this.fillCirc(scx + 4, scy + 6, R, "rgba(0,0,0,0.30)");   // soft cast
     this.fillCirc(scx, scy, R, pal.sand);
     this.fillCirc(scx, scy, R - 22, pal.land);

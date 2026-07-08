@@ -91,6 +91,10 @@ export interface Ring {
   puzzleTarget?: string[];   // rune ids that must be lit (and no others) to open the shrine (CHR-258)
   ambient?: "butterfly" | "firefly" | "ember" | "snow" | "gull" | "dust" | "bee" | "dragonfly" | "grasshopper";   // drifting critters/particles for the biome
   biome?: string;   // biome key (e.g. "woodland") — drives the per-biome flora/geo/glow kit
+  // A sub-realm (cave/dungeon/canopy/cloud) is drawn as a TMW-style top-down MAZE instead of the
+  // circular island: a grid of cells, grid[r*cols+c] === true means a WALL. Presence flips the
+  // engine to maze render + wall collision.
+  maze?: { cols: number; rows: number; cell: number; grid: boolean[] };
 }
 
 // ---- Ring 0: CIRQLSPACE — the player's blank, buildable home island ----------

@@ -404,22 +404,58 @@ const SUB_META: Record<SubKind, { name: string; sub: string; radius: number; amb
     palette: { sky: ["#a8c8e8", "#7aa8d8"], sea: "#cfe2f4", land: "#e6f0fa", grass: "#f4f8ff", sand: "#dfeaf6", accent: "#ffffff", mote: "#ffffff" } },
 };
 
-/** Generate a sub-map (cave/treetop/cloud) that returns to its parent surface ring. */
+// A perfect maze on an odd grid via randomized DFS (deterministic). grid[r*cols+c] === true = WALL.
+// A few extra walls are then knocked out so it reads as caverns/chambers, not just 1-wide halls.
+function genMaze(cols: number, rows: number, rng: () => number): boolean[] {
+  const grid = new Array(cols * rows).fill(true);
+  const idx = (c: number, r: number) => r * cols + c;
+  const stack: { c: number; r: number }[] = [{ c: 1, r: 1 }];
+  grid[idx(1, 1)] = false;
+  while (stack.length) {
+    const cur = stack[stack.length - 1];
+    const dirs = [[0, -2], [0, 2], [-2, 0], [2, 0]];
+    for (let i = dirs.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); const t = dirs[i]; dirs[i] = dirs[j]; dirs[j] = t; }
+    let moved = false;
+    for (const [dc, dr] of dirs) {
+      const nc = cur.c + dc, nr = cur.r + dr;
+      if (nc > 0 && nc < cols - 1 && nr > 0 && nr < rows - 1 && grid[idx(nc, nr)]) {
+        grid[idx(cur.c + dc / 2, cur.r + dr / 2)] = false; grid[idx(nc, nr)] = false;
+        stack.push({ c: nc, r: nr }); moved = true; break;
+      }
+    }
+    if (!moved) stack.pop();
+  }
+  for (let k = 0; k < cols; k++) { const c = 2 + Math.floor(rng() * (cols - 4)), r = 2 + Math.floor(rng() * (rows - 4)); grid[idx(c, r)] = false; }   // open a few chambers
+  return grid;
+}
+
+/** Generate a sub-map (cave/treetop/cloud) — a TMW-style top-down MAZE you thread through, returning
+ *  to its parent surface ring. Props (exit, keeper, crystals, wisps) are placed in open floor cells. */
 function generateSubMap(kind: SubKind, parent: number, index: number): Ring {
   const m = SUB_META[kind];
   const rng = rngFrom(Math.imul(index, 0x85ebca6b) ^ 0x27d4eb2f);
-  const radius = m.radius, props: Prop[] = [];
-  // the way back up to the surface (north)
-  props.push({ t: "portal", x: 0, y: -radius * 0.72, to: parent, sub: "up", label: kind === "cave" ? "↑ surface" : "↓ surface" });
-  // a keeper to greet you
-  props.push({ t: "npc", x: (rng() - 0.5) * radius * 0.4, y: (rng() - 0.2) * radius * 0.35, id: `keeper-${index}`, label: pick(rng, KEEPERS), accent: m.palette.accent });
-  const place = (t: Prop["t"], extra?: Partial<Prop>) => { const a = rng() * TAU, rr = radius * (0.2 + rng() * 0.5); props.push({ t, x: Math.cos(a) * rr, y: Math.sin(a) * rr, ...extra }); };
-  if (kind === "cave") { for (let i = 0; i < 6; i++) place("crystal", { big: rng() > 0.5, accent: m.palette.accent }); for (let i = 0; i < 8; i++) place("flower", { accent: rng() > 0.5 ? "#7fffb0" : "#7fd8ff" }); for (let i = 0; i < 5; i++) place("rock", { big: rng() > 0.6 }); }
-  else if (kind === "tree") { for (let i = 0; i < 7; i++) place("tree", { big: rng() > 0.4 }); for (let i = 0; i < 6; i++) place("flower", { accent: pick(rng, FLOWER_COLS) }); for (let i = 0; i < 4; i++) place("lantern"); }
-  else { for (let i = 0; i < 6; i++) place("crystal", { big: true, accent: "#eaf4ff" }); for (let i = 0; i < 5; i++) place("flower", { accent: "#ffffff" }); }
-  let li = 0, ci = 0;
-  for (const p of props) { if (p.t === "lantern" && !p.id) p.id = `s${index}l${li++}`; else if (p.t === "crystal" && !p.id) p.id = `s${index}c${ci++}`; }
-  return { index, name: m.name, sub: m.sub, radius, explorable: true, palette: m.palette, spawn: { x: 0, y: -radius * 0.55 }, props, ambient: m.ambient };
+  const cols = 11, rows = 11, cell = 60, cw = (cols - 1) / 2, ch = (rows - 1) / 2;
+  const grid = genMaze(cols, rows, rng);
+  const wx = (c: number) => (c - cw) * cell, wy = (r: number) => (r - ch) * cell;
+  const startC = 1, startR = 1; grid[startR * cols + startC] = false;
+  const floors: { c: number; r: number }[] = [];
+  for (let r = 1; r < rows - 1; r++) for (let c = 1; c < cols - 1; c++) if (!grid[r * cols + c]) floors.push({ c, r });
+  const far = floors.filter((f) => Math.hypot(f.c - startC, f.r - startR) > 3);
+  const pool = far.length > 4 ? far : floors;
+  const pickCell = (i: number) => pool[(i * 7 + 3) % pool.length];
+  const props: Prop[] = [];
+  props.push({ t: "portal", x: wx(startC), y: wy(startR), to: parent, sub: "up", label: kind === "cave" ? "↑ surface" : "↓ surface" });   // exit at the entrance chamber
+  const kc = pickCell(1); props.push({ t: "npc", x: wx(kc.c), y: wy(kc.r) + 6, id: `keeper-${index}`, label: pick(rng, KEEPERS), accent: m.palette.accent });   // a keeper deep in
+  const loot: Prop["t"] = kind === "tree" ? "flower" : "crystal";
+  for (let i = 0; i < 6; i++) { const fc = pickCell(4 + i * 5); props.push({ t: loot, x: wx(fc.c) + (rng() - 0.5) * 10, y: wy(fc.r), big: rng() > 0.5, accent: kind === "tree" ? pick(rng, FLOWER_COLS) : m.palette.accent }); }
+  for (let i = 0; i < 4; i++) { const fc = pickCell(9 + i * 6); props.push({ t: "wisp", x: wx(fc.c), y: wy(fc.r), accent: m.palette.mote }); }
+  let ci = 0, wi = 0;
+  for (const p of props) { if (p.t === "crystal" && !p.id) p.id = `s${index}c${ci++}`; else if (p.t === "wisp" && !p.id) p.id = `s${index}w${wi++}`; }
+  return {
+    index, name: m.name, sub: m.sub, radius: cols * cell * 0.5 + 40, explorable: true,
+    palette: m.palette, spawn: { x: wx(startC), y: wy(startR) + cell * 0.6 }, props, ambient: m.ambient,
+    maze: { cols, rows, cell, grid },
+  };
 }
 
 /** A two-ended tunnel sub-map — spawn in the middle, walk to either mouth (A north / B south). */
