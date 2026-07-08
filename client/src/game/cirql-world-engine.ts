@@ -2335,17 +2335,39 @@ export class CirqlWorldEngine extends RetroEngine {
     for (const w of words) { const t = line ? line + " " + w : w; if (t.length > max && line) { out.push(line); line = w; } else line = t; }
     if (line) out.push(line); return out;
   }
+  // The Town Hall — a GRAND civic building (the one hearth prop): broad stone steps, a fluted
+  // portico, a triangular pediment in the town accent, and a domed cupola with a clock + a flag
+  // that waves. Meant to read as the stately centrepiece the plain box never did.
   private drawHearth(cx: number, cy: number, p: Prop) {
-    this.glow(cx, cy, 70, "#ffc46b", 0.22);
-    this.rect(cx - 26, cy + 14, 52, 6, "#0a071450");
-    this.rect(cx - 26, cy - 14, 52, 30, "#e8dcc4");
-    // roof
-    for (let i = 0; i < 18; i++) this.rect(cx - 30 + i, cy - 14 - i, (30 - i) * 2, 1, "#c65b47");
-    this.rect(cx + 12, cy - 30, 6, 12, "#8a3f30");   // chimney
-    // glowing windows + door
-    this.disc(cx - 13, cy - 2, 4, "#ffd98a"); this.disc(cx + 13, cy - 2, 4, "#ffd98a");
-    this.rect(cx - 6, cy + 3, 12, 13, "#ffb347");
-    this.labelPill(cx, cy - 40, p.label || "The Hearth", "#ffc46b");
+    const ac = p.accent || "#ffd98a";
+    const near = this.near === p, t = this.t;
+    this.glow(cx, cy - 8, 90, "#ffe0a0", 0.2 + (near ? 0.12 : 0));
+    this.rect(cx - 36, cy + 16, 72, 6, "#0a071455");                          // ground shadow
+    // broad stone steps
+    this.rect(cx - 32, cy + 12, 64, 5, "#a8a294"); this.rect(cx - 28, cy + 8, 56, 5, "#bcb6a6"); this.rect(cx - 24, cy + 5, 48, 4, "#cdc7b6");
+    // hall body (pale stone) + glowing arched windows
+    this.rect(cx - 26, cy - 12, 52, 20, "#efe7d4"); this.rect(cx - 26, cy - 12, 52, 2, "#f6f0e2");
+    for (const wx of [cx - 15, cx + 15]) { this.rect(wx - 2, cy - 8, 4, 10, "#ffe6a8"); this.disc(wx, cy - 8, 2, "#fff2c8"); if (!this.reduce) this.glow(wx, cy - 4, 7, "#ffd98a", 0.18); }
+    // portico: fluted columns across the front
+    for (let i = 0; i < 6; i++) { const xx = cx - 24 + i * 9; this.rect(xx, cy - 6, 3.5, 16, "#f8f2e4"); this.rect(xx, cy - 6, 1, 16, "#d6cdb8"); this.rect(xx - 0.5, cy - 7, 4.5, 1.5, "#e6ddca"); this.rect(xx - 0.5, cy + 9, 4.5, 1.5, "#d0c7b2"); }
+    this.rect(cx - 27, cy - 8, 54, 2.5, "#e2d9c4");                           // architrave
+    // triangular pediment in the town accent
+    for (let i = 0; i < 15; i++) this.rect(cx - 28 + i, cy - 8 - i, (28 - i) * 2, 1, i % 2 ? shade(ac, -0.08) : ac);
+    this.rect(cx - 28, cy - 8, 56, 1.5, shade(ac, -0.25)); this.disc(cx, cy - 15, 2, "#fff6e0");
+    // domed cupola with a clock face + a flag that waves
+    const dy = cy - 26;
+    this.rect(cx - 7, dy + 2, 14, 6, "#e6ddca");
+    this.disc(cx, dy, 8, mix(ac, "#ffffff", 0.25)); this.ring(cx, dy, 8, shade(ac, -0.3), 1.2);
+    this.disc(cx, dy, 4.5, "#fff6e0"); this.ring(cx, dy, 4.5, shade(ac, -0.4), 0.8);
+    this.rect(cx - 0.5, dy - 3, 1, 3.5, "#3a2f1a"); this.rect(cx, dy - 0.5, 3, 1, "#3a2f1a");   // clock hands (~3 o'clock)
+    this.rect(cx - 0.5, dy - 15, 1, 8, "#8a7a5a");                            // flagpole
+    if (!this.reduce) { for (let i = 0; i < 5; i++) { const fx = cx + 1 + Math.sin(t * 3 + i * 0.6) * 1.2; this.rect(fx, dy - 15 + i, 5, 1, i % 2 ? ac : shade(ac, 0.15)); } }
+    else this.rect(cx + 1, dy - 15, 5, 4, ac);
+    // grand double doors + hanging banners
+    this.rect(cx - 6, cy + 1, 12, 11, shade(ac, -0.25)); this.rect(cx - 5, cy + 2, 5, 10, "#7a4a1e"); this.rect(cx + 0.5, cy + 2, 5, 10, "#7a4a1e");
+    this.px(cx - 1, cy + 7, "#ffd98a"); this.px(cx + 1, cy + 7, "#ffd98a");
+    for (const bx of [cx - 24, cx + 20]) { this.rect(bx, cy - 6, 3.5, 14, ac); this.rect(bx, cy - 6, 3.5, 1.5, shade(ac, -0.3)); this.rect(bx, cy + 8, 3.5, 1, shade(ac, -0.2)); }
+    this.labelPill(cx, cy - 42, p.label || "Town Hall", ac);
   }
   private drawWonders(cx: number, cy: number, p: Prop) {
     const ac = p.accent || "#b26cff";
