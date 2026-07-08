@@ -62,7 +62,8 @@ class TileLabEngine extends RetroEngine {
 
   // ---------- author the whole island ----------
   private buildIsland() {
-    const map = new TileMap(MW, MH, T, "water");   // everything is sea until we paint land
+    const map = new TileMap(MW, MH, T, "sea");   // everything is open (dark) sea until we raise land
+    map.solidTerrain.add("sea");
     // 1) the grass plateau
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) if (this.land(tx, ty)) map.set(tx, ty, "grass");
 
@@ -74,9 +75,9 @@ class TileLabEngine extends RetroEngine {
     // 3) one straight cobble lane, west cove → east, crossing the river on a bridge
     map.paintLine(9, ROAD_Y, 58, ROAD_Y - 1, "path", 3);
 
-    // 4) authored structures (overlay) — the bridge over the river, the front cliff rim
+    // 4) authored structures (overlay) — the bridge over the river, the raised plateau rim
     this.placeBridge(map, ROAD_Y);
-    this.placeFrontCliff(map);
+    this.placeCliffRim(map);
 
     // 5) buildings — spread out, each near where it "wants to be"
     const H = (sheet: string, w: number, h: number, tx: number, ty: number, sc = 1, sr?: number) =>
@@ -138,17 +139,37 @@ class TileLabEngine extends RetroEngine {
     }
   }
 
-  /** A rock cliff face along the island's southern front → the "raised plateau" read. */
-  private placeFrontCliff(map: TileMap) {
-    for (let tx = 0; tx < MW; tx++) {
-      // bottom-most land row in this column
-      let by = -1;
-      for (let ty = MH - 1; ty >= 0; ty--) if (this.land(tx, ty)) { by = ty; break; }
-      if (by < CY + 4) continue;                     // only the southern front
-      if (this.land(tx, by + 1)) continue;           // must have sea below
-      const col = 1 + (tx % 2);                       // alternate face variants
-      map.setOverlay(tx, by + 1, "cliff", col, 3);    // upper rock face
-      map.setOverlay(tx, by + 2, "cliff", col, 4);    // base (grass tufts meet sea)
+  /**
+   * Rim the grass plateau with the Cute Fantasy cliff kit (sheet cols 0-3 = a
+   * grass-topped plateau edge): a rock lip on every sea-facing edge, and a tall
+   * 2-tile rock FACE dropping into the dark sea on the southern front. This is
+   * what makes the island read as a "raised luminous plateau above the sea".
+   */
+  private isSea(map: TileMap, tx: number, ty: number): boolean {
+    return !map.inBounds(tx, ty) || map.get(tx, ty) === "sea";
+  }
+  private placeCliffRim(map: TileMap) {
+    const C = "cliff";
+    for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
+      if (map.get(tx, ty) !== "grass") continue;
+      const n = this.isSea(map, tx, ty - 1), s = this.isSea(map, tx, ty + 1);
+      const w = this.isSea(map, tx - 1, ty), e = this.isSea(map, tx + 1, ty);
+      if (!n && !s && !e && !w) continue;             // interior land
+      // Southern front → a 2-tile rock face drops into the sea below this tile.
+      if (s) {
+        const v = tx % 2;                             // alternate for texture
+        const lc = this.isSea(map, tx - 1, ty) ? 0 : this.isSea(map, tx + 1, ty) ? 3 : 1 + v;
+        map.setOverlay(tx, ty + 1, C, lc, 3);         // upper face
+        map.setOverlay(tx, ty + 2, C, lc, 4);         // lower face + base
+      }
+      // Rock lip on the plateau edge itself (grass-topped), by which side faces sea.
+      let cell: [number, number] | null = null;
+      if (n && w) cell = [0, 0];
+      else if (n && e) cell = [3, 0];
+      else if (n) cell = [1, 0];
+      else if (w) cell = [0, 1];
+      else if (e) cell = [3, 1];
+      if (cell) map.setOverlay(tx, ty, C, cell[0], cell[1]);
     }
   }
 

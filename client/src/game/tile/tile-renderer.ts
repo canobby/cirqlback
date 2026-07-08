@@ -23,6 +23,7 @@ export interface TerrainRender {
   variants?: string[];                             // extra fills chosen by position hash (grass texture)
   blob?: { sheet: string; layout: BlobLayout };    // autotiled edge overlay for a painted region
   cell?: [number, number];                         // for multi-tile sheets: which 16px cell to sample as fill
+  void?: boolean;                                  // render nothing — the backdrop shows through (the open sea)
 }
 
 export type TerrainConfig = Record<string, TerrainRender>;
@@ -35,6 +36,7 @@ export const DEFAULT_TERRAIN: TerrainConfig = {
   // road uses the sheet's border-free solid cobble tile (0,3) for a clean paved lane.
   path:  { fill: "cobble_blob", cell: [1, 1] },
   cliff: { fill: "cliff", cell: [4, 2] },
+  sea:   { void: true },   // the open sea = the dark backdrop; the plateau's cliff rim frames it
 };
 
 /** A thing to draw in the depth-sorted pass (an actor, an effect). Sorted by `y`. */
@@ -75,13 +77,14 @@ export class TileRenderer {
 
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
-        if (!map.inBounds(tx, ty)) continue;   // beyond the island → the sea backdrop shows through
+        if (!map.inBounds(tx, ty)) continue;   // beyond the map → the sea backdrop shows through
+        const terr = map.get(tx, ty);
+        if (this.terrain[terr]?.void) continue;   // open sea → leave the dark backdrop
         const [sx, sy] = this.w2s(cam, tx * t, ty * t);
         const dx = Math.round(sx), dy = Math.round(sy);
-        // 1) base grass fill (with texture variation)
+        // 1) base grass fill (also sits under water/path features)
         this.drawFill(ctx, "grass", tx, ty, dx, dy, dsz);
         // 2) painted terrain on top
-        const terr = map.get(tx, ty);
         if (terr !== "grass") this.drawTerrain(ctx, map, terr, tx, ty, dx, dy, dsz);
       }
     }

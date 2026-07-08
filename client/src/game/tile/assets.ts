@@ -28,6 +28,10 @@ export const CF_SHEETS: Record<string, string> = {
   beach_blob: `${CF}/tiles/beach_blob.png`,
   beach_tiles: `${CF}/tiles/beach_tiles.png`,
   cliff: `${CF}/tiles/cliff.png`,
+  cliff2: `${CF}/tiles/cliff2.png`,
+  cliff3: `${CF}/tiles/cliff3.png`,
+  cliff4: `${CF}/tiles/cliff4.png`,
+  water_foam: `${CF}/tiles/water_foam.png`,
   bridge_wood: `${CF}/tiles/bridge_wood.png`,
   // actors
   player: `${CF}/actors/player.png`,
