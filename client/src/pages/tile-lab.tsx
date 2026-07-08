@@ -19,8 +19,9 @@ const T = 16;
 const MW = 68, MH = 52;          // map size in tiles
 const CX = 34, CY = 26;          // island centre (tiles)
 const RX = 28, RY = 21;          // island radii (tiles)
-const WELL = { x: 30, y: 20 };   // wellspring (tiles)
+const WELL = { x: 33, y: 24 };   // wellspring (tiles) — sits at the head of the river
 const ROAD_Y = 34;               // the east-west lane's latitude
+const RIVER_X = 33;              // the river runs straight down this column
 
 // deterministic RNG so the island is stable across reloads
 function rng(seed: number) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -65,15 +66,13 @@ class TileLabEngine extends RetroEngine {
     // 1) the grass plateau
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) if (this.land(tx, ty)) map.set(tx, ty, "grass");
 
-    // 2) wellspring plaza (cobble) + the river of light: spring outflow bends SE, then
-    //    a straight channel to the south rim (width 3 so it keeps grassy banks)
+    // 2) wellspring plaza (cobble) + a straight river of light from its head to the
+    //    south rim (width 3 → clean grassy banks; no bends → cohesive channel)
     map.paintCircle(WELL.x, WELL.y, 2, "path");
-    map.paintLine(WELL.x, WELL.y + 2, 34, 30, "water", 3);
-    map.paintLine(34, 30, 36, 47, "water", 3);
+    map.paintLine(RIVER_X, WELL.y + 2, RIVER_X, 47, "water", 3);
 
-    // 3) one cobble lane west-cove → east (crosses the river), + a slim spur to the plaza
+    // 3) one straight cobble lane, west cove → east, crossing the river on a bridge
     map.paintLine(9, ROAD_Y, 58, ROAD_Y - 1, "path", 3);
-    map.paintLine(WELL.x, ROAD_Y, WELL.x, WELL.y + 2, "path", 2);   // spur, west of the river
 
     // 4) authored structures (overlay) — the bridge over the river, the front cliff rim
     this.placeBridge(map, ROAD_Y);
@@ -116,19 +115,20 @@ class TileLabEngine extends RetroEngine {
     for (const [tx, ty] of [[18, 40], [21, 42], [16, 38], [23, 39]] as [number, number][]) sheep(tx, ty);
     const chick = (tx: number, ty: number) => map.addProp({ sheet: "chicken", fw: 32, fh: 32, col: 0, row: 0, x: tx * T, y: ty * T });
     for (const [tx, ty] of [[27, 20], [29, 21], [43, 24]] as [number, number][]) chick(tx, ty);
-    map.addProp({ sheet: "farmer", fw: 32, fh: 32, col: 0, row: 0, x: 31 * T, y: 24 * T, solidR: 6 }); // by the plaza
-    map.addProp({ sheet: "fisher", fw: 32, fh: 32, col: 0, row: 0, x: 12 * T, y: 31 * T, solidR: 6 }); // at the cove
+    // villager NPCs — premade sheets are 64×64 frames; (0,0) is a front idle, feet ~0.66 down
+    map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 30 * T, y: 26 * T, solidR: 6 }); // by the plaza
+    map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 12 * T, y: 31 * T, solidR: 6 }); // at the cove
 
     this.map = map;
     // waterfall point where the river meets the front cliff
-    this.falls = [{ x: 36 * T + T / 2, y: 46 * T }];
-    this.player.x = 27 * T; this.player.y = ROAD_Y * T;   // on the lane, near the plaza
+    this.falls = [{ x: RIVER_X * T + T / 2, y: 46 * T }];
+    this.player.x = 28 * T; this.player.y = ROAD_Y * T;   // on the lane, near the plaza
     this.cam.x = this.player.x; this.cam.y = this.player.y;
   }
 
   /** Horizontal wood bridge where the lane crosses the river (and make it walkable). */
   private placeBridge(map: TileMap, roadY: number) {
-    const x0 = 33, x1 = 37;   // spans the ~3-wide river + a tile each side
+    const x0 = RIVER_X - 2, x1 = RIVER_X + 2;   // spans the ~3-wide river + a tile each side
     for (let tx = x0; tx <= x1; tx++) {
       const col = tx === x0 ? 3 : tx === x1 ? 5 : 4;   // left cap / deck / right cap
       map.setOverlay(tx, roadY - 1, "bridge_wood", col, 1);
@@ -221,13 +221,12 @@ class TileLabEngine extends RetroEngine {
       const s = Math.max(1, cam.scale); c.fillRect(mx, my, s, s);
     }
     c.globalAlpha = 1;
-    // river shimmer — sparkles drifting down the water channel (WELL → (34,30) → (36,47))
+    // river shimmer — sparkles drifting straight down the channel
     for (let i = 0; i < 30; i++) {
       const ph = (this.tsec * 0.45 + i * 0.11) % 1;
-      const yy = WELL.y + 2 + ph * 25;                 // 22 → 47
-      const t1 = Math.min(1, (yy - (WELL.y + 2)) / (30 - (WELL.y + 2)));
-      const tx = yy <= 30 ? WELL.x + (34 - WELL.x) * t1 : 34 + (36 - 34) * ((yy - 30) / 17);
-      const [sx, sy] = this.ren.w2s(cam, (tx + 0.5) * T, yy * T);
+      const yy = WELL.y + 2 + ph * (47 - (WELL.y + 2));
+      const tx = RIVER_X + 0.5 + Math.sin(yy * 0.5 + this.tsec) * 0.5;
+      const [sx, sy] = this.ren.w2s(cam, tx * T, yy * T);
       c.globalAlpha = 0.5 * (0.5 + 0.5 * Math.sin(this.tsec * 4 + i));
       c.fillStyle = "#cfeeff"; const s = Math.max(1, cam.scale * 0.8); c.fillRect(sx, sy, s, s);
     }
