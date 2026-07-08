@@ -2783,7 +2783,7 @@ export class CirqlWorldEngine extends RetroEngine {
     const stride = moving ? Math.cos(ph) * len * 0.5 * reach : 0;
     const lift = moving ? Math.max(0, Math.sin(ph)) * len * 0.4 : 0;
     const footX = hx + stride, footY = hy + len - lift;
-    const kneeX = (hx + footX) / 2 + len * 0.16, kneeY = hy + len * 0.5 - lift * 0.35;
+    const kneeX = (hx + footX) / 2 + len * 0.1, kneeY = hy + len * 0.5 - lift * 0.3;
     b.strokeStyle = color; b.lineWidth = w * s; b.lineCap = "round";
     b.beginPath(); b.moveTo(hx * s, hy * s); b.lineTo(kneeX * s, kneeY * s); b.lineTo(footX * s, footY * s); b.stroke();
     b.lineCap = "butt";
@@ -2818,19 +2818,22 @@ export class CirqlWorldEngine extends RetroEngine {
     const lay = act === "lay", sit = act === "sit", graze = act === "graze", idle = lay || sit;
     const mv = moving && !idle, ph = t * (run ? 12 : 7);
     const bl = spec.bodyLen, bh = spec.bodyH, lw = spec.legW, dkLeg = shade(spec.leg, -0.28);
-    const bob = mv ? Math.abs(Math.sin(ph)) * 0.6 : Math.sin(t * 1.4) * 0.25;
+    const bob = mv ? Math.abs(Math.sin(ph)) * 0.5 : Math.sin(t * 1.4) * 0.2;
     const drop = lay ? spec.legLen * 0.9 : sit ? spec.legLen * 0.5 : 0;
-    const bodyY = sy - spec.legLen - bh * 0.5 + bob + drop;   // body floats a leg above the ground
-    const hipY = bodyY + bh * 0.45;                           // hips at the belly
-    const ll = Math.max(2.5, sy - hipY);                      // legs reach down to the ground (feet at ~sy)
+    const bodyY = sy - spec.legLen - bh * 0.35 + bob + drop;  // body a leg above the ground
+    const hipY = bodyY + bh * 0.2;                            // hips INSIDE the lower body (so the body hides the leg tops)
+    const ll = Math.max(3, sy - hipY);                        // legs reach the ground (feet at ~sy)
+    const lwF = Math.max(1, lw * 0.82);                        // far legs a touch thinner (depth)
     this.disc(sx, sy + 2, bl * (lay ? 0.95 : 0.7), "#0a071440");
     if (dir === "u" || dir === "d") {                 // FRONT (toward) / BACK (away)
       const front = dir === "d";
-      if (!lay) { this.drawLimb(sx - bl * 0.42, hipY, ph + Math.PI, ll, lw, dkLeg, mv, 0.3); this.drawLimb(sx + bl * 0.42, hipY, ph, ll, lw, dkLeg, mv, 0.3); }
       if (!front && !lay) this.quadTail(spec, sx, bodyY - bh * 0.6, 1, "u");
+      if (!lay) {   // ALL legs first, then the body over their tops → clean, connected join
+        this.drawLimb(sx - bl * 0.42, hipY, ph + Math.PI, ll, lwF, dkLeg, mv, 0.3); this.drawLimb(sx + bl * 0.42, hipY, ph, ll, lwF, dkLeg, mv, 0.3);
+        this.drawLimb(sx - bl * 0.3, hipY, ph, ll, lw, spec.leg, mv, 0.3); this.drawLimb(sx + bl * 0.3, hipY, ph + Math.PI, ll, lw, spec.leg, mv, 0.3);
+      }
       this.fillEll(sx, bodyY, bl * 0.72, bh * 1.08, spec.body);
       if (spec.belly && front) this.fillEll(sx, bodyY + bh * 0.32, bl * 0.42, bh * 0.66, spec.belly);
-      if (!lay) { this.drawLimb(sx - bl * 0.32, hipY, ph, ll, lw, spec.leg, mv, 0.3); this.drawLimb(sx + bl * 0.32, hipY, ph + Math.PI, ll, lw, spec.leg, mv, 0.3); }
       const hy = bodyY - bh * (spec.neckLen > 4 ? 1.1 : 0.7) + (lay ? bh * 0.7 : 0);
       if (spec.neckLen > 4 && !lay) { const b = this.b, s = this.SS; b.strokeStyle = spec.body; b.lineWidth = 3.2 * s; b.lineCap = "round"; b.beginPath(); b.moveTo(sx * s, (bodyY - bh * 0.4) * s); b.lineTo(sx * s, (hy + spec.headR * 0.6) * s); b.stroke(); b.lineCap = "butt"; }
       this.fillEll(sx, hy, spec.headR * 1.05, spec.headR, spec.body2);
@@ -2839,11 +2842,13 @@ export class CirqlWorldEngine extends RetroEngine {
       if (spec.antlers && !lay) { this.neonPath([[sx - 1.5, hy - spec.headR * 0.6], [sx - 3, hy - spec.headR - 2], [sx - 4.5, hy - spec.headR - 5]], spec.antlers, 3, 1.2, 0.5 + 0.4 * this.nightAmt); this.neonPath([[sx + 1.5, hy - spec.headR * 0.6], [sx + 3, hy - spec.headR - 2], [sx + 4.5, hy - spec.headR - 5]], spec.antlers, 3, 1.2, 0.5 + 0.4 * this.nightAmt); this.glow(sx, hy - spec.headR - 3, 5, spec.antlers, 0.2 + 0.3 * this.nightAmt); }
     } else {                                          // SIDE (l / r)
       const f = dir === "r" ? 1 : -1, backHipX = sx - bl * 0.5 * f, frontHipX = sx + bl * 0.42 * f;
-      if (!lay) { this.drawLimb(frontHipX - 1.5 * f, hipY, ph + Math.PI, ll, lw, dkLeg, mv); this.drawLimb(backHipX - 1.5 * f, hipY, ph, ll, lw, dkLeg, mv); }
       if (!lay) this.quadTail(spec, backHipX - 1 * f, bodyY, f, dir);
+      if (!lay) {   // ALL legs first (far pair darker/thinner), then the body over their tops
+        this.drawLimb(frontHipX - 1.5 * f, hipY, ph + Math.PI, ll, lwF, dkLeg, mv); this.drawLimb(backHipX - 1.5 * f, hipY, ph, ll, lwF, dkLeg, mv);
+        this.drawLimb(frontHipX, hipY, ph, ll, lw, spec.leg, mv); this.drawLimb(backHipX, hipY, ph + Math.PI, ll, lw, spec.leg, mv);
+      }
       this.fillEll(sx, bodyY, bl, bh, spec.body);
       if (spec.patch) this.fillEll(sx - bl * 0.45 * f, bodyY, bl * 0.34, bh * 0.6, spec.patch);
-      if (!lay) { this.drawLimb(frontHipX, hipY, ph, ll, lw, spec.leg, mv); this.drawLimb(backHipX, hipY, ph + Math.PI, ll, lw, spec.leg, mv); }
       const headUp = !graze && !lay, neck = spec.neckLen > 4 ? (headUp ? spec.neckLen : spec.neckLen * 0.45) : 1;
       const hx = sx + bl * 0.62 * f, hy = bodyY - neck + (lay ? bh * 0.5 : 0);
       if (spec.neckLen > 4 && !lay) { const b = this.b, s = this.SS; b.strokeStyle = spec.body; b.lineWidth = 3 * s; b.lineCap = "round"; b.beginPath(); b.moveTo((sx + bl * 0.4 * f) * s, bodyY * s); b.lineTo(hx * s, (hy + spec.headR * 0.5) * s); b.stroke(); b.lineCap = "butt"; }
