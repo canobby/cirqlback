@@ -338,6 +338,14 @@ export class CirqlWorldEngine extends RetroEngine {
   private nearPlayer: { id: string; name: string } | null = null;  // remote in "share a light" range
   private lastNearId: string | null = null;                        // last announced nearPlayer (fire onNearPlayer on change)
   private pair: { withId: string; g: string; t: number } | null = null;   // active paired social gesture (Phase I4)
+  // ---- Commons Festival: a multiplayer synced-emote crowd goal (lane #2 of the actions work) ----
+  // Raise one at a gathering spot; a caller announces an emote, everyone near who matches it in the
+  // window fills a shared meter. Fill it → participation-scaled sparqs + a boost to the town spirit
+  // (World Energy). Solo-playable; livelier with travellers, whose emotes also count.
+  private festival: { at: string; call: string; callT: number; window: number; meter: number; goal: number; combo: number; calls: number; maxCalls: number; matched: boolean; away: number; remoteMatched: Set<string>; parts: Set<string> } | null = null;
+  private static readonly FEST_CALLS = ["wave", "clap", "cheer", "dance", "twirl", "celebrate", "bow"];
+  onFestival?: (sparks: number) => void;   // host: award sparqs + feed World Energy + persist
+  isFestival() { return !!this.festival; }
   private lastPresence = 0; private lastPx = 1e9; private lastPy = 1e9;
   /** Fired often (throttled) with the live position, for the presence socket. */
   onPresence?: (ring: number, x: number, y: number, facing: Facing, pose: string) => void;
@@ -599,6 +607,7 @@ export class CirqlWorldEngine extends RetroEngine {
   /** Swap the world + arrive at the connector back (the actual ring change). */
   private doSail(dest: number) {
     if (dest < 0 || dest === this.ringIdx) return;
+    this.festival = null;   // a festival belongs to the shore you raised it on
     const from = this.ringIdx;
     // a brand-new outer shore (not a sub-map, never reached before) earns a full arrival cutscene
     const firstShore = !isSubMap(dest) && dest > this.maxRing;
@@ -683,7 +692,7 @@ export class CirqlWorldEngine extends RetroEngine {
   removeRemote(id: string) { this.remotes.delete(id); if (this.pair?.withId === id) this.pair = null; if (this.nearPlayer?.id === id) { this.nearPlayer = null; if (this.lastNearId) { this.lastNearId = null; this.onNearPlayer?.(null); } } }
   chatRemote(id: string, text: string) { const r = this.remotes.get(id); if (r) { r.chat = text; r.chatT = 5.5; } }
   /** A remote traveller played an emote — show its glyph (+ motion) over them (CHR-260). */
-  emoteRemote(id: string, emote: string) { const r = this.remotes.get(id); const def = EMOTE_BY_ID[emote]; if (r && def) { r.emote = emote; r.emoteT = def.hold ?? EMOTE_SECONDS; } }
+  emoteRemote(id: string, emote: string) { const r = this.remotes.get(id); const def = EMOTE_BY_ID[emote]; if (r && def) { r.emote = emote; r.emoteT = def.hold ?? EMOTE_SECONDS; this.festMatch(id, emote, r.x, r.y); } }
   /** Show your own chat bubble over your avatar. */
   sayLocal(text: string) { this.myChat = text; this.myChatT = 5.5; }
   /** Play an emote locally + broadcast it (called by the emote wheel). */
@@ -794,10 +803,59 @@ export class CirqlWorldEngine extends RetroEngine {
   /** An avatar ACTION was performed (hop / run / sit / an emote id). The action-verb primitive:
    *  advances any active quest whose current objective is `act` and matches (+ optional prop range).
    *  Mini-games can subscribe by watching the same call. */
-  private fireAction(actId: string) { this.advanceObjective("act", actId); this.onAction?.(actId); }
+  private fireAction(actId: string) { this.advanceObjective("act", actId); this.onAction?.(actId); this.festMatch("me", actId, this.posX, this.posY); }
   /** Fired on every avatar action — hop/run/sit/emote id — so the host (and future mini-games) can react. */
   onAction?: (actId: string) => void;
   private runT = 0; private runFired = false;   // edge-detect a sustained run for the `run` action
+  /** True if (x,y) is within festival range of the prop `id` on the current ring. */
+  private nearPropXY(id: string, x: number, y: number): boolean {
+    const p = this.curRing.props.find((q) => q.id === id);
+    return !!p && Math.hypot(x - p.x, y - p.y) < ((p.r ?? 30) + 70);   // a generous gathering radius
+  }
+  /** Raise a festival at a gathering spot: pick the first call + open the meter. */
+  raiseFestival(p: Prop) {
+    if (this.festival) { this.toast("The festival's already in full swing — match the call!"); return; }
+    if (this.cs || this.voyage || this.dialog) return;
+    this.festival = { at: p.id || "commons", call: "wave", callT: 4.6, window: 4.6, meter: 0, goal: 12, combo: 0, calls: 0, maxCalls: 18, matched: false, away: 0, remoteMatched: new Set(), parts: new Set() };
+    this.nextFestivalCall();
+    this.sfx("quest"); this.present("🎉", "#ffd24a");
+    this.toast("🎉 You raise a festival! Match each call with your feelings wheel (🙂).");
+  }
+  private nextFestivalCall() {
+    const f = this.festival; if (!f) return;
+    const pool = CirqlWorldEngine.FEST_CALLS;
+    let c = pool[Math.floor(Math.random() * pool.length)];
+    if (c === f.call) c = pool[(pool.indexOf(c) + 1) % pool.length];   // never repeat back-to-back
+    f.call = c; f.callT = f.window; f.matched = false; f.remoteMatched.clear(); f.calls++;
+    this.sfx("emote");
+  }
+  /** A player (local "me" or a remote id) performed an emote — count it toward the festival if it
+   *  matches the current call and they're near the gathering spot. Once per call per player. */
+  private festMatch(id: string, emote: string, x: number, y: number) {
+    const f = this.festival; if (!f || emote !== f.call) return;
+    if (!this.nearPropXY(f.at, x, y)) return;
+    if (id === "me") { if (f.matched) return; f.matched = true; }
+    else { if (f.remoteMatched.has(id)) return; f.remoteMatched.add(id); }
+    f.meter++; f.combo++; f.parts.add(id);
+    if (!this.reduce) { const pr = this.curRing.props.find((q) => q.id === f.at); if (pr) { this.fxRing(pr.x - this.camX, pr.y - this.camY, "#ffd24a", 10); this.fxPop(pr.x - this.camX, pr.y - this.camY - 8, "+♪", "#ffe9a0", 0.8); } }
+    if (f.meter >= f.goal) this.completeFestival();
+  }
+  private completeFestival() {
+    const f = this.festival; if (!f) return;
+    const parts = Math.max(1, f.parts.size);
+    const sparks = Math.min(80, 10 + parts * 6 + Math.floor(f.combo / 2));   // scales with who showed up
+    this.festival = null;
+    this.sfx("quest"); this.present("🎉", "#ffd24a");
+    this.onFestival?.(sparks);
+    this.toast(parts > 1 ? `🎉 Festival! ${parts} travellers, spirits soaring — +${sparks} sparqs to all.` : `🎉 Festival! The town's spirits soar — +${sparks} sparqs.`);
+  }
+  private endFestival(reason: string) { if (!this.festival) return; this.festival = null; this.toast(reason); }
+  private updateFestival(dt: number) {
+    const f = this.festival; if (!f) return;
+    if (!this.nearProp(f.at)) { f.away += dt; if (f.away > 6) { this.endFestival("You drift away; the festival winds down."); return; } } else f.away = 0;
+    f.callT -= dt;
+    if (f.callT <= 0) { if (f.calls >= f.maxCalls) { this.endFestival("The festival winds down for the day."); return; } this.nextFestivalCall(); }
+  }
   /** The active quest's current (first unfinished) objective index, or -1. */
   private currentObjIndex(q: QuestDef): number {
     const p = this.quests[q.id]; if (!p) return -1;
@@ -1163,7 +1221,7 @@ export class CirqlWorldEngine extends RetroEngine {
     if (p.t === "petshop") { this.openPetShop(); return; }        // the Pet Stall → adopt a companion
     if (p.t === "stylist") { this.openStyleStudio(); return; }    // the Style Studio → restyle your space
     if (p.t === "barber") { this.sfx("talk"); this.onInteract?.("barber", p); return; }   // the Barber → host opens the look editor on hair
-    if (p.t === "gathering") { this.toast("A good place to rest and meet fellow travellers."); return; }
+    if (p.t === "gathering") { if (this.festival) this.toast("The festival's on — match each call with your feelings wheel (🙂)!"); else this.raiseFestival(p); return; }
     if (p.t === "landmark") {   // a focal set-piece — a meeting spot + (later) a quest home (J4)
       const flavor: Record<string, string> = { greattree: "The Great Tree — older than the ring itself.", stonecircle: "The Stone Circle hums with a quiet, ancient charge.", lighthouse: "The Lighthouse sweeps the dark water for wanderers.", crystal: "The Great Crystal glows from somewhere deep within.", waterfall: "The Falls thunder into a cool, misted pool.", ruin: "The Old Ruin keeps the secrets of who built it." };
       this.toast(`${p.label || "A landmark"} · ${flavor[p.lm || ""] || "A memorable place."}`);
@@ -1247,6 +1305,7 @@ export class CirqlWorldEngine extends RetroEngine {
     this.squashT = Math.max(0, this.squashT - dt); this.bumpT = Math.max(0, this.bumpT - dt);
     // paired social gesture (I4) — ends on its timer, or if your partner drifts away
     if (this.pair) { this.pair.t -= dt; const r = this.remotes.get(this.pair.withId); if (this.pair.t <= 0 || !r || Math.hypot(this.posX - r.x, this.posY - r.y) > 64) this.pair = null; }
+    if (this.festival) this.updateFestival(dt);   // Commons Festival call-and-response clock
     // world interactions (I6): fire a delayed shop/sub-map entry after the wave; decay the present pose
     if (this.entryAction && this.t >= this.entryAction.at) { const f = this.entryAction.fn; this.entryAction = null; f(); }
     if (this.presentPose) { this.presentPose.t -= dt; if (this.presentPose.t <= 0) this.presentPose = null; }
@@ -3878,6 +3937,20 @@ export class CirqlWorldEngine extends RetroEngine {
   private labelPill(cx: number, y: number, s: string, c: string) {
     this.q(cx, y, s, c, 0.95, "c", true, 1, true);
   }
+  // Festival call-and-response banner — centred below the header while a Commons Festival runs.
+  private drawFestivalHud(it: number) {
+    const f = this.festival!; const def = EMOTE_BY_ID[f.call];
+    const cx = this.LW / 2, y = it + 26, w = 158;
+    this.rect(cx - w / 2, y - 12, w, 40, "#160f2ed9"); this.rect(cx - w / 2, y - 12, w, 1, "#ffd24a55");
+    this.q(cx, y - 7, "🎉 FESTIVAL — MATCH THE CALL", "#ffd7a0", 0.66, "c", true);
+    this.q(cx, y + 4, `${(def?.label ?? f.call).toUpperCase()}!`, "#fff2c8", 1.25, "c", true);
+    // countdown for the current call
+    const cw = w - 22, cf = Math.round(cw * Math.max(0, Math.min(1, f.callT / f.window)));
+    this.rect(cx - cw / 2, y + 17, cw, 2.5, "#0a0714aa"); if (cf > 0) this.rect(cx - cw / 2, y + 17, cf, 2.5, "#ffb454");
+    // the shared meter
+    const mf = Math.round(cw * Math.min(1, f.meter / f.goal));
+    this.rect(cx - cw / 2, y + 22, cw, 4, "#0a0714aa"); if (mf > 0) { this.rect(cx - cw / 2, y + 22, mf, 4, "#35e0d0"); this.rect(cx - cw / 2, y + 22, mf, 1, "#bafff2"); }
+  }
   private drawHud() {
     const it = this.itop(), ib = this.ibot();
     // top row (below the floating header): online (left, tap → who's here) · sparks (right)
@@ -3887,6 +3960,7 @@ export class CirqlWorldEngine extends RetroEngine {
 
     this.drawQuestTracker(it);
     this.drawMinimap(it);
+    if (this.festival) this.drawFestivalHud(it);
 
     // World Energy — the light you've fed the shared world (bottom-left)
     const ew = 70, ex = 6, ey = this.LH - ib - 27;
@@ -3915,7 +3989,7 @@ export class CirqlWorldEngine extends RetroEngine {
                 : this.near.t === "rune" ? (this.near.id && this.lit.has(this.near.id) ? "Dim the rune" : "Wake the rune")
                   : this.near.t === "shrine" ? (this.puzzleSolved() ? "Enter the shrine" : "The shrine is sealed")
                     : this.near.t === "theater" ? "Watch the show"
-                      : this.near.t === "gathering" ? "Rest a while"
+                      : this.near.t === "gathering" ? (this.festival ? "Join the festival" : "Raise a festival")
                         : this.near.t === "landmark" ? `Visit ${this.near.label || "the landmark"}`
                         : this.near.t === "portal" ? (this.near.sub === "up" ? (isTunnel(this.ringIdx) ? (this.near.label || "Take the exit") : isHome(this.ringIdx) ? "Leave your home" : isShop(this.ringIdx) ? "Leave the shop" : "Return to the surface") : this.near.sub === "cave" ? "Descend into the cave" : this.near.sub === "tree" ? "Climb the great tree" : "Ascend the cloud stair")
                           : "Set sail";

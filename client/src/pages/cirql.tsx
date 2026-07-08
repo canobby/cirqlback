@@ -460,6 +460,10 @@ export default function Cirql() {
       sparksRef.current += n; energyRef.current = Math.min(1, energyRef.current + n * 0.01);
       eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current); persist();
     };
+    eng.onFestival = (sparks) => {   // a filled Commons Festival: sparqs + a bigger feed to the town spirit (World Energy)
+      sparksRef.current += sparks; energyRef.current = Math.min(1, energyRef.current + sparks * 0.03);
+      eng.setStats({ sparks: sparksRef.current, energy: energyRef.current }); setSparksUi(sparksRef.current); persist();
+    };
     // Space styles: owned styles switch free; a new paid style costs sparqs once, then it's owned
     eng.onSelectStyle = (id, cost) => {
       const key = `style:${id}`, owned = cost === 0 || exploreRef.current || ownedRef.current.includes(key);
