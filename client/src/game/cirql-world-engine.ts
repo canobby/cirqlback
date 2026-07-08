@@ -126,9 +126,13 @@ export class CirqlWorldEngine extends RetroEngine {
   // Smooth-text overlay queue: UI/labels are enqueued in logical coords during
   // render() and painted crisply (system sans) in onOverlay(), so words stay
   // readable on small phones while the world keeps its 16-bit pixel look.
-  private ui: { x: number; y: number; s: string; c: string; sc: number; align: "l" | "c" | "r"; bold?: boolean; alpha?: number; halo?: boolean }[] = [];
+  private ui: { x: number; y: number; s: string; c: string; sc: number; align: "l" | "c" | "r"; bold?: boolean; alpha?: number; halo?: boolean; z?: boolean }[] = [];
+  // true while enqueuing labels drawn INSIDE the world's zoom transform (props/NPCs) — those
+  // must be scaled by the live zoom in onOverlay so they don't drift off their object; HUD +
+  // post-restore labels (z=false) stay in screen space.
+  private uiZoom = false;
   private q(x: number, y: number, s: string, c: string, sc = 1, align: "l" | "c" | "r" = "l", bold = false, alpha = 1, halo = false) {
-    this.ui.push({ x, y, s, c, sc, align, bold, alpha, halo });
+    this.ui.push({ x, y, s, c, sc, align, bold, alpha, halo, z: this.uiZoom });
   }
   // Safe-area insets (CSS px) so the HUD clears the floating header + controls in
   // full-screen mode; converted to logical px on use.
@@ -1130,7 +1134,7 @@ export class CirqlWorldEngine extends RetroEngine {
 
   // ---------- render ----------
   protected render() {
-    this.ui.length = 0;   // reset the smooth-text queue for this frame
+    this.ui.length = 0; this.uiZoom = false;   // reset the smooth-text queue for this frame
     if (this.tornado) { this.drawTornado(); this.drawFx(); return; }   // the storm sweep owns the screen (F)
     if (this.voyage) { this.drawVoyage(); this.drawFx(); return; }   // the sailing crossing owns the screen
     if (this.diorama) { this.drawDiorama(); this.drawFx(); return; }   // the beauty shot owns the screen (Phase H3)
@@ -1170,6 +1174,7 @@ export class CirqlWorldEngine extends RetroEngine {
     // backdrop above stays full-frame. Restored before the HUD/overlays (screen space).
     const zoomed = this.zoom !== 1;
     if (zoomed) { const fx = this.LW / 2 * s, fy = this.LH / 2 * s; b.save(); b.translate(fx, fy); b.scale(this.zoom, this.zoom); b.translate(-fx, -fy); }
+    this.uiZoom = true;   // labels queued now are inside the zoom → onOverlay scales them to match
 
     // island landmass — grows with the land tier on CIRQLSPACE (Phase D)
     const R = this.effR();
@@ -1318,6 +1323,7 @@ export class CirqlWorldEngine extends RetroEngine {
     }
 
     if (zoomed) b.restore();   // end the zoom transform — HUD/overlays draw in screen space
+    this.uiZoom = false;       // post-restore labels (ambient cues, HUD) are screen-space
 
     this.drawFx();
     this.drawAmbient();
@@ -3051,10 +3057,13 @@ export class CirqlWorldEngine extends RetroEngine {
       g.font = `${it.bold ? 700 : 600} ${fs}px "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif`;
       g.textAlign = it.align === "c" ? "center" : it.align === "r" ? "right" : "left";
       g.globalAlpha = it.alpha ?? 1;
-      // Snap the label to the SAME buffer-pixel lattice the nearest-neighbour world blit uses,
-      // so a label steps in lockstep with its object instead of swimming over it as the
-      // camera scrolls sub-pixel (fixes "names drift toward/away from their object").
-      const lx = Math.round(it.x * q) / q * sc, ly = Math.round(it.y * q) / q * sc;
+      // Match the label to its object: world labels (z) sit inside the live zoom transform,
+      // so scale them around screen-centre by the same zoom (fixes labels drifting/tracking
+      // your movement when zoomed). Then snap to the buffer-pixel lattice so they don't swim
+      // sub-pixel against the nearest-neighbour world blit.
+      const ix = it.z ? this.LW / 2 + (it.x - this.LW / 2) * this.zoom : it.x;
+      const iy = it.z ? this.LH / 2 + (it.y - this.LH / 2) * this.zoom : it.y;
+      const lx = Math.round(ix * q) / q * sc, ly = Math.round(iy * q) / q * sc;
       // haloed text (names) reads on ANY background via a thin dark outline instead of a box
       if (it.halo) {
         g.shadowBlur = 0;
