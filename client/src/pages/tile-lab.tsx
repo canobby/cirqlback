@@ -6,7 +6,7 @@ import OracleChat, { type Speaker } from "@/components/cirql/oracle-chat";
 import {
   cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
   DEFAULT_TERRAIN, registerPack, harmonizePack, validatePlacements,
-  paintDualGrid, type DualMap,
+  blobTile, BLOB_3x5,
   type Atlas, type Camera, type Drawable, type TerrainConfig, type Prop,
 } from "@/game/tile";
 
@@ -88,15 +88,6 @@ const DPATHS: [number, number][][] = [
 // PATH HIERARCHY (see [[cirqlback-paths-roads-expertise]]): the main caravan trade ROAD is wider;
 // the spurs are narrow FOOTPATHS. Half-width in tiles → the sprite path autotiles to this thickness.
 const DPATH_HALFW = [1.2, 0.72, 0.72];
-// The path is laid with the REAL sanctumpixel sand DUAL-GRID autotile (NO recolour) — its DARKER sand
-// tone (rows 0-3) as a packed trail with organic soft edges on the lighter sand ground. Corner-mask
-// (TL=1 TR=2 BR=4 BL=8) → [col,row] in ground_tile.png, mapped from the sheet's own quadrant fills.
-const DUAL_SAND: DualMap = {
-  0b0001: [4, 3], 0b0010: [0, 3], 0b0011: [4, 0], 0b0100: [1, 0],
-  0b0101: [4, 0], 0b0110: [0, 2], 0b0111: [1, 3], 0b1000: [3, 0],
-  0b1001: [4, 2], 0b1010: [4, 0], 0b1011: [3, 3], 0b1100: [2, 0],
-  0b1101: [4, 0], 0b1110: [1, 1], 0b1111: [4, 0],
-};
 // sanctumpixel desert props are single-image PNGs of varied size — dims hardcoded (props are
 // placed before the atlas finishes loading, so we can't read w/h off the atlas at build time).
 const SP_ROCK: Record<number, [number, number]> = { 1: [32, 64], 2: [32, 64], 3: [32, 64], 4: [48, 48], 5: [48, 48], 6: [32, 32], 7: [32, 32], 8: [32, 32], 9: [32, 32], 10: [48, 32], 11: [48, 32] };
@@ -217,8 +208,8 @@ class TileLabEngine extends RetroEngine {
       : biome === "desert"
         // the desert LAND is a real SPRITE sand floor (base + 3 varied tiles), laid across everything
         // but the water — only the lagoon/sea stay procedural. (Owner rule: sprite floor laid first.)
-        // The plaza "path" terrain uses the DARKER sand tile (real asset) to match the packed sand path.
-        ? { ...DEFAULT_TERRAIN, grass: { fill: "grass", variants: ["grass", "sand_v1", "sand_v3"], variantAt: (tx: number, ty: number) => this.sandRegion(tx, ty) }, path: { fill: "sanddk" } }
+        // The plaza "path" terrain uses the sandstone-recoloured cobble (matches the made stone path).
+        ? { ...DEFAULT_TERRAIN, grass: { fill: "grass", variants: ["grass", "sand_v1", "sand_v3"], variantAt: (tx: number, ty: number) => this.sandRegion(tx, ty) }, path: { fill: "sandpath", cell: [1, 1] } }
         : undefined;
     this.ren = new TileRenderer(this.atlas, terr);
     // pull in the matching sanctumpixel biome pack (terrain/cliffs/nature) for the Dunes,
@@ -226,7 +217,7 @@ class TileLabEngine extends RetroEngine {
     if (biome === "desert") registerPack(this.atlas, "desert");
     this.atlas.loadAll().then(() => {
       this.buildLogo();
-      if (biome === "desert") { harmonizePack(this.atlas, "desert"); this.buildSandTexture(); this.buildFlamingo(); }
+      if (biome === "desert") { harmonizePack(this.atlas, "desert"); this.buildSandTexture(); this.buildFlamingo(); this.buildSandPath(); }
       else this.buildGrassTexture();
       this.loaded = true;
       // build-time safety check: warn if any placed land prop reads as a water sprite
@@ -434,7 +425,7 @@ class TileLabEngine extends RetroEngine {
     // buzzing via the 4-frame row-0 cycle.
     this.addCritter(map, "bee", 16, 16, 0, 0, O.cx + 6, O.cy - 4, { frames: 4, fps: 12, wr: 1.4, sp: 7, bob: 1.2 });
     // a couple of extra palm clumps set around the lagoon (varied spots — asymmetric, not the even halo)
-    const palm = (tx: number, ty: number, sc: number) => { if (this.dCanPlace(map, tx, ty, 3.5, 3) && this.oasisClear(tx, ty, 2.8)) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: tx * T + T / 2, y: ty * T + T, scale: 0.85 + rnd() * 0.3, overhead: true, solidR: 5 }); };
+    const palm = (tx: number, ty: number, sc: number) => { const wx = tx * T + T / 2, wy = ty * T + T; if (this.dCanPlace(map, tx, ty, 3.5, 3) && this.oasisClear(tx, ty, 2.8) && !this.propTooClose(map, wx, wy, 30)) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: wx, y: wy, scale: 0.85 + rnd() * 0.3, overhead: true, solidR: 5 }); };
     for (const [cx, cy] of [[O.cx - 8, O.cy - 4], [O.cx + 8, O.cy + 2], [O.cx + 2, O.cy - 7]] as [number, number][])
       for (let i = 0; i < 2; i++) palm(cx + Math.round((rnd() - 0.5) * 3), cy + Math.round((rnd() - 0.5) * 3), 1);
   }
@@ -510,14 +501,16 @@ class TileLabEngine extends RetroEngine {
       }
       const dens = 1 - smoothstep(2.2, 6.5, d);                                       // the green halo, thinning outward
       if (d >= 2.9 && r < dens * 0.24) {                                              // PALMS (signature oasis tree) — varied size
-        const sc = 0.85 + rnd() * 0.35;
+        const sc = 0.85 + rnd() * 0.35, wx = tx * T + T / 2, wy = ty * T + T;
+        if (this.propTooClose(map, wx, wy, 30 * sc)) continue;                         // palms need WIDE spacing (~2 tiles) so canopies don't overlap + hide each other's trunk
         // palm1 = 48×64 (col0 stump, col1-2 full palms); palm2 = 32×48 (col0 stump, col1-2 full palms).
-        // Use cols 1-2 only (a whole palm WITH trunk) — never col0 (a trunkless stump), and the right fw
-        // (palm2 was drawn 48 wide → grabbed 1.5 frames = HALF trees).
-        if (rnd() < 0.7) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 5 * sc });
-        else map.addProp({ sheet: "palm2", fw: 32, fh: 48, col: 1 + Math.floor(rnd() * 2), row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 5 * sc });
+        // Use cols 1-2 only (a whole palm WITH trunk) — never col0 (a trunkless stump), and the right fw.
+        if (rnd() < 0.7) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: wx, y: wy, scale: sc, overhead: true, solidR: 5 * sc });
+        else map.addProp({ sheet: "palm2", fw: 32, fh: 48, col: 1 + Math.floor(rnd() * 2), row: 0, x: wx, y: wy, scale: sc, overhead: true, solidR: 5 * sc });
       } else if (r < dens * 0.5) {                                                    // green bushes (secondary)
-        map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: DBUSH[0], row: DBUSH[1], x: tx * T + rnd() * T, y: ty * T + T, solidR: 3 });
+        const wx = tx * T + rnd() * T, wy = ty * T + T;
+        if (this.propTooClose(map, wx, wy, 11)) continue;                              // bushes stay DISTINCT — no merged bush blobs
+        map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: DBUSH[0], row: DBUSH[1], x: wx, y: wy, solidR: 3 });
       } else if (r < dens * 0.64) {                                                   // some ferns in the halo too
         map.addProp({ sheet: "d_fern", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });
       }
@@ -561,7 +554,9 @@ class TileLabEngine extends RetroEngine {
   /** Place a sanctumpixel desert STANDALONE prop (each is a whole-object PNG → always safe to
    *  scatter; no risk of grabbing a wall/edge/partial/water cell). See [[catalog]]. */
   private dSpProp(map: TileMap, name: string, dim: [number, number], tx: number, ty: number, sc: number, overhead = false, solidR = 0) {
-    map.addProp({ sheet: name, fw: dim[0], fh: dim[1], col: 0, row: 0, x: tx * T + T / 2 + (this.rndDetail() - 0.5) * 6, y: ty * T + T, scale: sc, solidR, overhead });
+    const wx = tx * T + T / 2 + (this.rndDetail() - 0.5) * 6, wy = ty * T + T;
+    if (solidR >= 3 && this.propTooClose(map, wx, wy, solidR * sc)) return;   // don't stack solid props into a blob (spacing rule)
+    map.addProp({ sheet: name, fw: dim[0], fh: dim[1], col: 0, row: 0, x: wx, y: wy, scale: sc, solidR, overhead });
   }
   private _rd = rng(3131);
   private rndDetail() { return this._rd(); }
@@ -659,23 +654,30 @@ class TileLabEngine extends RetroEngine {
     return false;
   }
 
-  /** LAYER 3 of the ring pipeline — the PATHS. Lay the DPATHS network with the REAL sanctumpixel sand
-   *  DUAL-GRID autotile (NO recolour/filter): the darker sand tone as a packed trail with the sheet's
-   *  own organic soft edges on the lighter ground, clipped to the shore. Marching-squares: each display
-   *  cell's 4 corners give a 0-15 mask → the matching tile in ground_tile.png (DUAL_SAND). */
+  /** LAYER 3 of the ring pipeline — the PATHS. Autotile the DPATHS network with the sandstone-recoloured
+   *  cobble (blobTile + BLOB_3x5): a MADE stone path (the pattern reads as laid, not just worn) in the
+   *  sand-tone family, on the finished ground, clipped to shore. The 3×5 blob handles width/corners
+   *  cleanly (no big solid blocks near the wide mesa road). */
   private drawSandPaths(b: CanvasRenderingContext2D, cam: Camera) {
-    const sh = this.atlas.get("sp_desert_ground"); if (!sh.img) return;
+    if (!this.atlas.has("sandpath")) return;
+    const sh = this.atlas.get("sandpath"); if (!sh.img) return;
     b.imageSmoothingEnabled = false;
     const t = T, s = cam.scale, dsz = Math.ceil(t * s) + 1;
     const [wx0, wy0] = this.ren.s2w(cam, 0, 0), [wx1, wy1] = this.ren.s2w(cam, cam.vw, cam.vh);
-    const tx0 = Math.floor(wx0 / t) - 2, ty0 = Math.floor(wy0 / t) - 2;
-    const tx1 = Math.ceil(wx1 / t) + 2, ty1 = Math.ceil(wy1 / t) + 2;
-    const inR = (x: number, y: number) => this.isSandPath(x, y);
+    const tx0 = Math.floor(wx0 / t) - 1, ty0 = Math.floor(wy0 / t) - 1;
+    const tx1 = Math.ceil(wx1 / t) + 1, ty1 = Math.ceil(wy1 / t) + 1;
+    const P = (x: number, y: number) => this.isSandPath(x, y);
     b.save(); this.clipToShore(b);
-    paintDualGrid(inR, tx0, ty0, tx1, ty1, DUAL_SAND, (wx, wy, col, row) => {
-      const [sx, sy] = this.ren.w2s(cam, wx * t, wy * t);
-      sh.cell(b, 16, col, row, Math.round(sx), Math.round(sy), dsz, dsz);
-    });
+    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+      if (!P(tx, ty)) continue;
+      const same = {
+        n: P(tx, ty - 1), s: P(tx, ty + 1), w: P(tx - 1, ty), e: P(tx + 1, ty),
+        ne: P(tx + 1, ty - 1), nw: P(tx - 1, ty - 1), se: P(tx + 1, ty + 1), sw: P(tx - 1, ty + 1),
+      };
+      const [c, r] = blobTile(BLOB_3x5, same);
+      const [sx, sy] = this.ren.w2s(cam, tx * t, ty * t);
+      sh.cell(b, 16, c, r, Math.round(sx), Math.round(sy), dsz, dsz);
+    }
     b.restore();
   }
 
@@ -709,6 +711,26 @@ class TileLabEngine extends RetroEngine {
   private sandRegion(tx: number, ty: number): string | undefined {
     if (this.meadow(tx * 0.42 + 30, ty * 0.39 - 10) > 0.42) return hash2(tx, ty) < 0.82 ? "sanddk" : "sanddk_rip";
     return undefined;
+  }
+
+  /** The MADE stone path (owner: the cobble PATTERN reads as laid/constructed, not just worn). Recolour
+   *  the pack's cobble_blob (a 3×5 autotile) through a warm SANDSTONE ramp — KEEPING the stone pattern
+   *  (stones lighter, joints darker) so it reads as a built path — in the sand-tone family so it belongs
+   *  to the ground, just a touch darker than the light floor so it reads as a laid path. Register "sandpath". */
+  private buildSandPath() {
+    const src = this.atlas.get("cobble_blob"); if (!src.img) return;
+    const w = src.w, h = src.h, cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+    const cx = cv.getContext("2d", { willReadFrequently: true })!; cx.imageSmoothingEnabled = false;
+    cx.drawImage(src.img as any, 0, 0);
+    const id = cx.getImageData(0, 0, w, h), d = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] === 0) continue;
+      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;                  // warm sandstone, pattern KEPT: stones ~[210,160,100], joints darker
+      d[i] = clamp255(lum * 0.40 + 150); d[i + 1] = clamp255(lum * 0.35 + 108); d[i + 2] = clamp255(lum * 0.25 + 62);
+    }
+    cx.putImageData(id, 0, 0);
+    if (!this.atlas.has("sandpath")) this.atlas.add("sandpath", "");
+    (this.atlas.get("sandpath") as unknown as { img: HTMLCanvasElement }).img = cv;
   }
 
   /** Juice the oasis surface (bright water): sun sparkles + concentric ripple rings. */
