@@ -1194,13 +1194,9 @@ class TileLabEngine extends RetroEngine {
         } else {                                             // SHORE + green oasis ground
           if (od > -1.5) { const k = smoothstep(-1.5, -0.05, od) * 0.6; col = mix3(col, W.wet, k); }          // wet green fringe (the beach's damp band, thin)
           else if (od > -5) { const k = smoothstep(-5, -1.5, od) * 0.24; col = mix3(col, [150, 178, 120], k); }  // lush green oasis GROUND (where the palms grow)
-          // the worn PATH network — a clearly-visible packed-earth track on dry ground (walking guides)
-          const pd = this.dPathDist(tx, ty);
-          if (od < -1.6 && pd < 1.7) {
-            const grain = (n - 0.5) * 16, worn = 1 - smoothstep(0.7, 1.7, pd);
-            col = mix3(col, [162, 132, 90 + grain], worn * 0.9);                        // defined worn earth (clearly darker than sand)
-            if (pd > 1.15 && pd < 1.55) col = mix3(col, [138, 110, 74], (1 - Math.abs(pd - 1.35) / 0.2) * 0.4);   // a darker packed EDGE line
-          }
+          // (paths are NOT painted procedurally — owner wants true SPRITE-based paths via the
+          // autotiler; DPATHS is kept only as clear walking LANES that scatter/flora avoid, until
+          // the sprite path tiles are calibrated.)
         }
       }
       // the MESA uses real sanctumpixel sandstone cliff SPRITES (placeMesa). Here we only paint the
