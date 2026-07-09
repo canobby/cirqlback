@@ -407,7 +407,7 @@ class TileLabEngine extends RetroEngine {
     const O = OASIS;
     // a duck on the water (north bay) + a pink flamingo wading at the shallow east edge
     this.addCritter(map, "duck", 32, 32, 0, 12, O.cx + 1, O.cy - 2, { water: true, wr: 1.4, sp: 6, bob: 1 });
-    this.addCritter(map, "flamingo", 32, 32, 0, 6, O.cx - 6, O.cy + 3, { wr: 0.5, sp: 3, bob: 1.4 });   // swan sheet, recoloured pink at load
+    this.addCritter(map, "flamingo", 32, 32, 0, 6, O.cx, O.cy, { water: true, wr: 0.9, sp: 3, bob: 0.8 });   // a water bird — floats in the MIDDLE of the pool (swan sheet, recoloured pink)
     // a couple of LONE butterflies (individuals, well apart — never a clump) + a single bee
     // butterfly.png is an 8×8 sheet: 2 cols = flap frames, 8 rows = colours. Draw ONE 8×8 butterfly
     // (fw:16 grabbed a 2×2 of four different-coloured ones), flapping via the 2-frame cycle.
@@ -1071,7 +1071,8 @@ class TileLabEngine extends RetroEngine {
           // MOVEMENT CLEARANCE (owner rule): a ground-mover only steps onto genuinely walkable ground —
           // never into water, off the ring, or through a solid (building/cliff/prop). Blocked → retarget.
           // NPCs additionally won't drift BEHIND a tall building (depth/occlusion) — they'd vanish.
-          const ok = c.water ? this.pondField(nx / T, ny / T) > 0.5
+          const ok = c.water
+            ? (this.biome === "desert" ? this.oasisField(nx / T, ny / T) > 0.3 : this.pondField(nx / T, ny / T) > 0.5)   // stay on the ring's actual pool
             : (this.landField(nx / T, ny / T) > 2.5 && !this.blocked(nx, ny, 4) && (!c.dir || !this.occludedByTall(this.map, nx, ny)));
           if (ok) { mvx = nx - c.gx; c.gx = nx; c.gy = ny; moved = true; if (!c.dir && Math.abs(dx) > 4) c.p.flip = dx < 0; } else c.nt = 0;
         }
