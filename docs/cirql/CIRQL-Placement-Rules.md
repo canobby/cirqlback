@@ -142,6 +142,19 @@ The #1 reason a map feels "lifeless / dull / bare" (even a well-structured one) 
 - **Landmarks create "gravity."** A tall bright focal (a great glowing mushroom, a lighthouse) pulls the player toward it; place them so the player naturally orbits between anchors.
 - **The triangle rule** — arrange your 3 big anchors so sightlines form triangles; the player always sees the next point of interest, never a dead flat expanse.
 
+## 5e. Water features — juice the pond (never leave it bare)
+
+A focal pond should be *lush*, not a flat puddle (researched pond design):
+- **Lush shore ring** — cattails/reeds + tall water-grass + **encircling smooth stones** around the whole bank.
+- **Lily pads afloat** (some with a flower) + the odd rock breaking the surface.
+- **Life** — a duck swimming, a frog on the bank, fish shadows gliding *under* the surface, dragonflies/fireflies darting above.
+- **Animated surface** — concentric ripple rings + sun-sparkle glints; deep-teal water with warm highlights.
+- **Palette** — deep teal water + sage-green reeds + a warm accent; keep it cohesive with the biome.
+
+## 5f. Keep objects WELL inside the ring
+
+Nothing sits near the shoreline. Every placement gate uses a generous **edgepoint margin (~4+ tiles)** so props/NPCs/detail read as *on the land*, not teetering on the coast. No "rim band" of props hugging the beach. (Water-edge exceptions like a dock are deliberate.)
+
 ## 6. Believability & story
 
 **DO**
