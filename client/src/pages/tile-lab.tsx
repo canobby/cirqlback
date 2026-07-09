@@ -4,7 +4,8 @@ import { ArrowLeft } from "lucide-react";
 import { RetroEngine, type RetroHooks } from "@/game/retro-engine";
 import {
   cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
-  type Atlas, type Camera, type Drawable,
+  DEFAULT_TERRAIN, BLOB_3x5,
+  type Atlas, type Camera, type Drawable, type TerrainConfig,
 } from "@/game/tile";
 
 // TILE LAB — P1 vertical slice: Cloverfield, one hand-authored meadow island.
@@ -26,6 +27,10 @@ const POND = { x: 35, y: 40 };   // the river's terminus — an INLAND pond (nev
 const POND_R = 3;
 const EDGE = 3.4;                // the "edgepoint": nothing is placed within this many tiles of the shore
 
+// A natural, medium, non-circular pond — drawn with the Cute Fantasy pack's own
+// grass-bordered water tiles (water_blob + water_middle), kept well inside the ring.
+const SPOND = { cx: 30, cy: 33, rx: 5, ry: 3.9 };
+
 // A ring's biome = a palette recolor + a different prop kit + optional inland water.
 // Proves the locked rules generalise: same procedural beach + edgepoint margins +
 // water-inside-the-ring, just a new coat of Cute-Fantasy (here the ShroomLands DLC).
@@ -33,17 +38,13 @@ type Biome = "meadow" | "shroom";
 interface BiomePalette {
   glite: number[]; gdark: number[];   // meadow grass shading (raised / shadowed)
   grassOpaque: boolean;               // paint the ground fully (recolour the biome) vs. a subtle overlay
-  water: boolean;                     // a fountain→inland pond rivulet (procedural, never the coast)
-  wDeep: number[]; wShal: number[]; wFoam: number[];   // inland water bands
 }
 const PALETTES: Record<Biome, BiomePalette> = {
   // the loved meadow — unchanged (subtle green shading over the grass tile, no inland water)
-  meadow: { glite: [150, 202, 98], gdark: [44, 94, 46], grassOpaque: false, water: false,
-            wDeep: [26, 86, 132], wShal: [118, 200, 228], wFoam: [212, 234, 240] },
-  // The Shroomwood — a twilight fungal grove: dusky teal moss floor, a glowing pool,
-  // the neon violet/cyan lives in the LIGHT layer (crisp per-object glow, not full-frame).
-  shroom: { glite: [104, 150, 118], gdark: [42, 74, 78], grassOpaque: true, water: true,
-            wDeep: [30, 96, 128], wShal: [120, 214, 216], wFoam: [206, 246, 250] },
+  meadow: { glite: [150, 202, 98], gdark: [44, 94, 46], grassOpaque: false },
+  // The Shroomwood — a twilight fungal grove: dusky teal moss floor. No fountain
+  // (town-only); a natural pack-tiled pond is its water. Neon lives in the LIGHT layer.
+  shroom: { glite: [104, 150, 118], gdark: [42, 74, 78], grassOpaque: true },
 };
 
 // deterministic RNG so the island is stable across reloads
@@ -70,6 +71,7 @@ class TileLabEngine extends RetroEngine {
   private logo: HTMLCanvasElement | null = null;    // CIRQLBACK mark, cream keyed to transparent
   private blank = false;                            // CIRQLSPACE (home ring): blank buildable canvas
   private biome: Biome = "meadow";
+  private hasFountain = true;                        // the CIRQL fountain lives in the TOWN only
   private bpal: BiomePalette = PALETTES.meadow;
   private glowSpots: { x: number; y: number; color: string; r: number }[] = [];   // per-object neon glow (mushrooms)
   private rx = RX; private ry = RY;                 // ring radii — CIRQLSPACE starts ~2/3, expands later
@@ -79,13 +81,18 @@ class TileLabEngine extends RetroEngine {
     super(canvas, hooks, 320, 200);
     this.blank = blank;
     this.biome = biome;
+    this.hasFountain = biome !== "shroom";   // wild rings have no fountain — that's the town's
     this.bpal = PALETTES[biome];
     if (blank) { this.rx = RX * 0.66; this.ry = RY * 0.66; }   // start small; land-growth expands it later
     this.fit = true; this.fitPx = 3;
     this.crt = false;
     this.resize();
     this.buildIsland();
-    this.ren = new TileRenderer(this.atlas);
+    // shroom's pond renders as real pack water tiles (grass-bordered blob autotiler)
+    const terr: TerrainConfig | undefined = biome === "shroom"
+      ? { ...DEFAULT_TERRAIN, water: { blob: { sheet: "water_blob", layout: BLOB_3x5 } } }
+      : undefined;
+    this.ren = new TileRenderer(this.atlas, terr);
     this.atlas.loadAll().then(() => { this.buildLogo(); this.loaded = true; }).catch((e) => console.error(e));
     this.start();
   }
@@ -109,9 +116,12 @@ class TileLabEngine extends RetroEngine {
     // 1) the grass ring
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) if (this.land(tx, ty)) map.set(tx, ty, "grass");
 
-    // 2) the CIRQL fountain — dead centre of every ring; block its base (drawn specially in render)
-    for (const [dx, dy] of [[0, 0], [-1, 0], [1, 0], [0, -1]] as [number, number][]) map.setSolid(WELL.x + dx, WELL.y + dy, true);
-    this.labels = [{ x: WELL.x * T + T / 2, y: (WELL.y + 2) * T, text: "The CIRQL Fountain" }];
+    // 2) the CIRQL fountain — TOWN-only; wild/biome rings have their own water instead
+    this.labels = [];
+    if (this.hasFountain) {
+      for (const [dx, dy] of [[0, 0], [-1, 0], [1, 0], [0, -1]] as [number, number][]) map.setSolid(WELL.x + dx, WELL.y + dy, true);
+      this.labels.push({ x: WELL.x * T + T / 2, y: (WELL.y + 2) * T, text: "The CIRQL Fountain" });
+    }
 
     // CIRQLSPACE (the personal home ring) is BLANK — just the ring, the beach, and your
     // own centre fountain, a canvas to build on. Everything else is the populated meadow ring.
@@ -163,13 +173,14 @@ class TileLabEngine extends RetroEngine {
   // ---------- The Shroomwood (biome ring) ----------
   /** A twilight fungal grove: glowing pool, giant mushrooms, shroom-cap village, round critters. */
   private buildShroomwood(map: TileMap) {
-    // 1) the fountain→inland pond rivulet (the rule's canonical "water inside the ring").
-    //    Tiles are marked "water" (solid; renders nothing — the procedural coast paints the glow).
+    // 1) a natural, medium POND — real Cute Fantasy water tiles (grass-bordered water_blob
+    //    autotiler), kept well inside the ring (never the coast). Paint FIRST so nothing
+    //    else spawns in it. Solid for collision; the blob autotiler draws its own banks.
     map.solidTerrain.add("water");
-    for (let ty = WELL.y; ty <= POND.y + POND_R; ty++)
-      for (let tx = POND.x - POND_R - 2; tx <= POND.x + POND_R + 2; tx++)
-        if (map.get(tx, ty) === "grass" && this.riverField(tx + 0.5, ty + 0.5) > 0.35) { map.set(tx, ty, "water"); map.setSolid(tx, ty, true); }
-    this.labels.push({ x: POND.x * T, y: (POND.y + POND_R + 1) * T, text: "Glimmer Pool" });
+    for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++)
+      if (map.get(tx, ty) === "grass" && this.pondField(tx + 0.5, ty + 0.5) > 0) { map.set(tx, ty, "water"); map.setSolid(tx, ty, true); }
+    this.placePondDecor(map);
+    this.labels.push({ x: SPOND.cx * T, y: (SPOND.cy + SPOND.ry + 1.6) * T, text: "Mistmere" });
 
     // 2) Shroom Hollow — a spread-out hamlet of mushroom houses (NW of the fountain, in the open)
     const house = (sheet: string, w: number, h: number, tx: number, ty: number, sc = 1) =>
@@ -200,13 +211,34 @@ class TileLabEngine extends RetroEngine {
     const snail = (tx: number, ty: number) => map.addProp({ sheet: "snail", fw: 16, fh: 16, col: 0, row: 0, x: tx * T, y: ty * T });
     for (const [tx, ty] of [[36, 30], [30, 38], [45, 30]] as [number, number][]) snail(tx, ty);
 
-    // 6) two villagers, out in open clearings (never under a cap or house)
-    map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 32 * T, y: 29 * T, solidR: 6 });
-    map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 40 * T, y: 40 * T, solidR: 6 });
+    // 6) two villagers, out in open clearings (Mycel in the meadow, Spora by the pond bank)
+    map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 38 * T, y: 27 * T, solidR: 6 });
+    map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 35 * T, y: 35 * T, solidR: 6 });
     this.labels.push(
-      { x: 32 * T, y: 29 * T - 30, text: "Mycel" },
-      { x: 40 * T, y: 40 * T - 30, text: "Spora" },
+      { x: 38 * T, y: 27 * T - 30, text: "Mycel" },
+      { x: 35 * T, y: 35 * T - 30, text: "Spora" },
     );
+  }
+
+  /** A natural (non-circular) pond outline: >0 inside. Gentle lobes, medium size. */
+  private pondField(tx: number, ty: number): number {
+    const dx = (tx - SPOND.cx) / SPOND.rx, dy = (ty - SPOND.cy) / SPOND.ry;
+    const ang = Math.atan2(ty - SPOND.cy, tx - SPOND.cx);
+    const R = 1 + 0.1 * Math.sin(ang * 3 + 0.6) + 0.07 * Math.sin(ang * 2 - 1.1);   // soft bays, not a disc (gentle → clean banks)
+    return R - (dx * dx + dy * dy);
+  }
+
+  /** Cattails / lily pads / water rocks clumped naturally around the pond (pack water-edge decor). */
+  private placePondDecor(map: TileMap) {
+    const rnd = rng(313);
+    for (let ty = SPOND.cy - SPOND.ry - 2; ty <= SPOND.cy + SPOND.ry + 2; ty++)
+      for (let tx = SPOND.cx - SPOND.rx - 2; tx <= SPOND.cx + SPOND.rx + 2; tx++) {
+        const f = this.pondField(tx + 0.5, ty + 0.5);
+        if (f > -1.1 && f < -0.15 && map.get(tx, ty) === "grass" && rnd() < 0.4)   // a grassy bank tile
+          map.addProp({ sheet: rnd() < 0.55 ? "cattail" : "watergrass", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });
+        else if (f > 0.25 && map.get(tx, ty) === "water" && rnd() < 0.14)          // a lily pad on the water
+          map.addProp({ sheet: rnd() < 0.5 ? "lilypad1" : "lilypad2", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });
+      }
   }
 
   /** One giant mushroom (top-row cap @32×48), depth-sorted, casting a crisp neon glow. */
@@ -316,16 +348,8 @@ class TileLabEngine extends RetroEngine {
       else if (g > -0.9) { col = mix3(FOAM, SHAL, smoothstep(-0.18, -0.9, g)); const r = (n - 0.5) * 16; col = [col[0] + r, col[1] + r, col[2] + r * 0.7]; }
       else if (g > -3.2) { col = mix3(SHAL, DEEP, smoothstep(-0.9, -3.2, g)); const wave = Math.sin(g * 2.6 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8; col = [col[0] + wave, col[1] + wave, col[2] + wave]; }
       else { col = DEEP; }
-      // an inland glowing pool — the fountain→pond rivulet (never touches the coast)
-      if (pal.water && g > 0.2) {
-        const rf = this.riverField(tx, ty);
-        if (rf > -0.35) {
-          if (rf > 1.1) { const wv = Math.sin(rf * 2.6 + tx * 0.5 + ty * 0.4) * 8 + (n - 0.5) * 8; col = pal.wDeep.map((c) => c + wv); }
-          else if (rf > 0.25) { const b = mix3(pal.wFoam, pal.wShal, smoothstep(-0.1, 1.1, rf)); const r = (n - 0.5) * 14; col = [b[0] + r, b[1] + r, b[2] + r * 0.7]; }
-          else col = pal.wFoam;
-          a = 255;
-        }
-      }
+      // let the pack-tiled pond show through untouched: paint nothing over "water" tiles
+      if (g > 0.2 && this.map.get(Math.floor(tx), Math.floor(ty)) === "water") a = 0;
       const i = (py * cw + px) * 4;
       d[i] = clamp255(col[0]); d[i + 1] = clamp255(col[1]); d[i + 2] = clamp255(col[2]); d[i + 3] = a;
     }
@@ -499,18 +523,21 @@ class TileLabEngine extends RetroEngine {
     this.ren.drawOverlay(b, this.map, this.cam);
     const [psx, psy] = this.ren.w2s(this.cam, this.player.x, this.player.y);
     const playerItem: Drawable = { y: this.player.y, render: (c) => this.player.draw(c, this.atlas.get("player"), psx, psy, this.cam.scale) };
-    // the LOWER tiered fountain only (src rows 2-4 of the 32×80 sheet = y32,h48), feet-anchored
-    const ffeet = (WELL.y + 1) * T;
-    const fountainItem: Drawable = {
-      y: ffeet,
-      render: (c) => {
-        const sh = this.atlas.get("fountain"), sc = this.cam.scale, dw = 32 * sc, dh = 48 * sc;
-        const [fsx, fsy] = this.ren.w2s(this.cam, WELL.x * T + T / 2, ffeet);
-        sh.draw(c, 0, 32, 32, 48, Math.round(fsx - dw / 2), Math.round(fsy - dh), Math.ceil(dw), Math.ceil(dh));
-      },
-    };
-    this.ren.drawEntities(b, this.map, this.cam, [playerItem, fountainItem]);
-    this.drawLogo(b);               // the spinning CIRQLBACK emblem over the wellspring
+    const extra: Drawable[] = [playerItem];
+    if (this.hasFountain) {
+      // the LOWER tiered fountain only (src rows 2-4 of the 32×80 sheet = y32,h48), feet-anchored
+      const ffeet = (WELL.y + 1) * T;
+      extra.push({
+        y: ffeet,
+        render: (c) => {
+          const sh = this.atlas.get("fountain"), sc = this.cam.scale, dw = 32 * sc, dh = 48 * sc;
+          const [fsx, fsy] = this.ren.w2s(this.cam, WELL.x * T + T / 2, ffeet);
+          sh.draw(c, 0, 32, 32, 48, Math.round(fsx - dw / 2), Math.round(fsy - dh), Math.ceil(dw), Math.ceil(dh));
+        },
+      });
+    }
+    this.ren.drawEntities(b, this.map, this.cam, extra);
+    if (this.hasFountain) this.drawLogo(b);   // the spinning CIRQLBACK emblem over the wellspring
     this.drawLight(b, this.cam);
   }
 
@@ -549,20 +576,23 @@ class TileLabEngine extends RetroEngine {
     if (this.reduce) return;
     c.save();
     c.globalCompositeOperation = "lighter";
-    // wellspring glow + rising motes
-    const [gx, gy] = this.ren.w2s(cam, WELL.x * T + T / 2, WELL.y * T + T / 2);
-    const rad = 40 * cam.scale, a = 0.26 + 0.12 * Math.sin(this.tsec * 2);
-    const g = c.createRadialGradient(gx, gy, 0, gx, gy, rad);
-    g.addColorStop(0, `rgba(160,235,255,${a})`); g.addColorStop(0.5, `rgba(120,200,255,${a * 0.4})`); g.addColorStop(1, "rgba(120,200,255,0)");
-    c.fillStyle = g; c.fillRect(gx - rad, gy - rad, rad * 2, rad * 2);
-    for (let i = 0; i < 12; i++) {
-      const ph = (this.tsec * 0.4 + i * 0.31) % 1;
-      const mx = gx + Math.sin(this.tsec + i) * 9 * cam.scale, my = gy - ph * 44 * cam.scale;
-      c.globalAlpha = (1 - ph) * 0.8; c.fillStyle = "#dffaff";
-      const s = Math.max(1, cam.scale); c.fillRect(mx, my, s, s);
+    // wellspring glow + rising motes — only where the fountain actually is (town / home)
+    if (this.hasFountain) {
+      const [gx, gy] = this.ren.w2s(cam, WELL.x * T + T / 2, WELL.y * T + T / 2);
+      const rad = 40 * cam.scale, a = 0.26 + 0.12 * Math.sin(this.tsec * 2);
+      const g = c.createRadialGradient(gx, gy, 0, gx, gy, rad);
+      g.addColorStop(0, `rgba(160,235,255,${a})`); g.addColorStop(0.5, `rgba(120,200,255,${a * 0.4})`); g.addColorStop(1, "rgba(120,200,255,0)");
+      c.fillStyle = g; c.fillRect(gx - rad, gy - rad, rad * 2, rad * 2);
+      for (let i = 0; i < 12; i++) {
+        const ph = (this.tsec * 0.4 + i * 0.31) % 1;
+        const mx = gx + Math.sin(this.tsec + i) * 9 * cam.scale, my = gy - ph * 44 * cam.scale;
+        c.globalAlpha = (1 - ph) * 0.8; c.fillStyle = "#dffaff";
+        const s = Math.max(1, cam.scale); c.fillRect(mx, my, s, s);
+      }
+      c.globalAlpha = 1;
     }
-    c.globalAlpha = 1;
-    // biome light: each giant mushroom breathes its own crisp neon halo, and the pool glows
+    // biome light: each giant mushroom breathes its own crisp neon halo (the pond is a plain
+    // pack-tiled pool — no glow, per owner's "use the Cute pack water" direction)
     if (this.biome === "shroom") {
       for (const gs of this.glowSpots) {
         const [mx, my] = this.ren.w2s(cam, gs.x, gs.y);
@@ -572,11 +602,6 @@ class TileLabEngine extends RetroEngine {
         mg.addColorStop(0, this.rgba(gs.color, pa)); mg.addColorStop(1, this.rgba(gs.color, 0));
         c.fillStyle = mg; c.fillRect(mx - rad, my - rad, rad * 2, rad * 2);
       }
-      const [px, py] = this.ren.w2s(cam, POND.x * T, POND.y * T);
-      const prad = 34 * cam.scale, ppa = 0.2 + 0.08 * Math.sin(this.tsec * 1.4);
-      const pg = c.createRadialGradient(px, py, 0, px, py, prad);
-      pg.addColorStop(0, `rgba(150,235,240,${ppa})`); pg.addColorStop(1, "rgba(120,210,230,0)");
-      c.fillStyle = pg; c.fillRect(px - prad, py - prad, prad * 2, prad * 2);
     }
     c.globalAlpha = 1;
     // fireflies / spores — crisp drifting light motes (no full-frame blur), biome-tinted
