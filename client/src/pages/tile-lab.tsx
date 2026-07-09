@@ -6,7 +6,7 @@ import OracleChat, { type Speaker } from "@/components/cirql/oracle-chat";
 import {
   cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
   DEFAULT_TERRAIN, registerPack, harmonizePack, validatePlacements,
-  blobTile, BLOB_3x5,
+  paintDualGrid, type DualMap,
   type Atlas, type Camera, type Drawable, type TerrainConfig, type Prop,
 } from "@/game/tile";
 
@@ -88,6 +88,15 @@ const DPATHS: [number, number][][] = [
 // PATH HIERARCHY (see [[cirqlback-paths-roads-expertise]]): the main caravan trade ROAD is wider;
 // the spurs are narrow FOOTPATHS. Half-width in tiles → the sprite path autotiles to this thickness.
 const DPATH_HALFW = [1.2, 0.72, 0.72];
+// The path is laid with the REAL sanctumpixel sand DUAL-GRID autotile (NO recolour) — its DARKER sand
+// tone (rows 0-3) as a packed trail with organic soft edges on the lighter sand ground. Corner-mask
+// (TL=1 TR=2 BR=4 BL=8) → [col,row] in ground_tile.png, mapped from the sheet's own quadrant fills.
+const DUAL_SAND: DualMap = {
+  0b0001: [4, 3], 0b0010: [0, 3], 0b0011: [4, 0], 0b0100: [1, 0],
+  0b0101: [4, 0], 0b0110: [0, 2], 0b0111: [1, 3], 0b1000: [3, 0],
+  0b1001: [4, 2], 0b1010: [4, 0], 0b1011: [3, 3], 0b1100: [2, 0],
+  0b1101: [4, 0], 0b1110: [1, 1], 0b1111: [4, 0],
+};
 // sanctumpixel desert props are single-image PNGs of varied size — dims hardcoded (props are
 // placed before the atlas finishes loading, so we can't read w/h off the atlas at build time).
 const SP_ROCK: Record<number, [number, number]> = { 1: [32, 64], 2: [32, 64], 3: [32, 64], 4: [48, 48], 5: [48, 48], 6: [32, 32], 7: [32, 32], 8: [32, 32], 9: [32, 32], 10: [48, 32], 11: [48, 32] };
@@ -208,8 +217,8 @@ class TileLabEngine extends RetroEngine {
       : biome === "desert"
         // the desert LAND is a real SPRITE sand floor (base + 3 varied tiles), laid across everything
         // but the water — only the lagoon/sea stay procedural. (Owner rule: sprite floor laid first.)
-        // The plaza "path" terrain uses the warm SANDSTONE recolour (not blue-grey cobble) to match.
-        ? { ...DEFAULT_TERRAIN, grass: { fill: "grass", variants: ["grass", "sand_v1", "sand_v3"], variantAt: (tx: number, ty: number) => this.sandRegion(tx, ty) }, path: { fill: "sandpath", cell: [1, 1] } }
+        // The plaza "path" terrain uses the DARKER sand tile (real asset) to match the packed sand path.
+        ? { ...DEFAULT_TERRAIN, grass: { fill: "grass", variants: ["grass", "sand_v1", "sand_v3"], variantAt: (tx: number, ty: number) => this.sandRegion(tx, ty) }, path: { fill: "sanddk" } }
         : undefined;
     this.ren = new TileRenderer(this.atlas, terr);
     // pull in the matching sanctumpixel biome pack (terrain/cliffs/nature) for the Dunes,
@@ -217,7 +226,7 @@ class TileLabEngine extends RetroEngine {
     if (biome === "desert") registerPack(this.atlas, "desert");
     this.atlas.loadAll().then(() => {
       this.buildLogo();
-      if (biome === "desert") { harmonizePack(this.atlas, "desert"); this.buildSandTexture(); this.buildFlamingo(); this.buildSandPath(); }
+      if (biome === "desert") { harmonizePack(this.atlas, "desert"); this.buildSandTexture(); this.buildFlamingo(); }
       else this.buildGrassTexture();
       this.loaded = true;
       // build-time safety check: warn if any placed land prop reads as a water sprite
@@ -632,27 +641,6 @@ class TileLabEngine extends RetroEngine {
     (this.atlas.get("flamingo") as unknown as { img: HTMLCanvasElement }).img = cv;
   }
 
-  /** TRUE sprite path (owner: no procedural/hybrid paint). The pack's cobble_blob is a 3×5 autotile
-   *  blob (rounded corners / straight edges / inner corners) with a baked earthy shoulder — perfect
-   *  edges, but blue-grey stone. Recolour it through a warm ramp → a packed SANDSTONE path that reads
-   *  as a worn desert road, and register as "sandpath". drawSandPaths autotiles DPATHS with it. */
-  private buildSandPath() {
-    const src = this.atlas.get("cobble_blob"); if (!src.img) return;
-    const w = src.w, h = src.h, cv = document.createElement("canvas"); cv.width = w; cv.height = h;
-    const cx = cv.getContext("2d", { willReadFrequently: true })!; cx.imageSmoothingEnabled = false;
-    cx.drawImage(src.img as any, 0, 0);
-    const id = cx.getImageData(0, 0, w, h), d = id.data;
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i + 3] === 0) continue;
-      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;                  // FLATTEN the cobble to a smooth packed-sand path (kill the grout
-      // lines that read as "defined cobble") in a tight range just BELOW the light floor tone (~[215,167,106])
-      // so it's a subtle worn trail of the same sand, blending into the dominant ground — no paved look.
-      d[i] = clamp255(lum * 0.16 + 170); d[i + 1] = clamp255(lum * 0.15 + 128); d[i + 2] = clamp255(lum * 0.12 + 76);
-    }
-    cx.putImageData(id, 0, 0);
-    if (!this.atlas.has("sandpath")) this.atlas.add("sandpath", "");
-    (this.atlas.get("sandpath") as unknown as { img: HTMLCanvasElement }).img = cv;
-  }
 
   /** True if tile (tx,ty) lies within a DPATHS lane, at that path's half-width (hierarchy: wide
    *  trade road, narrow footpath spurs). Excludes water so the path stops at the oasis edge. */
@@ -671,29 +659,23 @@ class TileLabEngine extends RetroEngine {
     return false;
   }
 
-  /** LAYER 3 of the ring pipeline — the PATHS. Autotile the DPATHS network with the sandstone sprite
-   *  (blobTile + BLOB_3x5) on top of the finished ground, clipped to the shore. A true sprite path:
-   *  rounded ends, clean edges, inner corners where lanes meet — never a painted colour blend. */
+  /** LAYER 3 of the ring pipeline — the PATHS. Lay the DPATHS network with the REAL sanctumpixel sand
+   *  DUAL-GRID autotile (NO recolour/filter): the darker sand tone as a packed trail with the sheet's
+   *  own organic soft edges on the lighter ground, clipped to the shore. Marching-squares: each display
+   *  cell's 4 corners give a 0-15 mask → the matching tile in ground_tile.png (DUAL_SAND). */
   private drawSandPaths(b: CanvasRenderingContext2D, cam: Camera) {
-    if (!this.atlas.has("sandpath")) return;
-    const sh = this.atlas.get("sandpath"); if (!sh.img) return;
+    const sh = this.atlas.get("sp_desert_ground"); if (!sh.img) return;
     b.imageSmoothingEnabled = false;
     const t = T, s = cam.scale, dsz = Math.ceil(t * s) + 1;
     const [wx0, wy0] = this.ren.s2w(cam, 0, 0), [wx1, wy1] = this.ren.s2w(cam, cam.vw, cam.vh);
-    const tx0 = Math.floor(wx0 / t) - 1, ty0 = Math.floor(wy0 / t) - 1;
-    const tx1 = Math.ceil(wx1 / t) + 1, ty1 = Math.ceil(wy1 / t) + 1;
-    const P = (x: number, y: number) => this.isSandPath(x, y);
+    const tx0 = Math.floor(wx0 / t) - 2, ty0 = Math.floor(wy0 / t) - 2;
+    const tx1 = Math.ceil(wx1 / t) + 2, ty1 = Math.ceil(wy1 / t) + 2;
+    const inR = (x: number, y: number) => this.isSandPath(x, y);
     b.save(); this.clipToShore(b);
-    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
-      if (!P(tx, ty)) continue;
-      const same = {
-        n: P(tx, ty - 1), s: P(tx, ty + 1), w: P(tx - 1, ty), e: P(tx + 1, ty),
-        ne: P(tx + 1, ty - 1), nw: P(tx - 1, ty - 1), se: P(tx + 1, ty + 1), sw: P(tx - 1, ty + 1),
-      };
-      const [c, r] = blobTile(BLOB_3x5, same);
-      const [sx, sy] = this.ren.w2s(cam, tx * t, ty * t);
-      sh.cell(b, 16, c, r, Math.round(sx), Math.round(sy), dsz, dsz);
-    }
+    paintDualGrid(inR, tx0, ty0, tx1, ty1, DUAL_SAND, (wx, wy, col, row) => {
+      const [sx, sy] = this.ren.w2s(cam, wx * t, wy * t);
+      sh.cell(b, 16, col, row, Math.round(sx), Math.round(sy), dsz, dsz);
+    });
     b.restore();
   }
 
@@ -1143,6 +1125,21 @@ class TileLabEngine extends RetroEngine {
   private nearBigProp(map: TileMap, wx: number, wy: number, d: number): boolean {
     const d2 = d * d;
     for (const p of map.props) if (p.solidR && p.solidR >= 5 && (wx - p.x) ** 2 + (wy - p.y) ** 2 < d2) return true;
+    return false;
+  }
+
+  /** Size-aware SPACING so scattered props read as distinct objects, never a merged blob (owner rule +
+   *  research): reject a spot whose centre is within a keep-clear radius of an already-placed prop. The
+   *  radius scales with the LARGER of the two footprints, so a small detail may still snuggle a big prop's
+   *  BASE (depth) but no two similar props overlap and nothing lands centred on another. `myR` = this
+   *  prop's footprint radius (px). Small ground-flecks (solidR 0) don't reserve space. */
+  private propTooClose(map: TileMap, wx: number, wy: number, myR: number): boolean {
+    for (const p of map.props) {
+      const pr = p.solidR ?? 0;
+      if (pr < 3) continue;                                   // tiny flecks (tufts/pebbles) don't block
+      const need = Math.max(myR, pr) + 3;                     // keep-clear = larger footprint + a small gap
+      if ((wx - p.x) ** 2 + (wy - p.y) ** 2 < need * need) return true;
+    }
     return false;
   }
 
