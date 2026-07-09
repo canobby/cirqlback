@@ -151,6 +151,12 @@ A focal pond should be *lush*, not a flat puddle (researched pond design):
 - **Animated surface** — concentric ripple rings + sun-sparkle glints; deep-teal water with warm highlights.
 - **Palette** — deep teal water + sage-green reeds + a warm accent; keep it cohesive with the biome.
 
+## 5e2. Water — palette, edges & rivers (2026-07-09)
+- **One WATER palette per ring** (deep / shallow / foam / wet-fringe) shared by ALL water on the ring (sea + oasis + rivers) so water reads as *one biome-appropriate water* (cohesion). Match the inland water to the ring's SEA where it makes sense (the desert oasis uses the sea's blue → reads as a piece of the same water).
+- **Give inland water the BEACH's edge** (deep → shallow → foam waterline → wet/green fringe), thinner — so a pond/oasis reads as *living* water, not a flat blue fill. (The plain-fill version reads as "empty of water in the environment.")
+- **Big/organic water stays PROCEDURAL** (Path A) — it's the canvas for the depth engine's reflections/shimmer, which tiles can't do. Tiled water is only for tiny incidental water (a well, a trough).
+- **▶ RIVERS & STREAMS (planned, owner 2026-07-09):** we WILL use **sprites** for cool flowing-water features (streams/rivers/waterfalls) — make their rules when we build them, including **border rules** like the lagoon's (nothing overhangs the water; only reeds/edge-plants hug it; keep the edgepoint). A river is a leading line + a border to respect, same as a shore.
+
 ## 5f. Keep objects WELL inside the ring
 
 Nothing sits near the shoreline. Every placement gate uses a generous **edgepoint margin (~4+ tiles)** so props/NPCs/detail read as *on the land*, not teetering on the coast. No "rim band" of props hugging the beach. (Water-edge exceptions like a dock are deliberate.)

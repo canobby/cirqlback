@@ -70,10 +70,19 @@ const DNPC: Record<string, [number, number]> = {
   kesh: [OASIS.cx - 9, OASIS.cy],                  // camel-herder — WEST side of the lagoon, on dry sand
   tamm: [DCAMP.x + 3, DCAMP.y],                    // wayfarer — beside the campfire seat-ring, fire left clear
 };
-// camels graze in the OPEN by the lagoon (visible, not hidden behind trees); near the herder.
-const DCAMEL: [number, number][] = [[OASIS.cx - 7, OASIS.cy + 3], [OASIS.cx + 4, OASIS.cy - 5]];
+// camels graze in the OPEN by the lagoon (visible, not hidden behind trees); the west one sits
+// well SOUTH of Kesh so it never blocks the view of him.
+const DCAMEL: [number, number][] = [[OASIS.cx - 6, OASIS.cy + 6], [OASIS.cx + 4, OASIS.cy - 5]];
 // tiles kept CLEAR of scatter/flora so the NPCs, camels + the flamingo read (functional clearance).
 const DRESERVED: [number, number][] = [DNPC.sahra, DNPC.kesh, DNPC.tamm, ...DCAMEL, [OASIS.cx - 6, OASIS.cy + 3]];
+// A worn PATH network — the ring's walking guides, connecting the anchors the way people move
+// (dock → the trade road east of the oasis → mesa base, a spur to the camp, and plaza → the oasis
+// west bank). Routed to skip the water. Painted as packed sand; scatter/flora keep off it.
+const DPATHS: [number, number][][] = [
+  [[34, 45], [35, 39], [37, 34], [40, 30], [44, 26], [49, 24]],   // dock → trade road (east of the oasis) → mesa base
+  [[37, 34], [35, 38], [36, 41]],                                  // spur → the campfire commons
+  [[22, 20], [21, 25], [20, 30], [20, 33]],                       // plaza → the oasis west bank (to Kesh + the herd)
+];
 // sanctumpixel desert props are single-image PNGs of varied size — dims hardcoded (props are
 // placed before the atlas finishes loading, so we can't read w/h off the atlas at build time).
 const SP_ROCK: Record<number, [number, number]> = { 1: [32, 64], 2: [32, 64], 3: [32, 64], 4: [48, 48], 5: [48, 48], 6: [32, 32], 7: [32, 32], 8: [32, 32], 9: [32, 32], 10: [48, 32], 11: [48, 32] };
@@ -93,6 +102,9 @@ interface Interactable { x: number; y: number; r: number; speaker: Speaker }
 interface BiomePalette {
   glite: number[]; gdark: number[];   // meadow grass shading (raised / shadowed)
   grassOpaque: boolean;               // paint the ground fully (recolour the biome) vs. a subtle overlay
+  // per-ring WATER palette — ALL water on the ring (sea + inland) shares this, so it reads as one
+  // biome-appropriate water (deep centre → shallow → foam waterline → damp/wet edge).
+  water?: { deep: number[]; shal: number[]; foam: number[]; wet: number[] };
 }
 const PALETTES: Record<Biome, BiomePalette> = {
   // the loved meadow — unchanged (subtle green shading over the grass tile, no inland water)
@@ -104,7 +116,12 @@ const PALETTES: Record<Biome, BiomePalette> = {
   // The Dunes — a desert oasis ring (TMW Tulimshar reference). Warm pale sand → ochre dune
   // shade, flowed as soft tonal contours over a SAND ground tile (buildSandTexture). No
   // fountain (wild ring). The oasis is bright procedural blue water inside the ring.
-  desert: { glite: [232, 210, 156], gdark: [196, 165, 112], grassOpaque: false },
+  // Water matches the SEA that rings the island, so the oasis reads as a piece of the same water
+  // (cohesion), and gets the beach's foam→shallow→deep edge (thinner) so it reads as living water.
+  desert: {
+    glite: [232, 210, 156], gdark: [196, 165, 112], grassOpaque: false,
+    water: { deep: [26, 86, 132], shal: [118, 200, 228], foam: [212, 234, 240], wet: [150, 178, 120] },
+  },
 };
 
 // deterministic RNG so the island is stable across reloads
@@ -383,10 +400,10 @@ class TileLabEngine extends RetroEngine {
     // a duck on the water (north bay) + a pink flamingo wading at the shallow east edge
     this.addCritter(map, "duck", 32, 32, 0, 12, O.cx + 1, O.cy - 2, { water: true, wr: 1.4, sp: 6, bob: 1 });
     this.addCritter(map, "flamingo", 32, 32, 0, 6, O.cx - 6, O.cy + 3, { wr: 0.5, sp: 3, bob: 1.4 });   // swan sheet, recoloured pink at load
-    // butterflies fluttering over the halo + a bee (whole standalone critters)
-    for (const [dx, dy, f] of [[-8, -2, 0], [5, -4, 2], [-3, 5, 1]] as [number, number, number][])
-      this.addCritter(map, "butterfly", 16, 16, 0, f, O.cx + dx, O.cy + dy, { frames: 1, fps: 8, wr: 1.6, sp: 8, bob: 1.8 });   // vertical sheet → static frame, wanders via bob
-    this.addCritter(map, "bee", 32, 32, 0, 0, O.cx + 7, O.cy - 3, { frames: 2, fps: 8, wr: 1.4, sp: 7, bob: 1.2 });
+    // a couple of LONE butterflies (individuals, well apart — never a clump) + a single bee
+    this.addCritter(map, "butterfly", 16, 16, 0, 0, O.cx + 9, O.cy + 2, { frames: 1, wr: 2, sp: 8, bob: 2 });   // one at the east palms
+    this.addCritter(map, "butterfly", 16, 16, 0, 2, O.cx - 4, O.cy + 8, { frames: 1, wr: 2, sp: 8, bob: 2 });   // one off south, on its own
+    this.addCritter(map, "bee", 32, 32, 0, 0, O.cx + 6, O.cy - 4, { frames: 2, fps: 8, wr: 1.4, sp: 7, bob: 1.2 });
     // a couple of extra palm clumps set around the lagoon (varied spots — asymmetric, not the even halo)
     const palm = (tx: number, ty: number, sc: number) => { if (this.dCanPlace(map, tx, ty, 3.5, 3) && this.oasisClear(tx, ty, 2.8)) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: tx * T + T / 2, y: ty * T + T, scale: 0.85 + rnd() * 0.3, overhead: true, solidR: 5 }); };
     for (const [cx, cy] of [[O.cx - 8, O.cy - 4], [O.cx + 8, O.cy + 2], [O.cx + 2, O.cy - 7]] as [number, number][])
@@ -415,6 +432,17 @@ class TileLabEngine extends RetroEngine {
     }
     return best;
   }
+  /** Distance (tiles) to the nearest PATH segment across the whole DPATHS network (the walking guides). */
+  private dPathDist(px: number, py: number): number {
+    let best = 99;
+    for (const path of DPATHS) for (let i = 0; i < path.length - 1; i++) {
+      const [ax, ay] = path[i], [bx, by] = path[i + 1];
+      const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+      let t = L ? ((px - ax) * dx + (py - ay) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
+      best = Math.min(best, Math.hypot(px - (ax + dx * t), py - (ay + dy * t)));
+    }
+    return best;
+  }
   private inHamlet(tx: number, ty: number): boolean { return tx >= HAMLET.x - 5 && tx <= HAMLET.x + 8 && ty >= HAMLET.y - 4 && ty <= HAMLET.y + 8; }
   private inMesa(tx: number, ty: number): boolean { return tx >= MESA.x0 - 1 && tx <= MESA.x1 + 1 && ty >= MESA.y0 - 1 && ty <= MESA.y1 + MESA.faceH + 1; }
   /** Near a reserved spot (an NPC / camel / flamingo) — kept clear of scatter so they read. */
@@ -426,7 +454,7 @@ class TileLabEngine extends RetroEngine {
   private dCanPlace(map: TileMap, tx: number, ty: number, edge = 4, oM = 2.8): boolean {
     return map.get(tx, ty) === "grass" && this.insideEdge(tx, ty, edge) && this.oasisClear(tx, ty, oM)
       && !this.inHamlet(tx, ty) && !this.inMesa(tx, ty) && !this.nearReserved(tx, ty)
-      && this.dLaneDist(tx + 0.5, ty + 0.5) > 1.6
+      && this.dPathDist(tx + 0.5, ty + 0.5) > 1.7
       && Math.hypot(tx - DCAMP.x, ty - DCAMP.y) > 3;
   }
   private dCluster(map: TileMap, rnd: () => number, cx: number, cy: number, spread: number, n: number, place: (tx: number, ty: number) => void) {
@@ -1148,20 +1176,23 @@ class TileLabEngine extends RetroEngine {
           if (ld < 1.7) { const grain = (n - 0.5) * 16, worn = 1 - smoothstep(0.5, 1.7, ld); col = mix3(col, [PATHC[0] + grain, PATHC[1] + grain, PATHC[2] + grain], worn * 0.82); }
         }
       }
-      // the OASIS — bright tropical blue water painted into the sand (Path A), + a worn sand track
+      // the OASIS — same water as the SEA (biome palette) with the BEACH's edge (deep → shallow →
+      // foam waterline → wet green fringe), thinner; plus a green oasis GROUND and the path network.
       if (this.biome === "desert" && g > 0.3) {
-        const ODEEP = [26, 104, 150], OSHAL = [92, 190, 214], OWL = [198, 236, 236];
+        const W = pal.water!;
         const od = this.oasisField(tx, ty) * ((OASIS.rx + OASIS.ry) / 2);   // ~tiles inside the oasis
-        if (od > -0.22) {
-          if (od > 1.2) { const wv = Math.sin(od * 2.2 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8; col = [ODEEP[0] + wv, ODEEP[1] + wv, ODEEP[2] + wv]; }
-          else if (od > 0.28) { const b = mix3(OWL, OSHAL, smoothstep(-0.1, 1.2, od)); const r = (n - 0.5) * 12; col = [b[0] + r, b[1] + r, b[2] + r * 0.7]; }
-          else col = OWL;                                    // bright waterline rim
+        if (od > -0.12) {                                    // WATER
+          if (od > 1.4) { const wv = Math.sin(od * 2.4 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8; col = [W.deep[0] + wv, W.deep[1] + wv, W.deep[2] + wv]; }   // deep
+          else if (od > 0.35) { const b = mix3(W.foam, W.shal, smoothstep(-0.12, 1.4, od)); const r = (n - 0.5) * 14; col = [b[0] + r, b[1] + r, b[2] + r * 0.7]; }   // grainy shallows
+          else col = W.foam;                                 // bright foam waterline
           a = 255;
-        } else if (od > -2.4) {                              // a damp green fringe easing into the sand (the halo's foot)
-          const k = smoothstep(-2.4, -0.2, od) * 0.4; col = mix3(col, [150, 178, 120], k);
+        } else {                                             // SHORE + green oasis ground
+          if (od > -1.5) { const k = smoothstep(-1.5, -0.05, od) * 0.6; col = mix3(col, W.wet, k); }          // wet green fringe (the beach's damp band, thin)
+          else if (od > -5) { const k = smoothstep(-5, -1.5, od) * 0.24; col = mix3(col, [150, 178, 120], k); }  // lush green oasis GROUND (where the palms grow)
+          // the worn PATH network — packed sand, only on dry ground (the walking guides)
+          const pd = this.dPathDist(tx, ty);
+          if (od < -1.6 && pd < 1.3) { const grain = (n - 0.5) * 14, worn = 1 - smoothstep(0.4, 1.3, pd); col = mix3(col, [182, 154, 106 + grain], worn * 0.5); }
         }
-        const ld = this.dLaneDist(tx, ty);                   // worn sand track: plaza → oasis
-        if (od < -0.5 && ld < 1.6) { const grain = (n - 0.5) * 14, worn = 1 - smoothstep(0.5, 1.6, ld); col = mix3(col, [180, 152, 104 + grain], worn * 0.55); }
       }
       // the MESA uses real sanctumpixel sandstone cliff SPRITES (placeMesa). Here we only paint the
       // ground read: a LIT raised top surface (so it reads as a shelf above the sand) + a short soft
