@@ -148,6 +148,11 @@ class TileLabEngine extends RetroEngine {
   private caveGem: { x: number; y: number } | null = null;    // the glowing focal gem (world px)
   private fadeT = 0;                                 // quick black fade on a level transition
   private portalArmed = true;                        // must step clear of a portal before it fires again (no ping-pong)
+  // directional sun shadows (depth engine, slice 1): the sun sits upper-left, so ground shadows
+  // rake down-&-right; longer for taller objects. Tunable live via window.__tilelab.eng.setSun().
+  private sunDir = { x: 0.4, y: 0.92 };
+  private sunLen = 0.5;
+  setSun(dx: number, dy: number, len: number) { const m = Math.hypot(dx, dy) || 1; this.sunDir = { x: dx / m, y: dy / m }; this.sunLen = len; }
   /** Fired when the nearest talkable target changes (null = none in reach). Page shows a Talk prompt. */
   public onProximity: ((s: Speaker | null) => void) | null = null;
   /** Fired when the player chooses to talk (E / Space, or the Talk button). Page opens the chat. */
@@ -603,16 +608,37 @@ class TileLabEngine extends RetroEngine {
 
   /** Universal grounding: a soft drop-shadow under the player + every solid prop — the single
    *  biggest "fake-3D" win (grounds objects, adds depth). Drawn on the ground, under the sprites. */
-  private drawShadows(c: CanvasRenderingContext2D, cam: Camera) {
+  private drawShadows(c: CanvasRenderingContext2D, cam: Camera, directional = true) {
     c.save();
-    const shadow = (wx: number, wy: number, r: number) => {
-      const [sx, sy] = this.ren.w2s(cam, wx, wy);
-      if (sx < -40 || sy < -40 || sx > cam.vw + 40 || sy > cam.vh + 40) return;
-      c.fillStyle = "rgba(24,22,34,0.22)";
-      c.beginPath(); c.ellipse(sx, sy - cam.scale, r * cam.scale, r * 0.4 * cam.scale, 0, 0, Math.PI * 2); c.fill();
+    const sun = this.sunDir, ang = Math.atan2(sun.y, sun.x);
+    // draw a ground shadow for one object: a round contact blob for short/round things (and in
+    // the cave), or a DIRECTIONAL shadow raking away from the sun with length ∝ the object's
+    // height — the first slice of the "Living Light & Height" depth engine. See the depth memory.
+    const drop = (wx: number, wy: number, baseW: number, height: number) => {
+      const [sx, sy] = this.ren.w2s(cam, wx, wy), s = cam.scale;
+      if (sx < -80 || sy < -80 || sx > cam.vw + 80 || sy > cam.vh + 80) return;
+      if (!directional || height < 7) {
+        c.fillStyle = "rgba(20,18,28,0.22)";
+        c.beginPath(); c.ellipse(sx, sy - s, baseW * s, baseW * 0.42 * s, 0, 0, Math.PI * 2); c.fill();
+        return;
+      }
+      const len = (baseW * 1.1 + height * this.sunLen);                  // taller → longer
+      c.save();
+      c.translate(sx + sun.x * len * 0.5 * s, sy + sun.y * len * 0.5 * s - s);
+      c.rotate(ang);
+      const g = c.createLinearGradient(-len * 0.5 * s, 0, len * 0.5 * s, 0);
+      g.addColorStop(0, "rgba(18,16,26,0.3)"); g.addColorStop(1, "rgba(18,16,26,0)");   // fades to the tip
+      c.fillStyle = g;
+      c.beginPath(); c.ellipse(0, 0, len * 0.5 * s, baseW * 0.85 * s, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
     };
-    for (const p of this.map.props) if (p.solidR && p.solidR >= 4) shadow(p.x, p.y, Math.min(p.solidR * 1.25, 20));
-    shadow(this.player.x, this.player.y, 6);
+    for (const p of this.map.props) {
+      if (!p.solidR || p.solidR < 4) continue;
+      const sc = (p as any).scale ?? 1;
+      const baseW = Math.min(p.fw * sc * 0.28, 22), height = (p.overhead ? p.fh * sc : p.fh * sc * 0.5);
+      drop(p.x, p.y, baseW, height);
+    }
+    drop(this.player.x, this.player.y, 6, 15);
     c.restore();
   }
 
@@ -685,7 +711,7 @@ class TileLabEngine extends RetroEngine {
     // props + player, depth-sorted
     const [psx, psy] = this.ren.w2s(cam, this.player.x, this.player.y);
     const playerItem: Drawable = { y: this.player.y, render: (c) => this.player.draw(c, this.atlas.get("player"), psx, psy, cam.scale) };
-    this.drawShadows(b, cam);
+    this.drawShadows(b, cam, false);   // cave = simple contact shadows (lantern-lit, no sun)
     this.ren.drawEntities(b, this.map, cam, [playerItem]);
     this.drawCaveLight(b, cam);
   }
