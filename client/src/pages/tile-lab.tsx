@@ -36,6 +36,7 @@ const PLAZA = { x: 22, y: 17 };                                   // the village
 const GROVE = { x: 48, y: 31 };                                  // the grove core (dense here, thinning out)
 const LANE: [number, number][] = [[22, 19], [24, 22], [26, 25], [24, 27], [26, 29]];   // plaza → pond footpath (gently winding)
 const SFIELD = { x0: 30, y0: 11, x1: 37, y1: 16 };               // the mushroom farm — tilled rows + fence
+const COMMONS = { x: 18, y: 37 };                                // the fungal bonfire commons (gathering spot)
 // fine ground-detail cells from the outdoor_decor sheet (grass tufts / small flowers / pebbles / a bush)
 const TUFTS: [number, number][] = [[6, 2], [6, 3], [7, 3], [8, 3], [6, 8], [7, 8]];
 const DFLOWERS: [number, number][] = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [0, 1], [1, 1], [2, 1], [3, 2], [4, 2]];
@@ -203,6 +204,7 @@ class TileLabEngine extends RetroEngine {
     this.placeFarm(map);
     this.placeGrove(map);
     this.placeMeadow(map);
+    this.placeCommons(map);    // the fungal bonfire gathering spot (a clearing)
     this.scatterDetail(map);   // dense clustered ground cover everywhere the player walks (kept well inside the ring)
 
     // LIFE — villagers placed where their work is (keeper at the plaza, fisher at the pond,
@@ -253,7 +255,7 @@ class TileLabEngine extends RetroEngine {
     // differing sizes; only a rare purple accent — no blue (keeps the ring from being a colour soup).
     const cap = (): [string, string] => rnd() < 0.86 ? ["shroom_red", "#ff9a86"] : ["shroom_purple", "#c88bff"];
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
-      if (!this.canPlace(map, tx, ty, 5, 2.0)) continue;
+      if (!this.canPlace(map, tx, ty, 5, 2.8)) continue;
       const dens = 1 - smoothstep(2, 15, Math.hypot(tx - GROVE.x, ty - GROVE.y));   // dense core → thins to nothing
       if (dens <= 0) continue;
       const r = rnd();
@@ -286,8 +288,8 @@ class TileLabEngine extends RetroEngine {
     const life = (sheet: string, fh: number, sr: number, pts: [number, number][]) => {
       for (const [tx, ty] of pts) if (this.canPlace(map, tx, ty, 3, 2.2)) map.addProp({ sheet, fw: 32, fh, col: 0, row: 0, x: tx * T, y: ty * T, solidR: sr });
     };
-    life("shroomling", 48, 5, [[18, 40], [22, 43], [16, 36], [40, 38], [44, 24]]);
-    life("shroomling2", 32, 4, [[26, 44], [19, 33], [45, 37]]);
+    life("shroomling", 48, 5, [[22, 43], [40, 38], [44, 24], [24, 45]]);
+    life("shroomling2", 32, 4, [[26, 41], [45, 37], [13, 30]]);   // moved clear of the commons/fire
     for (const [tx, ty] of [[23, 39], [35, 42], [17, 44], [50, 30]] as [number, number][])
       if (this.canPlace(map, tx, ty, 2, 1.0)) map.addProp({ sheet: "snail", fw: 16, fh: 16, col: 0, row: 0, x: tx * T, y: ty * T });
   }
@@ -309,10 +311,19 @@ class TileLabEngine extends RetroEngine {
     return tx >= SFIELD.x0 - 1 && tx <= SFIELD.x1 + 1 && ty >= SFIELD.y0 - 1 && ty <= SFIELD.y1 + 1;
   }
 
+  /** True if (wx,wy) is within `d` px of an existing BIG prop (mushroom/tree/house) — so small
+   *  ground detail never lands on top of a cap/trunk (fixes rock-on-mushroom overlaps). */
+  private nearBigProp(map: TileMap, wx: number, wy: number, d: number): boolean {
+    const d2 = d * d;
+    for (const p of map.props) if (p.solidR && p.solidR >= 5 && (wx - p.x) ** 2 + (wy - p.y) ** 2 < d2) return true;
+    return false;
+  }
+
   /** Placement gate: grassy, WELL inside the edgepoint (never near the shore), clear of pond & farm, off the path. */
-  private canPlace(map: TileMap, tx: number, ty: number, edge = 4.5, pondM = 1.6): boolean {
+  private canPlace(map: TileMap, tx: number, ty: number, edge = 4.5, pondM = 2.8): boolean {
     return map.get(tx, ty) === "grass" && this.insideEdge(tx, ty, edge) && !this.inField(tx, ty)
-      && this.pondClear(tx, ty, pondM) && this.laneDist(tx + 0.5, ty + 0.5) > 1.7;
+      && this.pondClear(tx, ty, pondM) && this.laneDist(tx + 0.5, ty + 0.5) > 1.7
+      && Math.hypot(tx - COMMONS.x, ty - COMMONS.y) > 3;   // keep the fire clearing clear
   }
 
   /** Scatter `n` props in a tight odd-ish cluster around (cx,cy), honouring the placement gate. */
@@ -356,11 +367,12 @@ class TileLabEngine extends RetroEngine {
     const peb = (tx: number, ty: number) => cell("outdoor_decor", PEBBLES[Math.floor(rnd() * PEBBLES.length)])(tx, ty);
     const cap = (tx: number, ty: number) => map.addProp({ sheet: "shroom_other", fw: 16, fh: 16, col: Math.floor(rnd() * 3), row: 1 + Math.floor(rnd() * 5), x: tx * T + rnd() * T, y: ty * T + T });
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
-      if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3.5) || !this.pondClear(tx, ty, 0.8) || this.inField(tx, ty)) continue;
+      if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3.5) || !this.pondClear(tx, ty, 2.6) || this.inField(tx, ty) || Math.hypot(tx - COMMONS.x, ty - COMMONS.y) < 2.6) continue;
       const clump = Math.sin(tx * 0.45 + 0.3) * Math.sin(ty * 0.4 - 0.7) * Math.sin((tx + ty) * 0.2);   // big-med-small waves
       const onPath = this.laneDist(tx + 0.5, ty + 0.5) < 2.6;
       const p = 0.05 + Math.max(0, clump) * 0.32 + (onPath ? 0.3 : 0);
       if (rnd() > p) continue;
+      if (this.nearBigProp(map, tx * T + T / 2, ty * T + T, 13)) continue;   // don't scatter detail onto a cap/trunk/house
       const r = rnd();   // mostly green tufts + pebbles; flowers kept sparse so colour stays calm
       if (r < 0.56) tuft(tx, ty); else if (r < 0.68) flow(tx, ty); else if (r < 0.9) peb(tx, ty); else cap(tx, ty);
     }
@@ -379,29 +391,38 @@ class TileLabEngine extends RetroEngine {
     return this.pondField(tx + 0.5, ty + 0.5) * ((SPOND.rx + SPOND.ry) / 2) < -margin;
   }
 
-  /** Juice the pond: a lush reed/cattail + encircling-stone shore, lily pads afloat, a duck & frog. */
+  /** Foliage a pond so it reads ESTABLISHED, not a bare pool: a lush reed/cattail belt, encircling
+   *  stones, overhanging bushes, lily pads + floating reeds in the shallows, a duck & frog.
+   *  Reusable for any pond via `pondField`/`SPOND`. */
   private placePondDecor(map: TileMap) {
     const rnd = rng(313);
+    const put = (sheet: string, tx: number, ty: number, extra: object = {}) => map.addProp({ sheet, fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T, ...extra });
     for (let ty = SPOND.cy - SPOND.ry - 3; ty <= SPOND.cy + SPOND.ry + 3; ty++)
       for (let tx = SPOND.cx - SPOND.rx - 3; tx <= SPOND.cx + SPOND.rx + 3; tx++) {
         const f = this.pondField(tx + 0.5, ty + 0.5);
-        if (f > -1.7 && f < -0.1 && map.get(tx, ty) === "grass") {                   // the grassy bank — lush reeds + stones
+        if (f > -2.1 && f < -0.05 && map.get(tx, ty) === "grass") {                  // the grassy bank — a lush belt of reeds/stones/overhang
           const r = rnd();
-          if (r < 0.66) map.addProp({ sheet: rnd() < 0.5 ? "cattail" : "watergrass", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });
-          else if (r < 0.86) map.addProp({ sheet: rnd() < 0.5 ? "waterrock1" : "waterrock2", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });   // encircling stones
-        } else if (f > 0.3 && map.get(tx, ty) === "water" && rnd() < 0.4) {          // lily pads / a rock afloat
-          if (rnd() < 0.8) map.addProp({ sheet: rnd() < 0.5 ? "lilypad1" : "lilypad2", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });
-          else map.addProp({ sheet: "waterrock1", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });
+          if (r < 0.78) put(rnd() < 0.5 ? "cattail" : "watergrass", tx, ty);         // reeds/cattails (a dense belt)
+          else if (r < 0.9) put(rnd() < 0.5 ? "waterrock1" : "waterrock2", tx, ty);  // encircling stones
+          else if (r < 0.9 && f < -0.7) {                                            // an overhanging bush
+            if (rnd() < 0.5) map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 4, y: ty * T + 6, overhead: true, solidR: 4 });
+            else map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: DBUSH[0], row: DBUSH[1], x: tx * T + rnd() * T, y: ty * T + T, solidR: 3 });
+          }
+        } else if (f > 0.25 && map.get(tx, ty) === "water") {                        // the water — lily pads + floating reeds + rocks
+          const r = rnd();
+          if (r < 0.42) put(rnd() < 0.5 ? "lilypad1" : "lilypad2", tx, ty);          // lily pads afloat
+          else if (r < 0.56 && f < 1.2) put("watergrass", tx, ty);                   // floating reeds in the shallows
+          else if (r < 0.5) put("waterrock1", tx, ty);                               // a rock breaking the surface
         }
       }
-    // pond life — a duck afloat + a frog on a lily-pad bank
+    // pond life — a duck afloat + a frog on the bank
     map.addProp({ sheet: "duck", fw: 32, fh: 32, col: 0, row: 12, x: (SPOND.cx + 1) * T, y: (SPOND.cy - 1) * T });
     map.addProp({ sheet: "frog", fw: 32, fh: 32, col: 0, row: 0, x: (SPOND.cx - 4) * T, y: (SPOND.cy + 2) * T });
   }
 
   /** One giant mushroom (top-row cap @32×48), depth-sorted, casting a crisp neon glow. */
   private giantShroom(map: TileMap, sheet: string, color: string, tx: number, ty: number, sc = 1) {
-    if (!this.insideEdge(tx, ty, 5) || !this.pondClear(tx, ty)) return;
+    if (!this.insideEdge(tx, ty, 5) || !this.pondClear(tx, ty, 2.8)) return;
     const cap = Math.floor(hash2(tx, ty) * 4);   // one of the 4 caps in the top row
     map.addProp({ sheet, fw: 32, fh: 48, col: cap, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 6 * sc });
     this.glowSpots.push({ x: tx * T + T / 2, y: ty * T + 12 * sc, color, r: 18 * sc });   // a tight glow at the cap (no smear)
@@ -469,16 +490,13 @@ class TileLabEngine extends RetroEngine {
       const n = hash2(px, py);
       let col: number[], a = 255;
       // clean grass → sand → foam → shallow → deep bands (no grass/sand blending)
-      const GT = this.biome === "shroom" ? 1.55 : 1.4;
-      if (g > GT) {                                         // grass — biome tone flows over the tiles
-        if (this.biome === "shroom") {                      // soft, cohesive tonal patches (colour flows)
-          const t = 0.5 + 0.5 * (this.meadow(tx, ty) * 0.78 + Math.sin(tx * 0.9 + 1) * Math.sin(ty * 0.8) * 0.22);
-          col = mix3(GDARK, GLITE, Math.max(0, Math.min(1, t))); a = 60;
-        } else { const v = this.meadow(tx, ty); col = v < 0 ? GDARK : GLITE; a = Math.round(Math.abs(v) * 46); }
-      } else if (g > 0.1) {                                 // sand — grainy, easing into grass at the top (edge colour-match)
+      if (g > 1.55) {                                       // grass — soft, cohesive biome tone flows over the textured tiles (ALL rings)
+        const t = 0.5 + 0.5 * (this.meadow(tx, ty) * 0.78 + Math.sin(tx * 0.9 + 1) * Math.sin(ty * 0.8) * 0.22);
+        col = mix3(GDARK, GLITE, Math.max(0, Math.min(1, t))); a = 58;
+      } else if (g > 0.1) {                                 // sand — grainy, easing into the grass at the top (edge colour-match)
         const grain = (n - 0.5) * 40, base = mix3(SANDD, SAND, smoothstep(0.1, 1.2, g));
         col = [base[0] + grain, base[1] + grain, base[2] + grain * 0.8]; a = 255;
-        if (this.biome === "shroom" && g > 0.9) { const k = smoothstep(0.9, 1.55, g); col = mix3(col, GLITE, k * 0.85); a = Math.round(255 - k * 170); }
+        if (g > 0.9) { const k = smoothstep(0.9, 1.55, g); col = mix3(col, GLITE, k * 0.85); a = Math.round(255 - k * 170); }
       } else if (g > -0.12) { col = FOAM; }                 // foam waterline
       else if (g > -0.9) { col = mix3(FOAM, SHAL, smoothstep(-0.18, -0.9, g)); const r = (n - 0.5) * 16; col = [col[0] + r, col[1] + r, col[2] + r * 0.7]; }
       else if (g > -3.2) { col = mix3(SHAL, DEEP, smoothstep(-0.9, -3.2, g)); const wave = Math.sin(g * 2.6 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8; col = [col[0] + wave, col[1] + wave, col[2] + wave]; }
@@ -513,6 +531,23 @@ class TileLabEngine extends RetroEngine {
         prev = gg;
       }
     }
+  }
+
+  /** The ring's DOCK — a little wooden jetty out over the south shore (a departure point; the
+   *  actual ring-to-ring sailing is wired when the lab merges into /cirql). */
+  private drawDock(b: CanvasRenderingContext2D, cam: Camera) {
+    const xC = CX, wTiles = 2, yTop = CY + this.ry - 1, yBot = CY + this.ry + 3;   // grass → out over the water
+    const s = cam.scale;
+    const [sx, sy] = this.ren.w2s(cam, (xC - wTiles / 2) * T, yTop * T);
+    const pw = wTiles * T * s, ph = (yBot - yTop) * T * s;
+    if (sx + pw < 0 || sx > cam.vw || sy + ph < 0 || sy > cam.vh) return;
+    b.save();
+    b.fillStyle = "#3a2415"; b.fillRect(sx + 1 * s, sy + ph - 5 * s, 3 * s, 7 * s); b.fillRect(sx + pw - 4 * s, sy + ph - 5 * s, 3 * s, 7 * s);   // end posts
+    b.fillStyle = "#8a5a34"; b.fillRect(sx, sy, pw, ph);                              // deck
+    b.fillStyle = "#6e4526";
+    for (let i = 0; i <= yBot - yTop; i++) b.fillRect(sx, Math.round(sy + i * T * s), pw, Math.max(1, s));   // plank seams
+    b.fillStyle = "#5a3820"; b.fillRect(sx, sy, Math.max(1, s), ph); b.fillRect(sx + pw - Math.max(1, s), sy, Math.max(1, s), ph);   // rails
+    b.restore();
   }
 
   /** Clip drawing to the island's true (curved) shoreline, so square tiles round off to the ring. */
@@ -683,6 +718,7 @@ class TileLabEngine extends RetroEngine {
     // textured sandy coast + procedural inland water + meadow shading, then shore foam
     this.blitCoast(b);
     this.drawShoreFoam(b, this.cam);
+    this.drawDock(b, this.cam);   // the ring's dock (visual for now; ring-to-ring travel is the /cirql merge)
     // the bridge, then depth-sorted actors
     this.ren.drawOverlay(b, this.map, this.cam);
     const [psx, psy] = this.ren.w2s(this.cam, this.player.x, this.player.y);
@@ -703,7 +739,7 @@ class TileLabEngine extends RetroEngine {
     this.ren.drawEntities(b, this.map, this.cam, extra);
     if (this.hasFountain) this.drawLogo(b);   // the spinning CIRQLBACK emblem over the wellspring
     this.drawLight(b, this.cam);
-    if (this.biome === "shroom") this.drawPondJuice(b, this.cam);   // ripples, sparkles, fish, dragonflies
+    if (this.biome === "shroom") { this.drawPondJuice(b, this.cam); this.drawCommons(b, this.cam); }   // ripples/fish + the bonfire
   }
 
   /** The pack's grass "middle" tile is a FLAT colour, so revealed ground reads as a flat fill.
@@ -828,6 +864,41 @@ class TileLabEngine extends RetroEngine {
     for (const l of this.labels) tag(l.x, l.y, l.text, "#ffffff");
     tag(this.player.x, this.player.y - 30, "You", "#ffe28a");
     g.restore();
+  }
+
+  /** The fungal bonfire COMMONS — a clearing with a ring of stump seats + a mushroom-cap seat
+   *  around a central fire (drawn procedurally). The ring's gathering spot. */
+  private placeCommons(map: TileMap) {
+    const cx = COMMONS.x, cy = COMMONS.y;
+    const seats: [number, number][] = [[cx - 2, cy - 1], [cx + 2, cy - 1], [cx - 2, cy + 1], [cx + 2, cy + 1], [cx, cy - 2], [cx, cy + 2]];
+    for (const [tx, ty] of seats) map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: 1, row: 6, x: tx * T + T / 2, y: ty * T + T, solidR: 5 });   // a clean ring of stump seats
+    map.setSolid(cx, cy, true);   // the fire — not walkable
+    this.labels.push({ x: cx * T + T / 2, y: (cy - 3) * T, text: "The Ember Ring" });
+  }
+
+  /** Draw the bonfire at the commons — warm glow, log base, flickering flames, rising embers. */
+  private drawCommons(c: CanvasRenderingContext2D, cam: Camera) {
+    const [sx, sy] = this.ren.w2s(cam, COMMONS.x * T + T / 2, COMMONS.y * T + T);
+    const s = cam.scale;
+    c.save();
+    c.globalCompositeOperation = "lighter";
+    const rad = 40 * s, a = this.reduce ? 0.28 : 0.3 + 0.12 * Math.sin(this.tsec * 6);
+    const g = c.createRadialGradient(sx, sy - 4 * s, 0, sx, sy - 4 * s, rad);
+    g.addColorStop(0, `rgba(255,178,86,${a})`); g.addColorStop(1, "rgba(255,140,60,0)");
+    c.fillStyle = g; c.fillRect(sx - rad, sy - 4 * s - rad, rad * 2, rad * 2);
+    c.globalCompositeOperation = "source-over";
+    c.fillStyle = "#4a2f1c"; c.fillRect(sx - 6 * s, sy - 3 * s, 12 * s, 4 * s);   // log base
+    for (let i = 0; i < 5; i++) {                                                  // flickering flames
+      const t = this.reduce ? i : this.tsec * 10 + i * 1.7;
+      const fx = sx + (i - 2) * 2.6 * s + Math.sin(t) * 1.4 * s, fh = (6 + Math.sin(t * 1.3 + i) * 3) * s, fy = sy - 3 * s;
+      c.fillStyle = i % 2 ? "#ff8a2a" : "#ffd23a";
+      c.beginPath(); c.moveTo(fx - 2 * s, fy); c.lineTo(fx, fy - fh); c.lineTo(fx + 2 * s, fy); c.closePath(); c.fill();
+    }
+    if (!this.reduce) for (let i = 0; i < 6; i++) {                                // rising embers
+      const ph = (this.tsec * 0.8 + i * 0.4) % 1, ex = sx + Math.sin(this.tsec * 2 + i) * 6 * s, ey = sy - 4 * s - ph * 20 * s;
+      c.globalAlpha = (1 - ph) * 0.9; c.fillStyle = "#ffb84a"; const es = Math.max(1, s * 0.6); c.fillRect(ex, ey, es, es);
+    }
+    c.globalAlpha = 1; c.restore();
   }
 
   /** Juice the pond surface: drifting fish shadows, concentric ripples, sun sparkles, dragonflies. */
