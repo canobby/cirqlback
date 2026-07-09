@@ -801,6 +801,8 @@ class TileLabEngine extends RetroEngine {
 
   /** Universal grounding: a soft drop-shadow under the player + every solid prop — the single
    *  biggest "fake-3D" win (grounds objects, adds depth). Drawn on the ground, under the sprites. */
+  // NOTE: drawShadows is DISABLED at every call site (owner): the sprites already carry their own
+  // baked shadows, so this separate oval drop-shadow only made everything look like it was levitating.
   private drawShadows(c: CanvasRenderingContext2D, cam: Camera, directional = true) {
     if (!this.sunShadows) directional = false;   // contact-only until sun-shadows are re-enabled per ring
     c.save();
@@ -905,7 +907,7 @@ class TileLabEngine extends RetroEngine {
     // props + player, depth-sorted
     const [psx, psy] = this.ren.w2s(cam, this.player.x, this.player.y);
     const playerItem: Drawable = { y: this.player.y, render: (c) => this.player.draw(c, this.atlas.get("player"), psx, psy, cam.scale) };
-    this.drawShadows(b, cam, false);   // cave = simple contact shadows (lantern-lit, no sun)
+    // this.drawShadows(b, cam, false);   // DISABLED (owner) — sprites carry their own shadows
     this.ren.drawEntities(b, this.map, cam, [playerItem]);
     this.drawCaveLight(b, cam);
   }
@@ -1633,7 +1635,7 @@ class TileLabEngine extends RetroEngine {
         },
       });
     }
-    this.drawShadows(b, this.cam);   // soft drop-shadows under props + player (grounding = depth)
+    // this.drawShadows(b, this.cam);   // DISABLED (owner) — the extra oval made sprites look levitating; they already have baked shadows
     this.ren.drawEntities(b, this.map, this.cam, extra);
     if (this.hasFountain) this.drawLogo(b);   // the spinning CIRQLBACK emblem over the wellspring
     this.drawLight(b, this.cam);
