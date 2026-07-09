@@ -442,28 +442,21 @@ class TileLabEngine extends RetroEngine {
    *  Reusable for any pond via `pondField`/`SPOND`. */
   private placePondDecor(map: TileMap) {
     const rnd = rng(313);
-    const put = (sheet: string, tx: number, ty: number, extra: object = {}) => map.addProp({ sheet, fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T, ...extra });
-    for (let ty = Math.floor(SPOND.cy - SPOND.ry) - 3; ty <= Math.ceil(SPOND.cy + SPOND.ry) + 3; ty++)
-      for (let tx = Math.floor(SPOND.cx - SPOND.rx) - 3; tx <= Math.ceil(SPOND.cx + SPOND.rx) + 3; tx++) {
-        const f = this.pondField(tx + 0.5, ty + 0.5);
-        if (f > -2.1 && f < -0.05 && map.get(tx, ty) === "grass") {                  // the grassy bank — a lush belt of reeds/stones/overhang
-          const r = rnd();
-          if (r < 0.78) put(rnd() < 0.5 ? "cattail" : "watergrass", tx, ty);         // reeds/cattails (a dense belt)
-          else if (r < 0.9) put(rnd() < 0.5 ? "waterrock1" : "waterrock2", tx, ty);  // encircling stones
-          else if (r < 0.9 && f < -0.7) {                                            // an overhanging bush
-            if (rnd() < 0.5) map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 4, y: ty * T + 6, overhead: true, solidR: 4 });
-            else map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: DBUSH[0], row: DBUSH[1], x: tx * T + rnd() * T, y: ty * T + T, solidR: 3 });
-          }
-        } else if (f > 0.25 && map.get(tx, ty) === "water") {                        // the water — lily pads + floating reeds + rocks
-          const r = rnd();
-          if (r < 0.42) put(rnd() < 0.5 ? "lilypad1" : "lilypad2", tx, ty);          // lily pads afloat
-          else if (r < 0.56 && f < 1.2) put("watergrass", tx, ty);                   // floating reeds in the shallows
-          else if (r < 0.5) put("waterrock1", tx, ty);                               // a rock breaking the surface
-        }
-      }
-    // a bench overlooking the water (SE bank) + stepping stones across the north shallows
-    map.addProp({ sheet: "benches", fw: 32, fh: 32, col: 0, row: 0, x: (SPOND.cx + 3) * T, y: (SPOND.cy + SPOND.ry) * T });
-    for (let i = 0; i < 4; i++) map.addProp({ sheet: i % 2 ? "waterrock1" : "waterrock2", fw: 16, fh: 16, col: 0, row: 0, x: (SPOND.cx - 2 + i) * T + 4, y: (SPOND.cy - SPOND.ry + 1) * T + T });
+    const plant = (sheet: string, tx: number, ty: number) => map.addProp({ sheet, fw: 16, fh: 16, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T });
+    // lily pads scattered on the water (the pond's only widespread foliage)
+    for (let ty = Math.floor(SPOND.cy - SPOND.ry) - 1; ty <= Math.ceil(SPOND.cy + SPOND.ry) + 1; ty++)
+      for (let tx = Math.floor(SPOND.cx - SPOND.rx) - 1; tx <= Math.ceil(SPOND.cx + SPOND.rx) + 1; tx++)
+        if (this.pondField(tx + 0.5, ty + 0.5) > 0.3 && map.get(tx, ty) === "water" && rnd() < 0.32)
+          plant(rnd() < 0.5 ? "lilypad1" : "lilypad2", tx, ty);
+    // stepping stones across the north shallows + 2 cattails & 2 reeds behind them
+    const rockY = Math.round(SPOND.cy - SPOND.ry) + 1;
+    for (let i = 0; i < 4; i++) map.addProp({ sheet: i % 2 ? "waterrock1" : "waterrock2", fw: 16, fh: 16, col: 0, row: 0, x: (SPOND.cx - 2 + i) * T + 4, y: rockY * T + T });
+    plant("cattail", SPOND.cx - 2, rockY - 1); plant("cattail", SPOND.cx + 1, rockY - 1);
+    plant("watergrass", SPOND.cx - 1, rockY - 1); plant("watergrass", SPOND.cx, rockY - 1);
+    // a bench overlooking the water + a reed and a cattail behind it
+    const bx = SPOND.cx + 3, by = Math.round(SPOND.cy + SPOND.ry);
+    map.addProp({ sheet: "benches", fw: 32, fh: 32, col: 0, row: 0, x: bx * T, y: by * T });
+    plant("cattail", bx, by - 1); plant("watergrass", bx + 1, by - 1);
     // pond life — a duck paddling on the water + a frog hopping on the bank
     this.addCritter(map, "duck", 32, 32, 0, 12, SPOND.cx + 1, SPOND.cy - 1, { water: true, wr: 1.6, sp: 6, bob: 1 });
     this.addCritter(map, "frog", 32, 32, 0, 0, SPOND.cx - 4, SPOND.cy + 2, { wr: 0.7, sp: 5, bob: 2.4 });
@@ -531,7 +524,7 @@ class TileLabEngine extends RetroEngine {
     const SAND = [235, 221, 165], SANDD = [204, 185, 124];
     const FOAM = [212, 234, 240], SHAL = [118, 200, 228], DEEP = [26, 86, 132];
     // natural inland-pond bands (Path A) — muted, harmonised with the moss floor (no glow)
-    const PDEEP = [36, 84, 108], PSHAL = [96, 160, 168], PWL = [176, 214, 210], PDAMP = [30, 54, 58];
+    const PDEEP = [36, 84, 108], PSHAL = [96, 160, 168], PWL = [176, 214, 210], GRAVEL = [150, 146, 134];
     const PATHC = [150, 128, 92];   // a trodden footpath — defined worn earth (painted, not tiled)
     const pal = this.bpal, GDARK = pal.gdark, GLITE = pal.glite;
     for (let py = 0; py < ch; py++) for (let px = 0; px < cw; px++) {
@@ -560,7 +553,7 @@ class TileLabEngine extends RetroEngine {
           else col = PWL;                                    // bright waterline rim
           a = 255;
         } else {
-          if (pd > -1.0) col = mix3(col, PDAMP, smoothstep(-1.0, -0.22, pd) * 0.5);   // damp bank
+          if (pd > -2.8) { const gr = (n - 0.5) * 34; col = mix3(col, [GRAVEL[0] + gr, GRAVEL[1] + gr, GRAVEL[2] + gr], smoothstep(-2.8, -0.15, pd) * 0.82); }   // gravel apron around the pond
           const ld = this.laneDist(tx, ty);                  // the footpath (leading line: plaza → pond)
           if (ld < 1.7) { const grain = (n - 0.5) * 16, worn = 1 - smoothstep(0.5, 1.7, ld); col = mix3(col, [PATHC[0] + grain, PATHC[1] + grain, PATHC[2] + grain], worn * 0.82); }
         }
@@ -904,7 +897,7 @@ class TileLabEngine extends RetroEngine {
     if (!this.loaded) return;
     const sc = this.dispW / this.b.canvas.width;
     g.save();
-    g.textAlign = "center"; g.textBaseline = "alphabetic"; g.font = "bold 12px 'Segoe UI', Arial, sans-serif"; g.lineWidth = 3;
+    g.textAlign = "center"; g.textBaseline = "alphabetic"; g.font = "bold 15px 'Segoe UI', Arial, sans-serif"; g.lineWidth = 3.5;
     const tag = (wx: number, wy: number, text: string, color: string) => {
       const [bx, by] = this.ren.w2s(this.cam, wx, wy);
       const dx = bx * sc, dy = by * sc;
