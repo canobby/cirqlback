@@ -124,7 +124,9 @@ const PALETTES: Record<Biome, BiomePalette> = {
   // Water matches the SEA that rings the island, so the oasis reads as a piece of the same water
   // (cohesion), and gets the beach's foam→shallow→deep edge (thinner) so it reads as living water.
   desert: {
-    glite: [232, 210, 156], gdark: [196, 165, 112], grassOpaque: false,
+    // tuned to the sanctumpixel sand FLOOR tones (harmonised ~dark [194,133,76] / light [212,162,106])
+    // so the dune WASH shades WITHIN the sand's own tone range (not toward pale) + the beach blends to it.
+    glite: [214, 164, 108], gdark: [176, 120, 72], grassOpaque: false,
     water: { deep: [26, 86, 132], shal: [118, 200, 228], foam: [212, 234, 240], wet: [150, 178, 120] },
   },
 };
@@ -206,7 +208,7 @@ class TileLabEngine extends RetroEngine {
         // the desert LAND is a real SPRITE sand floor (base + 3 varied tiles), laid across everything
         // but the water — only the lagoon/sea stay procedural. (Owner rule: sprite floor laid first.)
         // The plaza "path" terrain uses the warm SANDSTONE recolour (not blue-grey cobble) to match.
-        ? { ...DEFAULT_TERRAIN, grass: { fill: "grass", variants: ["grass", "sand_v1", "sand_v2", "sand_v3"] }, path: { fill: "sandpath", cell: [1, 1] } }
+        ? { ...DEFAULT_TERRAIN, grass: { fill: "grass", variants: ["grass", "sand_v1", "sand_v3"], variantAt: (tx: number, ty: number) => this.sandRegion(tx, ty) }, path: { fill: "sandpath", cell: [1, 1] } }
         : undefined;
     this.ren = new TileRenderer(this.atlas, terr);
     // pull in the matching sanctumpixel biome pack (terrain/cliffs/nature) for the Dunes,
@@ -638,8 +640,10 @@ class TileLabEngine extends RetroEngine {
     const id = cx.getImageData(0, 0, w, h), d = id.data;
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] === 0) continue;
-      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;                  // warm sandstone ramp: earthy mortar → tan → light sand
-      d[i] = clamp255(lum * 0.74 + 84); d[i + 1] = clamp255(lum * 0.60 + 52); d[i + 2] = clamp255(lum * 0.42 + 20);
+      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;                  // LOW-CONTRAST packed-sand ramp, centred just DARKER than the
+      // sanctumpixel sand floor (~[194,133,76]) so the path reads as a trodden strip of the SAME material —
+      // it blends into the ground instead of sticking out as defined cobble (owner: "take the colours out to match").
+      d[i] = clamp255(lum * 0.26 + 132); d[i + 1] = clamp255(lum * 0.22 + 86); d[i + 2] = clamp255(lum * 0.16 + 46);
     }
     cx.putImageData(id, 0, 0);
     if (!this.atlas.has("sandpath")) this.atlas.add("sandpath", "");
@@ -689,35 +693,36 @@ class TileLabEngine extends RetroEngine {
     b.restore();
   }
 
-  /** The SPRITE FLOOR (owner rule: real sprite tiles cover the whole land, laid first — only water is
-   *  procedural). Generate a base textured sand tile + 3 varied tiles (grain + a contained wind-ripple
-   *  dash) and register them; the desert "grass" terrain uses these as a varied autotiled sand floor,
-   *  so the ground reads as real tiles (like the meadow's grass), not a flat procedural wash. */
+  /** The SPRITE FLOOR (owner rule: ALWAYS use the asset sprites, laid first, covering the whole land —
+   *  only water is procedural). Slice the REAL sanctumpixel desert ground tileset (sp_desert_ground,
+   *  already harmonised to our warm palette): its solid sand fill + real wind-ripple/patch decals
+   *  composited onto copies → a base + 3 varied floor tiles. The desert "grass" terrain uses these as
+   *  a varied autotiled sand floor, so the ground is genuine pack tiles, not a generated/painted one. */
   private buildSandTexture() {
-    const S = 16;
-    const make = (seed: number, tone: number, ripple: boolean): HTMLCanvasElement => {
+    const src = this.atlas.get("sp_desert_ground"); if (!src.img) return;
+    const S = 16, im = src.img as CanvasImageSource;
+    const cell = (fcol: number, frow: number, dcol?: number, drow?: number): HTMLCanvasElement => {
       const cv = document.createElement("canvas"); cv.width = S; cv.height = S;
-      const g = cv.getContext("2d")!; const rnd = rng(seed);
-      g.fillStyle = `rgb(${clamp255(226 + tone)},${clamp255(202 + tone)},${clamp255(148 + tone * 0.8)})`;
-      g.fillRect(0, 0, S, S);
-      for (let i = 0; i < 42; i++) {                                   // fine grain flecks (lighter + darker)
-        const x = Math.floor(rnd() * S), y = Math.floor(rnd() * S), r = rnd();
-        g.fillStyle = r < 0.5 ? "rgba(196,165,112,0.5)" : r < 0.8 ? "rgba(236,214,160,0.55)" : "rgba(176,146,100,0.5)";
-        g.fillRect(x, y, 1, 1);
-      }
-      if (ripple) {                                                    // a short wind-ripple dash, kept OFF the edges so tiles don't seam
-        g.strokeStyle = "rgba(178,150,104,0.42)"; g.lineWidth = 1; g.beginPath();
-        const y0 = 5 + Math.floor(rnd() * 6);
-        for (let x = 3; x <= 13; x++) { const yy = y0 + Math.sin((x - 3) * 0.5 + seed) * 1.5; x === 3 ? g.moveTo(x, yy) : g.lineTo(x, yy); }
-        g.stroke();
-      }
+      const g = cv.getContext("2d")!; g.imageSmoothingEnabled = false;
+      g.drawImage(im, fcol * S, frow * S, S, S, 0, 0, S, S);                              // solid sand fill (real tile)
+      if (dcol !== undefined) g.drawImage(im, dcol * S, drow! * S, S, S, 0, 0, S, S);     // + a real ripple/patch decal
       return cv;
     };
     const reg = (name: string, cv: HTMLCanvasElement) => { if (!this.atlas.has(name)) this.atlas.add(name, ""); (this.atlas.get(name) as unknown as { img: HTMLCanvasElement }).img = cv; };
-    reg("grass", make(5252, 0, false));      // base sand (the "grass"/land fill)
-    reg("sand_v1", make(5311, -7, true));    // slightly darker + a ripple
-    reg("sand_v2", make(5417, 8, false));    // lighter crest sand
-    reg("sand_v3", make(5523, -2, true));    // mid tone + a ripple
+    reg("grass", cell(11, 1));            // base solid sand (dark tone) — the land fill
+    reg("sand_v1", cell(11, 1, 3, 5));    // sand + a real wind-ripple decal
+    reg("sand_v3", cell(11, 1, 6, 7));    // sand + a different real ripple
+    reg("sandlt", cell(11, 13));          // the LIGHTER sand tone — sun-bleached/dry patches (used by REGION, not per-tile)
+    reg("sandlt_rip", cell(11, 13, 3, 5)); // light sand + a ripple
+  }
+
+  /** REGION material patches (owner rule + SLYNYRD "regions with intent, never one tile"): large soft
+   *  areas of the LIGHTER sand tone (sun-bleached/dry ground) chosen by a low-frequency noise, so the
+   *  floor varies in patches — never a per-tile checkerboard. Returns a light tile inside a patch, else
+   *  undefined (→ the dark-sand base + ripple variants). Uses the asset's own two sand tones. */
+  private sandRegion(tx: number, ty: number): string | undefined {
+    if (this.meadow(tx * 0.42 + 30, ty * 0.39 - 10) > 0.42) return hash2(tx, ty) < 0.82 ? "sandlt" : "sandlt_rip";
+    return undefined;
   }
 
   /** Juice the oasis surface (bright water): sun sparkles + concentric ripple rings. */

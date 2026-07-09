@@ -21,6 +21,7 @@ export interface Camera {
 export interface TerrainRender {
   fill?: string;                                   // sheet drawn as the solid fill (16×16 middle)
   variants?: string[];                             // extra fills chosen by position hash (grass texture)
+  variantAt?: (tx: number, ty: number) => string | undefined;  // REGION override: a fill name for large material patches (dry/wet), else undefined → normal variants
   blob?: { sheet: string; layout: BlobLayout };    // autotiled edge overlay for a painted region
   cell?: [number, number];                         // for multi-tile sheets: which 16px cell to sample as fill
   void?: boolean;                                  // render nothing — the backdrop shows through (the open sea)
@@ -98,7 +99,9 @@ export class TileRenderer {
     const cfg = this.terrain[terr];
     if (!cfg) return;
     let name = cfg.fill;
-    if (cfg.variants && cfg.variants.length > 1) {
+    const forced = cfg.variantAt && cfg.variantAt(tx, ty);   // REGION material patch (dry/wet) wins first
+    if (forced) name = forced;
+    else if (cfg.variants && cfg.variants.length > 1) {
       const r = this.hash(tx, ty);
       // mostly plain fill; ~18% of tiles get a variant so grass reads textured, not checkered
       if (r < 0.82) name = cfg.variants[0];
