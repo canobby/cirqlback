@@ -564,19 +564,24 @@ class TileLabEngine extends RetroEngine {
     for (const [tx, ty] of [[43, 44], [18, 43]] as [number, number][]) if (this.dCanPlace(map, tx, ty)) map.addProp({ sheet: "d_bones", fw: 32, fh: 32, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T });
   }
 
-  /** FILL — a SPARSE dry ground carpet (whole grass tufts + small pebble-rocks), clustered in
-   *  waves, off the oasis. Whole standalone sprites only. */
+  /** FILL — a real dry ground CARPET of visible detail sprites (grass tufts, pebbles, dry scrub,
+   *  bones), clustered in waves and THICKER along the trail (breadcrumb) so the floor never reads
+   *  as bare. Whole standalone sprites only. */
   private scatterDuneDetail(map: TileMap) {
     const rnd = rng(1010);
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
-      if (!this.dCanPlace(map, tx, ty, 3.5, 2.6)) continue;
+      if (!this.dCanPlace(map, tx, ty, 3.2, 2.6)) continue;
       const clump = Math.sin(tx * 0.4 + 0.5) * Math.sin(ty * 0.38 - 0.6) * Math.sin((tx + ty) * 0.22);
-      const p = 0.02 + Math.max(0, clump) * 0.16;                                     // sparse (desert)
+      const nearPath = this.dPathDist(tx + 0.5, ty + 0.5) < 3.4;                       // detail thickens along the walked trail
+      const p = 0.16 + Math.max(0, clump) * 0.5 + (nearPath ? 0.22 : 0);               // a genuine carpet, not a sprinkle
       if (rnd() > p) continue;
-      if (this.nearBigProp(map, tx * T + T / 2, ty * T + T, 12)) continue;
-      if (this.occludedByTall(map, tx * T + T / 2, ty * T + T)) continue;   // don't hide detail behind tall props
-      if (rnd() < 0.6) this.dSpProp(map, `sp_desert_grass_${1 + Math.floor(rnd() * 8)}`, [32, 32], tx, ty, 0.75);   // whole dry grass tuft
-      else { const i = 6 + Math.floor(rnd() * 4); this.dSpProp(map, `sp_desert_rock_${i}`, SP_ROCK[i], tx, ty, 0.5); }   // small whole pebble-rock (6-9 = 32×32)
+      if (this.nearBigProp(map, tx * T + T / 2, ty * T + T, 11)) continue;
+      if (this.occludedByTall(map, tx * T + T / 2, ty * T + T)) continue;              // don't hide detail behind tall props
+      const r = rnd();
+      if (r < 0.46) this.dSpProp(map, `sp_desert_grass_${1 + Math.floor(rnd() * 8)}`, [32, 32], tx, ty, 0.65 + rnd() * 0.3);   // dry grass tuft
+      else if (r < 0.78) { const i = 6 + Math.floor(rnd() * 4); this.dSpProp(map, `sp_desert_rock_${i}`, SP_ROCK[i], tx, ty, 0.4 + rnd() * 0.25); }   // pebble-rock (6-9 = 32×32)
+      else if (r < 0.92) map.addProp({ sheet: "dead_bush", fw: 16, fh: 16, col: Math.floor(rnd() * 2), row: 0, x: tx * T + rnd() * T, y: ty * T + T });   // dry scrub (whole, 2 frames)
+      else map.addProp({ sheet: "d_fern", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });   // a dry fern sprig
     }
   }
 
@@ -1189,9 +1194,13 @@ class TileLabEngine extends RetroEngine {
         } else {                                             // SHORE + green oasis ground
           if (od > -1.5) { const k = smoothstep(-1.5, -0.05, od) * 0.6; col = mix3(col, W.wet, k); }          // wet green fringe (the beach's damp band, thin)
           else if (od > -5) { const k = smoothstep(-5, -1.5, od) * 0.24; col = mix3(col, [150, 178, 120], k); }  // lush green oasis GROUND (where the palms grow)
-          // the worn PATH network — packed sand, only on dry ground (the walking guides)
+          // the worn PATH network — a clearly-visible packed-earth track on dry ground (walking guides)
           const pd = this.dPathDist(tx, ty);
-          if (od < -1.6 && pd < 1.3) { const grain = (n - 0.5) * 14, worn = 1 - smoothstep(0.4, 1.3, pd); col = mix3(col, [182, 154, 106 + grain], worn * 0.5); }
+          if (od < -1.6 && pd < 1.7) {
+            const grain = (n - 0.5) * 16, worn = 1 - smoothstep(0.7, 1.7, pd);
+            col = mix3(col, [162, 132, 90 + grain], worn * 0.9);                        // defined worn earth (clearly darker than sand)
+            if (pd > 1.15 && pd < 1.55) col = mix3(col, [138, 110, 74], (1 - Math.abs(pd - 1.35) / 0.2) * 0.4);   // a darker packed EDGE line
+          }
         }
       }
       // the MESA uses real sanctumpixel sandstone cliff SPRITES (placeMesa). Here we only paint the
