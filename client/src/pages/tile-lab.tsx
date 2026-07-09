@@ -3,18 +3,9 @@ import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { RetroEngine, type RetroHooks } from "@/game/retro-engine";
 import {
-  cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM, blobTile,
-  type Atlas, type Camera, type Drawable, type BlobLayout,
+  cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
+  type Atlas, type Camera, type Drawable,
 } from "@/game/tile";
-
-// Time Fantasy beach water autotile — piece coords within one animation frame
-// (4 frames, each 9 cols apart in tf_beach.png). Interior open water = flat fill.
-const TFW_FRAMES = 4, TFW_FCOLS = 9;
-const TFW: BlobLayout = {
-  c: [4, 2], n: [2, 1], e: [7, 2], s: [2, 7], w: [1, 2],
-  nw: [1, 1], ne: [7, 1], sw: [1, 7], se: [7, 7],
-  inNW: [3, 2], inNE: [5, 2], inSW: [3, 6], inSE: [5, 6],
-};
 
 // TILE LAB — P1 vertical slice: Cloverfield, one hand-authored meadow island.
 // Proves the hybrid LOOK, not just the plumbing: a grassy plateau in the sea with
@@ -28,9 +19,12 @@ const T = 16;
 const MW = 68, MH = 52;          // map size in tiles
 const CX = 34, CY = 26;          // island centre (tiles)
 const RX = 28, RY = 21;          // island radii (tiles)
-const WELL = { x: 33, y: 24 };   // wellspring (tiles) — sits at the head of the river
+const WELL = { x: CX, y: CY };   // the fountain — dead centre of the ring
 const ROAD_Y = 34;               // the east-west lane's latitude
-const RIVER_X = 33;              // the river runs straight down this column
+const RIVER_X = 33;              // the river's starting column (under the fountain)
+const POND = { x: 35, y: 40 };   // the river's terminus — an INLAND pond (never the coast)
+const POND_R = 3;
+const EDGE = 3.4;                // the "edgepoint": nothing is placed within this many tiles of the shore
 
 // deterministic RNG so the island is stable across reloads
 function rng(seed: number) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -71,12 +65,12 @@ class TileLabEngine extends RetroEngine {
     const dx = (tx - CX) / RX, dy = (ty - CY) / RY;
     const ang = Math.atan2(ty - CY, tx - CX);
     const d = dx * dx + dy * dy;
-    const R = 1 + 0.035 * Math.sin(ang * 2 + 0.6);   // one gentle low-freq wave → smooth shore, no 1-tile jaggies
-    if (d >= R) return false;
-    // carve a round bay on the west for the dock + fisherman
-    if ((tx - 10) ** 2 + (ty - 33) ** 2 < 20) return false;
-    return true;
+    const R = 1 + 0.035 * Math.sin(ang * 2 + 0.6);   // one gentle low-freq wave → smooth shore
+    return d < R;
   }
+
+  /** Placement rule: a point is "safe" (not too near the shore) if it's inside the edgepoint. */
+  private insideEdge(tx: number, ty: number, margin = EDGE): boolean { return this.landField(tx, ty) > margin; }
 
   // ---------- author the whole island ----------
   private buildIsland() {
@@ -85,23 +79,8 @@ class TileLabEngine extends RetroEngine {
     // 1) the grass island
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) if (this.land(tx, ty)) map.set(tx, ty, "grass");
 
-    // 2) the road first (west cove → east) so the river then cuts a continuous
-    //    channel straight through it (the bridge carries the road over the water).
+    // 2) a cobble lane across the village
     map.paintLine(9, ROAD_Y, 58, ROAD_Y - 1, "path", 3);
-
-    // 3) the wellspring's basin is the fountain sprite's own bowl; the river runs from its base.
-
-    // 4) the river of light — a MEANDERING channel (source under the fountain), widening
-    //    into a delta at the sea mouth. Tile water is just for collision; the LOOK is procedural.
-    this.riverCol = new Array(MH).fill(-1);
-    for (let ty = WELL.y + 1; ty <= 47; ty++) {
-      const cx = this.riverCenterAt(ty), half = Math.round(this.riverHalfAt(ty));
-      for (let dx = -half; dx <= half; dx++) map.set(Math.round(cx) + dx, ty, "water");
-      this.riverCol[ty] = cx;
-    }
-
-    // 5) the bridge, spanning the river where the straight lane crosses it
-    this.placeBridge(map, ROAD_Y, Math.round(this.riverCenterAt(ROAD_Y)), Math.ceil(this.riverHalfAt(ROAD_Y)) + 2);
 
     // 6) buildings — spread out, each near where it "wants to be"
     const H = (sheet: string, w: number, h: number, tx: number, ty: number, sc = 1, sr?: number) =>
@@ -117,29 +96,28 @@ class TileLabEngine extends RetroEngine {
     // 7) wellspring centrepiece drawn specially (only the LOWER tiered fountain); block its base
     for (const [dx, dy] of [[0, 0], [-1, 0], [1, 0], [0, -1]] as [number, number][]) map.setSolid(WELL.x + dx, WELL.y + dy, true);
 
-    // 8) trees — inland singles + a light grove framing the shore
-    const oak = (tx: number, ty: number, col = 1) =>
+    // 8) trees — inland singles + a light grove, all kept a safe margin off the shore
+    const oak = (tx: number, ty: number, col = 1) => {
+      if (!this.insideEdge(tx, ty, 5)) return;   // no canopies hanging over the ring
       map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col, row: 0, x: tx * T + 8, y: ty * T + 12, overhead: true, solidR: 7 });
+    };
     for (const [tx, ty] of [[52, 15], [55, 18], [50, 20], [15, 15], [18, 12], [50, 34]] as [number, number][]) oak(tx, ty, 1 + ((tx + ty) % 2));
     this.placeShoreTrees(map);
 
     // 9) natural flower clumps (meadows + around the houses), not a grid
     this.placeFlowerClumps(map);
+    // (mushrooms: placeMushrooms() is ready for later rings — kept OFF this one)
 
-    // 10) riverbank life — cattails / lily pads / water rocks in clumps
-    this.placeRiverDecor(map);
-
-    // 11) life — grazing sheep, chickens, and two villager NPCs (all kept off water)
+    // 11) life — grazing sheep, chickens, and two villager NPCs
     const sheep = (tx: number, ty: number) => map.addProp({ sheet: "sheep", fw: 32, fh: 32, col: 0, row: 0, x: tx * T, y: ty * T, solidR: 6 });
     for (const [tx, ty] of [[18, 40], [21, 42], [16, 38], [23, 39]] as [number, number][]) sheep(tx, ty);
     const chick = (tx: number, ty: number) => map.addProp({ sheet: "chicken", fw: 32, fh: 32, col: 0, row: 0, x: tx * T, y: ty * T });
     for (const [tx, ty] of [[27, 20], [29, 21], [43, 24]] as [number, number][]) chick(tx, ty);
-    map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 30 * T, y: 26 * T, solidR: 6 }); // by the plaza
-    map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 16 * T, y: 29 * T, solidR: 6 }); // by the cove (on land)
+    map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 30 * T, y: 29 * T, solidR: 6 }); // open meadow by the plaza
+    map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 39 * T, y: 30 * T, solidR: 6 }); // open meadow, not under the grove
 
     this.map = map;
-    this.falls = [{ x: this.riverCol[46] * T + T / 2, y: 46 * T }];  // river mouth glow
-    [this.player.x, this.player.y] = this.snapToLand(map, 28 * T, ROAD_Y * T);   // never spawn in water
+    [this.player.x, this.player.y] = this.snapToLand(map, 28 * T, ROAD_Y * T);   // never spawn on a solid tile
     this.cam.x = this.player.x; this.cam.y = this.player.y;
     this.buildCoast();
   }
@@ -160,20 +138,23 @@ class TileLabEngine extends RetroEngine {
   private landField(tx: number, ty: number): number {
     const dx = (tx - CX) / RX, dy = (ty - CY) / RY, ang = Math.atan2(ty - CY, tx - CX);
     const R = 1 + 0.035 * Math.sin(ang * 2 + 0.6);
-    const oval = (R - (dx * dx + dy * dy)) * ((RX + RY) / 4);   // ~tiles inside the oval shore
-    const cove = Math.hypot(tx - 10, ty - 33) - Math.sqrt(20);  // outside the west cove
-    return Math.min(oval, cove);
+    return (R - (dx * dx + dy * dy)) * ((RX + RY) / 4);   // ~tiles inside the oval shore
   }
 
-  /** River centre-x at row ty — phased so the SOURCE lines up under the fountain. */
-  private riverCenterAt(ty: number): number { return RIVER_X + Math.sin((ty - WELL.y - 1) * 0.26) * 2.4; }
-  /** River half-width at row ty — varied, and fanning out into a delta near the sea mouth. */
-  private riverHalfAt(ty: number): number { return 1.4 + 0.3 * Math.sin(ty * 0.55) + smoothstep(42, 47, ty) * 1.7; }
+  /** River centre-x at row ty — starts under the fountain, gently drifts toward the pond. */
+  private riverCenterAt(ty: number): number {
+    const t = Math.max(0, Math.min(1, (ty - (WELL.y + 1)) / (POND.y - (WELL.y + 1))));
+    return RIVER_X + (POND.x - RIVER_X) * t + Math.sin((ty - WELL.y - 1) * 0.26) * 1.6;
+  }
+  /** River half-width at row ty — gently varied. */
+  private riverHalfAt(ty: number): number { return 1.4 + 0.3 * Math.sin(ty * 0.55); }
 
-  /** Continuous river "insideness": >0 inside the meandering channel + well pool. */
+  /** Continuous water "insideness": >0 inside the river channel OR the inland pond. */
   private riverField(tx: number, ty: number): number {
-    if (ty >= WELL.y + 0.5 && ty <= 47.8) return this.riverHalfAt(ty) - Math.abs(tx - this.riverCenterAt(ty));
-    return -99;
+    let f = -99;
+    if (ty >= WELL.y + 0.5 && ty <= POND.y + 0.5) f = this.riverHalfAt(ty) - Math.abs(tx - this.riverCenterAt(ty));
+    const pond = POND_R - Math.hypot(tx - POND.x, ty - POND.y);
+    return Math.max(f, pond);
   }
 
   /** Smooth low-frequency meadow noise in [-1,1] — soft grass patches, no tile grid. */
@@ -199,16 +180,13 @@ class TileLabEngine extends RetroEngine {
       const tx = (px + 0.5) / (T * SS), ty = (py + 0.5) / (T * SS), g = this.landField(tx, ty);
       const n = hash2(px, py);
       let col: number[], a = 255;
-      // land + coast (the river is drawn separately as tf_beach tiles), NOISY grass↔sand edge
-      const noise = this.meadow(tx * 1.5 + 9, ty * 1.5) * 0.85 + (hash2(px >> 2, py >> 2) - 0.5) * 0.9;
-      if (g + noise > 1.7 && g > 0.28) {                  // grass meadow (irregular inner edge)
+      // clean grass → sand → foam → shallow → deep bands (no grass/sand blending)
+      if (g > 1.4) {                                        // grass meadow shading
         const v = this.meadow(tx, ty); col = v < 0 ? GDARK : GLITE; a = Math.round(Math.abs(v) * 46);
-      } else if (g > 0.1) {                               // sand — grainy + grass-tuft mottling toward the grass
-        const grain = (n - 0.5) * 46 + (hash2(px >> 1, py >> 1) - 0.5) * 22, base = mix3(SANDD, SAND, smoothstep(0.1, 1.1, g));
-        const sand = [base[0] + grain, base[1] + grain, base[2] + grain * 0.8];
-        const gm = smoothstep(0.6, 2.1, g + noise) * (0.35 + hash2(px >> 2, py >> 2) * 0.6);
-        col = mix3(sand, GLITE, gm * 0.55);
-      } else if (g > -0.12) { col = FOAM; }               // foam waterline
+      } else if (g > 0.1) {                                 // sand — grainy
+        const grain = (n - 0.5) * 40, base = mix3(SANDD, SAND, smoothstep(0.1, 1.2, g));
+        col = [base[0] + grain, base[1] + grain, base[2] + grain * 0.8];
+      } else if (g > -0.12) { col = FOAM; }                 // foam waterline
       else if (g > -0.9) { col = mix3(FOAM, SHAL, smoothstep(-0.18, -0.9, g)); const r = (n - 0.5) * 16; col = [col[0] + r, col[1] + r, col[2] + r * 0.7]; }
       else if (g > -3.2) { col = mix3(SHAL, DEEP, smoothstep(-0.9, -3.2, g)); const wave = Math.sin(g * 2.6 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8; col = [col[0] + wave, col[1] + wave, col[2] + wave]; }
       else { col = DEEP; }
@@ -238,25 +216,6 @@ class TileLabEngine extends RetroEngine {
     b.imageSmoothingEnabled = false;
   }
 
-  /** The river/lakes rendered as real animated Time Fantasy water (autotiled sandy banks). */
-  private drawRiverWater(b: CanvasRenderingContext2D, cam: Camera) {
-    const sh = this.atlas.get("tf_beach");
-    if (!sh.ready) return;
-    const off = (Math.floor(this.tsec * 3) % TFW_FRAMES) * TFW_FCOLS;
-    const t = T, s = cam.scale, dsz = Math.ceil(t * s) + 1;
-    const [wx0, wy0] = this.ren.s2w(cam, 0, 0), [wx1, wy1] = this.ren.s2w(cam, cam.vw, cam.vh);
-    const tx0 = Math.floor(wx0 / t) - 1, ty0 = Math.floor(wy0 / t) - 1, tx1 = Math.ceil(wx1 / t) + 1, ty1 = Math.ceil(wy1 / t) + 1;
-    b.imageSmoothingEnabled = false;
-    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
-      if (this.map.get(tx, ty) !== "water") continue;
-      const [sx, sy] = this.ren.w2s(cam, tx * t, ty * t);
-      const dx = Math.round(sx), dy = Math.round(sy);
-      const q = this.map.neighbourhood(tx, ty, "water");
-      if (q.n && q.e && q.s && q.w && q.ne && q.nw && q.se && q.sw) { b.fillStyle = "#4a8ace"; b.fillRect(dx, dy, dsz, dsz); }
-      else { const [c, r] = blobTile(TFW, q); sh.cell(b, 16, c + off, r, dx, dy, dsz, dsz); }
-    }
-  }
-
   /** Foam waves lapping the shoreline — animated + a whole-island pulse (drawn under props). */
   private drawShoreFoam(c: CanvasRenderingContext2D, cam: Camera) {
     const breath = 0.7 + 0.5 * Math.sin(this.tsec * 1.6);   // island-wide pulse
@@ -273,14 +232,14 @@ class TileLabEngine extends RetroEngine {
     c.globalAlpha = 1;
   }
 
-  /** A light grove framing the shore (sparse, so the beaches still show). */
+  /** A light grove ring, set a safe margin inside the shore (canopies never over the ring). */
   private placeShoreTrees(map: TileMap) {
     const rnd = rng(77);
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
       if (map.get(tx, ty) !== "grass") continue;
       const g = this.landField(tx + 0.5, ty + 0.5);
-      if (g < 0.8 || g > 3.0) continue;               // a band just inside the shore
-      if (rnd() < 0.26) {
+      if (g < 4.5 || g > 9) continue;                 // a grove band well inside the edgepoint
+      if (rnd() < 0.24) {
         if (rnd() < 0.6) map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col: 1 + Math.floor(rnd() * 2), row: 0, x: tx * T + 6 + rnd() * 6, y: ty * T + 12, overhead: true, solidR: 7 });
         else map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: 1 + Math.floor(rnd() * 2), row: 0, x: tx * T + 2 + rnd() * 6, y: ty * T + 6, overhead: true, solidR: 5 });
       }
@@ -303,6 +262,24 @@ class TileLabEngine extends RetroEngine {
     }
   }
 
+  /** Just a few small mushroom patches tucked under trees — where mushrooms hide. */
+  private placeMushrooms(map: TileMap) {
+    const rnd = rng(4242);
+    let patches = 0;
+    for (const p of map.props) {
+      if (patches >= 4) break;                               // only a few on this ring
+      if (p.sheet !== "tree_oak" || rnd() > 0.2) continue;
+      const cx = Math.round(p.x / T), cy = Math.round(p.y / T) + 1;   // at the trunk base
+      const n = 1 + Math.floor(rnd() * 3);                    // a small tight cluster
+      for (let i = 0; i < n; i++) {
+        const tx = cx + Math.round((rnd() - 0.5) * 2.2), ty = cy + Math.round((rnd() - 0.5) * 1.6);
+        if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 2)) continue;
+        map.addProp({ sheet: "mushrooms", fw: 16, fh: 16, col: Math.floor(rnd() * 8), row: Math.floor(rnd() * 5), x: tx * T + rnd() * T, y: ty * T + T });
+      }
+      patches++;
+    }
+  }
+
   /** Cattails / lily pads / water rocks clumped along the meandering riverbanks. */
   private placeRiverDecor(map: TileMap) {
     const rnd = rng(555);
@@ -318,9 +295,9 @@ class TileLabEngine extends RetroEngine {
           else put(rnd() < 0.5 ? "waterrock1" : "waterrock2", tx * T + rnd() * T, tyy * T + T);
         }
       }
-      if (rnd() < 0.22) {                              // a lily pad / rock in the water
+      if (rnd() < 0.22) {                              // a lily pad / rock in the water (never on the bridge)
         const tx = Math.round(c) + Math.round((rnd() - 0.5) * 2);
-        if (map.get(tx, ty) === "water") put(rnd() < 0.6 ? (rnd() < 0.5 ? "lilypad1" : "lilypad2") : "waterrock1", tx * T + rnd() * T, ty * T + T);
+        if (map.get(tx, ty) === "water" && !map.getOverlay(tx, ty)) put(rnd() < 0.6 ? (rnd() < 0.5 ? "lilypad1" : "lilypad2") : "waterrock1", tx * T + rnd() * T, ty * T + T);
       }
     }
   }
@@ -379,9 +356,8 @@ class TileLabEngine extends RetroEngine {
     this.cam.vw = bw; this.cam.vh = bh; this.cam.scale = this.zoom;
     // crafted land tiles (grass + river + road); the ocean is void
     this.ren.drawGround(b, this.map, this.cam);
-    // textured sandy coast + meadow shading, then the real animated tf_beach river, then shore foam
+    // textured sandy coast + procedural inland water + meadow shading, then shore foam
     this.blitCoast(b);
-    this.drawRiverWater(b, this.cam);
     this.drawShoreFoam(b, this.cam);
     // the bridge, then depth-sorted actors
     this.ren.drawOverlay(b, this.map, this.cam);
@@ -448,27 +424,6 @@ class TileLabEngine extends RetroEngine {
       const mx = gx + Math.sin(this.tsec + i) * 9 * cam.scale, my = gy - ph * 44 * cam.scale;
       c.globalAlpha = (1 - ph) * 0.8; c.fillStyle = "#dffaff";
       const s = Math.max(1, cam.scale); c.fillRect(mx, my, s, s);
-    }
-    c.globalAlpha = 1;
-    // river shimmer — follows the meandering channel, only over water
-    for (let i = 0; i < 30; i++) {
-      const ph = (this.tsec * 0.45 + i * 0.11) % 1;
-      const yy = Math.floor(WELL.y + 2 + ph * (46 - WELL.y - 2));
-      const c0 = this.riverCol[yy]; if (c0 == null || c0 < 0) continue;
-      const tx = c0 + 0.5 + Math.sin(yy * 0.5 + this.tsec) * 0.4;
-      if (this.map.get(Math.round(tx - 0.5), yy) !== "water") continue;
-      const [sx, sy] = this.ren.w2s(cam, tx * T, yy * T);
-      c.globalAlpha = 0.5 * (0.5 + 0.5 * Math.sin(this.tsec * 4 + i));
-      c.fillStyle = "#cfeeff"; const s = Math.max(1, cam.scale * 0.8); c.fillRect(sx, sy, s, s);
-    }
-    c.globalAlpha = 1;
-    // river-mouth glow where it flows into the sea
-    for (const f of this.falls) {
-      const [fx, fy] = this.ren.w2s(cam, f.x, f.y);
-      c.globalAlpha = 0.35 + 0.12 * Math.sin(this.tsec * 3);
-      const mr = 22 * cam.scale, mg = c.createRadialGradient(fx, fy, 0, fx, fy, mr);
-      mg.addColorStop(0, "rgba(210,250,255,.55)"); mg.addColorStop(1, "rgba(210,250,255,0)");
-      c.fillStyle = mg; c.fillRect(fx - mr, fy - mr, mr * 2, mr * 2);
     }
     c.globalAlpha = 1;
     // fireflies — crisp drifting light motes over the meadow (no full-frame blur)

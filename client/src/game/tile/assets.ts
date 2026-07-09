@@ -58,6 +58,7 @@ export const CF_SHEETS: Record<string, string> = {
   lanterns: `${CF}/decor/lanterns.png`,
   benches: `${CF}/decor/benches.png`,
   outdoor_decor: `${CF}/decor/outdoor_decor.png`,
+  mushrooms: `${CF}/decor/mushrooms.png`,   // 8×5 fanciful mushroom decor
   // water-edge decor (8-frame 16×16 strips; we use frame 0)
   cattail: `${CF}/decor/cattail.png`,
   lilypad1: `${CF}/decor/lilypad1.png`,
