@@ -414,8 +414,8 @@ class TileLabEngine extends RetroEngine {
   private placeOasisLife(map: TileMap) {
     const rnd = rng(555);
     const O = OASIS;
-    // a duck on the water (north bay) + a pink flamingo wading at the shallow east edge
-    this.addCritter(map, "duck", 32, 32, 0, 12, O.cx + 1, O.cy - 2, { water: true, wr: 1.4, sp: 6, bob: 1 });
+    // TWO pink flamingos drifting on the pool (owner swapped the duck for a second flamingo)
+    this.addCritter(map, "flamingo", 32, 32, 0, 6, O.cx + 2, O.cy - 2, { water: true, wr: 1.2, sp: 4, bob: 0.9 });   // north bay
     this.addCritter(map, "flamingo", 32, 32, 0, 6, O.cx, O.cy, { water: true, wr: 0.9, sp: 3, bob: 0.8 });   // a water bird — floats in the MIDDLE of the pool (swan sheet, recoloured pink)
     // a couple of LONE butterflies (individuals, well apart — never a clump) + a single bee
     // butterfly.png is an 8×8 sheet: 2 cols = flap frames, 8 rows = colours. Draw ONE 8×8 butterfly
@@ -503,8 +503,11 @@ class TileLabEngine extends RetroEngine {
       const dens = 1 - smoothstep(2.2, 6.5, d);                                       // the green halo, thinning outward
       if (d >= 2.9 && r < dens * 0.24) {                                              // PALMS (signature oasis tree) — varied size
         const sc = 0.85 + rnd() * 0.35;
+        // palm1 = 48×64 (col0 stump, col1-2 full palms); palm2 = 32×48 (col0 stump, col1-2 full palms).
+        // Use cols 1-2 only (a whole palm WITH trunk) — never col0 (a trunkless stump), and the right fw
+        // (palm2 was drawn 48 wide → grabbed 1.5 frames = HALF trees).
         if (rnd() < 0.7) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 5 * sc });
-        else map.addProp({ sheet: "palm2", fw: 48, fh: 48, col: Math.floor(rnd() * 2), row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 5 * sc });
+        else map.addProp({ sheet: "palm2", fw: 32, fh: 48, col: 1 + Math.floor(rnd() * 2), row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 5 * sc });
       } else if (r < dens * 0.5) {                                                    // green bushes (secondary)
         map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: DBUSH[0], row: DBUSH[1], x: tx * T + rnd() * T, y: ty * T + T, solidR: 3 });
       } else if (r < dens * 0.64) {                                                   // some ferns in the halo too
@@ -642,9 +645,10 @@ class TileLabEngine extends RetroEngine {
     const id = cx.getImageData(0, 0, w, h), d = id.data;
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] === 0) continue;
-      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;                  // natural packed-sand ramp (no extra blend filter — the DOMINANT
-      // ground is matched to this tone instead, so the path blends by ground-match, not by flattening the path).
-      d[i] = clamp255(lum * 0.52 + 92); d[i + 1] = clamp255(lum * 0.42 + 62); d[i + 2] = clamp255(lum * 0.30 + 34);
+      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;                  // recolour so the path's BACKGROUND tone == the sand-FLOOR tone
+      // (measured ground ~[194,133,76]); the path was reading ~40 darker → a dark strip. Now its dominant
+      // background matches the floor, so it blends; the faint stone texture is the only "path" that reads.
+      d[i] = clamp255(lum * 0.30 + 155); d[i + 1] = clamp255(lum * 0.26 + 104); d[i + 2] = clamp255(lum * 0.20 + 56);
     }
     cx.putImageData(id, 0, 0);
     if (!this.atlas.has("sandpath")) this.atlas.add("sandpath", "");
