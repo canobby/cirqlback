@@ -17,6 +17,7 @@ interface Critter {
   bob: number; wr: number; sp: number;      // idle-bob height · wander radius (tiles) · speed (px/s)
   tx: number; ty: number; nt: number;       // current wander target + time-to-retarget
   water: boolean;                           // stays in the pond (duck) vs. on land
+  dir?: { down: number; up: number };        // NPC directional walk rows (d_npc: down=R, up=R+2) → row picked by motion/player
 }
 
 // TILE LAB — P1 vertical slice: Cloverfield, one hand-authored meadow island.
@@ -156,7 +157,7 @@ class TileLabEngine extends RetroEngine {
   private bpal: BiomePalette = PALETTES.meadow;
   private glowSpots: { x: number; y: number; color: string; r: number }[] = [];   // per-object neon glow (mushrooms)
   private rx = RX; private ry = RY;                 // ring radii — CIRQLSPACE starts ~2/3, expands later
-  private labels: { x: number; y: number; text: string; cave?: boolean }[] = [];   // place/NPC name tags (world px; cave-only tags flagged)
+  private labels: { x: number; y: number; text: string; cave?: boolean; follow?: Critter }[] = [];   // place/NPC name tags (world px; cave-only tags flagged; follow tracks a wandering NPC)
   private critters: Critter[] = [];                                // animals that frame-animate + wander
 
   // ---- in-world talk (the Fountain Oracle + ring NPCs) ----
@@ -387,17 +388,13 @@ class TileLabEngine extends RetroEngine {
     for (const [tx, ty] of [[26, 38], [40, 30], [18, 24]] as [number, number][])
       if (this.dCanPlace(map, tx, ty)) this.addCritter(map, "scarab", 16, 16, 0, 0, tx, ty, { wr: 1.2, sp: 3, bob: 0.3 });
     this.placeOasisLife(map);
-    // d_npc is a 32×32 character sheet: rows are DIRECTIONAL WALK SETS (r0 = walk-toward-you,
-    // r2 = walk-away), 6 frames each. col 0 of a DOWN-facing row = the front idle. Draw ONE 32×32
-    // frame (NOT a 64×64 block — that grabbed a 2×2 of four walk-frames, the "4 women" bug). The
-    // down-idle rows 0/3/6 give each NPC a distinct character's front standing pose.
-    const npc = (tx: number, ty: number, name: string, row: number) => {
-      map.addProp({ sheet: "d_npc", fw: 32, fh: 32, col: 0, row, x: tx * T + T / 2, y: ty * T + T, scale: 1.05, solidR: 6 });
-      this.labels.push({ x: tx * T + T / 2, y: ty * T - 8, text: name });
-    };
-    npc(DNPC.sahra[0], DNPC.sahra[1], "Sahra", 0);                           // well-keeper — front idle, beside the plaza well
-    npc(DNPC.kesh[0], DNPC.kesh[1], "Kesh", 3);                              // camel-herder — front idle, WEST of the lagoon
-    npc(DNPC.tamm[0], DNPC.tamm[1], "Tamm", 6);                              // wayfarer — front idle, beside the campfire
+    // d_npc is a 32×32 character sheet: rows are DIRECTIONAL WALK SETS (down-row R = walk-toward-you,
+    // R+2 = walk-away), 6 frames each. addNpc draws ONE 32×32 frame (NOT a 64×64 block — that grabbed
+    // a 2×2 of four walk-frames, the "4 women" bug) and makes the NPC WANDER + face you. Down-rows
+    // 0/3/6 give each a distinct character.
+    this.addNpc(map, DNPC.sahra[0], DNPC.sahra[1], "Sahra", 0);              // well-keeper, near the plaza well
+    this.addNpc(map, DNPC.kesh[0], DNPC.kesh[1], "Kesh", 3);                 // camel-herder, WEST of the lagoon
+    this.addNpc(map, DNPC.tamm[0], DNPC.tamm[1], "Tamm", 6);                 // wayfarer, by the campfire
   }
 
   /** Fill the oasis with LIFE: a duck paddling, a pink flamingo wading, butterflies + a bee over the
@@ -1012,21 +1009,35 @@ class TileLabEngine extends RetroEngine {
 
   /** Place an animal as a living critter (a prop that frame-animates in place + gently wanders). */
   private addCritter(map: TileMap, sheet: string, fw: number, fh: number, col: number, row: number, tx: number, ty: number,
-    o: { frames?: number; fps?: number; bob?: number; wr?: number; sp?: number; water?: boolean; solidR?: number } = {}) {
-    map.addProp({ sheet, fw, fh, col, row, x: tx * T, y: ty * T, solidR: o.solidR ?? 0 });
+    o: { frames?: number; fps?: number; bob?: number; wr?: number; sp?: number; water?: boolean; solidR?: number; scale?: number } = {}): Critter {
+    map.addProp({ sheet, fw, fh, col, row, x: tx * T, y: ty * T, scale: o.scale, solidR: o.solidR ?? 0 });
     const p = map.props[map.props.length - 1];
-    this.critters.push({
+    const c: Critter = {
       p, gx: p.x, gy: p.y, hx: p.x, hy: p.y, baseCol: col, frames: o.frames ?? 1, fps: o.fps ?? 4,
       ph: ((tx * 7 + ty * 13) % 100) / 100 * 6.28, bob: o.bob ?? 1.4, wr: o.wr ?? 0, sp: o.sp ?? 8,
       tx: p.x, ty: p.y, nt: 0, water: o.water ?? false,
-    });
+    };
+    this.critters.push(c);
+    return c;
+  }
+
+  /** Add a living NPC: a d_npc character that WANDERS a small radius on clear ground (never into
+   *  solids/water — the per-step blocked check enforces movement clearance) and TURNS to face you
+   *  when you're near. Its name tag follows it. row = the character's down-facing walk row (up = row+2). */
+  private addNpc(map: TileMap, tx: number, ty: number, name: string, row: number) {
+    const c = this.addCritter(map, "d_npc", 32, 32, 0, row, tx, ty, { frames: 6, fps: 6, bob: 0, wr: 1.2, sp: 9, solidR: 6, scale: 1.05 });
+    c.dir = { down: row, up: row + 2 };
+    this.labels.push({ x: tx * T + T / 2, y: ty * T - 8, text: name, follow: c });
   }
 
   /** Animate + wander every critter (called each frame). */
   private updateCritters(dt: number) {
     for (const c of this.critters) {
-      if (c.frames > 1) c.p.col = c.baseCol + (Math.floor(this.tsec * c.fps + c.ph) % c.frames);   // frame cycle
-      if (c.wr > 0) {
+      if (!c.dir && c.frames > 1) c.p.col = c.baseCol + (Math.floor(this.tsec * c.fps + c.ph) % c.frames);   // generic frame cycle (NPCs handled below)
+      let moved = false, mvx = 0;
+      // an NPC pauses its wander when you're near, so it stops to regard you (face-to-face).
+      const npcNear = !!c.dir && (this.player.x - c.gx) ** 2 + (this.player.y - c.gy) ** 2 < 48 * 48;
+      if (c.wr > 0 && !npcNear) {
         c.nt -= dt;
         if (c.nt <= 0) {                                   // pick a fresh wander target near home
           const a = this.tsec * 0.6 + c.ph;
@@ -1036,12 +1047,37 @@ class TileLabEngine extends RetroEngine {
         const dx = c.tx - c.gx, dy = c.ty - c.gy, d = Math.hypot(dx, dy);
         if (d > 1.5) {
           const step = Math.min(d, c.sp * dt), nx = c.gx + dx / d * step, ny = c.gy + dy / d * step;
+          // MOVEMENT CLEARANCE (owner rule): a ground-mover only steps onto genuinely walkable ground —
+          // never into water, off the ring, or through a solid (building/cliff/prop). Blocked → retarget.
           const ok = c.water ? this.pondField(nx / T, ny / T) > 0.5 : (this.landField(nx / T, ny / T) > 2.5 && !this.blocked(nx, ny, 4));
-          if (ok) { c.gx = nx; c.gy = ny; if (Math.abs(dx) > 4) c.p.flip = dx < 0; } else c.nt = 0;   // face travel direction
+          if (ok) { mvx = nx - c.gx; c.gx = nx; c.gy = ny; moved = true; if (!c.dir && Math.abs(dx) > 4) c.p.flip = dx < 0; } else c.nt = 0;
         }
       }
+      if (c.dir) this.faceNpc(c, moved, mvx);
       const bob = this.reduce ? 0 : Math.abs(Math.sin(this.tsec * 3 + c.ph)) * c.bob;   // a gentle hop
       c.p.x = c.gx; c.p.y = c.gy - bob;
+    }
+  }
+
+  /** Pick an NPC's sprite frame from what it's doing: if you're close (and it's not mid-step) it
+   *  TURNS to face you (down if you're below/level, up/away if above); while wandering it plays its
+   *  walk cycle on the matching row (flipped for left); otherwise it stands on its front idle. */
+  private faceNpc(c: Critter, moved: boolean, mvx: number): void {
+    const dir = c.dir!;
+    const pdx = this.player.x - c.gx, pdy = this.player.y - c.gy;
+    const near = pdx * pdx + pdy * pdy < 48 * 48;   // ~3 tiles → notices you
+    if (near && !moved) {                            // turn to face the player, standing idle
+      c.p.row = pdy >= -6 ? dir.down : dir.up;
+      if (Math.abs(pdx) > 6) c.p.flip = pdx < 0;
+      c.p.col = c.baseCol;
+      return;
+    }
+    if (moved) {                                     // walking — matching direction row + walk cycle
+      c.p.row = c.ty < c.gy ? dir.up : dir.down;     // heading toward a higher target = walking away (up)
+      if (Math.abs(mvx) > 0.2) c.p.flip = mvx < 0;
+      c.p.col = c.baseCol + (Math.floor(this.tsec * c.fps + c.ph) % c.frames);
+    } else {
+      c.p.col = c.baseCol;                           // idle frame, keep last-faced row
     }
   }
 
@@ -1677,7 +1713,10 @@ class TileLabEngine extends RetroEngine {
       g.strokeStyle = "rgba(0,0,0,.8)"; g.strokeText(text, dx, dy);
       g.fillStyle = color; g.fillText(text, dx, dy);
     };
-    for (const l of this.labels) if (!!l.cave === this.inCave) tag(l.x, l.y, l.text, l.cave ? "#bff4ff" : "#ffffff");
+    for (const l of this.labels) if (!!l.cave === this.inCave) {
+      const wx = l.follow ? l.follow.p.x : l.x, wy = l.follow ? l.follow.p.y - 40 : l.y;   // NPC tags ride above the wandering sprite
+      tag(wx, wy, l.text, l.cave ? "#bff4ff" : "#ffffff");
+    }
     tag(this.player.x, this.player.y - 30, "You", "#ffe28a");
 
     // "press E to talk" prompt floating over the target in reach (a soft bob)

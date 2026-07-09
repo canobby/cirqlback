@@ -36,6 +36,14 @@ So the build order is always **STRUCTURE → PATHS → FILL**, never "scatter th
 **RENDER order (draw the data) — must match the layer model:**
 GROUND (autotiled terrain, clipped to shore) → procedural coast/water → **PATHS (sprite layer)** → overlay structures → depth-sorted props + actors + player (feet-Y sort) → shadows/light/juice last.
 
+### MOVEMENT CLEARANCE (ground-movers must be able to move)
+Landscape + architecture must **never box in** an NPC/animal or choke a route people/creatures use. When placing structures/water/cliffs/dense props (stages 2–4), leave the movers of stages 5–6 real room to walk:
+- **Every wandering NPC/animal needs open, walkable ground around its post** — not a pocket ringed by solids (buildings, cliffs, water, big props). A mover in a sealed pocket = a bug.
+- **Keep the PATHS walkable** — don't drop a solid prop *on* the lane. Paths are movement corridors first (they can also be pretty).
+- **Ground-movers step only onto walkable ground** — the per-step check refuses water / off-ring / any solid, and retargets. Verify posts aren't so tight the mover just jitters in place.
+- **Exceptions:** (a) **flying** things (butterflies/bees) ignore ground clearance — they roam freely over water/props; (b) a **quest** may deliberately gate a route (a locked gate, a guard, rubble) — but that's an *authored* block with a reason, never accidental terrain trapping.
+- Rule of thumb: if you place something big, ask "can everyone who lives here still get where they'd go?" If not, move it or open a way through.
+
 > The Dunes was built mid-stream as we learned the rules, so its method isn't perfectly in this order yet. **Once the ring's visuals are locked, refactor buildDunes to read exactly as stages 1→7** (a cleanup pass, not a behaviour change) — that's the streamlined template every future ring is generated from.
 
 ---
