@@ -124,9 +124,11 @@ const PALETTES: Record<Biome, BiomePalette> = {
   // Water matches the SEA that rings the island, so the oasis reads as a piece of the same water
   // (cohesion), and gets the beach's foam→shallow→deep edge (thinner) so it reads as living water.
   desert: {
-    // tuned to the sanctumpixel sand FLOOR tones (harmonised ~dark [194,133,76] / light [212,162,106])
-    // so the dune WASH shades WITHIN the sand's own tone range (not toward pale) + the beach blends to it.
-    glite: [214, 164, 108], gdark: [176, 120, 72], grassOpaque: false,
+    // BRACKET the packed dark-sand tone (~[169,118,72]) so the dune WASH shades ± around it and does
+    // NOT lighten the dominant ground away from the PATH's tone — the path is that same packed sand, so
+    // matching the dominant ground to it makes the path blend (owner: "use the pathway background as the
+    // dominant ground colour"). The lighter sand is now the accent PATCHES (sandRegion), not dominant.
+    glite: [186, 134, 86], gdark: [150, 104, 62], grassOpaque: false,
     water: { deep: [26, 86, 132], shal: [118, 200, 228], foam: [212, 234, 240], wet: [150, 178, 120] },
   },
 };
@@ -640,10 +642,9 @@ class TileLabEngine extends RetroEngine {
     const id = cx.getImageData(0, 0, w, h), d = id.data;
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] === 0) continue;
-      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;                  // LOW-CONTRAST packed-sand ramp, centred just DARKER than the
-      // sanctumpixel sand floor (~[194,133,76]) so the path reads as a trodden strip of the SAME material —
-      // it blends into the ground instead of sticking out as defined cobble (owner: "take the colours out to match").
-      d[i] = clamp255(lum * 0.26 + 132); d[i + 1] = clamp255(lum * 0.22 + 86); d[i + 2] = clamp255(lum * 0.16 + 46);
+      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;                  // natural packed-sand ramp (no extra blend filter — the DOMINANT
+      // ground is matched to this tone instead, so the path blends by ground-match, not by flattening the path).
+      d[i] = clamp255(lum * 0.52 + 92); d[i + 1] = clamp255(lum * 0.42 + 62); d[i + 2] = clamp255(lum * 0.30 + 34);
     }
     cx.putImageData(id, 0, 0);
     if (!this.atlas.has("sandpath")) this.atlas.add("sandpath", "");

@@ -86,6 +86,19 @@ Applies to **everything, even the smallest item** — check height, depth AND wi
 
 Sources: SLYNYRD Pixelblog 20/43 (connection tiles, busy-vs-calm, regions), TMW Mapping/Tilesets (no straight lines; outlines are for sprites, not map tiles; break repetition with scatter), Pixel Parmesan / drububu (dithering density ramps), Spritesheet-Generator (one job per edge; keep dither to the transition band).
 
+### ELEVATED LANDFORMS — mesa / cliff / plateau (researched 2026-07-09)
+An elevated form is convincing only when the eye reads **three planes at once**: a **lit TOP** you stand on, a **shadowed FACE** dropping toward the camera, and a **grounded BASE** touching the lower terrain. If top and face are close in value, the rim is a clean rectangle, and there's no base shadow, the brain can't tell **plateau vs pit vs flat texture** — that ambiguity is the "not convincing" read. Kill it:
+1. **Two flat LEVELS connected only by a face + ramp** — never a gradient. Author as FOUR pieces: top surface · rim/top-edge autotile · face strip · base/contact.
+2. **Face is ≥2 tiles tall and clearly value-DARKER than the lit top** (top, side, front = distinct values). A 1-tile lip is a curb, not a cliff.
+3. **Highlighted top LIP + base CAST SHADOW = plateau (not pit).** Highlight at the *top* of the face (caught light on the overhang), shadow at the *bottom* where it meets the ground. Invert them and you've drawn a pit.
+4. **Cast shadows stay short (≤~1 tile) and constant length** regardless of wall height, so they don't fight passing sprites.
+5. **Ramps/stairs face the CAMERA (south), span the FULL face height, and are the ONLY walkable ascent;** the rest of the face is solid collision. Cut the ramp *into* the face with a wedge/triangle tile (not pasted on); no stubby stairs; give the lookout a real path (1–2 routes = "reach it a few ways").
+6. **Break every rim and base:** jog the rim (no straight run > a few tiles), terrace the drop into stepped ledges (each a consistent height), scatter cliff-coloured boulders/**talus** rubble at the foot (randomised, no repeating clusters), grade vegetation dense-low → sparse-high.
+7. **Layer + sort (ALttP model):** lower level under, upper level (top+rim+occupants) over; feet-sort within each; a SEPARATE collision layer (ideally sub-tile on the face/ramp) — three states: face=blocked, ramp=passable link, top=walkable-but-bounded.
+8. **Desert mesa:** broad flat top + steep tall face (mesa, not butte); **2–3 horizontal sandstone STRATA bands** on the face (decorates *and* sells verticality — likely our current gap if the face is flat); **talus skirt**; **warm top-lip highlight / cooler shadowed face**. Reference **Tulimshar** (pull the real TMW maps first — standing rule).
+
+Sources: SLYNYRD Pixelblog 6/11/43 (light dir, value-per-face, cast shadows, wedge tiles, terraces, warm-near/cool-far), RPG Maker "Mapping Cliffs" + FlareBlitzed + finalbossblues (height consistency, jog the rim, stepped layers, rock/veg placement, common mistakes), gablaxian ALttP ground/world/top layers + separate collision, TCRF ALttP 8×8 sub-tile collision.
+
 > The Dunes was built mid-stream as we learned the rules, so its method isn't perfectly in this order yet. **Once the ring's visuals are locked, refactor buildDunes to read exactly as stages 1→7** (a cleanup pass, not a behaviour change) — that's the streamlined template every future ring is generated from.
 
 ---
