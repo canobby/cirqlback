@@ -155,6 +155,16 @@ A focal pond should be *lush*, not a flat puddle (researched pond design):
 
 Nothing sits near the shoreline. Every placement gate uses a generous **edgepoint margin (~4+ tiles)** so props/NPCs/detail read as *on the land*, not teetering on the coast. No "rim band" of props hugging the beach. (Water-edge exceptions like a dock are deliberate.)
 
+## 5g. Water clearance & no bad overlaps
+
+- **Only water things go near water.** Animals (duck/frog) and *intended* water plants (reeds, cattails, lily pads, encircling stones, overhanging bushes) may sit in/near a pond. **Every other object keeps ~3 tiles clear of the water** — no random mushroom/tree/detail crowding the shore.
+- **No prop-on-prop overlaps.** Small ground detail (pebbles, tufts, flowers) must not land on top of a cap/trunk/house — gate it against nearby big props (a rock on a mushroom's head reads as a bug).
+
+## 5h. One gathering spot + a dock per ring
+
+- **A gathering spot** — one communal **Commons** per ring (a bonfire clearing with seats, or biome equivalent), placed in an open clearing kept clear of clutter. It's where festivals / the Welcome Dance / crowd moments happen.
+- **A dock** — a little jetty at the shore as the ring's departure point (a deliberate water-edge exception). Ring-to-ring sailing wires up when the world is assembled.
+
 ## 6. Believability & story
 
 **DO**
