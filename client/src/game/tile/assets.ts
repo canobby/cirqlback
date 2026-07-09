@@ -73,6 +73,9 @@ export const CF_SHEETS: Record<string, string> = {
   chicken: `${CF}/animals/chicken.png`,
   duck: `${CF}/animals/duck.png`,     // 256×640 @32 — pond life
   frog: `${CF}/animals/frog.png`,     // 320×128 @32
+  swan: `${CF}/animals/swan.png`,     // 256×640 @32 — recoloured pink → oasis flamingo
+  butterfly: `${CF}/animals/butterfly.png`,   // 16×64 @16 — 4-frame flutter
+  bee: `${CF}/animals/bee.png`,       // 64×32 @32 — 2-frame
   farmer: `${CF}/npc/farmer_bob.png`,
   fisher: `${CF}/npc/fisherman_fin.png`,
   // ShroomLands DLC — biome ring "The Shroomwood" (same Cute Fantasy artist)
@@ -93,6 +96,8 @@ export const CF_SHEETS: Record<string, string> = {
   d_house3: `${CF}/desert/house3.png`,   // 128×112
   cactus: `${CF}/desert/cactus.png`,     // 224×256 — cactus variety (32×48 cells)
   acacia: `${CF}/desert/acacia.png`,     // 240×64 — flat-top acacia (80×64 cells, col 1-2)
+  palm1: `${CF}/desert/palm1.png`,       // 144×64 — palms (48×64 cells; col0=stump, col1-2=full palms)
+  palm2: `${CF}/desert/palm2.png`,       // 96×48  — smaller palms (48×48 cells, col 0-1)
   dead_tree: `${CF}/desert/dead_tree.png`,   // 48×64
   dead_bush: `${CF}/desert/dead_bush.png`,   // 32×16 (2 frames)
   d_rocks: `${CF}/desert/rocks.png`,     // 192×32 @16

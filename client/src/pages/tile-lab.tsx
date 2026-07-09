@@ -67,9 +67,13 @@ const MESA = { x0: 44, y0: 15, x1: 54, y1: 21, faceH: 3, ramps: [47, 51] };   //
 // purposeful object stays readable (the "don't obscure the firepit" rule — see the rulebook).
 const DNPC: Record<string, [number, number]> = {
   sahra: [DPLAZA.x + 3, DPLAZA.y],                 // well-keeper — east of the plaza well, not on it
-  kesh: [OASIS.cx + 7, OASIS.cy + 3],              // camel-herder — well onto dry sand SE of the oasis (off the water)
+  kesh: [OASIS.cx - 9, OASIS.cy],                  // camel-herder — WEST side of the lagoon, on dry sand
   tamm: [DCAMP.x + 3, DCAMP.y],                    // wayfarer — beside the campfire seat-ring, fire left clear
 };
+// camels graze in the OPEN by the lagoon (visible, not hidden behind trees); near the herder.
+const DCAMEL: [number, number][] = [[OASIS.cx - 7, OASIS.cy + 3], [OASIS.cx + 4, OASIS.cy - 5]];
+// tiles kept CLEAR of scatter/flora so the NPCs, camels + the flamingo read (functional clearance).
+const DRESERVED: [number, number][] = [DNPC.sahra, DNPC.kesh, DNPC.tamm, ...DCAMEL, [OASIS.cx - 6, OASIS.cy + 3]];
 // sanctumpixel desert props are single-image PNGs of varied size — dims hardcoded (props are
 // placed before the atlas finishes loading, so we can't read w/h off the atlas at build time).
 const SP_ROCK: Record<number, [number, number]> = { 1: [32, 64], 2: [32, 64], 3: [32, 64], 4: [48, 48], 5: [48, 48], 6: [32, 32], 7: [32, 32], 8: [32, 32], 9: [32, 32], 10: [48, 32], 11: [48, 32] };
@@ -148,11 +152,12 @@ class TileLabEngine extends RetroEngine {
   private caveGem: { x: number; y: number } | null = null;    // the glowing focal gem (world px)
   private fadeT = 0;                                 // quick black fade on a level transition
   private portalArmed = true;                        // must step clear of a portal before it fires again (no ping-pong)
-  // directional sun shadows (depth engine, slice 1): the sun sits upper-left, so ground shadows
-  // rake down-&-right; longer for taller objects. Tunable live via window.__tilelab.eng.setSun().
+  // directional sun shadows (depth engine, slice 1). OFF for now — re-enable per ring once the
+  // ground/floor sprites are laid (owner: long shadows hide things + look weird on unfinished ground).
+  private sunShadows = false;
   private sunDir = { x: 0.4, y: 0.92 };
   private sunLen = 0.5;
-  setSun(dx: number, dy: number, len: number) { const m = Math.hypot(dx, dy) || 1; this.sunDir = { x: dx / m, y: dy / m }; this.sunLen = len; }
+  setSun(dx: number, dy: number, len: number) { const m = Math.hypot(dx, dy) || 1; this.sunDir = { x: dx / m, y: dy / m }; this.sunLen = len; this.sunShadows = true; }
   /** Fired when the nearest talkable target changes (null = none in reach). Page shows a Talk prompt. */
   public onProximity: ((s: Speaker | null) => void) | null = null;
   /** Fired when the player chooses to talk (E / Space, or the Talk button). Page opens the chat. */
@@ -182,7 +187,7 @@ class TileLabEngine extends RetroEngine {
     if (biome === "desert") registerPack(this.atlas, "desert");
     this.atlas.loadAll().then(() => {
       this.buildLogo();
-      if (biome === "desert") { harmonizePack(this.atlas, "desert"); this.buildSandTexture(); }
+      if (biome === "desert") { harmonizePack(this.atlas, "desert"); this.buildSandTexture(); this.buildFlamingo(); }
       else this.buildGrassTexture();
       this.loaded = true;
       // build-time safety check: warn if any placed land prop reads as a water sprite
@@ -356,18 +361,36 @@ class TileLabEngine extends RetroEngine {
     this.placeDuneScatter(map);
     this.scatterDuneDetail(map);
 
-    // LIFE — camels near the oasis/hamlet, scarabs crawling the sand. NPCs by function.
-    for (const [tx, ty] of [[24, 34], [32, 26]] as [number, number][])
-      if (this.dCanPlace(map, tx, ty)) this.addCritter(map, "camel", 48, 48, 0, 0, tx, ty, { solidR: 9, wr: 0.7, sp: 4, bob: 0.5 });
+    // LIFE — camels grazing in the open by the lagoon; scarabs on the sand; the oasis full of life.
+    for (const [tx, ty] of DCAMEL) this.addCritter(map, "camel", 48, 48, 0, 0, tx, ty, { solidR: 9, wr: 0.6, sp: 4, bob: 0.5 });
     for (const [tx, ty] of [[26, 38], [40, 30], [18, 24]] as [number, number][])
       if (this.dCanPlace(map, tx, ty)) this.addCritter(map, "scarab", 16, 16, 0, 0, tx, ty, { wr: 1.2, sp: 3, bob: 0.3 });
+    this.placeOasisLife(map);
     const npc = (tx: number, ty: number, name: string, col: number) => {
       map.addProp({ sheet: "d_npc", fw: 64, fh: 64, col, row: 0, ay: 0.66, x: tx * T, y: ty * T, solidR: 6 });
       this.labels.push({ x: tx * T, y: ty * T - 30, text: name });
     };
     npc(DNPC.sahra[0], DNPC.sahra[1], "Sahra", 0);                            // well-keeper, beside the plaza well
-    npc(DNPC.kesh[0], DNPC.kesh[1], "Kesh", 1);                               // camel-herder, off the oasis water
+    npc(DNPC.kesh[0], DNPC.kesh[1], "Kesh", 1);                               // camel-herder, WEST of the lagoon
     npc(DNPC.tamm[0], DNPC.tamm[1], "Tamm", 2);                               // wayfarer, beside the campfire (fire clear)
+  }
+
+  /** Fill the oasis with LIFE: a duck paddling, a pink flamingo wading, butterflies + a bee over the
+   *  palms, and a couple of extra palm clumps around the lagoon for an asymmetric, lived-in look. */
+  private placeOasisLife(map: TileMap) {
+    const rnd = rng(555);
+    const O = OASIS;
+    // a duck on the water (north bay) + a pink flamingo wading at the shallow east edge
+    this.addCritter(map, "duck", 32, 32, 0, 12, O.cx + 1, O.cy - 2, { water: true, wr: 1.4, sp: 6, bob: 1 });
+    this.addCritter(map, "flamingo", 32, 32, 0, 6, O.cx - 6, O.cy + 3, { wr: 0.5, sp: 3, bob: 1.4 });   // swan sheet, recoloured pink at load
+    // butterflies fluttering over the halo + a bee (whole standalone critters)
+    for (const [dx, dy, f] of [[-8, -2, 0], [5, -4, 2], [-3, 5, 1]] as [number, number, number][])
+      this.addCritter(map, "butterfly", 16, 16, 0, f, O.cx + dx, O.cy + dy, { frames: 1, fps: 8, wr: 1.6, sp: 8, bob: 1.8 });   // vertical sheet → static frame, wanders via bob
+    this.addCritter(map, "bee", 32, 32, 0, 0, O.cx + 7, O.cy - 3, { frames: 2, fps: 8, wr: 1.4, sp: 7, bob: 1.2 });
+    // a couple of extra palm clumps set around the lagoon (varied spots — asymmetric, not the even halo)
+    const palm = (tx: number, ty: number, sc: number) => { if (this.dCanPlace(map, tx, ty, 3.5, 3) && this.oasisClear(tx, ty, 2.8)) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: tx * T + T / 2, y: ty * T + T, scale: 0.85 + rnd() * 0.3, overhead: true, solidR: 5 }); };
+    for (const [cx, cy] of [[O.cx - 8, O.cy - 4], [O.cx + 8, O.cy + 2], [O.cx + 2, O.cy - 7]] as [number, number][])
+      for (let i = 0; i < 2; i++) palm(cx + Math.round((rnd() - 0.5) * 3), cy + Math.round((rnd() - 0.5) * 3), 1);
   }
 
   /** The oasis outline: >0 inside. Non-circular, gentle lobes (a natural pool). */
@@ -394,10 +417,15 @@ class TileLabEngine extends RetroEngine {
   }
   private inHamlet(tx: number, ty: number): boolean { return tx >= HAMLET.x - 5 && tx <= HAMLET.x + 8 && ty >= HAMLET.y - 4 && ty <= HAMLET.y + 8; }
   private inMesa(tx: number, ty: number): boolean { return tx >= MESA.x0 - 1 && tx <= MESA.x1 + 1 && ty >= MESA.y0 - 1 && ty <= MESA.y1 + MESA.faceH + 1; }
-  /** Desert placement gate: sand, WELL inside the edgepoint, clear of oasis/hamlet/mesa/camp, off the track. */
+  /** Near a reserved spot (an NPC / camel / flamingo) — kept clear of scatter so they read. */
+  private nearReserved(tx: number, ty: number, r = 2.4): boolean {
+    for (const [rx, ry] of DRESERVED) if (Math.hypot(tx - rx, ty - ry) < r) return true;
+    return false;
+  }
+  /** Desert placement gate: sand, WELL inside the edgepoint, clear of oasis/hamlet/mesa/camp/reserved, off the track. */
   private dCanPlace(map: TileMap, tx: number, ty: number, edge = 4, oM = 2.8): boolean {
     return map.get(tx, ty) === "grass" && this.insideEdge(tx, ty, edge) && this.oasisClear(tx, ty, oM)
-      && !this.inHamlet(tx, ty) && !this.inMesa(tx, ty)
+      && !this.inHamlet(tx, ty) && !this.inMesa(tx, ty) && !this.nearReserved(tx, ty)
       && this.dLaneDist(tx + 0.5, ty + 0.5) > 1.6
       && Math.hypot(tx - DCAMP.x, ty - DCAMP.y) > 3;
   }
@@ -414,7 +442,7 @@ class TileLabEngine extends RetroEngine {
   private placeOasisFlora(map: TileMap) {
     const rnd = rng(707);
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
-      if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3.5)) continue;
+      if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3.5) || this.nearReserved(tx, ty)) continue;
       const d = -this.oasisField(tx + 0.5, ty + 0.5) * ((OASIS.rx + OASIS.ry) / 2);   // ~tiles OUTSIDE the water
       if (d < 0.4 || d > 6.5) continue;
       const r = rnd();
@@ -423,9 +451,10 @@ class TileLabEngine extends RetroEngine {
         continue;
       }
       const dens = 1 - smoothstep(2.2, 6.5, d);                                       // the green halo, thinning outward
-      if (d >= 3.4 && r < dens * 0.2) {                                               // acacia (signature) — kept well back
-        const col = 1 + Math.floor(rnd() * 2), sc = 0.6 + rnd() * 0.3;
-        map.addProp({ sheet: "acacia", fw: 80, fh: 64, col, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 7 * sc });
+      if (d >= 2.9 && r < dens * 0.24) {                                              // PALMS (signature oasis tree) — varied size
+        const sc = 0.85 + rnd() * 0.35;
+        if (rnd() < 0.7) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 5 * sc });
+        else map.addProp({ sheet: "palm2", fw: 48, fh: 48, col: Math.floor(rnd() * 2), row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 5 * sc });
       } else if (r < dens * 0.5) {                                                    // green bushes (secondary)
         map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: DBUSH[0], row: DBUSH[1], x: tx * T + rnd() * T, y: ty * T + T, solidR: 3 });
       } else if (r < dens * 0.64) {                                                   // some ferns in the halo too
@@ -523,6 +552,26 @@ class TileLabEngine extends RetroEngine {
     }
   }
 
+  /** Recolour the white swan sheet PINK → an oasis flamingo, registered under "flamingo". */
+  private buildFlamingo() {
+    const swan = this.atlas.get("swan"); if (!swan.img) return;
+    const w = swan.w, h = swan.h, cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+    const cx = cv.getContext("2d", { willReadFrequently: true })!; cx.imageSmoothingEnabled = false;
+    cx.drawImage(swan.img as any, 0, 0);
+    const id = cx.getImageData(0, 0, w, h), d = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] === 0) continue;
+      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;
+      const dark = lum < 90;                                          // keep the dark beak/eye/legs dark
+      d[i] = dark ? d[i] : Math.min(255, lum * 0.55 + 155);          // strong pink
+      d[i + 1] = dark ? d[i + 1] : Math.max(0, lum * 0.5 + 30);
+      d[i + 2] = dark ? d[i + 2] : Math.max(0, lum * 0.55 + 75);
+    }
+    cx.putImageData(id, 0, 0);
+    if (!this.atlas.has("flamingo")) this.atlas.add("flamingo", "");
+    (this.atlas.get("flamingo") as unknown as { img: HTMLCanvasElement }).img = cv;
+  }
+
   /** The pack's flat sand tile → a subtly TEXTURED sand tile (grain), swapped into the atlas so
    *  any revealed ground reads as real desert sand (the opaque procedural sand paints over it). */
   private buildSandTexture() {
@@ -614,6 +663,7 @@ class TileLabEngine extends RetroEngine {
   /** Universal grounding: a soft drop-shadow under the player + every solid prop — the single
    *  biggest "fake-3D" win (grounds objects, adds depth). Drawn on the ground, under the sprites. */
   private drawShadows(c: CanvasRenderingContext2D, cam: Camera, directional = true) {
+    if (!this.sunShadows) directional = false;   // contact-only until sun-shadows are re-enabled per ring
     c.save();
     const sun = this.sunDir, ang = Math.atan2(sun.y, sun.x);
     // draw a ground shadow for one object: a round contact blob for short/round things (and in
