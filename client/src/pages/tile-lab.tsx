@@ -26,9 +26,14 @@ const POND = { x: 35, y: 40 };   // the river's terminus — an INLAND pond (nev
 const POND_R = 3;
 const EDGE = 3.4;                // the "edgepoint": nothing is placed within this many tiles of the shore
 
-// A natural, medium, non-circular pond — drawn with the Cute Fantasy pack's own
-// grass-bordered water tiles (water_blob + water_middle), kept well inside the ring.
+// A natural, medium, non-circular pond, kept well inside the ring. (Painted procedurally.)
 const SPOND = { cx: 30, cy: 33, rx: 5, ry: 3.9 };
+// Shroomwood layout ANCHORS (see docs/cirql/CIRQL-Placement-Rules.md): a clustered
+// village heart (NW), a fungal-forest core massed on the E side, and a footpath that
+// leads plaza → pond. Placement follows structure/function, not a random scatter.
+const PLAZA = { x: 22, y: 17 };                                   // the village heart (well + benches)
+const GROVE = { x: 48, y: 31 };                                  // the grove core (dense here, thinning out)
+const LANE: [number, number][] = [[22, 20], [24, 24], [25, 27], [26, 29]];   // plaza → pond footpath
 
 // A ring's biome = a palette recolor + a different prop kit + optional inland water.
 // Proves the locked rules generalise: same procedural beach + edgepoint margins +
@@ -170,51 +175,136 @@ class TileLabEngine extends RetroEngine {
   // ---------- The Shroomwood (biome ring) ----------
   /** A twilight fungal grove: glowing pool, giant mushrooms, shroom-cap village, round critters. */
   private buildShroomwood(map: TileMap) {
-    // 1) a natural, medium POND — kept well inside the ring (never the coast). The water
-    //    tiles carry collision only (renders nothing); the pool itself is painted into the
-    //    procedural ground canvas so its colours match the floor. Paint FIRST so nothing spawns in it.
+    // Built STRUCTURE → PATHS → FILL per docs/cirql/CIRQL-Placement-Rules.md, so the ring
+    // reads as a designed RPG area (village + grove + meadow) instead of a random scatter.
+
+    // ANCHOR 1 — the pond (Mistmere): a rest/beauty focal, painted procedurally (matches the
+    // floor). Water tiles carry collision only. Paint FIRST so nothing spawns in it.
     map.solidTerrain.add("water");
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++)
       if (map.get(tx, ty) === "grass" && this.pondField(tx + 0.5, ty + 0.5) > 0) { map.set(tx, ty, "water"); map.setSolid(tx, ty, true); }
     this.placePondDecor(map);
     this.labels.push({ x: SPOND.cx * T, y: (SPOND.cy + SPOND.ry + 1.6) * T, text: "Mistmere" });
 
-    // 2) Shroom Hollow — a spread-out hamlet of mushroom houses (NW of the fountain, in the open)
+    // ANCHOR 2 — the village (a real cluster around a plaza well), ANCHOR 3 — the grove
+    // (massed on one side with an edge), then FILL: open meadow + sparse rim, then NPCs by function.
+    this.placeVillage(map);
+    this.placeGrove(map);
+    this.placeMeadow(map);
+    this.placeRim(map);
+
+    // LIFE — villagers placed where their work is (keeper at the plaza, fisher at the pond,
+    // forager at the grove edge), never floating at random.
+    const npc = (sheet: string, tx: number, ty: number, name: string) => {
+      map.addProp({ sheet, fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: tx * T, y: ty * T, solidR: 6 });
+      this.labels.push({ x: tx * T, y: ty * T - 30, text: name });
+    };
+    npc("farmer", 20, 19, "Mycel");    // keeper, in the plaza
+    npc("fisher", 33, 30, "Spora");    // fisher, at the pond's west bank
+    npc("farmer", 41, 29, "Bramble");  // forager, at the grove edge
+  }
+
+  /** ANCHOR 2 — Shroom Hollow: a clustered hamlet around a plaza well (staggered, varied sizes). */
+  private placeVillage(map: TileMap) {
+    const rnd = rng(500);
     const house = (sheet: string, w: number, h: number, tx: number, ty: number, sc = 1) =>
-      map.addProp({ sheet, fw: w, fh: h, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, solidR: w * sc * 0.34, overhead: false });
-    house("shroom_house1", 80, 80, 25, 16, 0.9);
-    house("shroom_house2", 48, 64, 40, 13, 1);
-    house("shroom_house3", 48, 64, 45, 19, 1);
-    house("shroom_house2", 48, 64, 20, 21, 1);
-    house("shroom_house3", 48, 64, 47, 27, 1);
-    this.labels.push({ x: 30 * T, y: 11 * T, text: "Shroom Hollow" });
+      map.addProp({ sheet, fw: w, fh: h, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, solidR: w * sc * 0.32, overhead: false });
+    // caps grouped around the plaza — the big inn-cap + smaller huts, staggered (never a row)
+    house("shroom_house1", 80, 80, 18, 12, 0.95);
+    house("shroom_house3", 48, 64, 26, 12, 1);
+    house("shroom_house2", 48, 64, 15, 17, 1);
+    house("shroom_house2", 48, 64, 27, 18, 1);
+    house("shroom_house3", 48, 64, 21, 10, 1);
+    // the plaza heart: a rustic well + benches (a village water/gathering point — NOT the town fountain)
+    map.addProp({ sheet: "well", fw: 32, fh: 48, col: 0, row: 0, x: PLAZA.x * T + T / 2, y: PLAZA.y * T + T, solidR: 9 });
+    map.addProp({ sheet: "benches", fw: 32, fh: 32, col: 0, row: 0, x: (PLAZA.x - 2) * T, y: (PLAZA.y + 2) * T });
+    map.addProp({ sheet: "benches", fw: 32, fh: 32, col: 1, row: 0, x: (PLAZA.x + 3) * T, y: (PLAZA.y + 2) * T });
+    // dressing: flower beds + a small green tree by the homes (tertiary colour), a landmark oak at the fringe
+    for (const [cx, cy] of [[16, 15], [29, 15], [19, 20]] as [number, number][]) {
+      const fc = Math.floor(rnd() * 10), fr = Math.floor(rnd() * 10);
+      this.cluster(map, rnd, cx, cy, 2, 4, (tx, ty) => map.addProp({ sheet: "flowers", fw: 16, fh: 16, col: fc, row: fr, x: tx * T + rnd() * T, y: ty * T + rnd() * T }));
+    }
+    this.cluster(map, rnd, 13, 20, 2, 2, (tx, ty) => map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 4, y: ty * T + 6, overhead: true, solidR: 5 }));
+    map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col: 0, row: 0, x: 12 * T + 8, y: 15 * T + 12, overhead: true, solidR: 7 });
+    this.labels.push({ x: PLAZA.x * T, y: (PLAZA.y - 5) * T, text: "Shroom Hollow" });
+  }
 
-    // 3) the glowing giant-mushroom grove (replaces the oak grove) + a few landmark caps by the village
-    this.placeShroomGrove(map);
-    const GIANTS: [string, string, number, number, number][] = [
-      ["shroom_purple", "#c07bff", 33, 19, 1.3], ["shroom_blue", "#79d0ff", 25, 22, 1.1],
-      ["shroom_red", "#ff8a7b", 44, 24, 1.15], ["shroom_purple", "#c07bff", 43, 21, 1.2],
+  /** ANCHOR 3 — the grove: giant mushrooms MASSED near the core, thinning outward (a forest with
+   *  an edge), with green trees mixed in + a small-mushroom/rock understory. Three flora tiers. */
+  private placeGrove(map: TileMap) {
+    const rnd = rng(909);
+    const kinds: [string, string][] = [["shroom_purple", "#c07bff"], ["shroom_blue", "#79d0ff"], ["shroom_red", "#ff8a7b"]];
+    for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
+      if (!this.canPlace(map, tx, ty, 5, 2.0)) continue;
+      const dens = 1 - smoothstep(2, 13, Math.hypot(tx - GROVE.x, ty - GROVE.y));   // dense core → thins to nothing
+      if (dens <= 0) continue;
+      const r = rnd();
+      if (r < dens * 0.26) { const [s, c] = kinds[Math.floor(rnd() * 3)]; this.giantShroom(map, s, c, tx, ty, 0.85 + rnd() * 0.5); }          // signature
+      else if (r < dens * 0.33) map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 8, y: ty * T + 12, overhead: true, solidR: 7 });  // secondary (green)
+      else if (r < dens * 0.5) {                                                                                                              // tertiary understory
+        if (rnd() < 0.6) map.addProp({ sheet: "shroom_other", fw: 16, fh: 16, col: Math.floor(rnd() * 3), row: 1 + Math.floor(rnd() * 5), x: tx * T + rnd() * T, y: ty * T + T });
+        else map.addProp({ sheet: "shroom_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 4), row: Math.floor(rnd() * 4), x: tx * T + rnd() * T, y: ty * T + T });
+      }
+    }
+    this.labels.push({ x: GROVE.x * T, y: (GROVE.y - 9) * T, text: "Deepshade Grove" });
+  }
+
+  /** FILL — the open meadow (S/SW): mostly negative space + a few clustered flower/bush/rock
+   *  clumps and grazing critters. Kept sparse so the busy pockets breathe. */
+  private placeMeadow(map: TileMap) {
+    const rnd = rng(1337);
+    const clumps: [number, number, "flower" | "bush" | "rock"][] = [
+      [17, 38, "flower"], [24, 43, "flower"], [14, 32, "bush"], [21, 45, "bush"], [31, 43, "rock"], [15, 41, "flower"],
     ];
-    for (const [sheet, color, tx, ty, sc] of GIANTS) this.giantShroom(map, sheet, color, tx, ty, sc);
+    for (const [cx, cy, kind] of clumps) {
+      if (kind === "flower") { const fc = Math.floor(rnd() * 10), fr = Math.floor(rnd() * 10); this.cluster(map, rnd, cx, cy, 2, 4 + Math.floor(rnd() * 3), (tx, ty) => map.addProp({ sheet: "flowers", fw: 16, fh: 16, col: fc, row: fr, x: tx * T + rnd() * T, y: ty * T + rnd() * T })); }
+      else if (kind === "bush") this.cluster(map, rnd, cx, cy, 2, 2, (tx, ty) => map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 4, y: ty * T + 6, overhead: true, solidR: 5 }));
+      else this.cluster(map, rnd, cx, cy, 2, 2, (tx, ty) => map.addProp({ sheet: "shroom_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 4), row: Math.floor(rnd() * 4), x: tx * T + rnd() * T, y: ty * T + T }));
+    }
+    const life = (sheet: string, fh: number, sr: number, pts: [number, number][]) => {
+      for (const [tx, ty] of pts) if (this.canPlace(map, tx, ty, 3, 2.2)) map.addProp({ sheet, fw: 32, fh, col: 0, row: 0, x: tx * T, y: ty * T, solidR: sr });
+    };
+    life("shroomling", 48, 5, [[18, 40], [22, 43], [16, 36]]);
+    life("shroomling2", 32, 4, [[26, 44], [19, 33]]);
+    map.addProp({ sheet: "snail", fw: 16, fh: 16, col: 0, row: 0, x: 23 * T, y: 39 * T });
+  }
 
-    // 4) density — mushroom clusters + mossy rocks (replaces the meadow's flower clumps)
-    this.placeShroomDecor(map);
+  /** FILL — a FEW sparse accents just inside the shore (not a uniform ring band). */
+  private placeRim(map: TileMap) {
+    const rnd = rng(77);
+    for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
+      if (map.get(tx, ty) !== "grass") continue;
+      const g = this.landField(tx + 0.5, ty + 0.5);
+      if (g < 2.6 || g > 4.2 || rnd() > 0.045) continue;   // just inside the shore, sparse
+      if (rnd() < 0.5) map.addProp({ sheet: "shroom_other", fw: 16, fh: 16, col: Math.floor(rnd() * 3), row: 1 + Math.floor(rnd() * 5), x: tx * T + rnd() * T, y: ty * T + T });
+      else map.addProp({ sheet: "shroom_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 4), row: Math.floor(rnd() * 4), x: tx * T + rnd() * T, y: ty * T + T });
+    }
+  }
 
-    // 5) life — round shroomling critters + snails, grazing in the open (creatures stay round)
-    const shroomling = (tx: number, ty: number) => map.addProp({ sheet: "shroomling", fw: 32, fh: 48, col: 0, row: 0, x: tx * T, y: ty * T, solidR: 5 });
-    for (const [tx, ty] of [[18, 34], [21, 36], [16, 31], [46, 33], [43, 36]] as [number, number][]) shroomling(tx, ty);
-    const shroomling2 = (tx: number, ty: number) => map.addProp({ sheet: "shroomling2", fw: 32, fh: 32, col: 0, row: 0, x: tx * T, y: ty * T, solidR: 4 });
-    for (const [tx, ty] of [[23, 28], [50, 22], [24, 40]] as [number, number][]) shroomling2(tx, ty);
-    const snail = (tx: number, ty: number) => map.addProp({ sheet: "snail", fw: 16, fh: 16, col: 0, row: 0, x: tx * T, y: ty * T });
-    for (const [tx, ty] of [[36, 30], [30, 38], [45, 30]] as [number, number][]) snail(tx, ty);
+  /** Distance (in tiles) from a point to the plaza→pond footpath polyline. */
+  private laneDist(px: number, py: number): number {
+    let best = 99;
+    for (let i = 0; i < LANE.length - 1; i++) {
+      const [ax, ay] = LANE[i], [bx, by] = LANE[i + 1];
+      const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+      let t = L ? ((px - ax) * dx + (py - ay) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
+      best = Math.min(best, Math.hypot(px - (ax + dx * t), py - (ay + dy * t)));
+    }
+    return best;
+  }
 
-    // 6) two villagers, out in open clearings (well clear of the pond)
-    map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 39 * T, y: 27 * T, solidR: 6 });
-    map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 38 * T, y: 39 * T, solidR: 6 });
-    this.labels.push(
-      { x: 39 * T, y: 27 * T - 30, text: "Mycel" },
-      { x: 38 * T, y: 39 * T - 30, text: "Spora" },
-    );
+  /** Placement gate: grassy, inside the edgepoint, clear of the pond, and off the footpath. */
+  private canPlace(map: TileMap, tx: number, ty: number, edge = 3, pondM = 1.6): boolean {
+    return map.get(tx, ty) === "grass" && this.insideEdge(tx, ty, edge)
+      && this.pondClear(tx, ty, pondM) && this.laneDist(tx + 0.5, ty + 0.5) > 1.7;
+  }
+
+  /** Scatter `n` props in a tight odd-ish cluster around (cx,cy), honouring the placement gate. */
+  private cluster(map: TileMap, rnd: () => number, cx: number, cy: number, spread: number, n: number, place: (tx: number, ty: number) => void) {
+    for (let i = 0; i < n; i++) {
+      const tx = cx + Math.round((rnd() - 0.5) * spread * 2), ty = cy + Math.round((rnd() - 0.5) * spread * 2);
+      if (this.canPlace(map, tx, ty)) place(tx, ty);
+    }
   }
 
   /** A natural (non-circular) pond outline: >0 inside. Gentle lobes, medium size. */
@@ -249,34 +339,6 @@ class TileLabEngine extends RetroEngine {
     const cap = Math.floor(hash2(tx, ty) * 4);   // one of the 4 caps in the top row
     map.addProp({ sheet, fw: 32, fh: 48, col: cap, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 6 * sc });
     this.glowSpots.push({ x: tx * T + T / 2, y: ty * T + 12 * sc, color, r: 18 * sc });   // a tight glow at the cap (no smear)
-  }
-
-  /** A grove ring of giant mushrooms, set a safe margin inside the shore (like the meadow's trees). */
-  private placeShroomGrove(map: TileMap) {
-    const rnd = rng(909);
-    const kinds: [string, string][] = [["shroom_purple", "#c07bff"], ["shroom_blue", "#79d0ff"], ["shroom_red", "#ff8a7b"]];
-    for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
-      if (map.get(tx, ty) !== "grass") continue;
-      const g = this.landField(tx + 0.5, ty + 0.5);
-      if (g < 5 || g > 8.4) continue;                 // a grove band well inside the edgepoint
-      if (rnd() < 0.1) { const [sheet, color] = kinds[Math.floor(rnd() * 3)]; this.giantShroom(map, sheet, color, tx, ty, 0.8 + rnd() * 0.4); }
-    }
-  }
-
-  /** Small mushroom clusters + mossy rocks for density (in the meadow + around the houses). */
-  private placeShroomDecor(map: TileMap) {
-    const rnd = rng(2024);
-    const centers: [number, number][] = [[22, 30], [45, 32], [28, 36], [18, 27], [42, 27], [34, 42]];
-    for (const p of map.props) if (p.solidR && p.solidR >= 12) centers.push([Math.round(p.x / T) + (rnd() < 0.5 ? -3 : 3), Math.round(p.y / T) + 2]);
-    for (const [cx, cy] of centers) {
-      const n = 3 + Math.floor(rnd() * 5);
-      for (let i = 0; i < n; i++) {
-        const tx = cx + Math.round((rnd() - 0.5) * 4), ty = cy + Math.round((rnd() - 0.5) * 4);
-        if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3) || !this.pondClear(tx, ty, 1.4)) continue;
-        if (rnd() < 0.6) map.addProp({ sheet: "shroom_other", fw: 16, fh: 16, col: Math.floor(rnd() * 3), row: 1 + Math.floor(rnd() * 5), x: tx * T + rnd() * T, y: ty * T + T });
-        else map.addProp({ sheet: "shroom_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 4), row: Math.floor(rnd() * 4), x: tx * T + rnd() * T, y: ty * T + T });
-      }
-    }
   }
 
   /** Horizontal wood bridge where the lane crosses the river (and make it walkable). */
@@ -334,6 +396,7 @@ class TileLabEngine extends RetroEngine {
     const FOAM = [212, 234, 240], SHAL = [118, 200, 228], DEEP = [26, 86, 132];
     // natural inland-pond bands (Path A) — muted, harmonised with the moss floor (no glow)
     const PDEEP = [36, 84, 108], PSHAL = [96, 160, 168], PWL = [176, 214, 210], PDAMP = [30, 54, 58];
+    const PATHC = [150, 146, 116];   // a trodden footpath — worn, paler earth (painted, not tiled)
     const pal = this.bpal, GDARK = pal.gdark, GLITE = pal.glite;
     for (let py = 0; py < ch; py++) for (let px = 0; px < cw; px++) {
       const tx = (px + 0.5) / (T * SS), ty = (py + 0.5) / (T * SS), g = this.landField(tx, ty);
@@ -361,8 +424,10 @@ class TileLabEngine extends RetroEngine {
           else if (pd > 0.28) { const b = mix3(PWL, PSHAL, smoothstep(-0.1, 1.2, pd)); const r = (n - 0.5) * 12; col = [b[0] + r, b[1] + r, b[2] + r * 0.7]; }
           else col = PWL;                                    // bright waterline rim
           a = 255;
-        } else if (pd > -1.0) {                              // damp bank: darken the moss toward the water
-          col = mix3(col, PDAMP, smoothstep(-1.0, -0.22, pd) * 0.5);
+        } else {
+          if (pd > -1.0) col = mix3(col, PDAMP, smoothstep(-1.0, -0.22, pd) * 0.5);   // damp bank
+          const ld = this.laneDist(tx, ty);                  // the footpath (leading line: plaza → pond)
+          if (ld < 1.5) { const grain = (n - 0.5) * 14, worn = 1 - smoothstep(0.7, 1.5, ld); col = mix3(col, [PATHC[0] + grain, PATHC[1] + grain, PATHC[2] + grain], worn * 0.62); }
         }
       }
       const i = (py * cw + px) * 4;
