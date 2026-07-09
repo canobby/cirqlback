@@ -68,6 +68,24 @@ The world is drawn with a **feet-Y sort** (sort every sprite by the screen-Y of 
 
 Applies to **everything, even the smallest item** — check height, depth AND width before placing. Sources: TMW Mapping Tutorial (Ground/Fringe/Over/Collision layers), Elias Daler *Z-order in top-down 2D*, GameDev.net sprite-sort threads, Stardew transparent-occluder behaviour, GameDeveloper *Real-Time Cameras: Occlusion*.
 
+### ASSETS, GROUND VARIATION & SEAM BLENDING (owner rules + research 2026-07-09)
+**Assets:** **ALWAYS use the real asset sprites** (the packs the owner supplied), never generated/painted stand-ins, for the floor, paths, props — everything. Harmonise every pack to the one warm palette at load. *(desert floor = sliced from the sanctumpixel `ground_tile` tileset.)*
+
+**No drop-shadow ovals:** the sprites carry their own baked shadows — do NOT add a separate oval/contact shadow under them; it makes everything look levitating. (`drawShadows` is disabled.)
+
+**Ground = designed surface, laid FIRST, sprite tiles cover ALL land** (rule 1a). Then:
+- **Vary the colour in PATCHES using the asset's own tone variants** — where a large area would be one flat tile-colour, break it into soft **regions** of the pack's lighter/darker/dry/wet/cracked variants (a low-freq noise picks the region, so it's *patches, never a per-tile checkerboard*). SLYNYRD: "never one tile — mix flat with textured, regions with intent." *(desert: `terrain.variantAt`/`sandRegion` paints light sun-bleached sand patches from the tileset's lighter tone.)*
+- Small material count: 1 dominant + 1–2 secondary + a path material + accents.
+
+**Blend paths + objects into the scene — kill the "cutout" seam** (attack the hard, high-contrast, straight, unbroken edge):
+1. **Path = the ground, compacted.** Same **hue family** as the ground; separate by **VALUE + texture** (packed vs loose), not hue — a low-contrast strip just darker than the sand reads as trodden, not pasted on. *(sandpath recolour is low-contrast, centred just below the sand tone.)*
+2. **A path needs its OWN sand→path transition edge, never a hard rectangle**; recolour the transition **shoulder to the sand tone** (a wrong-coloured shoulder is just a new hard ring). Wind the centreline; **fray** the shoulders.
+3. **Scatter ground detail ACROSS every seam** (path↔sand, region↔region) — ripples/pebbles/tufts/cracks that straddle the line erase it. Let props overlap the path shoulder. Loose organic clumps, never a grid.
+4. **Blend by lowering CONTRAST**, not by piling on dither — low-contrast edges need only 1–2 dither pixels; if a seam needs a wide dither band, nudge the two tones closer instead.
+5. **Object bases sit IN the ground:** a ground-tinted contact shadow that hugs the footprint (soft, not black — the sprite's own baked one usually suffices), a few **ground-coloured pixels at the base** ("bottoms the same colour as the ground"), and a little skirt of tufts/pebbles/sand-drift at the foot.
+
+Sources: SLYNYRD Pixelblog 20/43 (connection tiles, busy-vs-calm, regions), TMW Mapping/Tilesets (no straight lines; outlines are for sprites, not map tiles; break repetition with scatter), Pixel Parmesan / drububu (dithering density ramps), Spritesheet-Generator (one job per edge; keep dither to the transition band).
+
 > The Dunes was built mid-stream as we learned the rules, so its method isn't perfectly in this order yet. **Once the ring's visuals are locked, refactor buildDunes to read exactly as stages 1→7** (a cleanup pass, not a behaviour change) — that's the streamlined template every future ring is generated from.
 
 ---
