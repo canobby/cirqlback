@@ -26,6 +26,26 @@ const POND = { x: 35, y: 40 };   // the river's terminus — an INLAND pond (nev
 const POND_R = 3;
 const EDGE = 3.4;                // the "edgepoint": nothing is placed within this many tiles of the shore
 
+// A ring's biome = a palette recolor + a different prop kit + optional inland water.
+// Proves the locked rules generalise: same procedural beach + edgepoint margins +
+// water-inside-the-ring, just a new coat of Cute-Fantasy (here the ShroomLands DLC).
+type Biome = "meadow" | "shroom";
+interface BiomePalette {
+  glite: number[]; gdark: number[];   // meadow grass shading (raised / shadowed)
+  grassOpaque: boolean;               // paint the ground fully (recolour the biome) vs. a subtle overlay
+  water: boolean;                     // a fountain→inland pond rivulet (procedural, never the coast)
+  wDeep: number[]; wShal: number[]; wFoam: number[];   // inland water bands
+}
+const PALETTES: Record<Biome, BiomePalette> = {
+  // the loved meadow — unchanged (subtle green shading over the grass tile, no inland water)
+  meadow: { glite: [150, 202, 98], gdark: [44, 94, 46], grassOpaque: false, water: false,
+            wDeep: [26, 86, 132], wShal: [118, 200, 228], wFoam: [212, 234, 240] },
+  // The Shroomwood — a twilight fungal grove: dusky teal moss floor, a glowing pool,
+  // the neon violet/cyan lives in the LIGHT layer (crisp per-object glow, not full-frame).
+  shroom: { glite: [104, 150, 118], gdark: [42, 74, 78], grassOpaque: true, water: true,
+            wDeep: [30, 96, 128], wShal: [120, 214, 216], wFoam: [206, 246, 250] },
+};
+
 // deterministic RNG so the island is stable across reloads
 function rng(seed: number) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 const smoothstep = (e0: number, e1: number, x: number) => { const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
@@ -49,12 +69,17 @@ class TileLabEngine extends RetroEngine {
   private shore: { x: number; y: number }[] = [];   // shoreline contour points (world px) for animated foam
   private logo: HTMLCanvasElement | null = null;    // CIRQLBACK mark, cream keyed to transparent
   private blank = false;                            // CIRQLSPACE (home ring): blank buildable canvas
+  private biome: Biome = "meadow";
+  private bpal: BiomePalette = PALETTES.meadow;
+  private glowSpots: { x: number; y: number; color: string; r: number }[] = [];   // per-object neon glow (mushrooms)
   private rx = RX; private ry = RY;                 // ring radii — CIRQLSPACE starts ~2/3, expands later
   private labels: { x: number; y: number; text: string }[] = [];   // place/NPC name tags (world px)
 
-  constructor(canvas: HTMLCanvasElement, hooks: RetroHooks = {}, blank = false) {
+  constructor(canvas: HTMLCanvasElement, hooks: RetroHooks = {}, blank = false, biome: Biome = "meadow") {
     super(canvas, hooks, 320, 200);
     this.blank = blank;
+    this.biome = biome;
+    this.bpal = PALETTES[biome];
     if (blank) { this.rx = RX * 0.66; this.ry = RY * 0.66; }   // start small; land-growth expands it later
     this.fit = true; this.fitPx = 3;
     this.crt = false;
@@ -90,7 +115,8 @@ class TileLabEngine extends RetroEngine {
 
     // CIRQLSPACE (the personal home ring) is BLANK — just the ring, the beach, and your
     // own centre fountain, a canvas to build on. Everything else is the populated meadow ring.
-    if (!this.blank) {
+    if (this.biome === "shroom") this.buildShroomwood(map);
+    else if (!this.blank) {
       map.paintLine(9, ROAD_Y, 58, ROAD_Y - 1, "path", 3);   // a cobble lane
 
       const H = (sheet: string, w: number, h: number, tx: number, ty: number, sc = 1, sr?: number) =>
@@ -127,9 +153,96 @@ class TileLabEngine extends RetroEngine {
     }
 
     this.map = map;
-    [this.player.x, this.player.y] = this.snapToLand(map, CX * T, (CY + 5) * T);   // start near the centre fountain
+    // spawn on clear land near the fountain (shroom: west of the rivulet)
+    const [ssx, ssy] = this.biome === "shroom" ? [(CX - 7) * T, (CY + 1) * T] : [CX * T, (CY + 5) * T];
+    [this.player.x, this.player.y] = this.snapToLand(map, ssx, ssy);
     this.cam.x = this.player.x; this.cam.y = this.player.y;
     this.buildCoast();
+  }
+
+  // ---------- The Shroomwood (biome ring) ----------
+  /** A twilight fungal grove: glowing pool, giant mushrooms, shroom-cap village, round critters. */
+  private buildShroomwood(map: TileMap) {
+    // 1) the fountain→inland pond rivulet (the rule's canonical "water inside the ring").
+    //    Tiles are marked "water" (solid; renders nothing — the procedural coast paints the glow).
+    map.solidTerrain.add("water");
+    for (let ty = WELL.y; ty <= POND.y + POND_R; ty++)
+      for (let tx = POND.x - POND_R - 2; tx <= POND.x + POND_R + 2; tx++)
+        if (map.get(tx, ty) === "grass" && this.riverField(tx + 0.5, ty + 0.5) > 0.35) { map.set(tx, ty, "water"); map.setSolid(tx, ty, true); }
+    this.labels.push({ x: POND.x * T, y: (POND.y + POND_R + 1) * T, text: "Glimmer Pool" });
+
+    // 2) Shroom Hollow — a spread-out hamlet of mushroom houses (NW of the fountain, in the open)
+    const house = (sheet: string, w: number, h: number, tx: number, ty: number, sc = 1) =>
+      map.addProp({ sheet, fw: w, fh: h, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, solidR: w * sc * 0.34, overhead: false });
+    house("shroom_house1", 80, 80, 25, 16, 0.9);
+    house("shroom_house2", 48, 64, 40, 13, 1);
+    house("shroom_house3", 48, 64, 45, 19, 1);
+    house("shroom_house2", 48, 64, 20, 21, 1);
+    house("shroom_house3", 48, 64, 47, 27, 1);
+    this.labels.push({ x: 30 * T, y: 11 * T, text: "Shroom Hollow" });
+
+    // 3) the glowing giant-mushroom grove (replaces the oak grove) + a few landmark caps by the village
+    this.placeShroomGrove(map);
+    const GIANTS: [string, string, number, number, number][] = [
+      ["shroom_purple", "#c07bff", 33, 20, 1.3], ["shroom_blue", "#79d0ff", 30, 24, 1.1],
+      ["shroom_red", "#ff8a7b", 44, 24, 1.15], ["shroom_purple", "#c07bff", 39, 33, 1.2],
+    ];
+    for (const [sheet, color, tx, ty, sc] of GIANTS) this.giantShroom(map, sheet, color, tx, ty, sc);
+
+    // 4) density — mushroom clusters + mossy rocks (replaces the meadow's flower clumps)
+    this.placeShroomDecor(map);
+
+    // 5) life — round shroomling critters + snails, grazing in the open (creatures stay round)
+    const shroomling = (tx: number, ty: number) => map.addProp({ sheet: "shroomling", fw: 32, fh: 48, col: 0, row: 0, x: tx * T, y: ty * T, solidR: 5 });
+    for (const [tx, ty] of [[18, 34], [21, 36], [16, 31], [46, 33], [43, 36]] as [number, number][]) shroomling(tx, ty);
+    const shroomling2 = (tx: number, ty: number) => map.addProp({ sheet: "shroomling2", fw: 32, fh: 32, col: 0, row: 0, x: tx * T, y: ty * T, solidR: 4 });
+    for (const [tx, ty] of [[27, 30], [50, 22], [24, 40]] as [number, number][]) shroomling2(tx, ty);
+    const snail = (tx: number, ty: number) => map.addProp({ sheet: "snail", fw: 16, fh: 16, col: 0, row: 0, x: tx * T, y: ty * T });
+    for (const [tx, ty] of [[36, 30], [30, 38], [45, 30]] as [number, number][]) snail(tx, ty);
+
+    // 6) two villagers, out in open clearings (never under a cap or house)
+    map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 32 * T, y: 29 * T, solidR: 6 });
+    map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 40 * T, y: 40 * T, solidR: 6 });
+    this.labels.push(
+      { x: 32 * T, y: 29 * T - 30, text: "Mycel" },
+      { x: 40 * T, y: 40 * T - 30, text: "Spora" },
+    );
+  }
+
+  /** One giant mushroom (top-row cap @32×48), depth-sorted, casting a crisp neon glow. */
+  private giantShroom(map: TileMap, sheet: string, color: string, tx: number, ty: number, sc = 1) {
+    if (!this.insideEdge(tx, ty, 5)) return;
+    const cap = Math.floor(hash2(tx, ty) * 4);   // one of the 4 caps in the top row
+    map.addProp({ sheet, fw: 32, fh: 48, col: cap, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 6 * sc });
+    this.glowSpots.push({ x: tx * T + T / 2, y: ty * T + 12 * sc, color, r: 26 * sc });   // glow at the cap
+  }
+
+  /** A grove ring of giant mushrooms, set a safe margin inside the shore (like the meadow's trees). */
+  private placeShroomGrove(map: TileMap) {
+    const rnd = rng(909);
+    const kinds: [string, string][] = [["shroom_purple", "#c07bff"], ["shroom_blue", "#79d0ff"], ["shroom_red", "#ff8a7b"]];
+    for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
+      if (map.get(tx, ty) !== "grass") continue;
+      const g = this.landField(tx + 0.5, ty + 0.5);
+      if (g < 5 || g > 8.4) continue;                 // a grove band well inside the edgepoint
+      if (rnd() < 0.1) { const [sheet, color] = kinds[Math.floor(rnd() * 3)]; this.giantShroom(map, sheet, color, tx, ty, 0.8 + rnd() * 0.4); }
+    }
+  }
+
+  /** Small mushroom clusters + mossy rocks for density (in the meadow + around the houses). */
+  private placeShroomDecor(map: TileMap) {
+    const rnd = rng(2024);
+    const centers: [number, number][] = [[22, 30], [45, 32], [28, 36], [18, 27], [42, 27], [34, 42]];
+    for (const p of map.props) if (p.solidR && p.solidR >= 12) centers.push([Math.round(p.x / T) + (rnd() < 0.5 ? -3 : 3), Math.round(p.y / T) + 2]);
+    for (const [cx, cy] of centers) {
+      const n = 3 + Math.floor(rnd() * 5);
+      for (let i = 0; i < n; i++) {
+        const tx = cx + Math.round((rnd() - 0.5) * 4), ty = cy + Math.round((rnd() - 0.5) * 4);
+        if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3)) continue;
+        if (rnd() < 0.6) map.addProp({ sheet: "shroom_other", fw: 16, fh: 16, col: Math.floor(rnd() * 3), row: 1 + Math.floor(rnd() * 5), x: tx * T + rnd() * T, y: ty * T + T });
+        else map.addProp({ sheet: "shroom_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 4), row: Math.floor(rnd() * 4), x: tx * T + rnd() * T, y: ty * T + T });
+      }
+    }
   }
 
   /** Horizontal wood bridge where the lane crosses the river (and make it walkable). */
@@ -185,14 +298,17 @@ class TileLabEngine extends RetroEngine {
     const cx = cv.getContext("2d")!; const img = cx.createImageData(cw, ch); const d = img.data;
     const SAND = [235, 221, 165], SANDD = [204, 185, 124];
     const FOAM = [212, 234, 240], SHAL = [118, 200, 228], DEEP = [26, 86, 132];
-    const GDARK = [44, 94, 46], GLITE = [150, 202, 98];
+    const pal = this.bpal, GDARK = pal.gdark, GLITE = pal.glite;
     for (let py = 0; py < ch; py++) for (let px = 0; px < cw; px++) {
       const tx = (px + 0.5) / (T * SS), ty = (py + 0.5) / (T * SS), g = this.landField(tx, ty);
       const n = hash2(px, py);
       let col: number[], a = 255;
       // clean grass → sand → foam → shallow → deep bands (no grass/sand blending)
       if (g > 1.4) {                                        // grass meadow shading
-        const v = this.meadow(tx, ty); col = v < 0 ? GDARK : GLITE; a = Math.round(Math.abs(v) * 46);
+        const v = this.meadow(tx, ty);
+        if (pal.grassOpaque) {                              // biome recolour — paint the ground fully
+          const grain = (n - 0.5) * 16; col = mix3(GDARK, GLITE, (v + 1) / 2).map((c) => c + grain); a = 232;
+        } else { col = v < 0 ? GDARK : GLITE; a = Math.round(Math.abs(v) * 46); }   // meadow: subtle overlay
       } else if (g > 0.1) {                                 // sand — grainy
         const grain = (n - 0.5) * 40, base = mix3(SANDD, SAND, smoothstep(0.1, 1.2, g));
         col = [base[0] + grain, base[1] + grain, base[2] + grain * 0.8];
@@ -200,6 +316,16 @@ class TileLabEngine extends RetroEngine {
       else if (g > -0.9) { col = mix3(FOAM, SHAL, smoothstep(-0.18, -0.9, g)); const r = (n - 0.5) * 16; col = [col[0] + r, col[1] + r, col[2] + r * 0.7]; }
       else if (g > -3.2) { col = mix3(SHAL, DEEP, smoothstep(-0.9, -3.2, g)); const wave = Math.sin(g * 2.6 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8; col = [col[0] + wave, col[1] + wave, col[2] + wave]; }
       else { col = DEEP; }
+      // an inland glowing pool — the fountain→pond rivulet (never touches the coast)
+      if (pal.water && g > 0.2) {
+        const rf = this.riverField(tx, ty);
+        if (rf > -0.35) {
+          if (rf > 1.1) { const wv = Math.sin(rf * 2.6 + tx * 0.5 + ty * 0.4) * 8 + (n - 0.5) * 8; col = pal.wDeep.map((c) => c + wv); }
+          else if (rf > 0.25) { const b = mix3(pal.wFoam, pal.wShal, smoothstep(-0.1, 1.1, rf)); const r = (n - 0.5) * 14; col = [b[0] + r, b[1] + r, b[2] + r * 0.7]; }
+          else col = pal.wFoam;
+          a = 255;
+        }
+      }
       const i = (py * cw + px) * 4;
       d[i] = clamp255(col[0]); d[i + 1] = clamp255(col[1]); d[i + 2] = clamp255(col[2]); d[i + 3] = a;
     }
@@ -436,7 +562,25 @@ class TileLabEngine extends RetroEngine {
       const s = Math.max(1, cam.scale); c.fillRect(mx, my, s, s);
     }
     c.globalAlpha = 1;
-    // fireflies — crisp drifting light motes over the meadow (no full-frame blur)
+    // biome light: each giant mushroom breathes its own crisp neon halo, and the pool glows
+    if (this.biome === "shroom") {
+      for (const gs of this.glowSpots) {
+        const [mx, my] = this.ren.w2s(cam, gs.x, gs.y);
+        if (mx < -60 || my < -60 || mx > cam.vw + 60 || my > cam.vh + 60) continue;
+        const rad = gs.r * cam.scale, pa = 0.22 + 0.1 * Math.sin(this.tsec * 1.8 + gs.x * 0.03);
+        const mg = c.createRadialGradient(mx, my, 0, mx, my, rad);
+        mg.addColorStop(0, this.rgba(gs.color, pa)); mg.addColorStop(1, this.rgba(gs.color, 0));
+        c.fillStyle = mg; c.fillRect(mx - rad, my - rad, rad * 2, rad * 2);
+      }
+      const [px, py] = this.ren.w2s(cam, POND.x * T, POND.y * T);
+      const prad = 34 * cam.scale, ppa = 0.2 + 0.08 * Math.sin(this.tsec * 1.4);
+      const pg = c.createRadialGradient(px, py, 0, px, py, prad);
+      pg.addColorStop(0, `rgba(150,235,240,${ppa})`); pg.addColorStop(1, "rgba(120,210,230,0)");
+      c.fillStyle = pg; c.fillRect(px - prad, py - prad, prad * 2, prad * 2);
+    }
+    c.globalAlpha = 1;
+    // fireflies / spores — crisp drifting light motes (no full-frame blur), biome-tinted
+    const fce = this.biome === "shroom" ? "#b681ff" : "#cdff88", fcc = this.biome === "shroom" ? "#ecd9ff" : "#f2ffb0";
     for (let i = 0; i < 20; i++) {
       const t = this.tsec * 0.25 + i * 1.7;
       const wx = (12 + ((i * 79) % 46)) * T + Math.sin(t) * 22;
@@ -444,8 +588,8 @@ class TileLabEngine extends RetroEngine {
       if (this.map.get(Math.floor(wx / T), Math.floor(wy / T)) !== "grass") continue;
       const [sx, sy] = this.ren.w2s(cam, wx, wy);
       const pulse = 0.5 + 0.5 * Math.sin(this.tsec * 3 + i * 1.3), s = Math.max(1, cam.scale * 0.9);
-      c.globalAlpha = pulse * 0.22; c.fillStyle = "#cdff88"; c.fillRect(sx - s, sy - s, s * 3, s * 3);
-      c.globalAlpha = pulse * 0.9; c.fillStyle = "#f2ffb0"; c.fillRect(sx, sy, s, s);
+      c.globalAlpha = pulse * 0.22; c.fillStyle = fce; c.fillRect(sx - s, sy - s, s * 3, s * 3);
+      c.globalAlpha = pulse * 0.9; c.fillStyle = fcc; c.fillRect(sx, sy, s, s);
     }
     c.restore(); c.globalAlpha = 1;
   }
@@ -454,7 +598,9 @@ class TileLabEngine extends RetroEngine {
     g.save();
     g.fillStyle = "rgba(6,12,22,.55)"; g.fillRect(10, 10, 300, 58);
     g.fillStyle = "#bfefff"; g.font = "12px monospace"; g.textBaseline = "middle";
-    g.fillText(this.blank ? "TILE LAB · CIRQLSPACE (your home ring)" : "TILE LAB · Cloverfield (meadow ring)", 20, 24);
+    const title = this.biome === "shroom" ? "TILE LAB · Shroomwood (fungal ring)"
+      : this.blank ? "TILE LAB · CIRQLSPACE (your home ring)" : "TILE LAB · Cloverfield (meadow ring)";
+    g.fillText(title, 20, 24);
     g.fillStyle = "#9fd6ff";
     g.fillText("WASD / Arrows to walk", 20, 40);
     g.fillText(this.loaded ? "hybrid: Cute Fantasy tiles + procedural light" : "loading…", 20, 55);
@@ -475,6 +621,12 @@ class TileLabEngine extends RetroEngine {
     for (const l of this.labels) tag(l.x, l.y, l.text, "#ffffff");
     tag(this.player.x, this.player.y - 30, "You", "#ffe28a");
     g.restore();
+  }
+
+  /** "#rrggbb" + alpha → an rgba() string (for the per-mushroom glow gradients). */
+  private rgba(hex: string, a: number): string {
+    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${a})`;
   }
 
   setZoom(z: number) { this.zoom = Math.max(1, Math.min(6, z)); }
@@ -512,9 +664,11 @@ export default function TileLabPage() {
   useEffect(() => {
     if (!canvas.current) return;
     // /tile-lab?cirqlspace (or ?blank) → the blank personal home ring
+    // /tile-lab?biome=shroom (or ?shroom) → the ShroomLands biome ring "The Shroomwood"
     const q = new URLSearchParams(window.location.search);
     const blank = q.has("cirqlspace") || q.has("blank");
-    const eng = new TileLabEngine(canvas.current, {}, blank);
+    const biome: Biome = q.get("biome") === "shroom" || q.has("shroom") ? "shroom" : "meadow";
+    const eng = new TileLabEngine(canvas.current, {}, blank, biome);
     if (import.meta.env.DEV) (window as any).__tilelab = { eng, anim: PLAYER_ANIM };
     return () => eng.destroy();
   }, []);

@@ -71,6 +71,18 @@ export const CF_SHEETS: Record<string, string> = {
   chicken: `${CF}/animals/chicken.png`,
   farmer: `${CF}/npc/farmer_bob.png`,
   fisher: `${CF}/npc/fisherman_fin.png`,
+  // ShroomLands DLC — biome ring "The Shroomwood" (same Cute Fantasy artist)
+  shroom_purple: `${CF}/shroom/shroom_purple.png`,   // 128×96 — top row = 4 giant caps @32×48
+  shroom_blue: `${CF}/shroom/shroom_blue.png`,
+  shroom_red: `${CF}/shroom/shroom_red.png`,
+  shroom_other: `${CF}/shroom/shroom_other.png`,     // 48×112 — small tan/blue caps @16
+  shroom_house1: `${CF}/shroom/shroom_house1.png`,   // 80×80 red-cap mushroom house
+  shroom_house2: `${CF}/shroom/shroom_house2.png`,   // 48×64
+  shroom_house3: `${CF}/shroom/shroom_house3.png`,   // 48×64
+  shroomling: `${CF}/shroom/shroomling.png`,          // 128×48 — 4 frames @32×48 (round critter)
+  shroomling2: `${CF}/shroom/shroomling2.png`,        // 96×416 — purple shroomling @32
+  shroom_rocks: `${CF}/shroom/shroom_rocks.png`,      // 208×192 — mossy rocks @16
+  snail: `${CF}/shroom/snail.png`,                    // 16×16 tiny snail
   // light layer (P3)
   waterfall1: `${CF}/waterfall/Waterfall_1.png`,
   waterfall2: `${CF}/waterfall/Waterfall_2.png`,
