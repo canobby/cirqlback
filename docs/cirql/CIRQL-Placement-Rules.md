@@ -78,7 +78,8 @@ Applies to **everything, even the smallest item** — check height, depth AND wi
 - Small material count: 1 dominant + 1–2 secondary + a path material + accents.
 
 **Blend paths + objects into the scene — kill the "cutout" seam** (attack the hard, high-contrast, straight, unbroken edge):
-1. **Path = the ground, compacted.** Same **hue family** as the ground; separate by **VALUE + texture** (packed vs loose), not hue — a low-contrast strip just darker than the sand reads as trodden, not pasted on. *(sandpath recolour is low-contrast, centred just below the sand tone.)*
+1. **Path = the ground, compacted.** Same **hue family** as the ground; separate by **VALUE + texture** (packed vs loose), not hue.
+   - ⭐ **A walkway's BACKGROUND colour should BE the dominant ground colour** (owner rule) — when a path tile has a background/base tone, make *that* the dominant ground so the path's shoulders melt into the floor and only its worn centre reads; don't instead tint the path to chase a different dominant ground. Blend by **matching the ground to the path**, not by filtering the path. *(desert: the dune-wash palette brackets the packed dark-sand tone = the path's tone; the lighter sand is demoted to accent patches.)* Exception: only if that background wouldn't make sense as the ground.
 2. **A path needs its OWN sand→path transition edge, never a hard rectangle**; recolour the transition **shoulder to the sand tone** (a wrong-coloured shoulder is just a new hard ring). Wind the centreline; **fray** the shoulders.
 3. **Scatter ground detail ACROSS every seam** (path↔sand, region↔region) — ripples/pebbles/tufts/cracks that straddle the line erase it. Let props overlap the path shoulder. Loose organic clumps, never a grid.
 4. **Blend by lowering CONTRAST**, not by piling on dither — low-contrast edges need only 1–2 dither pixels; if a seam needs a wide dither band, nudge the two tones closer instead.
