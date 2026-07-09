@@ -34,7 +34,7 @@ const SPOND = { cx: 30, cy: 33, rx: 5, ry: 3.9 };
 // leads plaza → pond. Placement follows structure/function, not a random scatter.
 const PLAZA = { x: 22, y: 17 };                                   // the village heart (well + benches)
 const GROVE = { x: 48, y: 31 };                                  // the grove core (dense here, thinning out)
-const LANE: [number, number][] = [[22, 20], [24, 24], [25, 27], [26, 29]];   // plaza → pond footpath
+const LANE: [number, number][] = [[22, 19], [24, 22], [26, 25], [24, 27], [26, 29]];   // plaza → pond footpath (gently winding)
 const SFIELD = { x0: 30, y0: 11, x1: 37, y1: 16 };               // the mushroom farm — tilled rows + fence
 // fine ground-detail cells from the outdoor_decor sheet (grass tufts / small flowers / pebbles / a bush)
 const TUFTS: [number, number][] = [[6, 2], [6, 3], [7, 3], [8, 3], [6, 8], [7, 8]];
@@ -250,13 +250,15 @@ class TileLabEngine extends RetroEngine {
    *  an edge), with green trees mixed in + a small-mushroom/rock understory. Three flora tiers. */
   private placeGrove(map: TileMap) {
     const rnd = rng(909);
-    const kinds: [string, string][] = [["shroom_purple", "#c07bff"], ["shroom_blue", "#79d0ff"], ["shroom_red", "#ff8a7b"]];
+    // limited palette (60-30-10): RED caps are the secondary colour (matching the red-cap houses),
+    // differing sizes; only a rare purple accent — no blue (keeps the ring from being a colour soup).
+    const cap = (): [string, string] => rnd() < 0.86 ? ["shroom_red", "#ff9a86"] : ["shroom_purple", "#c88bff"];
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
       if (!this.canPlace(map, tx, ty, 5, 2.0)) continue;
       const dens = 1 - smoothstep(2, 15, Math.hypot(tx - GROVE.x, ty - GROVE.y));   // dense core → thins to nothing
       if (dens <= 0) continue;
       const r = rnd();
-      if (r < dens * 0.44) { const [s, c] = kinds[Math.floor(rnd() * 3)]; this.giantShroom(map, s, c, tx, ty, 0.85 + rnd() * 0.5); }          // signature (dense, overlapping)
+      if (r < dens * 0.44) { const [s, c] = cap(); this.giantShroom(map, s, c, tx, ty, 0.8 + rnd() * 0.7); }          // signature (dense, overlapping, varied sizes)
       else if (r < dens * 0.58) map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 8, y: ty * T + 12, overhead: true, solidR: 7 });  // secondary (green trees)
       else if (r < dens * 0.50) {                                                                                                             // bushes (varied sizes)
         if (rnd() < 0.5) map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 4, y: ty * T + 6, overhead: true, solidR: 5 });
@@ -340,7 +342,7 @@ class TileLabEngine extends RetroEngine {
     for (let ty = SFIELD.y0 + 1; ty <= SFIELD.y1 - 1; ty++) {
       if ((ty - SFIELD.y0) % 2 === 1) continue;               // plant every other row (furrows between)
       for (let tx = SFIELD.x0 + 1; tx <= SFIELD.x1 - 1; tx++)  // a straight row of identical caps (rows = the one place regularity is right)
-        map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: 7, row: 1, x: tx * T + T / 2, y: ty * T + T });
+        map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: 6, row: 1, x: tx * T + T / 2, y: ty * T + T });   // red cultivated caps (cohesive palette)
     }
     this.fenceRect(map, SFIELD.x0, SFIELD.y0, SFIELD.x1, SFIELD.y1, Math.round((SFIELD.x0 + SFIELD.x1) / 2));
     this.labels.push({ x: (SFIELD.x0 + SFIELD.x1) / 2 * T, y: (SFIELD.y0 - 1) * T, text: "Mushroom Field" });
@@ -372,8 +374,8 @@ class TileLabEngine extends RetroEngine {
       const onPath = this.laneDist(tx + 0.5, ty + 0.5) < 2.6;
       const p = 0.05 + Math.max(0, clump) * 0.32 + (onPath ? 0.3 : 0);
       if (rnd() > p) continue;
-      const r = rnd();
-      if (r < 0.42) tuft(tx, ty); else if (r < 0.66) flow(tx, ty); else if (r < 0.84) peb(tx, ty); else cap(tx, ty);
+      const r = rnd();   // mostly green tufts + pebbles; flowers kept sparse so colour stays calm
+      if (r < 0.56) tuft(tx, ty); else if (r < 0.68) flow(tx, ty); else if (r < 0.9) peb(tx, ty); else cap(tx, ty);
     }
   }
 
@@ -466,7 +468,7 @@ class TileLabEngine extends RetroEngine {
     const FOAM = [212, 234, 240], SHAL = [118, 200, 228], DEEP = [26, 86, 132];
     // natural inland-pond bands (Path A) — muted, harmonised with the moss floor (no glow)
     const PDEEP = [36, 84, 108], PSHAL = [96, 160, 168], PWL = [176, 214, 210], PDAMP = [30, 54, 58];
-    const PATHC = [150, 146, 116];   // a trodden footpath — worn, paler earth (painted, not tiled)
+    const PATHC = [150, 128, 92];   // a trodden footpath — defined worn earth (painted, not tiled)
     const pal = this.bpal, GDARK = pal.gdark, GLITE = pal.glite;
     for (let py = 0; py < ch; py++) for (let px = 0; px < cw; px++) {
       const tx = (px + 0.5) / (T * SS), ty = (py + 0.5) / (T * SS), g = this.landField(tx, ty);
@@ -499,7 +501,7 @@ class TileLabEngine extends RetroEngine {
         } else {
           if (pd > -1.0) col = mix3(col, PDAMP, smoothstep(-1.0, -0.22, pd) * 0.5);   // damp bank
           const ld = this.laneDist(tx, ty);                  // the footpath (leading line: plaza → pond)
-          if (ld < 1.5) { const grain = (n - 0.5) * 14, worn = 1 - smoothstep(0.7, 1.5, ld); col = mix3(col, [PATHC[0] + grain, PATHC[1] + grain, PATHC[2] + grain], worn * 0.62); }
+          if (ld < 1.7) { const grain = (n - 0.5) * 16, worn = 1 - smoothstep(0.5, 1.7, ld); col = mix3(col, [PATHC[0] + grain, PATHC[1] + grain, PATHC[2] + grain], worn * 0.82); }
         }
       }
       const i = (py * cw + px) * 4;
