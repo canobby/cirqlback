@@ -44,6 +44,23 @@ Landscape + architecture must **never box in** an NPC/animal or choke a route pe
 - **Exceptions:** (a) **flying** things (butterflies/bees) ignore ground clearance — they roam freely over water/props; (b) a **quest** may deliberately gate a route (a locked gate, a guard, rubble) — but that's an *authored* block with a reason, never accidental terrain trapping.
 - Rule of thumb: if you place something big, ask "can everyone who lives here still get where they'd go?" If not, move it or open a way through.
 
+### DEPTH & OCCLUSION — a 2D thing still has height/depth/width (researched 2026-07-09)
+The world is drawn with a **feet-Y sort** (sort every sprite by the screen-Y of its base; lower-on-screen draws in front). That fakes 3D height — but a tall object's drawn silhouette rises UP-SCREEN (north) from its base, so anything standing north of it, within its width, is **hidden behind it**. Three distinct footprints must each be respected (TMW / Elias Daler / GameDeveloper):
+- **(a) collision footprint** = the base only (what physically blocks walking).
+- **(b) visual silhouette** = the full drawn shape, rising north with the object's height.
+- **(c) occlusion zone** = the up-screen area the silhouette covers, where a *stationary* sprite disappears.
+
+**Rules:**
+1. **Never POST an NPC / interactive object / meaningful prop in a tall object's occlusion zone** (the tiles north of its base, within its silhouette width). A mover briefly *passing behind* is fine and realistic; something *parked* behind is the bug. *(We enforce this: `occludedByTall` treats overhead props AND tall buildings as occluders; `clearNpcPost` nudges an NPC south until it's out of every silhouette; NPC wander won't drift behind a building.)*
+2. **Leave ~1–2 tiles of clearance** north of any tall prop before placing something that must read.
+3. **Entrances / doors / interaction faces open toward the camera (south)** and stay unobstructed — a south door is never hidden by its own building; a player approaching from below is never occluded.
+4. **Put tall objects at the back (north) of a scene**, keep the foreground low — communicates depth and minimises silhouette falling over walkable/used space.
+5. **Sort by the FEET; keep a sprite's sort/collision footprint ~1 tile.** Oversized sprites and multi-tile buildings are the main sort-failure sources — split a very tall prop into stacked Z-slices (trunk sorts behind, canopy in front) rather than one giant sprite. (Our trees/palms use `overhead` for exactly this — canopy over the player.)
+6. **Fade / cut out a roof or canopy when the player walks behind it** (Stardew model: ramp alpha by proximity), so a briefly-occluded player/NPC is never lost. *(Future polish — not yet built.)*
+7. **Height/elevation = tall props too:** per-elevation layers, Y-sort within each; keep ramps/stairs (the traversal points) facing the camera and clear; don't park interactables in the zone above a cliff face.
+
+Applies to **everything, even the smallest item** — check height, depth AND width before placing. Sources: TMW Mapping Tutorial (Ground/Fringe/Over/Collision layers), Elias Daler *Z-order in top-down 2D*, GameDev.net sprite-sort threads, Stardew transparent-occluder behaviour, GameDeveloper *Real-Time Cameras: Occlusion*.
+
 > The Dunes was built mid-stream as we learned the rules, so its method isn't perfectly in this order yet. **Once the ring's visuals are locked, refactor buildDunes to read exactly as stages 1→7** (a cleanup pass, not a behaviour change) — that's the streamlined template every future ring is generated from.
 
 ---

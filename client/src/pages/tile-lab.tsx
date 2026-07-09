@@ -546,13 +546,16 @@ class TileLabEngine extends RetroEngine {
   private _rd = rng(3131);
   private rndDetail() { return this._rd(); }
 
-  /** True if (wx,wy) would be hidden BEHIND a tall/overhead sprite — north of its feet, within its
-   *  body silhouette, where the depth-sort draws the tall sprite in front. Keeps scatter out of the
-   *  occlusion zone behind buildings/trees/cacti/etc. (the "don't place behind 3D objects" rule). */
+  /** True if (wx,wy) would be hidden BEHIND a tall sprite — north of its feet, within its body
+   *  silhouette (width × HEIGHT), where the feet-Y depth-sort draws the tall sprite in front. A
+   *  thing has real height even in 2D, so this covers OVERHEAD props (trees/palms/cacti) AND tall
+   *  buildings (their drawn height ≥ ~2.5 tiles). Keeps NPCs/objects out of the occlusion zone —
+   *  the "consider height/depth/width; don't place behind a 3D object" rule (rulebook §6c). */
   private occludedByTall(map: TileMap, wx: number, wy: number): boolean {
     for (const p of map.props) {
-      if (!p.overhead) continue;                                     // only tall/overhead sprites occlude
-      const sc = (p as any).scale ?? 1, halfW = p.fw * sc * 0.4, h = p.fh * sc;
+      const sc = (p as any).scale ?? 1, h = p.fh * sc;
+      if (!p.overhead && h < 40) continue;                           // only genuinely tall things occlude
+      const halfW = p.fw * sc * 0.42;
       if (wy < p.y && wy > p.y - h && Math.abs(wx - p.x) < halfW) return true;
     }
     return false;
@@ -1030,9 +1033,22 @@ class TileLabEngine extends RetroEngine {
    *  solids/water — the per-step blocked check enforces movement clearance) and TURNS to face you
    *  when you're near. Its name tag follows it. row = the character's down-facing walk row (up = row+2). */
   private addNpc(map: TileMap, tx: number, ty: number, name: string, row: number) {
+    [tx, ty] = this.clearNpcPost(map, tx, ty);   // never post an NPC hidden behind a building (depth/occlusion rule)
     const c = this.addCritter(map, "d_npc", 32, 32, 0, row, tx, ty, { frames: 6, fps: 6, bob: 0, wr: 1.2, sp: 9, solidR: 6, scale: 1.05 });
     c.dir = { down: row, up: row + 2 };
     this.labels.push({ x: tx * T + T / 2, y: ty * T - 8, text: name, follow: c });
+  }
+
+  /** A tall building has depth: anything north of its feet within its silhouette draws BEHIND it.
+   *  Nudge an NPC's post SOUTH (toward the camera) until it's on clear ground and not hidden behind
+   *  a tall object — so the NPC always reads, never swallowed by a wall. (Owner depth-placement rule.) */
+  private clearNpcPost(map: TileMap, tx: number, ty: number): [number, number] {
+    for (let s = 0; s <= 6; s++) {
+      const ny = ty + s, wx = tx * T, wy = ny * T;   // critters anchor feet at (tx*T, ty*T) — match that
+      if (map.inBounds(tx, ny) && !map.isSolidTile(tx, ny) && this.landField(tx, ny) > 3
+        && !this.occludedByTall(map, wx, wy) && !this.nearBigProp(map, wx, wy, 16)) return [tx, ny];
+    }
+    return [tx, ty];
   }
 
   /** Animate + wander every critter (called each frame). */
@@ -1054,7 +1070,9 @@ class TileLabEngine extends RetroEngine {
           const step = Math.min(d, c.sp * dt), nx = c.gx + dx / d * step, ny = c.gy + dy / d * step;
           // MOVEMENT CLEARANCE (owner rule): a ground-mover only steps onto genuinely walkable ground —
           // never into water, off the ring, or through a solid (building/cliff/prop). Blocked → retarget.
-          const ok = c.water ? this.pondField(nx / T, ny / T) > 0.5 : (this.landField(nx / T, ny / T) > 2.5 && !this.blocked(nx, ny, 4));
+          // NPCs additionally won't drift BEHIND a tall building (depth/occlusion) — they'd vanish.
+          const ok = c.water ? this.pondField(nx / T, ny / T) > 0.5
+            : (this.landField(nx / T, ny / T) > 2.5 && !this.blocked(nx, ny, 4) && (!c.dir || !this.occludedByTall(this.map, nx, ny)));
           if (ok) { mvx = nx - c.gx; c.gx = nx; c.gy = ny; moved = true; if (!c.dir && Math.abs(dx) > 4) c.p.flip = dx < 0; } else c.nt = 0;
         }
       }
