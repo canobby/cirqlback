@@ -245,14 +245,14 @@ class TileLabEngine extends RetroEngine {
     map.addProp({ sheet: "benches", fw: 32, fh: 32, col: 1, row: 0, x: (PLAZA.x + 3) * T, y: (PLAZA.y + 2) * T });
     // dressing: flower beds + a small green tree by the homes (tertiary colour), a landmark oak at the fringe
     for (const [cx, cy] of [[16, 15], [29, 15], [19, 20]] as [number, number][]) {
-      const fc = Math.floor(rnd() * 10), fr = Math.floor(rnd() * 10);
+      const fc = Math.floor(rnd() * 5), fr = Math.floor(rnd() * 10);   // cols 0-4 = grass flowers (5-9 are potted → look like buttons)
       this.cluster(map, rnd, cx, cy, 2, 4, (tx, ty) => map.addProp({ sheet: "flowers", fw: 16, fh: 16, col: fc, row: fr, x: tx * T + rnd() * T, y: ty * T + rnd() * T }));
     }
     this.cluster(map, rnd, 13, 20, 2, 2, (tx, ty) => map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 4, y: ty * T + 6, overhead: true, solidR: 5 }));
     map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col: 0, row: 0, x: 12 * T + 8, y: 15 * T + 12, overhead: true, solidR: 7 });
     // a fenced kitchen garden by an east hut — flower beds inside (fences around the homes)
     this.fenceRect(map, 25, 20, 29, 23, 27);
-    const gc = Math.floor(rnd() * 10), gr = Math.floor(rnd() * 10);
+    const gc = Math.floor(rnd() * 5), gr = Math.floor(rnd() * 10);   // grass flowers only (not the potted 5-9)
     for (let ty = 21; ty <= 22; ty++) for (let tx = 26; tx <= 28; tx++) map.addProp({ sheet: "flowers", fw: 16, fh: 16, col: gc, row: gr, x: tx * T + rnd() * T, y: ty * T + rnd() * T });
     this.labels.push({ x: PLAZA.x * T, y: (PLAZA.y - 5) * T, text: "Shroom Hollow" });
   }
@@ -289,7 +289,7 @@ class TileLabEngine extends RetroEngine {
       [17, 38, "flower"], [24, 43, "flower"], [14, 32, "bush"], [21, 45, "bush"], [31, 43, "rock"], [15, 41, "flower"],
     ];
     for (const [cx, cy, kind] of clumps) {
-      if (kind === "flower") { const fc = Math.floor(rnd() * 10), fr = Math.floor(rnd() * 10); this.cluster(map, rnd, cx, cy, 2, 4 + Math.floor(rnd() * 3), (tx, ty) => map.addProp({ sheet: "flowers", fw: 16, fh: 16, col: fc, row: fr, x: tx * T + rnd() * T, y: ty * T + rnd() * T })); }
+      if (kind === "flower") { const fc = Math.floor(rnd() * 5), fr = Math.floor(rnd() * 10); this.cluster(map, rnd, cx, cy, 2, 4 + Math.floor(rnd() * 3), (tx, ty) => map.addProp({ sheet: "flowers", fw: 16, fh: 16, col: fc, row: fr, x: tx * T + rnd() * T, y: ty * T + rnd() * T })); }
       else if (kind === "bush") this.cluster(map, rnd, cx, cy, 2, 2, (tx, ty) => map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 4, y: ty * T + 6, overhead: true, solidR: 5 }));
       else this.cluster(map, rnd, cx, cy, 2, 2, (tx, ty) => map.addProp({ sheet: "shroom_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 4), row: Math.floor(rnd() * 4), x: tx * T + rnd() * T, y: ty * T + T }));
     }
@@ -648,7 +648,7 @@ class TileLabEngine extends RetroEngine {
     const centers: [number, number][] = [[20, 18], [43, 30], [50, 22], [26, 38], [15, 24], [38, 20]];
     for (const p of map.props) if (p.solidR && p.solidR >= 12) centers.push([Math.round(p.x / T) + (rnd() < 0.5 ? -3 : 3), Math.round(p.y / T) + 2]);
     for (const [cx, cy] of centers) {
-      const fc = Math.floor(rnd() * 10), fr = Math.floor(rnd() * 10);   // one flower type per clump
+      const fc = Math.floor(rnd() * 5), fr = Math.floor(rnd() * 10);   // cols 0-4 = grass flowers (5-9 are potted → look like buttons)   // one flower type per clump
       const n = 4 + Math.floor(rnd() * 5);
       for (let i = 0; i < n; i++) {
         const tx = cx + Math.round((rnd() - 0.5) * 3.5), ty = cy + Math.round((rnd() - 0.5) * 3.5);
