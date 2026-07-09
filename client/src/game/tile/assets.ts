@@ -103,6 +103,14 @@ export const CF_SHEETS: Record<string, string> = {
   d_trader: `${CF}/desert/trader.png`,   // 192×32
   camel: `${CF}/desert/camel.png`,       // 480×288 camel anim
   scarab: `${CF}/desert/scarab.png`,     // 64×48 @16
+  // Cave — the underground level reached through the mesa (Stage 3)
+  cave_door: `${CF}/cave/doorway.png`,   // 32×96 — cave entrance arch (top 32×48 = the mouth)
+  cave_floor: `${CF}/cave/floor1.png`,   // 48×80 @16 floor variants
+  cave_floor_mid: `${CF}/cave/floor_mid.png`,   // 16×16 floor fill
+  cave_ladder: `${CF}/cave/ladder.png`,  // 16×16 — the exit ladder up
+  cave_walls: `${CF}/cave/walls.png`,    // 112×128 @16 wall autotile set
+  cave_support: `${CF}/cave/support1.png`,      // 80×96 wall support pillar
+  cave_water: `${CF}/cave/water.png`,    // 112×80 cave water
   // light layer (P3)
   waterfall1: `${CF}/waterfall/Waterfall_1.png`,
   waterfall2: `${CF}/waterfall/Waterfall_2.png`,

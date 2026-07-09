@@ -62,7 +62,7 @@ const HAMLET = { x: 20, y: 16 };                                  // the adobe c
 const DPLAZA = { x: 22, y: 19 };                                  // paved well plaza in the hamlet
 const DLANE: [number, number][] = [[22, 21], [24, 24], [26, 27], [27, 29]];   // plaza → oasis footpath (worn sand)
 const DCAMP = { x: 36, y: 41 };                                   // nomad campfire commons (open sand, S)
-const MESA = { x0: 44, y0: 12, x1: 56, y1: 22, faceH: 2 };        // the raised sandstone plateau (Stage 2, NE)
+const MESA = { x0: 46, y0: 12, x1: 56, y1: 19, faceH: 3, ramps: [49, 53] };   // the raised sandstone plateau (NE) + its 2 south ramp columns
 // dry-desert ground detail from the desert sheets (fern tuft / small rocks / pebbles)
 
 // A ring's biome = a palette recolor + a different prop kit + optional inland water.
@@ -126,6 +126,7 @@ class TileLabEngine extends RetroEngine {
   private interactables: Interactable[] = [];        // fountain + villagers you can talk to
   private nearInter: Interactable | null = null;     // the one currently in reach (drives the prompt)
   private chatPaused = false;                         // frozen while a conversation is open
+  private caveMouth: { x: number; y: number } | null = null;   // the mesa cave entrance (tiles) → the underground level (Stage 3)
   /** Fired when the nearest talkable target changes (null = none in reach). Page shows a Talk prompt. */
   public onProximity: ((s: Speaker | null) => void) | null = null;
   /** Fired when the player chooses to talk (E / Space, or the Talk button). Page opens the chat. */
@@ -308,9 +309,11 @@ class TileLabEngine extends RetroEngine {
     this.placeOasisFlora(map);
     this.labels.push({ x: OASIS.cx * T, y: (OASIS.cy + OASIS.ry + 1.9) * T, text: "Sunmere Oasis" });
 
-    // ANCHOR 2 — the adobe caravan hamlet + paved well plaza; ANCHOR 3 — the nomad campfire.
+    // ANCHOR 2 — the adobe caravan hamlet + paved well plaza; ANCHOR 3 — the nomad campfire;
+    // ANCHOR 4 — the raised sandstone MESA (NE) with a lookout on top + a cave at its foot.
     this.placeHamlet(map);
     this.placeDuneCamp(map);
+    this.placeMesa(map);
     // FILL — sparse dry scatter (clustered by threes) + a fine dry ground carpet, kept sparse
     // (desert = sparse-but-still-detailed) and well clear of the oasis.
     this.placeDuneScatter(map);
@@ -491,6 +494,61 @@ class TileLabEngine extends RetroEngine {
       c.beginPath(); c.arc(sx, sy, ph * 11 * cam.scale, 0, Math.PI * 2); c.stroke();
     }
     c.restore(); c.globalAlpha = 1;
+  }
+
+  // ---- the MESA (a raised sandstone plateau; TMW "building on a hill" landform) ----
+  /** Rounded-rectangle field for the plateau TOP: >0 inside (≈tiles), for a natural butte shape. */
+  private mesaSDF(tx: number, ty: number): number {
+    const cx = (MESA.x0 + MESA.x1) / 2, cy = (MESA.y0 + MESA.y1) / 2, hw = (MESA.x1 - MESA.x0) / 2, hh = (MESA.y1 - MESA.y0) / 2, rad = 2.2;
+    const qx = Math.max(Math.abs(tx - cx) - (hw - rad), 0), qy = Math.max(Math.abs(ty - cy) - (hh - rad), 0);
+    return rad - Math.hypot(qx, qy);
+  }
+  private get mesaMidY(): number { return (MESA.y0 + MESA.y1) / 2; }
+  /** True if a tile is on the walkable plateau TOP. */
+  private onMesaTop(tx: number, ty: number): boolean { return this.mesaSDF(tx + 0.5, ty + 0.5) > 0; }
+  /** A walkable RAMP corridor down the south face. */
+  private onMesaRamp(tx: number, ty: number): boolean {
+    const s = this.mesaSDF(tx + 0.5, ty + 0.5);
+    return s <= 0 && s > -MESA.faceH && ty > this.mesaMidY && MESA.ramps.includes(tx);
+  }
+
+  /** Build the mesa's collision (solid rock mass; only the top + south ramps walk) + the lookout on
+   *  top + the cave mouth at its foot. The rock face/top/shadow are painted procedurally in buildCoast. */
+  private placeMesa(map: TileMap) {
+    for (let ty = MESA.y0 - 2; ty <= MESA.y1 + MESA.faceH + 1; ty++) for (let tx = MESA.x0 - 2; tx <= MESA.x1 + 2; tx++) {
+      const s = this.mesaSDF(tx + 0.5, ty + 0.5);
+      if (s > 0) continue;                                   // walkable plateau top
+      if (this.onMesaRamp(tx, ty)) continue;                 // walkable ramp
+      const isFace = s > -MESA.faceH && ty > this.mesaMidY;  // the south rock wall
+      const isRim = s > -1.0 && ty <= this.mesaMidY;         // the N/E/W rock lip (1 tile)
+      if (isFace || isRim) map.setSolid(tx, ty, true);
+    }
+    // the lookout building crowning the plateau (depth-sorted with the entities so you pass behind it)
+    const bx = Math.round((MESA.x0 + MESA.x1) / 2), by = MESA.y0 + 3;
+    map.addProp({ sheet: "d_house3", fw: 128, fh: 112, col: 0, row: 0, x: bx * T + T / 2, y: by * T + T, scale: 0.82, solidR: 15 });
+    this.labels.push({ x: bx * T + T / 2, y: (MESA.y0 - 1.5) * T, text: "The Sun Lookout" });
+    // the cave mouth set into the CENTRE of the south face (below the lookout) — a walkable slot up
+    // into the rock (Stage 3 wires walking into it → the underground level)
+    this.caveMouth = { x: Math.round((MESA.x0 + MESA.x1) / 2), y: MESA.y1 + 2 };
+    map.setSolid(this.caveMouth.x, this.caveMouth.y, false);
+    map.setSolid(this.caveMouth.x, this.caveMouth.y + 1, false);
+    map.addProp({ sheet: "cave_door", fw: 32, fh: 48, col: 0, row: 0, x: this.caveMouth.x * T + T / 2, y: this.caveMouth.y * T + T, solidR: 0 });
+    this.labels.push({ x: this.caveMouth.x * T + T / 2, y: (this.caveMouth.y - 2.6) * T, text: "Cave" });
+  }
+
+  /** Universal grounding: a soft drop-shadow under the player + every solid prop — the single
+   *  biggest "fake-3D" win (grounds objects, adds depth). Drawn on the ground, under the sprites. */
+  private drawShadows(c: CanvasRenderingContext2D, cam: Camera) {
+    c.save();
+    const shadow = (wx: number, wy: number, r: number) => {
+      const [sx, sy] = this.ren.w2s(cam, wx, wy);
+      if (sx < -40 || sy < -40 || sx > cam.vw + 40 || sy > cam.vh + 40) return;
+      c.fillStyle = "rgba(24,22,34,0.22)";
+      c.beginPath(); c.ellipse(sx, sy - cam.scale, r * cam.scale, r * 0.4 * cam.scale, 0, 0, Math.PI * 2); c.fill();
+    };
+    for (const p of this.map.props) if (p.solidR && p.solidR >= 4) shadow(p.x, p.y, Math.min(p.solidR * 1.25, 20));
+    shadow(this.player.x, this.player.y, 6);
+    c.restore();
   }
 
   /** ANCHOR 2 — Shroom Hollow: a clustered hamlet around a plaza well (staggered, varied sizes). */
@@ -844,6 +902,35 @@ class TileLabEngine extends RetroEngine {
         const ld = this.dLaneDist(tx, ty);                   // worn sand track: plaza → oasis
         if (od < -0.5 && ld < 1.6) { const grain = (n - 0.5) * 14, worn = 1 - smoothstep(0.5, 1.6, ld); col = mix3(col, [180, 152, 104 + grain], worn * 0.55); }
       }
+      // the MESA — a raised sandstone butte (rounded footprint via the SDF): a lit top with a bright
+      // rim where it catches the sun, a tall rock FACE with strata + sandy ramps, and a big soft cast
+      // shadow SE on the ground — the height reads from the face + shadow, not just a lighter patch.
+      if (this.biome === "desert") {
+        const s = this.mesaSDF(tx, ty), midY = (MESA.y0 + MESA.y1) / 2;
+        const isRamp = MESA.ramps.some((rc) => tx >= rc && tx < rc + 1);
+        if (s > 0) {                                                     // plateau TOP — raised, lit sand
+          const lit = mix3(GDARK, GLITE, 0.82);
+          col = [lit[0] + (n - 0.5) * 16, lit[1] + (n - 0.5) * 16, lit[2] + (n - 0.5) * 14];
+          if (s < 0.75) col = mix3(col, [255, 244, 214], (0.75 - s) * 0.7);   // a bright lit rim (sun on the cliff top)
+          a = 255;
+        } else if (s > -MESA.faceH && ty > midY) {                       // the south rock FACE (the visible height)
+          const depth = -s / MESA.faceH;                                 // 0 top → 1 bottom
+          if (isRamp) { const rr = (n - 0.5) * 16; col = [206 - depth * 26 + rr, 176 - depth * 24 + rr, 122 - depth * 18 + rr]; a = 255; }   // a sandy ramp
+          else {                                                         // sandstone wall: horizontal strata, darkening down, a lit top lip
+            const strata = Math.sin(ty * 6.6) * 0.06, base = [156, 126, 86];
+            let k = 1 - depth * 0.5 + strata;
+            if (depth < 0.16) k += 0.28;                                 // bright lip where top meets face
+            col = [base[0] * k + (n - 0.5) * 12, base[1] * k + (n - 0.5) * 12, base[2] * k + (n - 0.5) * 10]; a = 255;
+          }
+        } else {                                                         // big soft cast shadow on the ground, SE of the butte
+          const below = ty > midY ? (-s - MESA.faceH) : 99;              // tiles past the face bottom
+          const eastOff = tx - (MESA.x1 + 1);                            // tiles east of the butte
+          const shS = below >= 0 && below < 3 ? (1 - below / 3) : 0;
+          const shE = eastOff >= -1 && eastOff < 2.5 && ty > MESA.y0 && ty < MESA.y1 + 3 ? (1 - Math.max(0, eastOff) / 2.5) : 0;
+          const sh = Math.max(shS, shE) * 0.3;
+          if (sh > 0) col = [col[0] * (1 - sh), col[1] * (1 - sh), col[2] * (1 - sh)];
+        }
+      }
       const i = (py * cw + px) * 4;
       d[i] = clamp255(col[0]); d[i + 1] = clamp255(col[1]); d[i + 2] = clamp255(col[2]); d[i + 3] = a;
     }
@@ -1083,6 +1170,7 @@ class TileLabEngine extends RetroEngine {
         },
       });
     }
+    this.drawShadows(b, this.cam);   // soft drop-shadows under props + player (grounding = depth)
     this.ren.drawEntities(b, this.map, this.cam, extra);
     if (this.hasFountain) this.drawLogo(b);   // the spinning CIRQLBACK emblem over the wellspring
     this.drawLight(b, this.cam);
