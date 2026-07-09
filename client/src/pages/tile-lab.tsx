@@ -6,6 +6,7 @@ import OracleChat, { type Speaker } from "@/components/cirql/oracle-chat";
 import {
   cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
   DEFAULT_TERRAIN, registerPack, harmonizePack, validatePlacements,
+  blobTile, BLOB_3x5,
   type Atlas, type Camera, type Drawable, type TerrainConfig, type Prop,
 } from "@/game/tile";
 
@@ -83,6 +84,9 @@ const DPATHS: [number, number][][] = [
   [[37, 34], [35, 38], [36, 41]],                                  // spur → the campfire commons
   [[22, 20], [21, 25], [20, 30], [20, 33]],                       // plaza → the oasis west bank (to Kesh + the herd)
 ];
+// PATH HIERARCHY (see [[cirqlback-paths-roads-expertise]]): the main caravan trade ROAD is wider;
+// the spurs are narrow FOOTPATHS. Half-width in tiles → the sprite path autotiles to this thickness.
+const DPATH_HALFW = [1.2, 0.72, 0.72];
 // sanctumpixel desert props are single-image PNGs of varied size — dims hardcoded (props are
 // placed before the atlas finishes loading, so we can't read w/h off the atlas at build time).
 const SP_ROCK: Record<number, [number, number]> = { 1: [32, 64], 2: [32, 64], 3: [32, 64], 4: [48, 48], 5: [48, 48], 6: [32, 32], 7: [32, 32], 8: [32, 32], 9: [32, 32], 10: [48, 32], 11: [48, 32] };
@@ -204,7 +208,7 @@ class TileLabEngine extends RetroEngine {
     if (biome === "desert") registerPack(this.atlas, "desert");
     this.atlas.loadAll().then(() => {
       this.buildLogo();
-      if (biome === "desert") { harmonizePack(this.atlas, "desert"); this.buildSandTexture(); this.buildFlamingo(); }
+      if (biome === "desert") { harmonizePack(this.atlas, "desert"); this.buildSandTexture(); this.buildFlamingo(); this.buildSandPath(); }
       else this.buildGrassTexture();
       this.loaded = true;
       // build-time safety check: warn if any placed land prop reads as a water sprite
@@ -603,6 +607,69 @@ class TileLabEngine extends RetroEngine {
     cx.putImageData(id, 0, 0);
     if (!this.atlas.has("flamingo")) this.atlas.add("flamingo", "");
     (this.atlas.get("flamingo") as unknown as { img: HTMLCanvasElement }).img = cv;
+  }
+
+  /** TRUE sprite path (owner: no procedural/hybrid paint). The pack's cobble_blob is a 3×5 autotile
+   *  blob (rounded corners / straight edges / inner corners) with a baked earthy shoulder — perfect
+   *  edges, but blue-grey stone. Recolour it through a warm ramp → a packed SANDSTONE path that reads
+   *  as a worn desert road, and register as "sandpath". drawSandPaths autotiles DPATHS with it. */
+  private buildSandPath() {
+    const src = this.atlas.get("cobble_blob"); if (!src.img) return;
+    const w = src.w, h = src.h, cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+    const cx = cv.getContext("2d", { willReadFrequently: true })!; cx.imageSmoothingEnabled = false;
+    cx.drawImage(src.img as any, 0, 0);
+    const id = cx.getImageData(0, 0, w, h), d = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] === 0) continue;
+      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;                  // warm sandstone ramp: earthy mortar → tan → light sand
+      d[i] = clamp255(lum * 0.74 + 84); d[i + 1] = clamp255(lum * 0.60 + 52); d[i + 2] = clamp255(lum * 0.42 + 20);
+    }
+    cx.putImageData(id, 0, 0);
+    if (!this.atlas.has("sandpath")) this.atlas.add("sandpath", "");
+    (this.atlas.get("sandpath") as unknown as { img: HTMLCanvasElement }).img = cv;
+  }
+
+  /** True if tile (tx,ty) lies within a DPATHS lane, at that path's half-width (hierarchy: wide
+   *  trade road, narrow footpath spurs). Excludes water so the path stops at the oasis edge. */
+  private isSandPath(tx: number, ty: number): boolean {
+    if (this.map.get(tx, ty) === "water") return false;
+    const px = tx + 0.5, py = ty + 0.5;
+    for (let p = 0; p < DPATHS.length; p++) {
+      const path = DPATHS[p], hw = DPATH_HALFW[p] ?? 0.72;
+      for (let i = 0; i < path.length - 1; i++) {
+        const [ax, ay] = path[i], [bx, by] = path[i + 1];
+        const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+        let t = L ? ((px - ax) * dx + (py - ay) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
+        if (Math.hypot(px - (ax + dx * t), py - (ay + dy * t)) <= hw) return true;
+      }
+    }
+    return false;
+  }
+
+  /** LAYER 3 of the ring pipeline — the PATHS. Autotile the DPATHS network with the sandstone sprite
+   *  (blobTile + BLOB_3x5) on top of the finished ground, clipped to the shore. A true sprite path:
+   *  rounded ends, clean edges, inner corners where lanes meet — never a painted colour blend. */
+  private drawSandPaths(b: CanvasRenderingContext2D, cam: Camera) {
+    if (!this.atlas.has("sandpath")) return;
+    const sh = this.atlas.get("sandpath"); if (!sh.img) return;
+    b.imageSmoothingEnabled = false;
+    const t = T, s = cam.scale, dsz = Math.ceil(t * s) + 1;
+    const [wx0, wy0] = this.ren.s2w(cam, 0, 0), [wx1, wy1] = this.ren.s2w(cam, cam.vw, cam.vh);
+    const tx0 = Math.floor(wx0 / t) - 1, ty0 = Math.floor(wy0 / t) - 1;
+    const tx1 = Math.ceil(wx1 / t) + 1, ty1 = Math.ceil(wy1 / t) + 1;
+    const P = (x: number, y: number) => this.isSandPath(x, y);
+    b.save(); this.clipToShore(b);
+    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+      if (!P(tx, ty)) continue;
+      const same = {
+        n: P(tx, ty - 1), s: P(tx, ty + 1), w: P(tx - 1, ty), e: P(tx + 1, ty),
+        ne: P(tx + 1, ty - 1), nw: P(tx - 1, ty - 1), se: P(tx + 1, ty + 1), sw: P(tx - 1, ty + 1),
+      };
+      const [c, r] = blobTile(BLOB_3x5, same);
+      const [sx, sy] = this.ren.w2s(cam, tx * t, ty * t);
+      sh.cell(b, 16, c, r, Math.round(sx), Math.round(sy), dsz, dsz);
+    }
+    b.restore();
   }
 
   /** The pack's flat sand tile → a subtly TEXTURED sand tile (grain), swapped into the atlas so
@@ -1448,6 +1515,7 @@ class TileLabEngine extends RetroEngine {
     // textured sandy coast + procedural inland water + meadow shading, then shore foam
     this.blitCoast(b);
     this.drawShoreFoam(b, this.cam);
+    if (this.biome === "desert") this.drawSandPaths(b, this.cam);   // LAYER 3 — true sprite paths on the finished ground
     this.drawDock(b, this.cam);   // the ring's dock (visual for now; ring-to-ring travel is the /cirql merge)
     if (this.biome === "shroom") this.drawPondDock(b, this.cam);   // the pond's little fishing pier (under the player/props)
     // the bridge, then depth-sorted actors
