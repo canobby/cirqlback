@@ -6,3 +6,4 @@ export * from "./tilemap";
 export * from "./sprite";
 export * from "./tile-renderer";
 export * from "./assets";
+export * from "./packs";

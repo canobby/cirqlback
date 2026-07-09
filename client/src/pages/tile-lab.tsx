@@ -5,7 +5,7 @@ import { RetroEngine, type RetroHooks } from "@/game/retro-engine";
 import OracleChat, { type Speaker } from "@/components/cirql/oracle-chat";
 import {
   cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
-  DEFAULT_TERRAIN,
+  DEFAULT_TERRAIN, registerPack, harmonizePack, spProp,
   type Atlas, type Camera, type Drawable, type TerrainConfig, type Prop,
 } from "@/game/tile";
 
@@ -62,7 +62,12 @@ const HAMLET = { x: 20, y: 16 };                                  // the adobe c
 const DPLAZA = { x: 22, y: 19 };                                  // paved well plaza in the hamlet
 const DLANE: [number, number][] = [[22, 21], [24, 24], [26, 27], [27, 29]];   // plaza → oasis footpath (worn sand)
 const DCAMP = { x: 36, y: 41 };                                   // nomad campfire commons (open sand, S)
-const MESA = { x0: 46, y0: 12, x1: 56, y1: 19, faceH: 3, ramps: [49, 53] };   // the raised sandstone plateau (NE) + its 2 south ramp columns
+const MESA = { x0: 44, y0: 15, x1: 54, y1: 21, faceH: 3, ramps: [47, 51] };   // the raised sandstone plateau (NE, pulled inside the ring) + its 2 south ramp columns
+// sanctumpixel desert props are single-image PNGs of varied size — dims hardcoded (props are
+// placed before the atlas finishes loading, so we can't read w/h off the atlas at build time).
+const SP_ROCK: Record<number, [number, number]> = { 1: [32, 64], 2: [32, 64], 3: [32, 64], 4: [48, 48], 5: [48, 48], 6: [32, 32], 7: [32, 32], 8: [32, 32], 9: [32, 32], 10: [48, 32], 11: [48, 32] };
+const SP_CACTUS: Record<number, [number, number]> = { 1: [32, 64], 2: [32, 64], 3: [32, 64], 4: [32, 64], 5: [32, 64], 6: [32, 64], 7: [48, 80] };
+const SP_JOSHUA: Record<number, [number, number]> = { 1: [64, 80], 2: [64, 80], 3: [64, 80], 4: [48, 80] };
 // dry-desert ground detail from the desert sheets (fern tuft / small rocks / pebbles)
 
 // A ring's biome = a palette recolor + a different prop kit + optional inland water.
@@ -160,7 +165,15 @@ class TileLabEngine extends RetroEngine {
       ? { ...DEFAULT_TERRAIN, farm: { fill: "farmland", cell: [5, 2] } }
       : undefined;
     this.ren = new TileRenderer(this.atlas, terr);
-    this.atlas.loadAll().then(() => { this.buildLogo(); if (biome === "desert") this.buildSandTexture(); else this.buildGrassTexture(); this.loaded = true; }).catch((e) => console.error(e));
+    // pull in the matching sanctumpixel biome pack (terrain/cliffs/nature) for the Dunes,
+    // blended with the Cute Fantasy cast; harmonised toward the warm CF palette after load.
+    if (biome === "desert") registerPack(this.atlas, "desert");
+    this.atlas.loadAll().then(() => {
+      this.buildLogo();
+      if (biome === "desert") { harmonizePack(this.atlas, "desert"); this.buildSandTexture(); }
+      else this.buildGrassTexture();
+      this.loaded = true;
+    }).catch((e) => console.error(e));
     this.start();
   }
 
@@ -506,41 +519,51 @@ class TileLabEngine extends RetroEngine {
   }
 
   // ---- the MESA (a raised sandstone plateau; TMW "building on a hill" landform) ----
-  /** Rounded-rectangle field for the plateau TOP: >0 inside (≈tiles), for a natural butte shape. */
-  private mesaSDF(tx: number, ty: number): number {
-    const cx = (MESA.x0 + MESA.x1) / 2, cy = (MESA.y0 + MESA.y1) / 2, hw = (MESA.x1 - MESA.x0) / 2, hh = (MESA.y1 - MESA.y0) / 2, rad = 2.2;
-    const qx = Math.max(Math.abs(tx - cx) - (hw - rad), 0), qy = Math.max(Math.abs(ty - cy) - (hh - rad), 0);
-    return rad - Math.hypot(qx, qy);
-  }
-  private get mesaMidY(): number { return (MESA.y0 + MESA.y1) / 2; }
+  // Built from the sanctumpixel desert CLIFF tileset (real sandstone rock) — a rectangular top
+  // ringed by rock edge tiles, a 3-row strata FACE dropping south, boulders breaking the lines.
   /** True if a tile is on the walkable plateau TOP. */
-  private onMesaTop(tx: number, ty: number): boolean { return this.mesaSDF(tx + 0.5, ty + 0.5) > 0; }
+  private onMesaTop(tx: number, ty: number): boolean { return tx >= MESA.x0 && tx <= MESA.x1 && ty >= MESA.y0 && ty <= MESA.y1; }
+  /** A south-facing rock FACE tile (the visible cliff wall) below the plateau's south edge. */
+  private onMesaFace(tx: number, ty: number): boolean { return tx >= MESA.x0 && tx <= MESA.x1 && ty > MESA.y1 && ty <= MESA.y1 + MESA.faceH; }
   /** A walkable RAMP corridor down the south face. */
-  private onMesaRamp(tx: number, ty: number): boolean {
-    const s = this.mesaSDF(tx + 0.5, ty + 0.5);
-    return s <= 0 && s > -MESA.faceH && ty > this.mesaMidY && MESA.ramps.includes(tx);
-  }
+  private onMesaRamp(tx: number, ty: number): boolean { return this.onMesaFace(tx, ty) && MESA.ramps.includes(tx); }
 
-  /** Build the mesa's collision (solid rock mass; only the top + south ramps walk) + the lookout on
-   *  top + the cave mouth at its foot. The rock face/top/shadow are painted procedurally in buildCoast. */
+  /** Build the mesa: collision (solid rock; only the top + south ramps walk), the sanctumpixel
+   *  sandstone cliff sprites (rim + strata face + boulders), the lookout on top, and the cave mouth. */
   private placeMesa(map: TileMap) {
-    for (let ty = MESA.y0 - 2; ty <= MESA.y1 + MESA.faceH + 1; ty++) for (let tx = MESA.x0 - 2; tx <= MESA.x1 + 2; tx++) {
-      const s = this.mesaSDF(tx + 0.5, ty + 0.5);
-      if (s > 0) continue;                                   // walkable plateau top
-      if (this.onMesaRamp(tx, ty)) continue;                 // walkable ramp
-      const isFace = s > -MESA.faceH && ty > this.mesaMidY;  // the south rock wall
-      const isRim = s > -1.0 && ty <= this.mesaMidY;         // the N/E/W rock lip (1 tile)
-      if (isFace || isRim) map.setSolid(tx, ty, true);
+    const { x0, y0, x1, y1, faceH, ramps } = MESA;
+    // --- collision ---
+    for (let ty = y1 + 1; ty <= y1 + faceH; ty++) for (let tx = x0; tx <= x1; tx++) if (!ramps.includes(tx)) map.setSolid(tx, ty, true);   // south face
+    for (let tx = x0 - 1; tx <= x1 + 1; tx++) map.setSolid(tx, y0 - 1, true);                                                              // north lip
+    for (let ty = y0; ty <= y1; ty++) { map.setSolid(x0 - 1, ty, true); map.setSolid(x1 + 1, ty, true); }                                  // W/E lips (can't step off)
+
+    // --- the sandstone cliff (sanctumpixel wall_tile overlay sprites) ---
+    const W = "sp_desert_wall";
+    // south FACE: a 3-row strata wall (ramp columns stay open = a sandy slope up)
+    for (let tx = x0; tx <= x1; tx++) {
+      if (ramps.includes(tx)) continue;
+      const fc = tx === x0 ? 5 : tx === x1 ? 9 : 6 + ((tx - x0 - 1) % 3);   // left edge / fill(6-8) / right edge
+      map.setOverlay(tx, y1 + 1, W, fc, 0);   // lip / top of wall
+      map.setOverlay(tx, y1 + 2, W, fc, 1);   // mid strata
+      map.setOverlay(tx, y1 + 3, W, fc, 2);   // base
     }
-    // the lookout building crowning the plateau (depth-sorted with the entities so you pass behind it)
-    const bx = Math.round((MESA.x0 + MESA.x1) / 2), by = MESA.y0 + 3;
-    map.addProp({ sheet: "d_house3", fw: 128, fh: 112, col: 0, row: 0, x: bx * T + T / 2, y: by * T + T, scale: 0.82, solidR: 15 });
-    this.labels.push({ x: bx * T + T / 2, y: (MESA.y0 - 1.5) * T, text: "The Sun Lookout" });
-    // the cave mouth set into the CENTRE of the south face (below the lookout) — a walkable slot up
-    // into the rock (Stage 3 wires walking into it → the underground level)
-    this.caveMouth = { x: Math.round((MESA.x0 + MESA.x1) / 2), y: MESA.y1 + 2 };
+    // the cave mouth (needed before the rim so we can keep it clear) — centre of the south face
+    this.caveMouth = { x: Math.round((x0 + x1) / 2), y: y1 + 2 };
     map.setSolid(this.caveMouth.x, this.caveMouth.y, false);
     map.setSolid(this.caveMouth.x, this.caveMouth.y + 1, false);
+
+    // --- a chunky BOULDER rim (sanctumpixel rocks) framing the raised top on N/E/W + base rubble.
+    // Boulders (not fiddly autotile edges) give an organic rocky drop-off that clearly reads. ---
+    const rnd = rng(4747);
+    const rock = (tx: number, ty: number, sc = 1) => { const i = 1 + Math.floor(rnd() * 11); const [w, h] = SP_ROCK[i]; map.addProp({ sheet: `sp_desert_rock_${i}`, fw: w, fh: h, col: 0, row: 0, x: tx * T + T / 2 + (rnd() - 0.5) * 6, y: ty * T + T, scale: sc, solidR: 0, overhead: true }); };
+    for (let tx = x0; tx <= x1; tx++) rock(tx, y0 - 1, 0.7 + rnd() * 0.4);                                  // N rim (boulders along the top back edge)
+    for (let ty = y0; ty <= y1; ty++) { rock(x0 - 1, ty, 0.65 + rnd() * 0.35); rock(x1 + 1, ty, 0.65 + rnd() * 0.35); }   // W/E rims
+    for (let tx = x0 - 1; tx <= x1 + 1; tx += 2) if (!ramps.includes(tx) && tx !== this.caveMouth.x) rock(tx, y1 + faceH + 1, 0.6 + rnd() * 0.3);   // base rubble
+
+    // --- the lookout building crowning the plateau + the cave door ---
+    const bx = Math.round((x0 + x1) / 2), by = y0 + 3;
+    map.addProp({ sheet: "d_house3", fw: 128, fh: 112, col: 0, row: 0, x: bx * T + T / 2, y: by * T + T, scale: 0.8, solidR: 15 });
+    this.labels.push({ x: bx * T + T / 2, y: (y0 - 1.8) * T, text: "The Sun Lookout" });
     map.addProp({ sheet: "cave_door", fw: 32, fh: 48, col: 0, row: 0, x: this.caveMouth.x * T + T / 2, y: this.caveMouth.y * T + T, solidR: 0 });
     this.labels.push({ x: this.caveMouth.x * T + T / 2, y: (this.caveMouth.y - 2.6) * T, text: "Cave" });
   }
@@ -1026,33 +1049,16 @@ class TileLabEngine extends RetroEngine {
         const ld = this.dLaneDist(tx, ty);                   // worn sand track: plaza → oasis
         if (od < -0.5 && ld < 1.6) { const grain = (n - 0.5) * 14, worn = 1 - smoothstep(0.5, 1.6, ld); col = mix3(col, [180, 152, 104 + grain], worn * 0.55); }
       }
-      // the MESA — a raised sandstone butte (rounded footprint via the SDF): a lit top with a bright
-      // rim where it catches the sun, a tall rock FACE with strata + sandy ramps, and a big soft cast
-      // shadow SE on the ground — the height reads from the face + shadow, not just a lighter patch.
+      // the MESA uses real sanctumpixel sandstone cliff SPRITES (placeMesa). Here we only paint the
+      // ground read: a LIT raised top surface (so it reads as a shelf above the sand) + a short soft
+      // contact shadow at the foot of the south face.
       if (this.biome === "desert") {
-        const s = this.mesaSDF(tx, ty), midY = (MESA.y0 + MESA.y1) / 2;
-        const isRamp = MESA.ramps.some((rc) => tx >= rc && tx < rc + 1);
-        if (s > 0) {                                                     // plateau TOP — raised, lit sand
-          const lit = mix3(GDARK, GLITE, 0.82);
-          col = [lit[0] + (n - 0.5) * 16, lit[1] + (n - 0.5) * 16, lit[2] + (n - 0.5) * 14];
-          if (s < 0.75) col = mix3(col, [255, 244, 214], (0.75 - s) * 0.7);   // a bright lit rim (sun on the cliff top)
-          a = 255;
-        } else if (s > -MESA.faceH && ty > midY) {                       // the south rock FACE (the visible height)
-          const depth = -s / MESA.faceH;                                 // 0 top → 1 bottom
-          if (isRamp) { const rr = (n - 0.5) * 16; col = [206 - depth * 26 + rr, 176 - depth * 24 + rr, 122 - depth * 18 + rr]; a = 255; }   // a sandy ramp
-          else {                                                         // sandstone wall: horizontal strata, darkening down, a lit top lip
-            const strata = Math.sin(ty * 6.6) * 0.06, base = [156, 126, 86];
-            let k = 1 - depth * 0.5 + strata;
-            if (depth < 0.16) k += 0.28;                                 // bright lip where top meets face
-            col = [base[0] * k + (n - 0.5) * 12, base[1] * k + (n - 0.5) * 12, base[2] * k + (n - 0.5) * 10]; a = 255;
-          }
-        } else {                                                         // big soft cast shadow on the ground, SE of the butte
-          const below = ty > midY ? (-s - MESA.faceH) : 99;              // tiles past the face bottom
-          const eastOff = tx - (MESA.x1 + 1);                            // tiles east of the butte
-          const shS = below >= 0 && below < 3 ? (1 - below / 3) : 0;
-          const shE = eastOff >= -1 && eastOff < 2.5 && ty > MESA.y0 && ty < MESA.y1 + 3 ? (1 - Math.max(0, eastOff) / 2.5) : 0;
-          const sh = Math.max(shS, shE) * 0.3;
-          if (sh > 0) col = [col[0] * (1 - sh), col[1] * (1 - sh), col[2] * (1 - sh)];
+        if (tx >= MESA.x0 && tx <= MESA.x1 + 1 && ty >= MESA.y0 && ty <= MESA.y1 + 1) {
+          const lit = mix3(GDARK, GLITE, 0.9);                              // brighter, sun-caught plateau top
+          col = [lit[0] + (n - 0.5) * 14, lit[1] + (n - 0.5) * 14, lit[2] + (n - 0.5) * 12]; a = 255;
+        } else if (ty > MESA.y1 + MESA.faceH && ty < MESA.y1 + MESA.faceH + 1.8 && tx >= MESA.x0 - 1 && tx <= MESA.x1 + 1) {
+          const below = ty - (MESA.y1 + MESA.faceH), sh = (1 - below / 1.8) * 0.3;
+          col = [col[0] * (1 - sh), col[1] * (1 - sh), col[2] * (1 - sh)];
         }
       }
       const i = (py * cw + px) * 4;
