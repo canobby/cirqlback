@@ -3,9 +3,18 @@ import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { RetroEngine, type RetroHooks } from "@/game/retro-engine";
 import {
-  cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
-  type Atlas, type Camera, type Drawable,
+  cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM, blobTile,
+  type Atlas, type Camera, type Drawable, type BlobLayout,
 } from "@/game/tile";
+
+// Time Fantasy beach water autotile — piece coords within one animation frame
+// (4 frames, each 9 cols apart in tf_beach.png). Interior open water = flat fill.
+const TFW_FRAMES = 4, TFW_FCOLS = 9;
+const TFW: BlobLayout = {
+  c: [4, 2], n: [2, 1], e: [7, 2], s: [2, 7], w: [1, 2],
+  nw: [1, 1], ne: [7, 1], sw: [1, 7], se: [7, 7],
+  inNW: [3, 2], inNE: [5, 2], inSW: [3, 6], inSE: [5, 6],
+};
 
 // TILE LAB — P1 vertical slice: Cloverfield, one hand-authored meadow island.
 // Proves the hybrid LOOK, not just the plumbing: a grassy plateau in the sea with
@@ -186,34 +195,23 @@ class TileLabEngine extends RetroEngine {
     const SAND = [235, 221, 165], SANDD = [204, 185, 124];
     const FOAM = [212, 234, 240], SHAL = [118, 200, 228], DEEP = [26, 86, 132];
     const GDARK = [44, 94, 46], GLITE = [150, 202, 98];
-    const RWATER = [58, 150, 198], RFOAM = [196, 230, 238];   // the river of light + its foam banks
     for (let py = 0; py < ch; py++) for (let px = 0; px < cw; px++) {
       const tx = (px + 0.5) / (T * SS), ty = (py + 0.5) / (T * SS), g = this.landField(tx, ty);
       const n = hash2(px, py);
       let col: number[], a = 255;
-      const rf = g > 0.15 ? this.riverField(tx, ty) : -99;  // river only crosses the land
-      if (rf > 0.35) {                                       // river water — blends into the ocean near the mouth
-        const wob = Math.sin(ty * 1.8 + tx * 0.5) * 6 + (n - 0.5) * 10;
-        const base = [RWATER[0] + wob, RWATER[1] + wob, RWATER[2] + wob];
-        col = mix3(base, SHAL, smoothstep(1.8, 0.15, g) * 0.85);
-      } else if (rf > -0.4) {                                // smooth river bank fading into the land
-        col = mix3(RWATER, RFOAM, smoothstep(0.35, -0.05, rf));
-        a = Math.round(255 * smoothstep(-0.4, 0.1, rf));
-      } else {
-        // land + coast, with a NOISY, mottled grass↔sand edge (not a manicured line)
-        const noise = this.meadow(tx * 1.5 + 9, ty * 1.5) * 0.85 + (hash2(px >> 2, py >> 2) - 0.5) * 0.9;
-        if (g + noise > 1.7 && g > 0.28) {                  // grass meadow (irregular inner edge)
-          const v = this.meadow(tx, ty); col = v < 0 ? GDARK : GLITE; a = Math.round(Math.abs(v) * 46);
-        } else if (g > 0.1) {                               // sand — grainy + grass-tuft mottling toward the grass
-          const grain = (n - 0.5) * 46 + (hash2(px >> 1, py >> 1) - 0.5) * 22, base = mix3(SANDD, SAND, smoothstep(0.1, 1.1, g));
-          const sand = [base[0] + grain, base[1] + grain, base[2] + grain * 0.8];
-          const gm = smoothstep(0.6, 2.1, g + noise) * (0.35 + hash2(px >> 2, py >> 2) * 0.6);
-          col = mix3(sand, GLITE, gm * 0.55);
-        } else if (g > -0.12) { col = FOAM; }               // foam waterline
-        else if (g > -0.9) { col = mix3(FOAM, SHAL, smoothstep(-0.18, -0.9, g)); const r = (n - 0.5) * 16; col = [col[0] + r, col[1] + r, col[2] + r * 0.7]; }
-        else if (g > -3.2) { col = mix3(SHAL, DEEP, smoothstep(-0.9, -3.2, g)); const wave = Math.sin(g * 2.6 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8; col = [col[0] + wave, col[1] + wave, col[2] + wave]; }
-        else { col = DEEP; }
-      }
+      // land + coast (the river is drawn separately as tf_beach tiles), NOISY grass↔sand edge
+      const noise = this.meadow(tx * 1.5 + 9, ty * 1.5) * 0.85 + (hash2(px >> 2, py >> 2) - 0.5) * 0.9;
+      if (g + noise > 1.7 && g > 0.28) {                  // grass meadow (irregular inner edge)
+        const v = this.meadow(tx, ty); col = v < 0 ? GDARK : GLITE; a = Math.round(Math.abs(v) * 46);
+      } else if (g > 0.1) {                               // sand — grainy + grass-tuft mottling toward the grass
+        const grain = (n - 0.5) * 46 + (hash2(px >> 1, py >> 1) - 0.5) * 22, base = mix3(SANDD, SAND, smoothstep(0.1, 1.1, g));
+        const sand = [base[0] + grain, base[1] + grain, base[2] + grain * 0.8];
+        const gm = smoothstep(0.6, 2.1, g + noise) * (0.35 + hash2(px >> 2, py >> 2) * 0.6);
+        col = mix3(sand, GLITE, gm * 0.55);
+      } else if (g > -0.12) { col = FOAM; }               // foam waterline
+      else if (g > -0.9) { col = mix3(FOAM, SHAL, smoothstep(-0.18, -0.9, g)); const r = (n - 0.5) * 16; col = [col[0] + r, col[1] + r, col[2] + r * 0.7]; }
+      else if (g > -3.2) { col = mix3(SHAL, DEEP, smoothstep(-0.9, -3.2, g)); const wave = Math.sin(g * 2.6 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8; col = [col[0] + wave, col[1] + wave, col[2] + wave]; }
+      else { col = DEEP; }
       const i = (py * cw + px) * 4;
       d[i] = clamp255(col[0]); d[i + 1] = clamp255(col[1]); d[i + 2] = clamp255(col[2]); d[i + 3] = a;
     }
@@ -238,6 +236,25 @@ class TileLabEngine extends RetroEngine {
     b.imageSmoothingEnabled = true;
     b.drawImage(this.coast, (cam.x - viewW / 2) * SS, (cam.y - viewH / 2) * SS, viewW * SS, viewH * SS, 0, 0, cam.vw, cam.vh);
     b.imageSmoothingEnabled = false;
+  }
+
+  /** The river/lakes rendered as real animated Time Fantasy water (autotiled sandy banks). */
+  private drawRiverWater(b: CanvasRenderingContext2D, cam: Camera) {
+    const sh = this.atlas.get("tf_beach");
+    if (!sh.ready) return;
+    const off = (Math.floor(this.tsec * 3) % TFW_FRAMES) * TFW_FCOLS;
+    const t = T, s = cam.scale, dsz = Math.ceil(t * s) + 1;
+    const [wx0, wy0] = this.ren.s2w(cam, 0, 0), [wx1, wy1] = this.ren.s2w(cam, cam.vw, cam.vh);
+    const tx0 = Math.floor(wx0 / t) - 1, ty0 = Math.floor(wy0 / t) - 1, tx1 = Math.ceil(wx1 / t) + 1, ty1 = Math.ceil(wy1 / t) + 1;
+    b.imageSmoothingEnabled = false;
+    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+      if (this.map.get(tx, ty) !== "water") continue;
+      const [sx, sy] = this.ren.w2s(cam, tx * t, ty * t);
+      const dx = Math.round(sx), dy = Math.round(sy);
+      const q = this.map.neighbourhood(tx, ty, "water");
+      if (q.n && q.e && q.s && q.w && q.ne && q.nw && q.se && q.sw) { b.fillStyle = "#4a8ace"; b.fillRect(dx, dy, dsz, dsz); }
+      else { const [c, r] = blobTile(TFW, q); sh.cell(b, 16, c + off, r, dx, dy, dsz, dsz); }
+    }
   }
 
   /** Foam waves lapping the shoreline — animated + a whole-island pulse (drawn under props). */
@@ -362,8 +379,9 @@ class TileLabEngine extends RetroEngine {
     this.cam.vw = bw; this.cam.vh = bh; this.cam.scale = this.zoom;
     // crafted land tiles (grass + river + road); the ocean is void
     this.ren.drawGround(b, this.map, this.cam);
-    // textured sandy coast + smooth procedural river + meadow shading, then shore foam
+    // textured sandy coast + meadow shading, then the real animated tf_beach river, then shore foam
     this.blitCoast(b);
+    this.drawRiverWater(b, this.cam);
     this.drawShoreFoam(b, this.cam);
     // the bridge, then depth-sorted actors
     this.ren.drawOverlay(b, this.map, this.cam);
@@ -483,25 +501,28 @@ class TileLabEngine extends RetroEngine {
   // ---- sheet inspector (decode exact cell coords for authoring) ----
   private inspectName: string | null = null;
   private inspectCell = 16;
-  inspect(name: string | null, cell = 16) { this.inspectName = name; this.inspectCell = cell; }
+  private inspectRegion: [number, number, number, number] | null = null;   // [c0,r0,cols,rows] to zoom
+  inspect(name: string | null, cell = 16, region?: [number, number, number, number]) { this.inspectName = name; this.inspectCell = cell; this.inspectRegion = region ?? null; }
   private drawInspector(): void {
     const b = this.b, bw = b.canvas.width, bh = b.canvas.height;
     b.imageSmoothingEnabled = false;
     b.fillStyle = "#101820"; b.fillRect(0, 0, bw, bh);
     const sh = this.atlas.get(this.inspectName!);
     const cs = this.inspectCell;
-    const cols = Math.floor(sh.w / cs), rows = Math.floor(sh.h / cs);
-    const z = Math.max(1, Math.floor(Math.min((bw - 40) / sh.w, (bh - 40) / sh.h)));
+    const rg = this.inspectRegion ?? [0, 0, Math.floor(sh.w / cs), Math.floor(sh.h / cs)];
+    const [c0, r0, cols, rows] = rg;
+    const sx = c0 * cs, sy = r0 * cs, sw = cols * cs, shh = rows * cs;
+    const z = Math.max(1, Math.floor(Math.min((bw - 40) / sw, (bh - 40) / shh)));
     const ox = 20, oy = 20;
-    sh.draw(b, 0, 0, sh.w, sh.h, ox, oy, sh.w * z, sh.h * z);
-    b.strokeStyle = "rgba(120,220,255,.5)"; b.lineWidth = 1;
-    b.font = `${Math.max(8, cs * z / 3)}px monospace`; b.fillStyle = "#7fe";
+    sh.draw(b, sx, sy, sw, shh, ox, oy, sw * z, shh * z);
+    b.strokeStyle = "rgba(120,220,255,.6)"; b.lineWidth = 1;
+    b.font = `${Math.max(9, cs * z / 3)}px monospace`; b.fillStyle = "#7fe";
     for (let r = 0; r < rows; r++) for (let cc = 0; cc < cols; cc++) {
       b.strokeRect(ox + cc * cs * z, oy + r * cs * z, cs * z, cs * z);
-      if (z >= 2) b.fillText(`${cc},${r}`, ox + cc * cs * z + 2, oy + r * cs * z + cs * z / 3);
+      if (z >= 2) b.fillText(`${c0 + cc},${r0 + r}`, ox + cc * cs * z + 2, oy + r * cs * z + cs * z / 3);
     }
     b.fillStyle = "#bfefff"; b.font = "14px monospace";
-    b.fillText(`${this.inspectName}  ${sh.w}x${sh.h}  ${cols}x${rows} @${cs}`, ox, bh - 12);
+    b.fillText(`${this.inspectName}  ${sh.w}x${sh.h} @${cs}  region ${c0},${r0} ${cols}x${rows}`, ox, bh - 12);
   }
 }
 

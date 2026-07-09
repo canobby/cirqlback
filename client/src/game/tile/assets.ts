@@ -27,6 +27,7 @@ export const CF_SHEETS: Record<string, string> = {
   cobble_blob: `${CF}/tiles/cobble_blob.png`,
   beach_blob: `${CF}/tiles/beach_blob.png`,
   beach_tiles: `${CF}/tiles/beach_tiles.png`,
+  tf_beach: `${CF}/tiles/tf_beach.png`,   // Time Fantasy animated water autotile + sand/beach
   cliff: `${CF}/tiles/cliff.png`,
   cliff2: `${CF}/tiles/cliff2.png`,
   cliff3: `${CF}/tiles/cliff3.png`,
