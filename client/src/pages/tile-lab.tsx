@@ -5,8 +5,17 @@ import { RetroEngine, type RetroHooks } from "@/game/retro-engine";
 import {
   cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
   DEFAULT_TERRAIN,
-  type Atlas, type Camera, type Drawable, type TerrainConfig,
+  type Atlas, type Camera, type Drawable, type TerrainConfig, type Prop,
 } from "@/game/tile";
+
+// A living critter: a placed prop that frame-animates in place and gently wanders near home.
+interface Critter {
+  p: Prop; gx: number; gy: number; hx: number; hy: number;    // current ground pos + home
+  baseCol: number; frames: number; fps: number; ph: number;   // frame animation
+  bob: number; wr: number; sp: number;      // idle-bob height · wander radius (tiles) · speed (px/s)
+  tx: number; ty: number; nt: number;       // current wander target + time-to-retarget
+  water: boolean;                           // stays in the pond (duck) vs. on land
+}
 
 // TILE LAB — P1 vertical slice: Cloverfield, one hand-authored meadow island.
 // Proves the hybrid LOOK, not just the plumbing: a grassy plateau in the sea with
@@ -89,6 +98,7 @@ class TileLabEngine extends RetroEngine {
   private glowSpots: { x: number; y: number; color: string; r: number }[] = [];   // per-object neon glow (mushrooms)
   private rx = RX; private ry = RY;                 // ring radii — CIRQLSPACE starts ~2/3, expands later
   private labels: { x: number; y: number; text: string }[] = [];   // place/NPC name tags (world px)
+  private critters: Critter[] = [];                                // animals that frame-animate + wander
 
   constructor(canvas: HTMLCanvasElement, hooks: RetroHooks = {}, blank = false, biome: Biome = "meadow") {
     super(canvas, hooks, 320, 200);
@@ -162,9 +172,9 @@ class TileLabEngine extends RetroEngine {
       this.placeFlowerClumps(map);
       // (mushrooms: placeMushrooms() is ready for later rings — kept OFF this one)
 
-      const sheep = (tx: number, ty: number) => map.addProp({ sheet: "sheep", fw: 32, fh: 32, col: 0, row: 0, x: tx * T, y: ty * T, solidR: 6 });
+      const sheep = (tx: number, ty: number) => this.addCritter(map, "sheep", 32, 32, 0, 0, tx, ty, { solidR: 6, wr: 0.9, sp: 4, bob: 0.8 });
       for (const [tx, ty] of [[18, 40], [21, 42], [16, 38], [23, 39]] as [number, number][]) sheep(tx, ty);
-      const chick = (tx: number, ty: number) => map.addProp({ sheet: "chicken", fw: 32, fh: 32, col: 0, row: 0, x: tx * T, y: ty * T });
+      const chick = (tx: number, ty: number) => this.addCritter(map, "chicken", 32, 32, 0, 0, tx, ty, { wr: 1.4, sp: 7, bob: 1.2 });
       for (const [tx, ty] of [[27, 20], [29, 21], [43, 24]] as [number, number][]) chick(tx, ty);
       map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 30 * T, y: 29 * T, solidR: 6 }); // open meadow
       map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 39 * T, y: 30 * T, solidR: 6 }); // open meadow
@@ -285,13 +295,13 @@ class TileLabEngine extends RetroEngine {
       else if (kind === "bush") this.cluster(map, rnd, cx, cy, 2, 2, (tx, ty) => map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 4, y: ty * T + 6, overhead: true, solidR: 5 }));
       else this.cluster(map, rnd, cx, cy, 2, 2, (tx, ty) => map.addProp({ sheet: "shroom_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 4), row: Math.floor(rnd() * 4), x: tx * T + rnd() * T, y: ty * T + T }));
     }
-    const life = (sheet: string, fh: number, sr: number, pts: [number, number][]) => {
-      for (const [tx, ty] of pts) if (this.canPlace(map, tx, ty, 3, 2.2)) map.addProp({ sheet, fw: 32, fh, col: 0, row: 0, x: tx * T, y: ty * T, solidR: sr });
+    const life = (sheet: string, fh: number, sr: number, frames: number, pts: [number, number][]) => {
+      for (const [tx, ty] of pts) if (this.canPlace(map, tx, ty, 3, 2.2)) this.addCritter(map, sheet, 32, fh, 0, 0, tx, ty, { solidR: sr, frames, fps: 3, wr: 1.1, sp: 6, bob: 1.2 });
     };
-    life("shroomling", 48, 5, [[22, 43], [40, 38], [44, 24], [24, 45]]);
-    life("shroomling2", 32, 4, [[26, 41], [45, 37], [13, 30]]);   // moved clear of the commons/fire
+    life("shroomling", 48, 5, 4, [[22, 43], [40, 38], [44, 24], [24, 45]]);
+    life("shroomling2", 32, 4, 2, [[26, 41], [45, 37], [13, 30]]);   // moved clear of the commons/fire
     for (const [tx, ty] of [[23, 39], [35, 42], [17, 44], [50, 30]] as [number, number][])
-      if (this.canPlace(map, tx, ty, 2, 1.0)) map.addProp({ sheet: "snail", fw: 16, fh: 16, col: 0, row: 0, x: tx * T, y: ty * T });
+      if (this.canPlace(map, tx, ty, 2, 1.0)) this.addCritter(map, "snail", 16, 16, 0, 0, tx, ty, { wr: 1.4, sp: 2, bob: 0.4 });   // a slow crawl
   }
 
   /** Distance (in tiles) from a point to the plaza→pond footpath polyline. */
@@ -309,6 +319,41 @@ class TileLabEngine extends RetroEngine {
   /** Inside (or hugging) the fenced mushroom farm. */
   private inField(tx: number, ty: number): boolean {
     return tx >= SFIELD.x0 - 1 && tx <= SFIELD.x1 + 1 && ty >= SFIELD.y0 - 1 && ty <= SFIELD.y1 + 1;
+  }
+
+  /** Place an animal as a living critter (a prop that frame-animates in place + gently wanders). */
+  private addCritter(map: TileMap, sheet: string, fw: number, fh: number, col: number, row: number, tx: number, ty: number,
+    o: { frames?: number; fps?: number; bob?: number; wr?: number; sp?: number; water?: boolean; solidR?: number } = {}) {
+    map.addProp({ sheet, fw, fh, col, row, x: tx * T, y: ty * T, solidR: o.solidR ?? 0 });
+    const p = map.props[map.props.length - 1];
+    this.critters.push({
+      p, gx: p.x, gy: p.y, hx: p.x, hy: p.y, baseCol: col, frames: o.frames ?? 1, fps: o.fps ?? 4,
+      ph: ((tx * 7 + ty * 13) % 100) / 100 * 6.28, bob: o.bob ?? 1.4, wr: o.wr ?? 0, sp: o.sp ?? 8,
+      tx: p.x, ty: p.y, nt: 0, water: o.water ?? false,
+    });
+  }
+
+  /** Animate + wander every critter (called each frame). */
+  private updateCritters(dt: number) {
+    for (const c of this.critters) {
+      if (c.frames > 1) c.p.col = c.baseCol + (Math.floor(this.tsec * c.fps + c.ph) % c.frames);   // frame cycle
+      if (c.wr > 0) {
+        c.nt -= dt;
+        if (c.nt <= 0) {                                   // pick a fresh wander target near home
+          const a = this.tsec * 0.6 + c.ph;
+          c.tx = c.hx + Math.cos(a) * c.wr * T; c.ty = c.hy + Math.sin(a * 1.7) * c.wr * T;
+          c.nt = 2.5 + (c.ph % 2);
+        }
+        const dx = c.tx - c.gx, dy = c.ty - c.gy, d = Math.hypot(dx, dy);
+        if (d > 1.5) {
+          const step = Math.min(d, c.sp * dt), nx = c.gx + dx / d * step, ny = c.gy + dy / d * step;
+          const ok = c.water ? this.pondField(nx / T, ny / T) > 0.5 : (this.landField(nx / T, ny / T) > 2.5 && !this.blocked(nx, ny, 4));
+          if (ok) { c.gx = nx; c.gy = ny; } else c.nt = 0;
+        }
+      }
+      const bob = this.reduce ? 0 : Math.abs(Math.sin(this.tsec * 3 + c.ph)) * c.bob;   // a gentle hop
+      c.p.x = c.gx; c.p.y = c.gy - bob;
+    }
   }
 
   /** True if (wx,wy) is within `d` px of an existing BIG prop (mushroom/tree/house) — so small
@@ -415,9 +460,9 @@ class TileLabEngine extends RetroEngine {
           else if (r < 0.5) put("waterrock1", tx, ty);                               // a rock breaking the surface
         }
       }
-    // pond life — a duck afloat + a frog on the bank
-    map.addProp({ sheet: "duck", fw: 32, fh: 32, col: 0, row: 12, x: (SPOND.cx + 1) * T, y: (SPOND.cy - 1) * T });
-    map.addProp({ sheet: "frog", fw: 32, fh: 32, col: 0, row: 0, x: (SPOND.cx - 4) * T, y: (SPOND.cy + 2) * T });
+    // pond life — a duck paddling on the water + a frog hopping on the bank
+    this.addCritter(map, "duck", 32, 32, 0, 12, SPOND.cx + 1, SPOND.cy - 1, { water: true, wr: 1.6, sp: 6, bob: 1 });
+    this.addCritter(map, "frog", 32, 32, 0, 0, SPOND.cx - 4, SPOND.cy + 2, { wr: 0.7, sp: 5, bob: 2.4 });
   }
 
   /** One giant mushroom (top-row cap @32×48), depth-sorted, casting a crisp neon glow. */
@@ -694,6 +739,7 @@ class TileLabEngine extends RetroEngine {
     }
     this.player.moving = moving;
     this.player.update(dt);
+    this.updateCritters(dt);
     const k = Math.min(1, dt * 6);
     this.cam.x += (this.player.x - this.cam.x) * k;
     this.cam.y += (this.player.y - this.cam.y) * k;
