@@ -81,7 +81,7 @@ const DRESERVED: [number, number][] = [DNPC.sahra, DNPC.kesh, DNPC.tamm, ...DCAM
 // west bank). Routed to skip the water. Painted as packed sand; scatter/flora keep off it.
 const DPATHS: [number, number][][] = [
   [[34, 45], [35, 39], [37, 34], [40, 30], [44, 26], [49, 24]],   // dock → trade road (east of the oasis) → mesa base
-  [[37, 34], [35, 38], [36, 41]],                                  // spur → the campfire commons
+  [[37, 34], [35, 38], [36, 39]],                                  // spur → APPROACHES the campfire commons, stops N of the fire (never through it)
   [[22, 20], [21, 25], [20, 30], [20, 33]],                       // plaza → the oasis west bank (to Kesh + the herd)
 ];
 // PATH HIERARCHY (see [[cirqlback-paths-roads-expertise]]): the main caravan trade ROAD is wider;
@@ -387,13 +387,17 @@ class TileLabEngine extends RetroEngine {
     for (const [tx, ty] of [[26, 38], [40, 30], [18, 24]] as [number, number][])
       if (this.dCanPlace(map, tx, ty)) this.addCritter(map, "scarab", 16, 16, 0, 0, tx, ty, { wr: 1.2, sp: 3, bob: 0.3 });
     this.placeOasisLife(map);
-    const npc = (tx: number, ty: number, name: string, col: number) => {
-      map.addProp({ sheet: "d_npc", fw: 64, fh: 64, col, row: 0, ay: 0.66, x: tx * T, y: ty * T, solidR: 6 });
-      this.labels.push({ x: tx * T, y: ty * T - 30, text: name });
+    // d_npc is a 32×32 character sheet: rows are DIRECTIONAL WALK SETS (r0 = walk-toward-you,
+    // r2 = walk-away), 6 frames each. col 0 of a DOWN-facing row = the front idle. Draw ONE 32×32
+    // frame (NOT a 64×64 block — that grabbed a 2×2 of four walk-frames, the "4 women" bug). The
+    // down-idle rows 0/3/6 give each NPC a distinct character's front standing pose.
+    const npc = (tx: number, ty: number, name: string, row: number) => {
+      map.addProp({ sheet: "d_npc", fw: 32, fh: 32, col: 0, row, x: tx * T + T / 2, y: ty * T + T, scale: 1.05, solidR: 6 });
+      this.labels.push({ x: tx * T + T / 2, y: ty * T - 8, text: name });
     };
-    npc(DNPC.sahra[0], DNPC.sahra[1], "Sahra", 0);                            // well-keeper, beside the plaza well
-    npc(DNPC.kesh[0], DNPC.kesh[1], "Kesh", 1);                               // camel-herder, WEST of the lagoon
-    npc(DNPC.tamm[0], DNPC.tamm[1], "Tamm", 2);                               // wayfarer, beside the campfire (fire clear)
+    npc(DNPC.sahra[0], DNPC.sahra[1], "Sahra", 0);                           // well-keeper — front idle, beside the plaza well
+    npc(DNPC.kesh[0], DNPC.kesh[1], "Kesh", 3);                              // camel-herder — front idle, WEST of the lagoon
+    npc(DNPC.tamm[0], DNPC.tamm[1], "Tamm", 6);                              // wayfarer — front idle, beside the campfire
   }
 
   /** Fill the oasis with LIFE: a duck paddling, a pink flamingo wading, butterflies + a bee over the
@@ -405,8 +409,10 @@ class TileLabEngine extends RetroEngine {
     this.addCritter(map, "duck", 32, 32, 0, 12, O.cx + 1, O.cy - 2, { water: true, wr: 1.4, sp: 6, bob: 1 });
     this.addCritter(map, "flamingo", 32, 32, 0, 6, O.cx - 6, O.cy + 3, { wr: 0.5, sp: 3, bob: 1.4 });   // swan sheet, recoloured pink at load
     // a couple of LONE butterflies (individuals, well apart — never a clump) + a single bee
-    this.addCritter(map, "butterfly", 16, 16, 0, 0, O.cx + 9, O.cy + 2, { frames: 1, wr: 2, sp: 8, bob: 2 });   // one at the east palms
-    this.addCritter(map, "butterfly", 16, 16, 0, 2, O.cx - 4, O.cy + 8, { frames: 1, wr: 2, sp: 8, bob: 2 });   // one off south, on its own
+    // butterfly.png is an 8×8 sheet: 2 cols = flap frames, 8 rows = colours. Draw ONE 8×8 butterfly
+    // (fw:16 grabbed a 2×2 of four different-coloured ones), flapping via the 2-frame cycle.
+    this.addCritter(map, "butterfly", 8, 8, 0, 0, O.cx + 9, O.cy + 2, { frames: 2, fps: 6, wr: 2, sp: 8, bob: 2 });   // one at the east palms
+    this.addCritter(map, "butterfly", 8, 8, 0, 3, O.cx - 4, O.cy + 8, { frames: 2, fps: 6, wr: 2, sp: 8, bob: 2 });   // a different-coloured one, off south
     this.addCritter(map, "bee", 32, 32, 0, 0, O.cx + 6, O.cy - 4, { frames: 2, fps: 8, wr: 1.4, sp: 7, bob: 1.2 });
     // a couple of extra palm clumps set around the lagoon (varied spots — asymmetric, not the even halo)
     const palm = (tx: number, ty: number, sc: number) => { if (this.dCanPlace(map, tx, ty, 3.5, 3) && this.oasisClear(tx, ty, 2.8)) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: tx * T + T / 2, y: ty * T + T, scale: 0.85 + rnd() * 0.3, overhead: true, solidR: 5 }); };
@@ -475,6 +481,7 @@ class TileLabEngine extends RetroEngine {
     const rnd = rng(707);
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
       if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3.5) || this.nearReserved(tx, ty)) continue;
+      if (this.dPathDist(tx + 0.5, ty + 0.5) < 1.6) continue;                          // keep flora OFF the sprite path (no palm growing in the road)
       const d = -this.oasisField(tx + 0.5, ty + 0.5) * ((OASIS.rx + OASIS.ry) / 2);   // ~tiles OUTSIDE the water
       if (d < 0.4 || d > 6.5) continue;
       const r = rnd();
