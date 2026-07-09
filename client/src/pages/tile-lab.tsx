@@ -48,9 +48,12 @@ class TileLabEngine extends RetroEngine {
   private coastSS = 2;                              // super-sample factor of the coast canvas
   private shore: { x: number; y: number }[] = [];   // shoreline contour points (world px) for animated foam
   private logo: HTMLCanvasElement | null = null;    // CIRQLBACK mark, cream keyed to transparent
+  private blank = false;                            // CIRQLSPACE (home ring): blank buildable canvas
+  private labels: { x: number; y: number; text: string }[] = [];   // place/NPC name tags (world px)
 
-  constructor(canvas: HTMLCanvasElement, hooks: RetroHooks = {}) {
+  constructor(canvas: HTMLCanvasElement, hooks: RetroHooks = {}, blank = false) {
     super(canvas, hooks, 320, 200);
+    this.blank = blank;
     this.fit = true; this.fitPx = 3;
     this.crt = false;
     this.resize();
@@ -72,49 +75,54 @@ class TileLabEngine extends RetroEngine {
   /** Placement rule: a point is "safe" (not too near the shore) if it's inside the edgepoint. */
   private insideEdge(tx: number, ty: number, margin = EDGE): boolean { return this.landField(tx, ty) > margin; }
 
-  // ---------- author the whole island ----------
+  // ---------- author the ring ----------
   private buildIsland() {
     const map = new TileMap(MW, MH, T, "sea");   // ocean = void; the smooth beach/coast is drawn procedurally
     map.solidTerrain.add("sea");
-    // 1) the grass island
+    // 1) the grass ring
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) if (this.land(tx, ty)) map.set(tx, ty, "grass");
 
-    // 2) a cobble lane across the village
-    map.paintLine(9, ROAD_Y, 58, ROAD_Y - 1, "path", 3);
-
-    // 6) buildings — spread out, each near where it "wants to be"
-    const H = (sheet: string, w: number, h: number, tx: number, ty: number, sc = 1, sr?: number) =>
-      map.addProp({ sheet, fw: w, fh: h, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, solidR: sr ?? w * sc * 0.33, overhead: false });
-    H("windmill", 128, 112, 29, 11, 1);                 // high ground, north
-    H("inn", 240, 192, 41, 12, 0.8);                    // the village inn
-    H("house1", 96, 128, 25, 18, 1);
-    H("house2", 144, 128, 45, 20, 1);
-    H("house3", 144, 128, 24, 27, 1);
-    H("house4", 112, 96, 47, 28, 1);
-    H("fisherman", 96, 112, 14, 27, 1);                 // above the west cove (on land)
-
-    // 7) wellspring centrepiece drawn specially (only the LOWER tiered fountain); block its base
+    // 2) the CIRQL fountain — dead centre of every ring; block its base (drawn specially in render)
     for (const [dx, dy] of [[0, 0], [-1, 0], [1, 0], [0, -1]] as [number, number][]) map.setSolid(WELL.x + dx, WELL.y + dy, true);
+    this.labels = [{ x: WELL.x * T + T / 2, y: (WELL.y + 2) * T, text: "The CIRQL Fountain" }];
 
-    // 8) trees — inland singles + a light grove, all kept a safe margin off the shore
-    const oak = (tx: number, ty: number, col = 1) => {
-      if (!this.insideEdge(tx, ty, 5)) return;   // no canopies hanging over the ring
-      map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col, row: 0, x: tx * T + 8, y: ty * T + 12, overhead: true, solidR: 7 });
-    };
-    for (const [tx, ty] of [[52, 15], [55, 18], [50, 20], [15, 15], [18, 12], [50, 34]] as [number, number][]) oak(tx, ty, 1 + ((tx + ty) % 2));
-    this.placeShoreTrees(map);
+    // CIRQLSPACE (the personal home ring) is BLANK — just the ring, the beach, and your
+    // own centre fountain, a canvas to build on. Everything else is the populated meadow ring.
+    if (!this.blank) {
+      map.paintLine(9, ROAD_Y, 58, ROAD_Y - 1, "path", 3);   // a cobble lane
 
-    // 9) natural flower clumps (meadows + around the houses), not a grid
-    this.placeFlowerClumps(map);
-    // (mushrooms: placeMushrooms() is ready for later rings — kept OFF this one)
+      const H = (sheet: string, w: number, h: number, tx: number, ty: number, sc = 1, sr?: number) =>
+        map.addProp({ sheet, fw: w, fh: h, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, solidR: sr ?? w * sc * 0.33, overhead: false });
+      H("windmill", 128, 112, 29, 11, 1);
+      H("inn", 240, 192, 41, 12, 0.8);
+      H("house1", 96, 128, 25, 18, 1);
+      H("house2", 144, 128, 45, 20, 1);
+      H("house3", 144, 128, 24, 27, 1);
+      H("house4", 112, 96, 47, 28, 1);
+      H("fisherman", 96, 112, 14, 27, 1);
 
-    // 11) life — grazing sheep, chickens, and two villager NPCs
-    const sheep = (tx: number, ty: number) => map.addProp({ sheet: "sheep", fw: 32, fh: 32, col: 0, row: 0, x: tx * T, y: ty * T, solidR: 6 });
-    for (const [tx, ty] of [[18, 40], [21, 42], [16, 38], [23, 39]] as [number, number][]) sheep(tx, ty);
-    const chick = (tx: number, ty: number) => map.addProp({ sheet: "chicken", fw: 32, fh: 32, col: 0, row: 0, x: tx * T, y: ty * T });
-    for (const [tx, ty] of [[27, 20], [29, 21], [43, 24]] as [number, number][]) chick(tx, ty);
-    map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 30 * T, y: 29 * T, solidR: 6 }); // open meadow by the plaza
-    map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 39 * T, y: 30 * T, solidR: 6 }); // open meadow, not under the grove
+      const oak = (tx: number, ty: number, col = 1) => {
+        if (!this.insideEdge(tx, ty, 5)) return;   // no canopies hanging over the ring
+        map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col, row: 0, x: tx * T + 8, y: ty * T + 12, overhead: true, solidR: 7 });
+      };
+      for (const [tx, ty] of [[52, 15], [55, 18], [50, 20], [15, 15], [18, 12], [50, 34]] as [number, number][]) oak(tx, ty, 1 + ((tx + ty) % 2));
+      this.placeShoreTrees(map);
+      this.placeFlowerClumps(map);
+      // (mushrooms: placeMushrooms() is ready for later rings — kept OFF this one)
+
+      const sheep = (tx: number, ty: number) => map.addProp({ sheet: "sheep", fw: 32, fh: 32, col: 0, row: 0, x: tx * T, y: ty * T, solidR: 6 });
+      for (const [tx, ty] of [[18, 40], [21, 42], [16, 38], [23, 39]] as [number, number][]) sheep(tx, ty);
+      const chick = (tx: number, ty: number) => map.addProp({ sheet: "chicken", fw: 32, fh: 32, col: 0, row: 0, x: tx * T, y: ty * T });
+      for (const [tx, ty] of [[27, 20], [29, 21], [43, 24]] as [number, number][]) chick(tx, ty);
+      map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 30 * T, y: 29 * T, solidR: 6 }); // open meadow
+      map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 39 * T, y: 30 * T, solidR: 6 }); // open meadow
+      this.labels.push(
+        { x: 30 * T, y: 29 * T - 30, text: "Bram" },
+        { x: 39 * T, y: 30 * T - 30, text: "Finn" },
+        { x: 41 * T + T / 2, y: 5 * T, text: "The Inn" },
+        { x: 25 * T + T / 2, y: 12 * T, text: "Cottage" },
+      );
+    }
 
     this.map = map;
     [this.player.x, this.player.y] = this.snapToLand(map, CX * T, (CY + 5) * T);   // start near the centre fountain
@@ -442,12 +450,28 @@ class TileLabEngine extends RetroEngine {
 
   protected onOverlay(g: CanvasRenderingContext2D): void {
     g.save();
-    g.fillStyle = "rgba(6,12,22,.55)"; g.fillRect(10, 10, 288, 58);
+    g.fillStyle = "rgba(6,12,22,.55)"; g.fillRect(10, 10, 300, 58);
     g.fillStyle = "#bfefff"; g.font = "12px monospace"; g.textBaseline = "middle";
-    g.fillText("TILE LAB · P1 — Cloverfield (meadow slice)", 20, 24);
+    g.fillText(this.blank ? "TILE LAB · CIRQLSPACE (your home ring)" : "TILE LAB · Cloverfield (meadow ring)", 20, 24);
     g.fillStyle = "#9fd6ff";
-    g.fillText("WASD / Arrows to walk   ·   facing: " + this.player.dir, 20, 40);
+    g.fillText("WASD / Arrows to walk", 20, 40);
     g.fillText(this.loaded ? "hybrid: Cute Fantasy tiles + procedural light" : "loading…", 20, 55);
+    g.restore();
+
+    // floating name tags for places / NPCs / the player (crisp, display-res)
+    if (!this.loaded) return;
+    const sc = this.dispW / this.b.canvas.width;
+    g.save();
+    g.textAlign = "center"; g.textBaseline = "alphabetic"; g.font = "bold 12px 'Segoe UI', Arial, sans-serif"; g.lineWidth = 3;
+    const tag = (wx: number, wy: number, text: string, color: string) => {
+      const [bx, by] = this.ren.w2s(this.cam, wx, wy);
+      const dx = bx * sc, dy = by * sc;
+      if (dx < -60 || dx > this.dispW + 60 || dy < -10 || dy > this.dispH + 10) return;
+      g.strokeStyle = "rgba(0,0,0,.8)"; g.strokeText(text, dx, dy);
+      g.fillStyle = color; g.fillText(text, dx, dy);
+    };
+    for (const l of this.labels) tag(l.x, l.y, l.text, "#ffffff");
+    tag(this.player.x, this.player.y - 30, "You", "#ffe28a");
     g.restore();
   }
 
@@ -485,7 +509,10 @@ export default function TileLabPage() {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     if (!canvas.current) return;
-    const eng = new TileLabEngine(canvas.current);
+    // /tile-lab?cirqlspace (or ?blank) → the blank personal home ring
+    const q = new URLSearchParams(window.location.search);
+    const blank = q.has("cirqlspace") || q.has("blank");
+    const eng = new TileLabEngine(canvas.current, {}, blank);
     if (import.meta.env.DEV) (window as any).__tilelab = { eng, anim: PLAYER_ANIM };
     return () => eng.destroy();
   }, []);
