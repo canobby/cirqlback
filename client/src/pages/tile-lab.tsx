@@ -4,8 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { RetroEngine, type RetroHooks } from "@/game/retro-engine";
 import {
   cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
-  DEFAULT_TERRAIN, BLOB_3x5,
-  type Atlas, type Camera, type Drawable, type TerrainConfig,
+  type Atlas, type Camera, type Drawable,
 } from "@/game/tile";
 
 // TILE LAB — P1 vertical slice: Cloverfield, one hand-authored meadow island.
@@ -88,11 +87,9 @@ class TileLabEngine extends RetroEngine {
     this.crt = false;
     this.resize();
     this.buildIsland();
-    // shroom's pond renders as real pack water tiles (grass-bordered blob autotiler)
-    const terr: TerrainConfig | undefined = biome === "shroom"
-      ? { ...DEFAULT_TERRAIN, water: { blob: { sheet: "water_blob", layout: BLOB_3x5 } } }
-      : undefined;
-    this.ren = new TileRenderer(this.atlas, terr);
+    // water renders nothing here — the pond is painted procedurally into the ground
+    // canvas (Path A) so its colours always match the floor (no sprite/background clash)
+    this.ren = new TileRenderer(this.atlas);
     this.atlas.loadAll().then(() => { this.buildLogo(); this.loaded = true; }).catch((e) => console.error(e));
     this.start();
   }
@@ -173,9 +170,9 @@ class TileLabEngine extends RetroEngine {
   // ---------- The Shroomwood (biome ring) ----------
   /** A twilight fungal grove: glowing pool, giant mushrooms, shroom-cap village, round critters. */
   private buildShroomwood(map: TileMap) {
-    // 1) a natural, medium POND — real Cute Fantasy water tiles (grass-bordered water_blob
-    //    autotiler), kept well inside the ring (never the coast). Paint FIRST so nothing
-    //    else spawns in it. Solid for collision; the blob autotiler draws its own banks.
+    // 1) a natural, medium POND — kept well inside the ring (never the coast). The water
+    //    tiles carry collision only (renders nothing); the pool itself is painted into the
+    //    procedural ground canvas so its colours match the floor. Paint FIRST so nothing spawns in it.
     map.solidTerrain.add("water");
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++)
       if (map.get(tx, ty) === "grass" && this.pondField(tx + 0.5, ty + 0.5) > 0) { map.set(tx, ty, "water"); map.setSolid(tx, ty, true); }
@@ -246,7 +243,7 @@ class TileLabEngine extends RetroEngine {
     if (!this.insideEdge(tx, ty, 5)) return;
     const cap = Math.floor(hash2(tx, ty) * 4);   // one of the 4 caps in the top row
     map.addProp({ sheet, fw: 32, fh: 48, col: cap, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 6 * sc });
-    this.glowSpots.push({ x: tx * T + T / 2, y: ty * T + 12 * sc, color, r: 26 * sc });   // glow at the cap
+    this.glowSpots.push({ x: tx * T + T / 2, y: ty * T + 12 * sc, color, r: 18 * sc });   // a tight glow at the cap (no smear)
   }
 
   /** A grove ring of giant mushrooms, set a safe margin inside the shore (like the meadow's trees). */
@@ -330,6 +327,8 @@ class TileLabEngine extends RetroEngine {
     const cx = cv.getContext("2d")!; const img = cx.createImageData(cw, ch); const d = img.data;
     const SAND = [235, 221, 165], SANDD = [204, 185, 124];
     const FOAM = [212, 234, 240], SHAL = [118, 200, 228], DEEP = [26, 86, 132];
+    // natural inland-pond bands (Path A) — muted, harmonised with the moss floor (no glow)
+    const PDEEP = [36, 84, 108], PSHAL = [96, 160, 168], PWL = [176, 214, 210], PDAMP = [30, 54, 58];
     const pal = this.bpal, GDARK = pal.gdark, GLITE = pal.glite;
     for (let py = 0; py < ch; py++) for (let px = 0; px < cw; px++) {
       const tx = (px + 0.5) / (T * SS), ty = (py + 0.5) / (T * SS), g = this.landField(tx, ty);
@@ -348,8 +347,19 @@ class TileLabEngine extends RetroEngine {
       else if (g > -0.9) { col = mix3(FOAM, SHAL, smoothstep(-0.18, -0.9, g)); const r = (n - 0.5) * 16; col = [col[0] + r, col[1] + r, col[2] + r * 0.7]; }
       else if (g > -3.2) { col = mix3(SHAL, DEEP, smoothstep(-0.9, -3.2, g)); const wave = Math.sin(g * 2.6 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8; col = [col[0] + wave, col[1] + wave, col[2] + wave]; }
       else { col = DEEP; }
-      // let the pack-tiled pond show through untouched: paint nothing over "water" tiles
-      if (g > 0.2 && this.map.get(Math.floor(tx), Math.floor(ty)) === "water") a = 0;
+      // a natural inland POND painted right into the ground canvas (Path A): grass → damp
+      // bank → waterline → shallow → deep, all SDF-smooth so it always matches the floor.
+      if (this.biome === "shroom" && g > 0.3) {
+        const pd = this.pondField(tx, ty) * ((SPOND.rx + SPOND.ry) / 2);   // ~tiles inside the pond
+        if (pd > -0.22) {
+          if (pd > 1.2) { const wv = Math.sin(pd * 2.2 + tx * 0.5 + ty * 0.35) * 6 + (n - 0.5) * 8; col = [PDEEP[0] + wv, PDEEP[1] + wv, PDEEP[2] + wv]; }
+          else if (pd > 0.28) { const b = mix3(PWL, PSHAL, smoothstep(-0.1, 1.2, pd)); const r = (n - 0.5) * 12; col = [b[0] + r, b[1] + r, b[2] + r * 0.7]; }
+          else col = PWL;                                    // bright waterline rim
+          a = 255;
+        } else if (pd > -1.0) {                              // damp bank: darken the moss toward the water
+          col = mix3(col, PDAMP, smoothstep(-1.0, -0.22, pd) * 0.5);
+        }
+      }
       const i = (py * cw + px) * 4;
       d[i] = clamp255(col[0]); d[i + 1] = clamp255(col[1]); d[i + 2] = clamp255(col[2]); d[i + 3] = a;
     }
@@ -597,7 +607,7 @@ class TileLabEngine extends RetroEngine {
       for (const gs of this.glowSpots) {
         const [mx, my] = this.ren.w2s(cam, gs.x, gs.y);
         if (mx < -60 || my < -60 || mx > cam.vw + 60 || my > cam.vh + 60) continue;
-        const rad = gs.r * cam.scale, pa = 0.22 + 0.1 * Math.sin(this.tsec * 1.8 + gs.x * 0.03);
+        const rad = gs.r * cam.scale, pa = 0.16 + 0.08 * Math.sin(this.tsec * 1.8 + gs.x * 0.03);
         const mg = c.createRadialGradient(mx, my, 0, mx, my, rad);
         mg.addColorStop(0, this.rgba(gs.color, pa)); mg.addColorStop(1, this.rgba(gs.color, 0));
         c.fillStyle = mg; c.fillRect(mx - rad, my - rad, rad * 2, rad * 2);
