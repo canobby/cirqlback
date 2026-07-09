@@ -43,6 +43,8 @@ Compared TMW's own **Goodmap** vs **Badmap**:
 - **Bad** = trees in a **perfect grid**, a **straight path with a hard 90° corner**, a **straight water edge**, and **uniform grass** with no tile variation.
 - **The bar:** every time we build an area, ask **"is this better than The Mana World?"** — if not, fix it. Study a reference for *that specific biome* (forest/desert/rainforest/etc.) before building it, don't build from memory.
 - **Mix biomes on one ring.** A ring doesn't have to be one biome — blend e.g. meadow → wetland → woodland across it (with tiled transitions). More visual interest, and it scales as rings get bigger.
+- **Colour must FLOW and match the biome.** Each biome gets a cohesive palette that *matches and enhances* it (enchanted forest = lush sunlit green → deep cool teal-green shade; desert = warm sand→ochre; ember = ash→ember-glow). Flow it as **soft tonal patches** over the textured ground tiles — never a flat single colour, never hard-edged tone tiles (those fight the natural flow). Ease terrain-to-terrain colour transitions (sand greens into grass at the shore) so nothing has a hard seam.
+- **Round the tile grid to the ring with a MASK.** Since the ring is a curved disk but tiles are a square grid, clip the tile ground to the true shoreline curve and let the procedural beach paint around it, colour-matched to the ground it meets — so tiles never poke past the edge and the coast reads smooth. Keep all props inside the edgepoint so none hang over the mask (a dock/reeds at the water is a deliberate exception).
 
 ## 1. Structure & focal points
 

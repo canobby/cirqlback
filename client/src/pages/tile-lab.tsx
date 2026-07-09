@@ -53,9 +53,10 @@ interface BiomePalette {
 const PALETTES: Record<Biome, BiomePalette> = {
   // the loved meadow — unchanged (subtle green shading over the grass tile, no inland water)
   meadow: { glite: [150, 202, 98], gdark: [44, 94, 46], grassOpaque: false },
-  // The Shroomwood — the textured GRASS TILES show through (like TMW); only a faint cool
-  // shade tints them for mood. No fountain (town-only). Neon lives in the LIGHT layer.
-  shroom: { glite: [120, 170, 150], gdark: [40, 84, 96], grassOpaque: false },
+  // The Shroomwood — an enchanted fungal forest. Cohesive palette: sunlit lush green →
+  // deep cool forest-green (teal undertone), flowed as soft tonal patches over the grass
+  // tiles so colour reads natural + enhanced. No fountain (town-only). Neon in the LIGHT layer.
+  shroom: { glite: [142, 190, 116], gdark: [44, 96, 82], grassOpaque: false },
 };
 
 // deterministic RNG so the island is stable across reloads
@@ -472,14 +473,16 @@ class TileLabEngine extends RetroEngine {
       const n = hash2(px, py);
       let col: number[], a = 255;
       // clean grass → sand → foam → shallow → deep bands (no grass/sand blending)
-      if (g > 1.4) {                                        // grass meadow shading
-        const v = this.meadow(tx, ty);
-        if (pal.grassOpaque) {                              // biome recolour — paint the ground fully
-          const grain = (n - 0.5) * 16; col = mix3(GDARK, GLITE, (v + 1) / 2).map((c) => c + grain); a = 232;
-        } else { col = v < 0 ? GDARK : GLITE; a = Math.round(Math.abs(v) * 46); }   // meadow: subtle overlay
-      } else if (g > 0.1) {                                 // sand — grainy
+      const GT = this.biome === "shroom" ? 1.55 : 1.4;
+      if (g > GT) {                                         // grass — biome tone flows over the tiles
+        if (this.biome === "shroom") {                      // soft, cohesive tonal patches (colour flows)
+          const t = 0.5 + 0.5 * (this.meadow(tx, ty) * 0.78 + Math.sin(tx * 0.9 + 1) * Math.sin(ty * 0.8) * 0.22);
+          col = mix3(GDARK, GLITE, Math.max(0, Math.min(1, t))); a = 60;
+        } else { const v = this.meadow(tx, ty); col = v < 0 ? GDARK : GLITE; a = Math.round(Math.abs(v) * 46); }
+      } else if (g > 0.1) {                                 // sand — grainy, easing into grass at the top (edge colour-match)
         const grain = (n - 0.5) * 40, base = mix3(SANDD, SAND, smoothstep(0.1, 1.2, g));
-        col = [base[0] + grain, base[1] + grain, base[2] + grain * 0.8];
+        col = [base[0] + grain, base[1] + grain, base[2] + grain * 0.8]; a = 255;
+        if (this.biome === "shroom" && g > 0.9) { const k = smoothstep(0.9, 1.55, g); col = mix3(col, GLITE, k * 0.85); a = Math.round(255 - k * 170); }
       } else if (g > -0.12) { col = FOAM; }                 // foam waterline
       else if (g > -0.9) { col = mix3(FOAM, SHAL, smoothstep(-0.18, -0.9, g)); const r = (n - 0.5) * 16; col = [col[0] + r, col[1] + r, col[2] + r * 0.7]; }
       else if (g > -3.2) { col = mix3(SHAL, DEEP, smoothstep(-0.9, -3.2, g)); const wave = Math.sin(g * 2.6 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8; col = [col[0] + wave, col[1] + wave, col[2] + wave]; }
@@ -514,6 +517,18 @@ class TileLabEngine extends RetroEngine {
         prev = gg;
       }
     }
+  }
+
+  /** Clip drawing to the island's true (curved) shoreline, so square tiles round off to the ring. */
+  private clipToShore(b: CanvasRenderingContext2D) {
+    if (this.shore.length < 3) return;
+    b.beginPath();
+    for (let i = 0; i < this.shore.length; i++) {
+      const [sx, sy] = this.ren.w2s(this.cam, this.shore[i].x, this.shore[i].y);
+      if (i === 0) b.moveTo(sx, sy); else b.lineTo(sx, sy);
+    }
+    b.closePath();
+    b.clip();
   }
 
   /** Blit the static ground layer for the current view (crisp; super-sampled). */
@@ -663,8 +678,12 @@ class TileLabEngine extends RetroEngine {
       b.fillText("loading Cloverfield…", bw / 2, bh / 2); b.textAlign = "left"; return;
     }
     this.cam.vw = bw; this.cam.vh = bh; this.cam.scale = this.zoom;
-    // crafted land tiles (grass + river + road); the ocean is void
+    // crafted land tiles (grass + farm) — CLIPPED to the true shoreline curve so the square
+    // tile grid rounds cleanly to the ring (no tiles poking past the edge; owner's mask idea).
+    b.save();
+    this.clipToShore(b);
     this.ren.drawGround(b, this.map, this.cam);
+    b.restore();
     // textured sandy coast + procedural inland water + meadow shading, then shore foam
     this.blitCoast(b);
     this.drawShoreFoam(b, this.cam);
