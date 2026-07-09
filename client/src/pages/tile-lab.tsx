@@ -384,7 +384,10 @@ class TileLabEngine extends RetroEngine {
     this.scatterDuneDetail(map);
 
     // LIFE — camels grazing in the open by the lagoon; scarabs on the sand; the oasis full of life.
-    for (const [tx, ty] of DCAMEL) this.addCritter(map, "camel", 48, 48, 0, 0, tx, ty, { solidR: 9, wr: 0.6, sp: 4, bob: 0.5 });
+    // camel.png frames are 48×32 (NOT 48×48 — drawing 48 tall grabbed the top of the camel below).
+    // r0 c0 = a standing side camel; r8 c1 = the white colour variant → two distinct camels, grazing still.
+    this.addCritter(map, "camel", 48, 32, 0, 0, DCAMEL[0][0], DCAMEL[0][1], { solidR: 9, wr: 0, bob: 0 });   // brown, standing
+    this.addCritter(map, "camel", 48, 32, 1, 8, DCAMEL[1][0], DCAMEL[1][1], { solidR: 9, wr: 0, bob: 0 });   // white camel
     for (const [tx, ty] of [[26, 38], [40, 30], [18, 24]] as [number, number][])
       if (this.dCanPlace(map, tx, ty)) this.addCritter(map, "scarab", 16, 16, 0, 0, tx, ty, { wr: 1.2, sp: 3, bob: 0.3 });
     this.placeOasisLife(map);
@@ -410,7 +413,9 @@ class TileLabEngine extends RetroEngine {
     // (fw:16 grabbed a 2×2 of four different-coloured ones), flapping via the 2-frame cycle.
     this.addCritter(map, "butterfly", 8, 8, 0, 0, O.cx + 9, O.cy + 2, { frames: 2, fps: 6, wr: 2, sp: 8, bob: 2 });   // one at the east palms
     this.addCritter(map, "butterfly", 8, 8, 0, 3, O.cx - 4, O.cy + 8, { frames: 2, fps: 6, wr: 2, sp: 8, bob: 2 });   // a different-coloured one, off south
-    this.addCritter(map, "bee", 32, 32, 0, 0, O.cx + 6, O.cy - 4, { frames: 2, fps: 8, wr: 1.4, sp: 7, bob: 1.2 });
+    // bee.png frames are 16×16 (NOT 32×32 — drawing 32 grabbed a 2×2 of FOUR bees). One bee, wings
+    // buzzing via the 4-frame row-0 cycle.
+    this.addCritter(map, "bee", 16, 16, 0, 0, O.cx + 6, O.cy - 4, { frames: 4, fps: 12, wr: 1.4, sp: 7, bob: 1.2 });
     // a couple of extra palm clumps set around the lagoon (varied spots — asymmetric, not the even halo)
     const palm = (tx: number, ty: number, sc: number) => { if (this.dCanPlace(map, tx, ty, 3.5, 3) && this.oasisClear(tx, ty, 2.8)) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: tx * T + T / 2, y: ty * T + T, scale: 0.85 + rnd() * 0.3, overhead: true, solidR: 5 }); };
     for (const [cx, cy] of [[O.cx - 8, O.cy - 4], [O.cx + 8, O.cy + 2], [O.cx + 2, O.cy - 7]] as [number, number][])
