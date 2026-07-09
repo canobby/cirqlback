@@ -39,7 +39,7 @@ class TileLabEngine extends RetroEngine {
   private map!: TileMap;
   private player = new Actor(PLAYER_ANIM);
   private cam: Camera = { x: 0, y: 0, scale: 2, vw: 1, vh: 1 };
-  private zoom = 2.2;
+  private zoom = 1.5;   // a wide, showable default (see most of the ring on load)
   private loaded = false;
   private tsec = 0;
   private falls: { x: number; y: number }[] = [];   // river-mouth glow points (world px)
@@ -117,7 +117,7 @@ class TileLabEngine extends RetroEngine {
     map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 39 * T, y: 30 * T, solidR: 6 }); // open meadow, not under the grove
 
     this.map = map;
-    [this.player.x, this.player.y] = this.snapToLand(map, 28 * T, ROAD_Y * T);   // never spawn on a solid tile
+    [this.player.x, this.player.y] = this.snapToLand(map, CX * T, (CY + 5) * T);   // start near the centre fountain
     this.cam.x = this.player.x; this.cam.y = this.player.y;
     this.buildCoast();
   }
