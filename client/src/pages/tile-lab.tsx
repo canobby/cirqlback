@@ -411,7 +411,6 @@ class TileLabEngine extends RetroEngine {
     const tuft = (tx: number, ty: number) => cell("outdoor_decor", TUFTS[Math.floor(rnd() * TUFTS.length)])(tx, ty);
     const flow = (tx: number, ty: number) => cell("outdoor_decor", DFLOWERS[Math.floor(rnd() * DFLOWERS.length)])(tx, ty);
     const peb = (tx: number, ty: number) => cell("outdoor_decor", PEBBLES[Math.floor(rnd() * PEBBLES.length)])(tx, ty);
-    const cap = (tx: number, ty: number) => map.addProp({ sheet: "shroom_other", fw: 16, fh: 16, col: Math.floor(rnd() * 3), row: 1 + Math.floor(rnd() * 5), x: tx * T + rnd() * T, y: ty * T + T });
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
       if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3.5) || !this.pondClear(tx, ty, 2.6) || this.inField(tx, ty) || Math.hypot(tx - COMMONS.x, ty - COMMONS.y) < 2.6) continue;
       const clump = Math.sin(tx * 0.45 + 0.3) * Math.sin(ty * 0.4 - 0.7) * Math.sin((tx + ty) * 0.2);   // big-med-small waves
@@ -419,8 +418,8 @@ class TileLabEngine extends RetroEngine {
       const p = 0.05 + Math.max(0, clump) * 0.32 + (onPath ? 0.3 : 0);
       if (rnd() > p) continue;
       if (this.nearBigProp(map, tx * T + T / 2, ty * T + T, 13)) continue;   // don't scatter detail onto a cap/trunk/house
-      const r = rnd();   // mostly green tufts + pebbles; flowers kept sparse so colour stays calm
-      if (r < 0.56) tuft(tx, ty); else if (r < 0.68) flow(tx, ty); else if (r < 0.9) peb(tx, ty); else cap(tx, ty);
+      const r = rnd();   // green tufts + pebbles + sparse flowers (no scattered mushrooms — they read as odd orange blobs)
+      if (r < 0.6) tuft(tx, ty); else if (r < 0.72) flow(tx, ty); else peb(tx, ty);
     }
   }
 
@@ -443,20 +442,23 @@ class TileLabEngine extends RetroEngine {
   private placePondDecor(map: TileMap) {
     const rnd = rng(313);
     const plant = (sheet: string, tx: number, ty: number) => map.addProp({ sheet, fw: 16, fh: 16, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T });
-    // lily pads scattered on the water (the pond's only widespread foliage)
+    const onDock = (tx: number, ty: number) => tx >= POND_DOCK.x0 && tx <= POND_DOCK.x1 && Math.abs(ty - POND_DOCK.y) <= 1;
+    // lily pads scattered on the water (the pond's only widespread foliage) — never under the pier
     for (let ty = Math.floor(SPOND.cy - SPOND.ry) - 1; ty <= Math.ceil(SPOND.cy + SPOND.ry) + 1; ty++)
       for (let tx = Math.floor(SPOND.cx - SPOND.rx) - 1; tx <= Math.ceil(SPOND.cx + SPOND.rx) + 1; tx++)
-        if (this.pondField(tx + 0.5, ty + 0.5) > 0.3 && map.get(tx, ty) === "water" && rnd() < 0.32)
+        if (this.pondField(tx + 0.5, ty + 0.5) > 0.3 && map.get(tx, ty) === "water" && !onDock(tx, ty) && rnd() < 0.32)
           plant(rnd() < 0.5 ? "lilypad1" : "lilypad2", tx, ty);
-    // stepping stones across the north shallows + 2 cattails & 2 reeds behind them
+    // stepping stones across the north shallows + 2 cattails & 2 reeds behind them (in the water)
     const rockY = Math.round(SPOND.cy - SPOND.ry) + 1;
     for (let i = 0; i < 4; i++) map.addProp({ sheet: i % 2 ? "waterrock1" : "waterrock2", fw: 16, fh: 16, col: 0, row: 0, x: (SPOND.cx - 2 + i) * T + 4, y: rockY * T + T });
     plant("cattail", SPOND.cx - 2, rockY - 1); plant("cattail", SPOND.cx + 1, rockY - 1);
     plant("watergrass", SPOND.cx - 1, rockY - 1); plant("watergrass", SPOND.cx, rockY - 1);
-    // a bench overlooking the water + a reed and a cattail behind it
+    // a bench overlooking the water + a reed & cattail in the water behind it
     const bx = SPOND.cx + 3, by = Math.round(SPOND.cy + SPOND.ry);
     map.addProp({ sheet: "benches", fw: 32, fh: 32, col: 0, row: 0, x: bx * T, y: by * T });
-    plant("cattail", bx, by - 1); plant("watergrass", bx + 1, by - 1);
+    plant("cattail", SPOND.cx + 2, SPOND.cy + 2); plant("watergrass", SPOND.cx + 3, SPOND.cy + 2);
+    // 1 reed + 1 cattail in the water on the far (south) side of the fishing pier
+    plant("cattail", SPOND.cx - 3, SPOND.cy + 2); plant("watergrass", SPOND.cx - 2, SPOND.cy + 2);
     // pond life — a duck paddling on the water + a frog hopping on the bank
     this.addCritter(map, "duck", 32, 32, 0, 12, SPOND.cx + 1, SPOND.cy - 1, { water: true, wr: 1.6, sp: 6, bob: 1 });
     this.addCritter(map, "frog", 32, 32, 0, 0, SPOND.cx - 4, SPOND.cy + 2, { wr: 0.7, sp: 5, bob: 2.4 });
