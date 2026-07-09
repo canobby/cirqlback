@@ -176,6 +176,48 @@ Nothing sits near the shoreline. Every placement gate uses a generous **edgepoin
 **DON'T**
 - Don't place a landmark/prop with no reason or relationship to its surroundings.
 
+## 6b. Functional clearance — don't obscure purposeful objects (readability)
+
+A purposeful/interactive object (firepit, well, fountain, market stall, quest-giver spot, a sign, a chest, a landmark) must stay **visually unobstructed** so the player reads it as *what it is* and *that it's interactive*. This is the level-design **readability / affordance** rule (TMW: focal points get negative space and must "not merge with the scene"; RPG-Maker town guides say the same for shops/wells). It takes finesse: it's not "keep everything away," it's "keep the *right* things clear."
+
+**DO**
+- **Reserve a clear zone** around each purposeful object (~1–2 tiles), free of scatter and of NPCs/props that aren't part of it. The firepit's flames, the well's mouth, a stall's counter must be seen.
+- **Place NPCs BESIDE their object, facing in** — the well-keeper stands *next to* the well, the smith *beside* the anvil, a traveller *on a seat* around the fire. Never centre an NPC on the object it tends.
+- **Only "intended" occupants may occupy** — a person *sitting on a bench/stump*, a lantern *on a post*, a pot *on a shelf* is correct (the object exists to hold them). A person standing *in the fire* is not.
+- **Spread NPCs** — don't let 3–4 pile onto one tile/object; give each its own spot with breathing room (ties to the "cluster by threes + negative space" rules).
+
+**DON'T**
+- Don't drop an NPC, tree, rock, or scatter prop on top of a firepit/well/fountain/sign/chest — it hides the thing's purpose and reads as a bug.
+- Don't ring a focal object so tightly with figures that its silhouette is lost.
+
+*Implementation:* NPC/prop placement offsets from the focal tile (e.g. desert `DNPC` stands each keeper beside the well/oasis/campfire); scatter gates already exclude the commons/plaza. When adding a purposeful object, reserve its clear radius and place its tenders at the radius edge.
+
+## 6c. Object depth — don't place things BEHIND anything tall (occlusion)
+
+Applies to **every object that would be 3D in real life** — buildings, towers, trees, cliffs/mesas, big rocks, cacti, giant mushrooms, statues, market stalls. Each has **visual height**: it's feet-anchored and its body rises UP the screen. Because the world depth-sorts by Y, anything placed **directly behind it (north / up-screen, at a higher or equal draw order)** is **occluded** — drawn *behind* the tall sprite and lost. This is correct 3D-ish behaviour, but it means you must not *place things there* expecting to see them.
+
+**DO**
+- **Keep a clear zone behind (north of) every building** roughly as tall as the building (its footprint width × its sprite height in tiles). Put props/NPCs/detail **in front of (south), or to the sides** where they read.
+- **Stage important things in front of or beside** a structure — a market stall's goods in front, a garden to the side, a sign at the door (south face).
+- Let **overhead** elements (treetops, roof eaves) pass ABOVE the player deliberately — that's the *intended* overlap; unintended overlap (a cactus vanishing behind a house) is the bug.
+
+**DON'T**
+- Don't scatter flora/rocks/NPCs in the tiles directly behind a house, tower, or big tree — they'll be half or fully hidden and read as clipping.
+- Don't tuck a quest-giver or interactable where a structure covers them.
+
+*Implementation:* scatter gates exclude building clusters (e.g. desert `inHamlet`/`inMesa`), which also protects the behind-zone; when placing a lone building, reserve the rectangle from its feet up ~its height in tiles.
+
+## 6d. The DEPTH model — how top-down RPGs fake 3D (TMW / Elias Daler / general)
+
+How the pros make a flat top-down map read as 3D shapes with correct front/behind:
+1. **Y-SORT BY FEET.** Sort every sprite by the **bottom of its bounding box** (`top + height` — the feet/base), lowest→highest, and draw in that order. A thing lower on screen is nearer the camera → drawn on top. **Center-anchor sorting fails** (tall things sort wrong). Our `TileRenderer.drawEntities` already sorts props by feet-Y — always anchor props at the feet (`y = ty*T + T`).
+2. **THE "OVER" / OVERHEAD LAYER.** Split tall things the player walks *under* — treetops, roof eaves, an arch, a giant-mushroom cap — into a piece drawn **always on top** (z=1). The trunk/base Y-sorts normally; the canopy is overhead. Our props have an **`overhead`** flag = this layer (use it for trees/cacti/tall mushrooms/roofs).
+3. **HEIGHT / ELEVATION = a Z-level.** Things on a raised level (a mesa top) get a higher Z; sort within each Z by feet, higher Z drawn after. Keep a level's height *consistent*.
+4. **COLLISION ≠ SILHOUETTE.** Collision lives at the **base** (feet footprint), separate from the tall visual — you bump the trunk, not the canopy.
+5. **CONTACT SHADOWS** (soft ellipse at the feet) ground every object — the cheapest, biggest depth cue (we have `drawShadows`).
+6. **Placement follows from this:** because sprites have height + Y-sort, **don't place things behind (north of) tall objects** (§6c) and **don't obscure purposeful objects** (§6b).
+7. **Polish (later):** fade a tall object to ~70% alpha when the player is *behind* it, so they're not lost; parallax/oblique for distant depth.
+
 ## 7. Borders (already handled — keep it)
 
 - A ring needs a **designed, non-walkable border** (TMW: ~20-tile designed border). Our **procedural beach → sea void** rim *is* that border. Keep the wild rim framed (fauna fringe, the shore) rather than props running to the water's edge.

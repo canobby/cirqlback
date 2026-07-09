@@ -63,6 +63,13 @@ const DPLAZA = { x: 22, y: 19 };                                  // paved well 
 const DLANE: [number, number][] = [[22, 21], [24, 24], [26, 27], [27, 29]];   // plaza → oasis footpath (worn sand)
 const DCAMP = { x: 36, y: 41 };                                   // nomad campfire commons (open sand, S)
 const MESA = { x0: 44, y0: 15, x1: 54, y1: 21, faceH: 3, ramps: [47, 51] };   // the raised sandstone plateau (NE, pulled inside the ring) + its 2 south ramp columns
+// NPCs stand BESIDE their focal object (well/oasis/campfire), never on top of it, so the
+// purposeful object stays readable (the "don't obscure the firepit" rule — see the rulebook).
+const DNPC: Record<string, [number, number]> = {
+  sahra: [DPLAZA.x + 3, DPLAZA.y],                 // well-keeper — east of the plaza well, not on it
+  kesh: [OASIS.cx + 5, OASIS.cy + 2],              // camel-herder — dry sand SE of the oasis, off the water
+  tamm: [DCAMP.x + 3, DCAMP.y],                    // wayfarer — beside the campfire seat-ring, fire left clear
+};
 // sanctumpixel desert props are single-image PNGs of varied size — dims hardcoded (props are
 // placed before the atlas finishes loading, so we can't read w/h off the atlas at build time).
 const SP_ROCK: Record<number, [number, number]> = { 1: [32, 64], 2: [32, 64], 3: [32, 64], 4: [48, 48], 5: [48, 48], 6: [32, 32], 7: [32, 32], 8: [32, 32], 9: [32, 32], 10: [48, 32], 11: [48, 32] };
@@ -272,9 +279,9 @@ class TileLabEngine extends RetroEngine {
       push(27, 33, { kind: "npc", ring, name: "Spora", role: "the fisher" });
       push(41, 29, { kind: "npc", ring, name: "Bramble", role: "the forager" });
     } else if (this.biome === "desert") {
-      push(DPLAZA.x, DPLAZA.y + 1, { kind: "npc", ring, name: "Sahra", role: "the well-keeper" });
-      push(OASIS.cx + 2, Math.round(OASIS.cy + OASIS.ry + 1), { kind: "npc", ring, name: "Kesh", role: "the camel-herder" });
-      push(DCAMP.x, DCAMP.y + 2, { kind: "npc", ring, name: "Tamm", role: "the wayfarer" });
+      push(DNPC.sahra[0], DNPC.sahra[1], { kind: "npc", ring, name: "Sahra", role: "the well-keeper" });
+      push(DNPC.kesh[0], DNPC.kesh[1], { kind: "npc", ring, name: "Kesh", role: "the camel-herder" });
+      push(DNPC.tamm[0], DNPC.tamm[1], { kind: "npc", ring, name: "Tamm", role: "the wayfarer" });
     } else if (!this.blank) {
       push(30, 29, { kind: "npc", ring, name: "Bram", role: "the farmer" });
       push(39, 30, { kind: "npc", ring, name: "Finn", role: "the fisher" });
@@ -353,9 +360,9 @@ class TileLabEngine extends RetroEngine {
       map.addProp({ sheet: "d_npc", fw: 64, fh: 64, col, row: 0, ay: 0.66, x: tx * T, y: ty * T, solidR: 6 });
       this.labels.push({ x: tx * T, y: ty * T - 30, text: name });
     };
-    npc(DPLAZA.x, DPLAZA.y + 1, "Sahra", 0);                                  // well-keeper, at the plaza
-    npc(OASIS.cx + 2, Math.round(OASIS.cy + OASIS.ry + 1), "Kesh", 1);        // camel-herder, at the oasis
-    npc(DCAMP.x, DCAMP.y + 2, "Tamm", 2);                                     // wayfarer, at the campfire
+    npc(DNPC.sahra[0], DNPC.sahra[1], "Sahra", 0);                            // well-keeper, beside the plaza well
+    npc(DNPC.kesh[0], DNPC.kesh[1], "Kesh", 1);                               // camel-herder, off the oasis water
+    npc(DNPC.tamm[0], DNPC.tamm[1], "Tamm", 2);                               // wayfarer, beside the campfire (fire clear)
   }
 
   /** The oasis outline: >0 inside. Non-circular, gentle lobes (a natural pool). */
@@ -441,7 +448,10 @@ class TileLabEngine extends RetroEngine {
     const cx = DCAMP.x, cy = DCAMP.y;
     this.addCritter(map, "d_fire", 16, 16, 0, 0, cx, cy, { frames: 6, fps: 8, bob: 0, wr: 0 });   // flickering campfire (6-frame anim)
     map.setSolid(cx, cy, true);
-    for (const [dx, dy] of [[-2, -1], [2, -1], [-2, 1], [2, 1], [0, -2]] as [number, number][]) {
+    // stone seats on a WIDE south/side arc (open toward the viewer) — none behind or on the fire, so
+    // the flames stay readable and the rocks don't read as "people in the firepit". Tamm sits at the
+    // east seat (an intended occupant). See rulebook §6b/§6c.
+    for (const [dx, dy] of [[-3, 0], [-2, 2], [2, 2]] as [number, number][]) {
       const i = 6 + Math.floor(hash2(cx + dx, cy + dy) * 4);   // 6-9 = the small 32×32 whole rocks
       this.dSpProp(map, `sp_desert_rock_${i}`, SP_ROCK[i], cx + dx, cy + dy, 0.7, false, 4);
     }
@@ -455,6 +465,18 @@ class TileLabEngine extends RetroEngine {
   }
   private _rd = rng(3131);
   private rndDetail() { return this._rd(); }
+
+  /** True if (wx,wy) would be hidden BEHIND a tall/overhead sprite — north of its feet, within its
+   *  body silhouette, where the depth-sort draws the tall sprite in front. Keeps scatter out of the
+   *  occlusion zone behind buildings/trees/cacti/etc. (the "don't place behind 3D objects" rule). */
+  private occludedByTall(map: TileMap, wx: number, wy: number): boolean {
+    for (const p of map.props) {
+      if (!p.overhead) continue;                                     // only tall/overhead sprites occlude
+      const sc = (p as any).scale ?? 1, halfW = p.fw * sc * 0.4, h = p.fh * sc;
+      if (wy < p.y && wy > p.y - h && Math.abs(wx - p.x) < halfW) return true;
+    }
+    return false;
+  }
 
   /** FILL — sparse desert flora/props in clusters of threes, thinning, clear of the oasis.
    *  Only whole standalone sanctumpixel props (cacti / joshua trees / rocks) — never a merged
@@ -485,6 +507,7 @@ class TileLabEngine extends RetroEngine {
       const p = 0.02 + Math.max(0, clump) * 0.16;                                     // sparse (desert)
       if (rnd() > p) continue;
       if (this.nearBigProp(map, tx * T + T / 2, ty * T + T, 12)) continue;
+      if (this.occludedByTall(map, tx * T + T / 2, ty * T + T)) continue;   // don't hide detail behind tall props
       if (rnd() < 0.6) this.dSpProp(map, `sp_desert_grass_${1 + Math.floor(rnd() * 8)}`, [32, 32], tx, ty, 0.75);   // whole dry grass tuft
       else { const i = 6 + Math.floor(rnd() * 4); this.dSpProp(map, `sp_desert_rock_${i}`, SP_ROCK[i], tx, ty, 0.5); }   // small whole pebble-rock (6-9 = 32×32)
     }
