@@ -84,6 +84,38 @@ So the build order is always **STRUCTURE → PATHS → FILL**, never "scatter th
 - Don't fill every tile. "If you have empty space you can't fill, the map is too large" — shrink the ring or add a *pocket*, don't carpet it.
 - Don't repeat the same object dozens of times on one screen; don't line things up evenly.
 
+## 5b. Density & detail — never leave the ground bare (the anti-empty rules)
+
+The #1 reason a map feels "lifeless / dull / bare" (even a well-structured one) is **empty ground**. TMW, Zelda and Stardew maps are *densely textured everywhere* — open areas are still full of low ground-detail. "A clean green field of grass is empty walking space in a game." Negative space means *lower detail + no big props*, **not** blank ground.
+
+**DO**
+- **Carpet the ground with a fine DETAIL layer** — grass tufts, sprouts, pebbles, tiny flowers, fallen leaves, small mushrooms — everywhere the player walks. This is the single biggest fix for "empty."
+- **Cluster the detail big-medium-small** — a dense patch, a medium sprinkle, a lone tuft, then a gap. An *even* coating of detail is as boring as bare ground; vary the density in waves.
+- **Layer it** — ground detail (tufts/pebbles) UNDER mid props (bushes/rocks) UNDER tall props (trees/giant mushrooms, overhead). Depth reads as richness.
+- **Storytelling clutter** — a few objects that say what a place *is*: a farm has tilled rows + a scarecrow + a basket; a home has a garden + laundry + firewood; a forest floor has logs, stumps, mushrooms, ferns.
+- **Match density to the biome** — a *rainforest/grove* is thick (overlapping canopy, dense undergrowth); a *meadow* is medium (tufts + flower clumps); a *desert* is sparse-but-still-detailed (dunes, dry shrubs, bones, rocks). "Bare" is never the answer — thin biomes still have texture.
+- **Give big props breathing room** — don't shove a house/tree flush against a wall or another big prop, or it reads as a flat cardboard cutout; let ground detail fill the gap around it.
+
+**DON'T**
+- Don't leave wide stretches of untouched base ground — that's the "empty" the owner is reacting to.
+- Don't carpet detail perfectly evenly (looks like wallpaper) — cluster it.
+- Don't over-detail with loud/eye-catching tiles everywhere — those stay rare; the carpet is *quiet* detail.
+
+## 5c. Enclosures, farms & crops (what makes a village read as lived-in)
+
+**DO**
+- **Fence the yards.** Real village houses have a fenced garden/yard. Enclose a bit of ground by each home (or a shared plot) with a fence — instantly reads as "someone lives and works here."
+- **Grow crops in neat rows.** A farm = **tilled soil with furrow rows + a fence + regular rows of the same crop** (here: cultivated mushrooms in rows on dark soil). Rows are the one place *regularity is correct* — crops are planted deliberately.
+- **Tie the farm to the village economy** — mushroom-farmers → a mushroom field beside the hamlet; fishers → drying racks by the water. The clutter should explain how these people live.
+- **Gardens & window-boxes** — flower beds inside the fences, a well/trough, benches, a cart, barrels, a stump for chopping.
+
+## 5d. Breadcrumb trails — guide the player with flora & landmarks
+
+**DO**
+- **Lead the eye with a trail.** Line the path with flowers, lanterns, stepping-stones, tufts — a *breadcrumb trail* the player subconsciously follows from one anchor to the next (plaza → pond → grove).
+- **Landmarks create "gravity."** A tall bright focal (a great glowing mushroom, a lighthouse) pulls the player toward it; place them so the player naturally orbits between anchors.
+- **The triangle rule** — arrange your 3 big anchors so sightlines form triangles; the player always sees the next point of interest, never a dead flat expanse.
+
 ## 6. Believability & story
 
 **DO**

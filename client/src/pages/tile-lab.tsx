@@ -34,6 +34,12 @@ const SPOND = { cx: 30, cy: 33, rx: 5, ry: 3.9 };
 const PLAZA = { x: 22, y: 17 };                                   // the village heart (well + benches)
 const GROVE = { x: 48, y: 31 };                                  // the grove core (dense here, thinning out)
 const LANE: [number, number][] = [[22, 20], [24, 24], [25, 27], [26, 29]];   // plaza → pond footpath
+const SFIELD = { x0: 30, y0: 11, x1: 37, y1: 16 };               // the mushroom farm — tilled rows + fence
+// fine ground-detail cells from the outdoor_decor sheet (grass tufts / small flowers / pebbles / a bush)
+const TUFTS: [number, number][] = [[6, 2], [6, 3], [7, 3], [8, 3], [6, 8], [7, 8]];
+const DFLOWERS: [number, number][] = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [0, 1], [1, 1], [2, 1], [3, 2], [4, 2]];
+const PEBBLES: [number, number][] = [[0, 5], [1, 5], [3, 5], [6, 5], [7, 5]];
+const DBUSH: [number, number] = [5, 5];
 
 // A ring's biome = a palette recolor + a different prop kit + optional inland water.
 // Proves the locked rules generalise: same procedural beach + edgepoint margins +
@@ -186,12 +192,14 @@ class TileLabEngine extends RetroEngine {
     this.placePondDecor(map);
     this.labels.push({ x: SPOND.cx * T, y: (SPOND.cy + SPOND.ry + 1.6) * T, text: "Mistmere" });
 
-    // ANCHOR 2 — the village (a real cluster around a plaza well), ANCHOR 3 — the grove
-    // (massed on one side with an edge), then FILL: open meadow + sparse rim, then NPCs by function.
+    // ANCHOR 2 — the village + its fenced mushroom farm; ANCHOR 3 — the grove (massed, with an
+    // edge); then FILL: meadow pockets + a fine ground-detail carpet so nothing reads as bare.
     this.placeVillage(map);
+    this.placeFarm(map);
     this.placeGrove(map);
     this.placeMeadow(map);
     this.placeRim(map);
+    this.scatterDetail(map);   // dense clustered ground cover everywhere the player walks
 
     // LIFE — villagers placed where their work is (keeper at the plaza, fisher at the pond,
     // forager at the grove edge), never floating at random.
@@ -226,6 +234,10 @@ class TileLabEngine extends RetroEngine {
     }
     this.cluster(map, rnd, 13, 20, 2, 2, (tx, ty) => map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 4, y: ty * T + 6, overhead: true, solidR: 5 }));
     map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col: 0, row: 0, x: 12 * T + 8, y: 15 * T + 12, overhead: true, solidR: 7 });
+    // a fenced kitchen garden by an east hut — flower beds inside (fences around the homes)
+    this.fenceRect(map, 25, 20, 29, 23, 27);
+    const gc = Math.floor(rnd() * 10), gr = Math.floor(rnd() * 10);
+    for (let ty = 21; ty <= 22; ty++) for (let tx = 26; tx <= 28; tx++) map.addProp({ sheet: "flowers", fw: 16, fh: 16, col: gc, row: gr, x: tx * T + rnd() * T, y: ty * T + rnd() * T });
     this.labels.push({ x: PLAZA.x * T, y: (PLAZA.y - 5) * T, text: "Shroom Hollow" });
   }
 
@@ -239,10 +251,14 @@ class TileLabEngine extends RetroEngine {
       const dens = 1 - smoothstep(2, 13, Math.hypot(tx - GROVE.x, ty - GROVE.y));   // dense core → thins to nothing
       if (dens <= 0) continue;
       const r = rnd();
-      if (r < dens * 0.26) { const [s, c] = kinds[Math.floor(rnd() * 3)]; this.giantShroom(map, s, c, tx, ty, 0.85 + rnd() * 0.5); }          // signature
-      else if (r < dens * 0.33) map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 8, y: ty * T + 12, overhead: true, solidR: 7 });  // secondary (green)
-      else if (r < dens * 0.5) {                                                                                                              // tertiary understory
-        if (rnd() < 0.6) map.addProp({ sheet: "shroom_other", fw: 16, fh: 16, col: Math.floor(rnd() * 3), row: 1 + Math.floor(rnd() * 5), x: tx * T + rnd() * T, y: ty * T + T });
+      if (r < dens * 0.30) { const [s, c] = kinds[Math.floor(rnd() * 3)]; this.giantShroom(map, s, c, tx, ty, 0.85 + rnd() * 0.5); }          // signature
+      else if (r < dens * 0.40) map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 8, y: ty * T + 12, overhead: true, solidR: 7 });  // secondary (green trees)
+      else if (r < dens * 0.50) {                                                                                                             // bushes (varied sizes)
+        if (rnd() < 0.5) map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 4, y: ty * T + 6, overhead: true, solidR: 5 });
+        else map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: DBUSH[0], row: DBUSH[1], x: tx * T + rnd() * T, y: ty * T + T, solidR: 3 });
+      }
+      else if (r < dens * 0.72) {                                                                                                             // dense understory (forest floor)
+        if (rnd() < 0.5) map.addProp({ sheet: "shroom_other", fw: 16, fh: 16, col: Math.floor(rnd() * 3), row: 1 + Math.floor(rnd() * 5), x: tx * T + rnd() * T, y: ty * T + T });
         else map.addProp({ sheet: "shroom_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 4), row: Math.floor(rnd() * 4), x: tx * T + rnd() * T, y: ty * T + T });
       }
     }
@@ -264,9 +280,10 @@ class TileLabEngine extends RetroEngine {
     const life = (sheet: string, fh: number, sr: number, pts: [number, number][]) => {
       for (const [tx, ty] of pts) if (this.canPlace(map, tx, ty, 3, 2.2)) map.addProp({ sheet, fw: 32, fh, col: 0, row: 0, x: tx * T, y: ty * T, solidR: sr });
     };
-    life("shroomling", 48, 5, [[18, 40], [22, 43], [16, 36]]);
-    life("shroomling2", 32, 4, [[26, 44], [19, 33]]);
-    map.addProp({ sheet: "snail", fw: 16, fh: 16, col: 0, row: 0, x: 23 * T, y: 39 * T });
+    life("shroomling", 48, 5, [[18, 40], [22, 43], [16, 36], [40, 38], [44, 24]]);
+    life("shroomling2", 32, 4, [[26, 44], [19, 33], [45, 37]]);
+    for (const [tx, ty] of [[23, 39], [35, 42], [17, 44], [50, 30]] as [number, number][])
+      if (this.canPlace(map, tx, ty, 2, 1.0)) map.addProp({ sheet: "snail", fw: 16, fh: 16, col: 0, row: 0, x: tx * T, y: ty * T });
   }
 
   /** FILL — a FEW sparse accents just inside the shore (not a uniform ring band). */
@@ -293,9 +310,14 @@ class TileLabEngine extends RetroEngine {
     return best;
   }
 
-  /** Placement gate: grassy, inside the edgepoint, clear of the pond, and off the footpath. */
+  /** Inside (or hugging) the fenced mushroom farm. */
+  private inField(tx: number, ty: number): boolean {
+    return tx >= SFIELD.x0 - 1 && tx <= SFIELD.x1 + 1 && ty >= SFIELD.y0 - 1 && ty <= SFIELD.y1 + 1;
+  }
+
+  /** Placement gate: grassy, inside the edgepoint, clear of the pond & farm, and off the footpath. */
   private canPlace(map: TileMap, tx: number, ty: number, edge = 3, pondM = 1.6): boolean {
-    return map.get(tx, ty) === "grass" && this.insideEdge(tx, ty, edge)
+    return map.get(tx, ty) === "grass" && this.insideEdge(tx, ty, edge) && !this.inField(tx, ty)
       && this.pondClear(tx, ty, pondM) && this.laneDist(tx + 0.5, ty + 0.5) > 1.7;
   }
 
@@ -304,6 +326,48 @@ class TileLabEngine extends RetroEngine {
     for (let i = 0; i < n; i++) {
       const tx = cx + Math.round((rnd() - 0.5) * spread * 2), ty = cy + Math.round((rnd() - 0.5) * spread * 2);
       if (this.canPlace(map, tx, ty)) place(tx, ty);
+    }
+  }
+
+  /** The village mushroom farm — regular rows of cultivated caps on the tilled soil, fenced (a gate). */
+  private placeFarm(map: TileMap) {
+    for (let ty = SFIELD.y0 + 1; ty <= SFIELD.y1 - 1; ty++) {
+      if ((ty - SFIELD.y0) % 2 === 1) continue;               // plant every other row (furrows between)
+      for (let tx = SFIELD.x0 + 1; tx <= SFIELD.x1 - 1; tx++)  // a straight row of identical caps (rows = the one place regularity is right)
+        map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: 7, row: 1, x: tx * T + T / 2, y: ty * T + T });
+    }
+    this.fenceRect(map, SFIELD.x0, SFIELD.y0, SFIELD.x1, SFIELD.y1, Math.round((SFIELD.x0 + SFIELD.x1) / 2));
+    this.labels.push({ x: (SFIELD.x0 + SFIELD.x1) / 2 * T, y: (SFIELD.y0 - 1) * T, text: "Mushroom Field" });
+  }
+
+  /** A rectangular wooden fence (decorative, non-solid) with a gap for a gate at column gateX on the bottom. */
+  private fenceRect(map: TileMap, x0: number, y0: number, x1: number, y1: number, gateX: number) {
+    const put = (tx: number, ty: number, col: number, row: number) => map.addProp({ sheet: "fences", fw: 16, fh: 16, col, row, x: tx * T + T / 2, y: ty * T + T });
+    for (let tx = x0; tx <= x1; tx++) {
+      const c = tx === x0 ? 1 : tx === x1 ? 3 : 2;            // corners vs top/bottom edge
+      put(tx, y0, c, 0);
+      if (tx !== gateX) put(tx, y1, c, 3);                   // gate gap in the bottom run
+    }
+    for (let ty = y0 + 1; ty <= y1 - 1; ty++) { put(x0, ty, 1, 1); put(x1, ty, 3, 1); }   // side rails
+  }
+
+  /** A fine, CLUSTERED ground-detail carpet (tufts / flowers / pebbles / tiny caps) so no ground
+   *  reads as bare — denser along the footpath (a breadcrumb trail). All non-solid. */
+  private scatterDetail(map: TileMap) {
+    const rnd = rng(2718);
+    const cell = (sheet: string, cr: [number, number]) => (tx: number, ty: number) => map.addProp({ sheet, fw: 16, fh: 16, col: cr[0], row: cr[1], x: tx * T + rnd() * T, y: ty * T + T });
+    const tuft = (tx: number, ty: number) => cell("outdoor_decor", TUFTS[Math.floor(rnd() * TUFTS.length)])(tx, ty);
+    const flow = (tx: number, ty: number) => cell("outdoor_decor", DFLOWERS[Math.floor(rnd() * DFLOWERS.length)])(tx, ty);
+    const peb = (tx: number, ty: number) => cell("outdoor_decor", PEBBLES[Math.floor(rnd() * PEBBLES.length)])(tx, ty);
+    const cap = (tx: number, ty: number) => map.addProp({ sheet: "shroom_other", fw: 16, fh: 16, col: Math.floor(rnd() * 3), row: 1 + Math.floor(rnd() * 5), x: tx * T + rnd() * T, y: ty * T + T });
+    for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
+      if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 1.2) || !this.pondClear(tx, ty, 0.8) || this.inField(tx, ty)) continue;
+      const clump = Math.sin(tx * 0.45 + 0.3) * Math.sin(ty * 0.4 - 0.7) * Math.sin((tx + ty) * 0.2);   // big-med-small waves
+      const onPath = this.laneDist(tx + 0.5, ty + 0.5) < 2.6;
+      const p = 0.05 + Math.max(0, clump) * 0.32 + (onPath ? 0.3 : 0);
+      if (rnd() > p) continue;
+      const r = rnd();
+      if (r < 0.42) tuft(tx, ty); else if (r < 0.66) flow(tx, ty); else if (r < 0.84) peb(tx, ty); else cap(tx, ty);
     }
   }
 
@@ -417,7 +481,11 @@ class TileLabEngine extends RetroEngine {
       else { col = DEEP; }
       // a natural inland POND painted right into the ground canvas (Path A): grass → damp
       // bank → waterline → shallow → deep, all SDF-smooth so it always matches the floor.
-      if (this.biome === "shroom" && g > 0.3) {
+      if (this.biome === "shroom" && g > 0.3 && tx >= SFIELD.x0 && tx < SFIELD.x1 + 1 && ty >= SFIELD.y0 && ty < SFIELD.y1 + 1) {
+        // the mushroom farm — tilled soil with alternating furrow rows
+        const dark = (Math.floor(ty) - SFIELD.y0) % 2 === 0 ? 0 : -16, grain = (n - 0.5) * 12;
+        col = [104 + dark + grain, 74 + dark * 0.7 + grain, 48 + dark * 0.5 + grain * 0.7]; a = 255;
+      } else if (this.biome === "shroom" && g > 0.3) {
         const pd = this.pondField(tx, ty) * ((SPOND.rx + SPOND.ry) / 2);   // ~tiles inside the pond
         if (pd > -0.22) {
           if (pd > 1.2) { const wv = Math.sin(pd * 2.2 + tx * 0.5 + ty * 0.35) * 6 + (n - 0.5) * 8; col = [PDEEP[0] + wv, PDEEP[1] + wv, PDEEP[2] + wv]; }
