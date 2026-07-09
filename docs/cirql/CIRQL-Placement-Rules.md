@@ -20,6 +20,26 @@ So the build order is always **STRUCTURE → PATHS → FILL**, never "scatter th
 
 ---
 
+## The RING BUILD PIPELINE (the fixed linear order)
+
+*Every ring is built in this exact sequence — same order, every time — so the process is streamlined and repeatable instead of ad-hoc. A later stage may READ earlier stages (scatter avoids the path; the path stops at the water) but never reorders them. This mirrors the TMW layer model and the STRUCTURE→PATHS→FILL rule; it's how a ring's build method should read top-to-bottom.*
+
+**BUILD stages (author the data):**
+1. **GROUND** — lay the base terrain grid + its texture: land/shore SDF, ground-type regions (grass/sand), tile variants, biome tone. *(buildIsland fill · buildCoast · buildSandTexture/buildGrassTexture)*
+2. **WATER** — carve water bodies into the terrain (oasis/pond/river) + their SDF edge read; mark them solid. Paint FIRST so nothing else spawns in them. *(oasisField → set "water" + solid)*
+3. **PATHS** — the sprite-autotiled path network connecting the anchors (hierarchy: road → footpath → desire; winding; stops at water). A true tile layer, never painted. *(DPATHS + buildSandPath/drawSandPaths)* — see §3.
+4. **STRUCTURES** — the anchored builds placed *relative to the paths*: settlements/plazas, landmarks, cliffs/mesa, docks. Overlay tiles + feet-anchored props. *(placeHamlet · placeMesa · placeDuneCamp)*
+5. **FILL / SCATTER** — nature with land-use logic + composition clustering; **must read stages 2–4** and keep clear of water/structures/paths/reserved spots. *(placeDuneScatter · scatterDuneDetail, gated by dCanPlace/dPathDist)*
+6. **LIFE** — critters + NPCs placed *beside* their anchor (never on the focal object). *(camels/scarabs/oasis life · npc())*
+7. **COLLISION** — derived from terrain + each prop's solidR; set as stages run, never bolted on after.
+
+**RENDER order (draw the data) — must match the layer model:**
+GROUND (autotiled terrain, clipped to shore) → procedural coast/water → **PATHS (sprite layer)** → overlay structures → depth-sorted props + actors + player (feet-Y sort) → shadows/light/juice last.
+
+> The Dunes was built mid-stream as we learned the rules, so its method isn't perfectly in this order yet. **Once the ring's visuals are locked, refactor buildDunes to read exactly as stages 1→7** (a cleanup pass, not a behaviour change) — that's the streamlined template every future ring is generated from.
+
+---
+
 ## 0. The GROUND is tiles, not a flat fill (the "placed vs. part of" fix)
 
 The biggest thing that makes our maps read as "everything is *placed on* the ground instead of *part of* it" is that the ground is one flat colour with props sitting on top. **TMW/Zelda/Stardew build the ground itself out of tiles** — textured grass, dirt, sand, tilled soil, cobble, forest-floor — with blended transitions. The ground becomes a rich *surface*, and props are fewer and purposeful. This is the fix for "flat / placed / lifeless."
