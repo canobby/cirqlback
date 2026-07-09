@@ -28,7 +28,7 @@ So the build order is always **STRUCTURE → PATHS → FILL**, never "scatter th
 
 **BUILD stages (author the data):**
 1. **GROUND** — the designed surface, built in sub-steps and **filled completely** (TMW: never leave a hole, never one flat tone):
-   - **1a base fill** — land/shore SDF + a base ground texture everywhere.
+   - **1a SPRITE FLOOR — laid FIRST, always (owner rule, LOCKED).** Real sprite tiles cover the ENTIRE land — everything except the water the lagoon/sea take up. Never an opaque procedural wash *instead of* tiles (that's what made the desert "look weird — nothing changed"). Procedural may only **tint** the tiles (a light translucent tone wash, like the meadow's grass shade) or paint the **water**; it must never replace the floor. Use a base tile + a few varied tiles (e.g. sand base + sand_v1/v2/v3) so the floor reads as tiles, not one repeat. *(desert: buildSandTexture → "grass"+sand_v1..3, terrain `variants`; buildCoast paints only a ~a62 dune wash over them.)*
    - **1b regions** — the other ground materials as blended, autotiled regions (a *designed surface, not a fill*): for desert, packed/hard-pan near roads · loose rippled dune sand in the open · a cooler gravel/cracked third material. 1 dominant + 1–2 secondaries + a path material + accents; more reads as noise.
    - **1c WATER** — carve water bodies (oasis/pond/river) into the terrain + their SDF edge; mark solid. Paint before anything else spawns. *(oasisField → "water" + solid)*
    - **1d ELEVATION** — cliffs/mesa: rim autotile + a south-dropping face strip + boulders to break lines + a short contact shadow. *(placeMesa)*
