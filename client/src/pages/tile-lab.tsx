@@ -46,6 +46,7 @@ const GROVE = { x: 48, y: 31 };                                  // the grove co
 const LANE: [number, number][] = [[22, 19], [24, 22], [26, 25], [24, 27], [26, 29]];   // plaza → pond footpath (gently winding)
 const SFIELD = { x0: 30, y0: 11, x1: 37, y1: 16 };               // the mushroom farm — tilled rows + fence
 const COMMONS = { x: 18, y: 37 };                                // the fungal bonfire commons (gathering spot)
+const POND_DOCK = { x0: SPOND.cx - 5, x1: SPOND.cx - 1, y: SPOND.cy };   // a little fishing pier off the west bank
 // fine ground-detail cells from the outdoor_decor sheet (grass tufts / small flowers / pebbles / a bush)
 const TUFTS: [number, number][] = [[6, 2], [6, 3], [7, 3], [8, 3], [6, 8], [7, 8]];
 const DFLOWERS: [number, number][] = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [0, 1], [1, 1], [2, 1], [3, 2], [4, 2]];
@@ -224,7 +225,7 @@ class TileLabEngine extends RetroEngine {
       this.labels.push({ x: tx * T, y: ty * T - 30, text: name });
     };
     npc("farmer", 20, 19, "Mycel");    // keeper, in the plaza
-    npc("fisher", 33, 30, "Spora");    // fisher, at the pond's west bank
+    npc("fisher", 27, 33, "Spora");    // fisher, out on the fishing pier
     npc("farmer", 41, 29, "Bramble");  // forager, at the grove edge
   }
 
@@ -299,7 +300,7 @@ class TileLabEngine extends RetroEngine {
       for (const [tx, ty] of pts) if (this.canPlace(map, tx, ty, 3, 2.2)) this.addCritter(map, sheet, 32, fh, 0, 0, tx, ty, { solidR: sr, frames, fps: 3, wr: 1.1, sp: 6, bob: 1.2 });
     };
     life("shroomling", 48, 5, 4, [[22, 43], [40, 38], [44, 24], [24, 45]]);
-    life("shroomling2", 32, 4, 2, [[26, 41], [45, 37], [13, 30]]);   // moved clear of the commons/fire
+    life("shroomling2", 32, 4, 1, [[26, 41], [45, 37], [13, 30]]);   // frame 0 only (row 0 has a blank 2nd frame → flicker); moves via bob/wander
     for (const [tx, ty] of [[23, 39], [35, 42], [17, 44], [50, 30]] as [number, number][])
       if (this.canPlace(map, tx, ty, 2, 1.0)) this.addCritter(map, "snail", 16, 16, 0, 0, tx, ty, { wr: 1.4, sp: 2, bob: 0.4 });   // a slow crawl
   }
@@ -442,8 +443,8 @@ class TileLabEngine extends RetroEngine {
   private placePondDecor(map: TileMap) {
     const rnd = rng(313);
     const put = (sheet: string, tx: number, ty: number, extra: object = {}) => map.addProp({ sheet, fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T, ...extra });
-    for (let ty = SPOND.cy - SPOND.ry - 3; ty <= SPOND.cy + SPOND.ry + 3; ty++)
-      for (let tx = SPOND.cx - SPOND.rx - 3; tx <= SPOND.cx + SPOND.rx + 3; tx++) {
+    for (let ty = Math.floor(SPOND.cy - SPOND.ry) - 3; ty <= Math.ceil(SPOND.cy + SPOND.ry) + 3; ty++)
+      for (let tx = Math.floor(SPOND.cx - SPOND.rx) - 3; tx <= Math.ceil(SPOND.cx + SPOND.rx) + 3; tx++) {
         const f = this.pondField(tx + 0.5, ty + 0.5);
         if (f > -2.1 && f < -0.05 && map.get(tx, ty) === "grass") {                  // the grassy bank — a lush belt of reeds/stones/overhang
           const r = rnd();
@@ -460,6 +461,9 @@ class TileLabEngine extends RetroEngine {
           else if (r < 0.5) put("waterrock1", tx, ty);                               // a rock breaking the surface
         }
       }
+    // a bench overlooking the water (SE bank) + stepping stones across the north shallows
+    map.addProp({ sheet: "benches", fw: 32, fh: 32, col: 0, row: 0, x: (SPOND.cx + 3) * T, y: (SPOND.cy + SPOND.ry) * T });
+    for (let i = 0; i < 4; i++) map.addProp({ sheet: i % 2 ? "waterrock1" : "waterrock2", fw: 16, fh: 16, col: 0, row: 0, x: (SPOND.cx - 2 + i) * T + 4, y: (SPOND.cy - SPOND.ry + 1) * T + T });
     // pond life — a duck paddling on the water + a frog hopping on the bank
     this.addCritter(map, "duck", 32, 32, 0, 12, SPOND.cx + 1, SPOND.cy - 1, { water: true, wr: 1.6, sp: 6, bob: 1 });
     this.addCritter(map, "frog", 32, 32, 0, 0, SPOND.cx - 4, SPOND.cy + 2, { wr: 0.7, sp: 5, bob: 2.4 });
@@ -765,6 +769,7 @@ class TileLabEngine extends RetroEngine {
     this.blitCoast(b);
     this.drawShoreFoam(b, this.cam);
     this.drawDock(b, this.cam);   // the ring's dock (visual for now; ring-to-ring travel is the /cirql merge)
+    if (this.biome === "shroom") this.drawPondDock(b, this.cam);   // the pond's little fishing pier (under the player/props)
     // the bridge, then depth-sorted actors
     this.ren.drawOverlay(b, this.map, this.cam);
     const [psx, psy] = this.ren.w2s(this.cam, this.player.x, this.player.y);
@@ -920,6 +925,21 @@ class TileLabEngine extends RetroEngine {
     for (const [tx, ty] of seats) map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: 1, row: 6, x: tx * T + T / 2, y: ty * T + T, solidR: 5 });   // a clean ring of stump seats
     map.setSolid(cx, cy, true);   // the fire — not walkable
     this.labels.push({ x: cx * T + T / 2, y: (cy - 3) * T, text: "The Ember Ring" });
+  }
+
+  /** A little wooden fishing pier off the pond's west bank (drawn over the water). */
+  private drawPondDock(b: CanvasRenderingContext2D, cam: Camera) {
+    const s = cam.scale, half = 0.7;
+    const [sx, sy] = this.ren.w2s(cam, POND_DOCK.x0 * T, (POND_DOCK.y - half) * T);
+    const pw = (POND_DOCK.x1 - POND_DOCK.x0) * T * s, ph = half * 2 * T * s;
+    if (sx + pw < 0 || sx > cam.vw || sy + ph < 0 || sy > cam.vh) return;
+    b.save();
+    b.fillStyle = "#3a2415"; b.fillRect(sx + pw - 4 * s, sy - 1 * s, 3 * s, ph + 3 * s);   // end post
+    b.fillStyle = "#8a5a34"; b.fillRect(sx, sy, pw, ph);                                     // deck
+    b.fillStyle = "#6e4526";
+    for (let i = 0; i <= POND_DOCK.x1 - POND_DOCK.x0; i++) b.fillRect(Math.round(sx + i * T * s), sy, Math.max(1, s), ph);   // plank seams
+    b.fillStyle = "#5a3820"; b.fillRect(sx, sy, pw, Math.max(1, s)); b.fillRect(sx, sy + ph - Math.max(1, s), pw, Math.max(1, s));   // rails
+    b.restore();
   }
 
   /** Draw the bonfire at the commons — warm glow, log base, flickering flames, rising embers. */
