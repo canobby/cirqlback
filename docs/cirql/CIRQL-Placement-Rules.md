@@ -24,14 +24,21 @@ So the build order is always **STRUCTURE → PATHS → FILL**, never "scatter th
 
 *Every ring is built in this exact sequence — same order, every time — so the process is streamlined and repeatable instead of ad-hoc. A later stage may READ earlier stages (scatter avoids the path; the path stops at the water) but never reorders them. This mirrors the TMW layer model and the STRUCTURE→PATHS→FILL rule; it's how a ring's build method should read top-to-bottom.*
 
+*Refined 2026-07-09 from a TMW / RPG-Maker / SLYNYRD build-order research pass: pros treat WATER and ELEVATION as part of the GROUND pass (terrain regions painted over the base fill), not separate later phases — so they're folded into stage 1. Collision's exit gate is a flood-fill reachability check.*
+
 **BUILD stages (author the data):**
-1. **GROUND** — lay the base terrain grid + its texture: land/shore SDF, ground-type regions (grass/sand), tile variants, biome tone. *(buildIsland fill · buildCoast · buildSandTexture/buildGrassTexture)*
-2. **WATER** — carve water bodies into the terrain (oasis/pond/river) + their SDF edge read; mark them solid. Paint FIRST so nothing else spawns in them. *(oasisField → set "water" + solid)*
-3. **PATHS** — the sprite-autotiled path network connecting the anchors (hierarchy: road → footpath → desire; winding; stops at water). A true tile layer, never painted. *(DPATHS + buildSandPath/drawSandPaths)* — see §3.
-4. **STRUCTURES** — the anchored builds placed *relative to the paths*: settlements/plazas, landmarks, cliffs/mesa, docks. Overlay tiles + feet-anchored props. *(placeHamlet · placeMesa · placeDuneCamp)*
-5. **FILL / SCATTER** — nature with land-use logic + composition clustering; **must read stages 2–4** and keep clear of water/structures/paths/reserved spots. *(placeDuneScatter · scatterDuneDetail, gated by dCanPlace/dPathDist)*
-6. **LIFE** — critters + NPCs placed *beside* their anchor (never on the focal object). *(camels/scarabs/oasis life · npc())*
-7. **COLLISION** — derived from terrain + each prop's solidR; set as stages run, never bolted on after.
+1. **GROUND** — the designed surface, built in sub-steps and **filled completely** (TMW: never leave a hole, never one flat tone):
+   - **1a base fill** — land/shore SDF + a base ground texture everywhere.
+   - **1b regions** — the other ground materials as blended, autotiled regions (a *designed surface, not a fill*): for desert, packed/hard-pan near roads · loose rippled dune sand in the open · a cooler gravel/cracked third material. 1 dominant + 1–2 secondaries + a path material + accents; more reads as noise.
+   - **1c WATER** — carve water bodies (oasis/pond/river) into the terrain + their SDF edge; mark solid. Paint before anything else spawns. *(oasisField → "water" + solid)*
+   - **1d ELEVATION** — cliffs/mesa: rim autotile + a south-dropping face strip + boulders to break lines + a short contact shadow. *(placeMesa)*
+   *(buildCoast · buildSandTexture/buildGrassTexture · the ground enrichment)*
+2. **PATHS** — the sprite-autotiled path network connecting the anchors (hierarchy: road → footpath → desire; winding; stops at water). A true tile layer, never painted. *(DPATHS + buildSandPath/drawSandPaths)* — see §3.
+3. **STRUCTURES** — the anchored builds placed *relative to the paths*: settlements/plazas, landmarks, docks. Feet-anchored props + overlay tiles. *(placeHamlet · placeDuneCamp)*
+4. **FILL / SCATTER** — nature with land-use logic + composition clustering; **must read stages 1–3** and keep clear of water/structures/paths/reserved spots. Big-med-small, clustered never gridded; break monotony but don't become a second uniform layer. *(placeDuneScatter · scatterDuneDetail, gated by dCanPlace/dPathDist)*
+5. **LIFE** — critters + NPCs placed *beside* their anchor (never on the focal object), out of any building's occlusion zone. *(camels/scarabs/oasis life · addNpc)*
+6. **COLLISION** — derived from terrain + each prop's solidR; set as stages run. **Exit gate: flood-fill the walkable area from the spawn — any unreachable pocket is a bug** (TMW's cheapest bug-catch). Also keep a non-walkable designed BORDER around the ring so the camera never shows an ugly edge.
+7. **LIGHT / POLISH** — glow/particles/juice + ambient life, last.
 
 **RENDER order (draw the data) — must match the layer model:**
 GROUND (autotiled terrain, clipped to shore) → procedural coast/water → **PATHS (sprite layer)** → overlay structures → depth-sorted props + actors + player (feet-Y sort) → shadows/light/juice last.
