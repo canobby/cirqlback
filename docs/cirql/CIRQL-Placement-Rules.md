@@ -20,6 +20,30 @@ So the build order is always **STRUCTURE → PATHS → FILL**, never "scatter th
 
 ---
 
+## 0. The GROUND is tiles, not a flat fill (the "placed vs. part of" fix)
+
+The biggest thing that makes our maps read as "everything is *placed on* the ground instead of *part of* it" is that the ground is one flat colour with props sitting on top. **TMW/Zelda/Stardew build the ground itself out of tiles** — textured grass, dirt, sand, tilled soil, cobble, forest-floor — with blended transitions. The ground becomes a rich *surface*, and props are fewer and purposeful. This is the fix for "flat / placed / lifeless."
+
+**DO (TMW ground rules)**
+- **Fill the ground layer completely, with real tiles.** TMW: *"Ground1, the lowest ground layer, has to be filled completely before the map is finished"* — never leave raw fill showing. Our textured grass tile IS that layer; don't hide it under a flat colour.
+- **Use several GROUND TYPES, not one.** Grass **and** dirt paths **and** tilled farm soil **and** cobble plaza **and** a darker forest-floor under the trees. Varying the ground *type* (not just scattering props) is what reads as a real place.
+- **Blend terrain edges with autotiles.** Where two ground types meet, use the pack's border/blob autotile so the edge feathers (grass fringing into dirt), never a hard blocky seam. TMW: plain ground tiles "make the ways even more blocky than they have to be" — use the grass-border autotiles. (Options: 47-piece bitmask, or the compact **dual-grid**/Wang approach.)
+- **Layer it (TMW layer model):** *Ground1/2/3* (terrain) → *Fringe* (oversized props drawn relative to sprites, depth-sorted) → *Over* (treetops/roofs above the player) → *Collision* (invisible walk/block). Depth = richness.
+- **A fence or wall can hide a hard edge.** Where a soil field meets grass, a fence around it hides the seam — no perfect autotile needed.
+- **Paths are tiles too.** A dirt/cobble path is a *ground type* laid into the terrain (blended edges), not a prop strip — that's what makes it feel walked-on and "part of" the map.
+
+**DON'T**
+- Don't paint one flat colour over the whole ground and rely on props for all detail — that's the exact "placed, not part of" look.
+- Don't leave a terrain type as a hard rectangle — feather it (autotile) or hide the edge (fence/wall/prop line).
+
+### Reference looks — what real TMW maps actually look like (studied their good/bad examples)
+Compared TMW's own **Goodmap** vs **Badmap**:
+- **Both** have **textured grass TILES** as the ground — never a flat colour. That's the baseline; our old flat-fill was below even their *bad* example.
+- **Good** = trees **clustered organically** (not a grid), a **winding dirt path** with soft blended edges, an **organic water shore**, and **lighter tall-grass patches laid in as tiles** to break up the base grass.
+- **Bad** = trees in a **perfect grid**, a **straight path with a hard 90° corner**, a **straight water edge**, and **uniform grass** with no tile variation.
+- **The bar:** every time we build an area, ask **"is this better than The Mana World?"** — if not, fix it. Study a reference for *that specific biome* (forest/desert/rainforest/etc.) before building it, don't build from memory.
+- **Mix biomes on one ring.** A ring doesn't have to be one biome — blend e.g. meadow → wetland → woodland across it (with tiled transitions). More visual interest, and it scales as rings get bigger.
+
 ## 1. Structure & focal points
 
 **DO**

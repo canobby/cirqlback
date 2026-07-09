@@ -34,6 +34,8 @@ export const CF_SHEETS: Record<string, string> = {
   cliff4: `${CF}/tiles/cliff4.png`,
   water_foam: `${CF}/tiles/water_foam.png`,
   bridge_wood: `${CF}/tiles/bridge_wood.png`,
+  farmland: `${CF}/tiles/farmland.png`,   // tilled-soil autotile (112×128 @16) — real farm ground
+  dirt: `${CF}/tiles/dirt.png`,           // solid dirt path tile
   // brand — the CIRQLBACK circular-arrow mark (spun as the wellspring emblem)
   logo: `${CF}/logo.png`,
   // actors

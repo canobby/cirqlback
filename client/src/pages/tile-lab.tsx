@@ -4,7 +4,8 @@ import { ArrowLeft } from "lucide-react";
 import { RetroEngine, type RetroHooks } from "@/game/retro-engine";
 import {
   cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
-  type Atlas, type Camera, type Drawable,
+  DEFAULT_TERRAIN,
+  type Atlas, type Camera, type Drawable, type TerrainConfig,
 } from "@/game/tile";
 
 // TILE LAB — P1 vertical slice: Cloverfield, one hand-authored meadow island.
@@ -52,9 +53,9 @@ interface BiomePalette {
 const PALETTES: Record<Biome, BiomePalette> = {
   // the loved meadow — unchanged (subtle green shading over the grass tile, no inland water)
   meadow: { glite: [150, 202, 98], gdark: [44, 94, 46], grassOpaque: false },
-  // The Shroomwood — a twilight fungal grove: dusky teal moss floor. No fountain
-  // (town-only); a natural pack-tiled pond is its water. Neon lives in the LIGHT layer.
-  shroom: { glite: [104, 150, 118], gdark: [42, 74, 78], grassOpaque: true },
+  // The Shroomwood — the textured GRASS TILES show through (like TMW); only a faint cool
+  // shade tints them for mood. No fountain (town-only). Neon lives in the LIGHT layer.
+  shroom: { glite: [120, 170, 150], gdark: [40, 84, 96], grassOpaque: false },
 };
 
 // deterministic RNG so the island is stable across reloads
@@ -98,9 +99,12 @@ class TileLabEngine extends RetroEngine {
     this.crt = false;
     this.resize();
     this.buildIsland();
-    // water renders nothing here — the pond is painted procedurally into the ground
-    // canvas (Path A) so its colours always match the floor (no sprite/background clash)
-    this.ren = new TileRenderer(this.atlas);
+    // the ground is real tiles (grass shows through a light shade); the farm is tilled-soil tiles.
+    // Pond stays procedural (Path A). Beach stays procedural at the rim.
+    const terr: TerrainConfig | undefined = biome === "shroom"
+      ? { ...DEFAULT_TERRAIN, farm: { fill: "farmland", cell: [5, 2] } }
+      : undefined;
+    this.ren = new TileRenderer(this.atlas, terr);
     this.atlas.loadAll().then(() => { this.buildLogo(); this.loaded = true; }).catch((e) => console.error(e));
     this.start();
   }
@@ -248,11 +252,11 @@ class TileLabEngine extends RetroEngine {
     const kinds: [string, string][] = [["shroom_purple", "#c07bff"], ["shroom_blue", "#79d0ff"], ["shroom_red", "#ff8a7b"]];
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
       if (!this.canPlace(map, tx, ty, 5, 2.0)) continue;
-      const dens = 1 - smoothstep(2, 13, Math.hypot(tx - GROVE.x, ty - GROVE.y));   // dense core → thins to nothing
+      const dens = 1 - smoothstep(2, 15, Math.hypot(tx - GROVE.x, ty - GROVE.y));   // dense core → thins to nothing
       if (dens <= 0) continue;
       const r = rnd();
-      if (r < dens * 0.30) { const [s, c] = kinds[Math.floor(rnd() * 3)]; this.giantShroom(map, s, c, tx, ty, 0.85 + rnd() * 0.5); }          // signature
-      else if (r < dens * 0.40) map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 8, y: ty * T + 12, overhead: true, solidR: 7 });  // secondary (green trees)
+      if (r < dens * 0.44) { const [s, c] = kinds[Math.floor(rnd() * 3)]; this.giantShroom(map, s, c, tx, ty, 0.85 + rnd() * 0.5); }          // signature (dense, overlapping)
+      else if (r < dens * 0.58) map.addProp({ sheet: "tree_oak", fw: 64, fh: 80, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 8, y: ty * T + 12, overhead: true, solidR: 7 });  // secondary (green trees)
       else if (r < dens * 0.50) {                                                                                                             // bushes (varied sizes)
         if (rnd() < 0.5) map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 4, y: ty * T + 6, overhead: true, solidR: 5 });
         else map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: DBUSH[0], row: DBUSH[1], x: tx * T + rnd() * T, y: ty * T + T, solidR: 3 });
@@ -329,8 +333,9 @@ class TileLabEngine extends RetroEngine {
     }
   }
 
-  /** The village mushroom farm — regular rows of cultivated caps on the tilled soil, fenced (a gate). */
+  /** The village mushroom farm — real tilled-soil TILES + regular rows of cultivated caps, fenced. */
   private placeFarm(map: TileMap) {
+    for (let ty = SFIELD.y0; ty <= SFIELD.y1; ty++) for (let tx = SFIELD.x0; tx <= SFIELD.x1; tx++) map.set(tx, ty, "farm");   // tilled-soil ground tiles (walkable)
     for (let ty = SFIELD.y0 + 1; ty <= SFIELD.y1 - 1; ty++) {
       if ((ty - SFIELD.y0) % 2 === 1) continue;               // plant every other row (furrows between)
       for (let tx = SFIELD.x0 + 1; tx <= SFIELD.x1 - 1; tx++)  // a straight row of identical caps (rows = the one place regularity is right)
@@ -481,11 +486,7 @@ class TileLabEngine extends RetroEngine {
       else { col = DEEP; }
       // a natural inland POND painted right into the ground canvas (Path A): grass → damp
       // bank → waterline → shallow → deep, all SDF-smooth so it always matches the floor.
-      if (this.biome === "shroom" && g > 0.3 && tx >= SFIELD.x0 && tx < SFIELD.x1 + 1 && ty >= SFIELD.y0 && ty < SFIELD.y1 + 1) {
-        // the mushroom farm — tilled soil with alternating furrow rows
-        const dark = (Math.floor(ty) - SFIELD.y0) % 2 === 0 ? 0 : -16, grain = (n - 0.5) * 12;
-        col = [104 + dark + grain, 74 + dark * 0.7 + grain, 48 + dark * 0.5 + grain * 0.7]; a = 255;
-      } else if (this.biome === "shroom" && g > 0.3) {
+      if (this.biome === "shroom" && g > 0.3) {
         const pd = this.pondField(tx, ty) * ((SPOND.rx + SPOND.ry) / 2);   // ~tiles inside the pond
         if (pd > -0.22) {
           if (pd > 1.2) { const wv = Math.sin(pd * 2.2 + tx * 0.5 + ty * 0.35) * 6 + (n - 0.5) * 8; col = [PDEEP[0] + wv, PDEEP[1] + wv, PDEEP[2] + wv]; }
