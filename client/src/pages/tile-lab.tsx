@@ -49,11 +49,13 @@ class TileLabEngine extends RetroEngine {
   private shore: { x: number; y: number }[] = [];   // shoreline contour points (world px) for animated foam
   private logo: HTMLCanvasElement | null = null;    // CIRQLBACK mark, cream keyed to transparent
   private blank = false;                            // CIRQLSPACE (home ring): blank buildable canvas
+  private rx = RX; private ry = RY;                 // ring radii — CIRQLSPACE starts ~2/3, expands later
   private labels: { x: number; y: number; text: string }[] = [];   // place/NPC name tags (world px)
 
   constructor(canvas: HTMLCanvasElement, hooks: RetroHooks = {}, blank = false) {
     super(canvas, hooks, 320, 200);
     this.blank = blank;
+    if (blank) { this.rx = RX * 0.66; this.ry = RY * 0.66; }   // start small; land-growth expands it later
     this.fit = true; this.fitPx = 3;
     this.crt = false;
     this.resize();
@@ -65,7 +67,7 @@ class TileLabEngine extends RetroEngine {
 
   // ---------- island geometry ----------
   private land(tx: number, ty: number): boolean {
-    const dx = (tx - CX) / RX, dy = (ty - CY) / RY;
+    const dx = (tx - CX) / this.rx, dy = (ty - CY) / this.ry;
     const ang = Math.atan2(ty - CY, tx - CX);
     const d = dx * dx + dy * dy;
     const R = 1 + 0.035 * Math.sin(ang * 2 + 0.6);   // one gentle low-freq wave → smooth shore
@@ -144,9 +146,9 @@ class TileLabEngine extends RetroEngine {
 
   /** Continuous "landness": >0 inside the island, <0 outside, ~tiles from the shore. */
   private landField(tx: number, ty: number): number {
-    const dx = (tx - CX) / RX, dy = (ty - CY) / RY, ang = Math.atan2(ty - CY, tx - CX);
+    const dx = (tx - CX) / this.rx, dy = (ty - CY) / this.ry, ang = Math.atan2(ty - CY, tx - CX);
     const R = 1 + 0.035 * Math.sin(ang * 2 + 0.6);
-    return (R - (dx * dx + dy * dy)) * ((RX + RY) / 4);   // ~tiles inside the oval shore
+    return (R - (dx * dx + dy * dy)) * ((this.rx + this.ry) / 4);   // ~tiles inside the oval shore
   }
 
   /** River centre-x at row ty — starts under the fountain, gently drifts toward the pond. */
@@ -207,7 +209,7 @@ class TileLabEngine extends RetroEngine {
     this.shore = [];
     for (let ang = 0; ang < Math.PI * 2; ang += Math.PI / 120) {
       let prev = this.landField(CX + Math.cos(ang) * 2, CY + Math.sin(ang) * 2);
-      for (let rr = 2.5; rr < Math.max(RX, RY) * 1.7; rr += 0.4) {
+      for (let rr = 2.5; rr < Math.max(this.rx, this.ry) * 1.7; rr += 0.4) {
         const gx = CX + Math.cos(ang) * rr, gy = CY + Math.sin(ang) * rr, gg = this.landField(gx, gy);
         if (prev > 0 && gg <= 0) { this.shore.push({ x: gx * T, y: gy * T }); break; }
         prev = gg;
