@@ -237,6 +237,7 @@ function Router() {
           <Route path="/cirqlsphere">{() => <Redirect to="/tile-lab?biome=shroom" />}</Route>
           <Route path="/world">{() => <Redirect to="/tile-lab?biome=shroom" />}</Route>
           <Route path="/shroomwood">{() => <Redirect to="/tile-lab?biome=shroom" />}</Route>
+          <Route path="/dunes">{() => <Redirect to="/tile-lab?biome=desert" />}</Route>
           <Route path="/change-password">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ChangePasswordPage /></Suspense>}</Route>
           <Route path="/play/harvest-moonlight">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><HarvestMoonlightPage /></Suspense>}</Route>
           <Route path="/play/green-thumb">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><GreenThumbPage /></Suspense>}</Route>

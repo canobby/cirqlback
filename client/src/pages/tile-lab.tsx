@@ -53,10 +53,22 @@ const TUFTS: [number, number][] = [[0, 2], [1, 2], [2, 2], [6, 2], [6, 3]];   //
 const DFLOWERS: [number, number][] = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [0, 1], [1, 1], [2, 1], [3, 2], [4, 2]];
 const DBUSH: [number, number] = [5, 5];
 
+// ---- The Dunes (desert oasis ring) layout ANCHORS ----
+// TMW Tulimshar reference: sand ground meeting the sea, a bright OASIS pool with a lush
+// palm/acacia halo, an adobe caravan hamlet + paved plaza on one side, a nomad campfire,
+// a rocky MESA (Stage 2) with a building on top + a cave, and sparse dry dune scatter.
+const OASIS = { cx: 28, cy: 31, rx: 6, ry: 4.3 };                 // the oasis pool (procedural blue water, inside the ring)
+const HAMLET = { x: 20, y: 16 };                                  // the adobe caravan cluster (NW)
+const DPLAZA = { x: 22, y: 19 };                                  // paved well plaza in the hamlet
+const DLANE: [number, number][] = [[22, 21], [24, 24], [26, 27], [27, 29]];   // plaza → oasis footpath (worn sand)
+const DCAMP = { x: 36, y: 41 };                                   // nomad campfire commons (open sand, S)
+const MESA = { x0: 44, y0: 12, x1: 56, y1: 22, faceH: 2 };        // the raised sandstone plateau (Stage 2, NE)
+// dry-desert ground detail from the desert sheets (fern tuft / small rocks / pebbles)
+
 // A ring's biome = a palette recolor + a different prop kit + optional inland water.
 // Proves the locked rules generalise: same procedural beach + edgepoint margins +
 // water-inside-the-ring, just a new coat of Cute-Fantasy (here the ShroomLands DLC).
-type Biome = "meadow" | "shroom";
+type Biome = "meadow" | "shroom" | "desert";
 
 // A talk-to spot in the world (the Fountain Oracle or a villager NPC), with the reach
 // at which you can talk. `Speaker` is shared with the chat panel + the server route.
@@ -73,6 +85,10 @@ const PALETTES: Record<Biome, BiomePalette> = {
   // deep cool forest-green (teal undertone), flowed as soft tonal patches over the grass
   // tiles so colour reads natural + enhanced. No fountain (town-only). Neon in the LIGHT layer.
   shroom: { glite: [142, 190, 116], gdark: [44, 96, 82], grassOpaque: false },
+  // The Dunes — a desert oasis ring (TMW Tulimshar reference). Warm pale sand → ochre dune
+  // shade, flowed as soft tonal contours over a SAND ground tile (buildSandTexture). No
+  // fountain (wild ring). The oasis is bright procedural blue water inside the ring.
+  desert: { glite: [232, 210, 156], gdark: [196, 165, 112], grassOpaque: false },
 };
 
 // deterministic RNG so the island is stable across reloads
@@ -121,7 +137,7 @@ class TileLabEngine extends RetroEngine {
     super(canvas, hooks, 320, 200);
     this.blank = blank;
     this.biome = biome;
-    this.hasFountain = biome !== "shroom";   // wild rings have no fountain — that's the town's
+    this.hasFountain = biome !== "shroom" && biome !== "desert";   // wild rings have no fountain — that's the town's
     this.bpal = PALETTES[biome];
     if (blank) { this.rx = RX * 0.66; this.ry = RY * 0.66; }   // start small; land-growth expands it later
     this.fit = true; this.fitPx = 3;
@@ -134,7 +150,7 @@ class TileLabEngine extends RetroEngine {
       ? { ...DEFAULT_TERRAIN, farm: { fill: "farmland", cell: [5, 2] } }
       : undefined;
     this.ren = new TileRenderer(this.atlas, terr);
-    this.atlas.loadAll().then(() => { this.buildLogo(); this.buildGrassTexture(); this.loaded = true; }).catch((e) => console.error(e));
+    this.atlas.loadAll().then(() => { this.buildLogo(); if (biome === "desert") this.buildSandTexture(); else this.buildGrassTexture(); this.loaded = true; }).catch((e) => console.error(e));
     this.start();
   }
 
@@ -167,6 +183,7 @@ class TileLabEngine extends RetroEngine {
     // CIRQLSPACE (the personal home ring) is BLANK — just the ring, the beach, and your
     // own centre fountain, a canvas to build on. Everything else is the populated meadow ring.
     if (this.biome === "shroom") this.buildShroomwood(map);
+    else if (this.biome === "desert") this.buildDunes(map);
     else if (!this.blank) {
       map.paintLine(9, ROAD_Y, 58, ROAD_Y - 1, "path", 3);   // a cobble lane
 
@@ -204,8 +221,10 @@ class TileLabEngine extends RetroEngine {
     }
 
     this.map = map;
-    // spawn on clear land near the fountain (shroom: west of the rivulet)
-    const [ssx, ssy] = this.biome === "shroom" ? [(CX - 7) * T, (CY + 1) * T] : [CX * T, (CY + 5) * T];
+    // spawn on clear land near the fountain (shroom: west of the rivulet; desert: by the oasis)
+    const [ssx, ssy] = this.biome === "shroom" ? [(CX - 7) * T, (CY + 1) * T]
+      : this.biome === "desert" ? [(OASIS.cx + 1) * T, (OASIS.cy + OASIS.ry + 3) * T]
+      : [CX * T, (CY + 5) * T];
     [this.player.x, this.player.y] = this.snapToLand(map, ssx, ssy);
     this.cam.x = this.player.x; this.cam.y = this.player.y;
     this.buildCoast();
@@ -226,6 +245,10 @@ class TileLabEngine extends RetroEngine {
       push(20, 19, { kind: "npc", ring, name: "Mycel", role: "the village keeper" });
       push(27, 33, { kind: "npc", ring, name: "Spora", role: "the fisher" });
       push(41, 29, { kind: "npc", ring, name: "Bramble", role: "the forager" });
+    } else if (this.biome === "desert") {
+      push(DPLAZA.x, DPLAZA.y + 1, { kind: "npc", ring, name: "Sahra", role: "the well-keeper" });
+      push(OASIS.cx + 2, Math.round(OASIS.cy + OASIS.ry + 1), { kind: "npc", ring, name: "Kesh", role: "the camel-herder" });
+      push(DCAMP.x, DCAMP.y + 2, { kind: "npc", ring, name: "Tamm", role: "the wayfarer" });
     } else if (!this.blank) {
       push(30, 29, { kind: "npc", ring, name: "Bram", role: "the farmer" });
       push(39, 30, { kind: "npc", ring, name: "Finn", role: "the fisher" });
@@ -270,6 +293,204 @@ class TileLabEngine extends RetroEngine {
     npc("farmer", 20, 19, "Mycel");    // keeper, in the plaza
     npc("fisher", 27, 33, "Spora");    // fisher, out on the fishing pier
     npc("farmer", 41, 29, "Bramble");  // forager, at the grove edge
+  }
+
+  // ---------- The Dunes (desert oasis biome ring) ----------
+  /** A warm sand ring around a bright OASIS: adobe caravan hamlet, palm/acacia halo, a nomad
+   *  campfire, sparse dry scatter, camels — a rocky MESA + cave come in Stages 2-3.
+   *  TMW Tulimshar reference (sand meets sea, oasis with a green halo, sandstone town). */
+  private buildDunes(map: TileMap) {
+    // STRUCTURE → PATHS → FILL per docs/cirql/CIRQL-Placement-Rules.md.
+    // ANCHOR 1 — the OASIS (procedural blue water inside the ring; paint FIRST so nothing spawns in it)
+    map.solidTerrain.add("water");
+    for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++)
+      if (map.get(tx, ty) === "grass" && this.oasisField(tx + 0.5, ty + 0.5) > 0) { map.set(tx, ty, "water"); map.setSolid(tx, ty, true); }
+    this.placeOasisFlora(map);
+    this.labels.push({ x: OASIS.cx * T, y: (OASIS.cy + OASIS.ry + 1.9) * T, text: "Sunmere Oasis" });
+
+    // ANCHOR 2 — the adobe caravan hamlet + paved well plaza; ANCHOR 3 — the nomad campfire.
+    this.placeHamlet(map);
+    this.placeDuneCamp(map);
+    // FILL — sparse dry scatter (clustered by threes) + a fine dry ground carpet, kept sparse
+    // (desert = sparse-but-still-detailed) and well clear of the oasis.
+    this.placeDuneScatter(map);
+    this.scatterDuneDetail(map);
+
+    // LIFE — camels near the oasis/hamlet, scarabs crawling the sand. NPCs by function.
+    for (const [tx, ty] of [[24, 34], [32, 26]] as [number, number][])
+      if (this.dCanPlace(map, tx, ty)) this.addCritter(map, "camel", 48, 48, 0, 0, tx, ty, { solidR: 9, wr: 0.7, sp: 4, bob: 0.5 });
+    for (const [tx, ty] of [[26, 38], [40, 30], [18, 24]] as [number, number][])
+      if (this.dCanPlace(map, tx, ty)) this.addCritter(map, "scarab", 16, 16, 0, 0, tx, ty, { wr: 1.2, sp: 3, bob: 0.3 });
+    const npc = (tx: number, ty: number, name: string, col: number) => {
+      map.addProp({ sheet: "d_npc", fw: 64, fh: 64, col, row: 0, ay: 0.66, x: tx * T, y: ty * T, solidR: 6 });
+      this.labels.push({ x: tx * T, y: ty * T - 30, text: name });
+    };
+    npc(DPLAZA.x, DPLAZA.y + 1, "Sahra", 0);                                  // well-keeper, at the plaza
+    npc(OASIS.cx + 2, Math.round(OASIS.cy + OASIS.ry + 1), "Kesh", 1);        // camel-herder, at the oasis
+    npc(DCAMP.x, DCAMP.y + 2, "Tamm", 2);                                     // wayfarer, at the campfire
+  }
+
+  /** The oasis outline: >0 inside. Non-circular, gentle lobes (a natural pool). */
+  private oasisField(tx: number, ty: number): number {
+    const dx = (tx - OASIS.cx) / OASIS.rx, dy = (ty - OASIS.cy) / OASIS.ry;
+    const ang = Math.atan2(ty - OASIS.cy, tx - OASIS.cx);
+    const R = 1 + 0.1 * Math.sin(ang * 3 + 1.2) + 0.06 * Math.sin(ang * 2 - 0.4);
+    return R - (dx * dx + dy * dy);
+  }
+  /** True if a tile is clear of the oasis by `margin` tiles. */
+  private oasisClear(tx: number, ty: number, margin = 2.4): boolean {
+    return this.oasisField(tx + 0.5, ty + 0.5) * ((OASIS.rx + OASIS.ry) / 2) < -margin;
+  }
+  /** Distance (tiles) to the plaza→oasis footpath polyline. */
+  private dLaneDist(px: number, py: number): number {
+    let best = 99;
+    for (let i = 0; i < DLANE.length - 1; i++) {
+      const [ax, ay] = DLANE[i], [bx, by] = DLANE[i + 1];
+      const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+      let t = L ? ((px - ax) * dx + (py - ay) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
+      best = Math.min(best, Math.hypot(px - (ax + dx * t), py - (ay + dy * t)));
+    }
+    return best;
+  }
+  private inHamlet(tx: number, ty: number): boolean { return tx >= HAMLET.x - 5 && tx <= HAMLET.x + 8 && ty >= HAMLET.y - 4 && ty <= HAMLET.y + 8; }
+  private inMesa(tx: number, ty: number): boolean { return tx >= MESA.x0 - 1 && tx <= MESA.x1 + 1 && ty >= MESA.y0 - 1 && ty <= MESA.y1 + MESA.faceH + 1; }
+  /** Desert placement gate: sand, WELL inside the edgepoint, clear of oasis/hamlet/mesa/camp, off the track. */
+  private dCanPlace(map: TileMap, tx: number, ty: number, edge = 4, oM = 2.8): boolean {
+    return map.get(tx, ty) === "grass" && this.insideEdge(tx, ty, edge) && this.oasisClear(tx, ty, oM)
+      && !this.inHamlet(tx, ty) && !this.inMesa(tx, ty)
+      && this.dLaneDist(tx + 0.5, ty + 0.5) > 1.6
+      && Math.hypot(tx - DCAMP.x, ty - DCAMP.y) > 3;
+  }
+  private dCluster(map: TileMap, rnd: () => number, cx: number, cy: number, spread: number, n: number, place: (tx: number, ty: number) => void) {
+    for (let i = 0; i < n; i++) {
+      const tx = cx + Math.round((rnd() - 0.5) * spread * 2), ty = cy + Math.round((rnd() - 0.5) * spread * 2);
+      if (this.dCanPlace(map, tx, ty)) place(tx, ty);
+    }
+  }
+
+  /** ANCHOR 1 dressing — a lush green HALO ringing the oasis (acacia signature + bushes + reeds),
+   *  dense at the water, thinning fast into the sand (the reference's green-only-at-water rule). */
+  private placeOasisFlora(map: TileMap) {
+    const rnd = rng(707);
+    for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
+      if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3.5)) continue;
+      const d = -this.oasisField(tx + 0.5, ty + 0.5) * ((OASIS.rx + OASIS.ry) / 2);   // ~tiles OUTSIDE the water
+      if (d < 0.5 || d > 6) continue;
+      const dens = 1 - smoothstep(0.5, 6, d);
+      const r = rnd();
+      if (r < dens * 0.22) {                                                          // acacia (signature oasis tree), varied size
+        const col = 1 + Math.floor(rnd() * 2), sc = 0.65 + rnd() * 0.45;
+        map.addProp({ sheet: "acacia", fw: 80, fh: 64, col, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 7 * sc });
+      } else if (r < dens * 0.5) {                                                    // green bushes (secondary)
+        map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: DBUSH[0], row: DBUSH[1], x: tx * T + rnd() * T, y: ty * T + T, solidR: 3 });
+      } else if (r < dens * 0.72) {                                                   // dry reeds/ferns at the water (tertiary)
+        map.addProp({ sheet: "d_fern", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });
+      }
+    }
+  }
+
+  /** ANCHOR 2 — Sandreach: an adobe caravan hamlet clustered around a paved well plaza. */
+  private placeHamlet(map: TileMap) {
+    const rnd = rng(808);
+    // paved plaza (worn sandstone) — a small square; the well at its heart
+    for (let ty = DPLAZA.y - 1; ty <= DPLAZA.y + 1; ty++) for (let tx = DPLAZA.x - 1; tx <= DPLAZA.x + 2; tx++)
+      if (this.insideEdge(tx, ty, 3)) map.set(tx, ty, "path");
+    map.addProp({ sheet: "well", fw: 32, fh: 48, col: 0, row: 0, x: DPLAZA.x * T + T / 2, y: DPLAZA.y * T + T, solidR: 9 });
+    const house = (sheet: string, w: number, h: number, tx: number, ty: number, sc = 1) =>
+      map.addProp({ sheet, fw: w, fh: h, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, solidR: w * sc * 0.3 });
+    // clustered around the plaza, staggered, varied sizes (a big caravanserai + smaller huts)
+    house("d_house2", 96, 128, HAMLET.x - 2, HAMLET.y - 3, 0.8);
+    house("d_house1", 80, 80, HAMLET.x + 5, HAMLET.y - 2, 1);
+    house("d_house3", 128, 112, HAMLET.x - 3, HAMLET.y + 5, 0.72);
+    house("d_house1", 80, 80, HAMLET.x + 6, HAMLET.y + 4, 0.9);
+    map.addProp({ sheet: "benches", fw: 32, fh: 32, col: 0, row: 0, x: (DPLAZA.x - 2) * T, y: (DPLAZA.y + 2) * T });
+    map.addProp({ sheet: "d_bones", fw: 32, fh: 32, col: 0, row: 0, x: (HAMLET.x + 8) * T, y: (HAMLET.y + 2) * T });   // a sun-bleached skull, storytelling clutter
+    this.labels.push({ x: HAMLET.x * T, y: (HAMLET.y - 6) * T, text: "Sandreach" });
+  }
+
+  /** ANCHOR 3 — the nomad campfire commons (an animated fire + a ring of rock seats). */
+  private placeDuneCamp(map: TileMap) {
+    const cx = DCAMP.x, cy = DCAMP.y;
+    this.addCritter(map, "d_fire", 16, 16, 0, 0, cx, cy, { frames: 6, fps: 8, bob: 0, wr: 0 });   // flickering campfire (6-frame anim)
+    map.setSolid(cx, cy, true);
+    for (const [dx, dy] of [[-2, -1], [2, -1], [-2, 1], [2, 1], [0, -2]] as [number, number][])
+      map.addProp({ sheet: "d_rocks", fw: 16, fh: 16, col: Math.floor(hash2(cx + dx, cy + dy) * 6), row: 0, x: (cx + dx) * T + T / 2, y: (cy + dy) * T + T, solidR: 4 });
+    this.labels.push({ x: cx * T + T / 2, y: (cy - 3) * T, text: "The Ember Camp" });
+  }
+
+  /** FILL — sparse desert flora/props in clusters of threes, thinning, clear of the oasis. */
+  private placeDuneScatter(map: TileMap) {
+    const rnd = rng(909);
+    const clumps: [number, number, "cactus" | "dead" | "rock" | "bones"][] = [
+      [40, 36, "cactus"], [16, 30, "cactus"], [45, 40, "dead"], [14, 40, "rock"],
+      [38, 14, "cactus"], [51, 33, "rock"], [22, 44, "dead"], [30, 12, "bones"], [34, 46, "cactus"],
+    ];
+    for (const [cx, cy, kind] of clumps) {
+      if (kind === "cactus") this.dCluster(map, rnd, cx, cy, 3, 3, (tx, ty) => {
+        const col = Math.floor(rnd() * 5) * 2, row = Math.floor(rnd() * 4) * 3;       // cacti are 32×48 blocks (even col, row ×3)
+        map.addProp({ sheet: "cactus", fw: 32, fh: 48, col, row, x: tx * T + T / 2, y: ty * T + T, overhead: true, solidR: 5 });
+      });
+      else if (kind === "dead") this.dCluster(map, rnd, cx, cy, 3, 2, (tx, ty) => {
+        if (rnd() < 0.5) map.addProp({ sheet: "dead_tree", fw: 48, fh: 64, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T, overhead: true, solidR: 5 });
+        else map.addProp({ sheet: "dead_bush", fw: 16, fh: 16, col: Math.floor(rnd() * 2), row: 0, x: tx * T + rnd() * T, y: ty * T + T, solidR: 2 });
+      });
+      else if (kind === "rock") this.dCluster(map, rnd, cx, cy, 2, 3, (tx, ty) =>
+        map.addProp({ sheet: "d_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 12), row: Math.floor(rnd() * 2), x: tx * T + rnd() * T, y: ty * T + T, solidR: 3 }));
+      else this.dCluster(map, rnd, cx, cy, 2, 1, (tx, ty) =>
+        map.addProp({ sheet: "d_bones", fw: 32, fh: 32, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T }));
+    }
+  }
+
+  /** FILL — a SPARSE dry ground carpet (fern tufts + pebbles), clustered in waves, off the oasis. */
+  private scatterDuneDetail(map: TileMap) {
+    const rnd = rng(1010);
+    for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
+      if (!this.dCanPlace(map, tx, ty, 3.5, 2.6)) continue;
+      const clump = Math.sin(tx * 0.4 + 0.5) * Math.sin(ty * 0.38 - 0.6) * Math.sin((tx + ty) * 0.22);
+      const p = 0.02 + Math.max(0, clump) * 0.16;                                     // sparse (desert)
+      if (rnd() > p) continue;
+      if (this.nearBigProp(map, tx * T + T / 2, ty * T + T, 12)) continue;
+      if (rnd() < 0.5) map.addProp({ sheet: "d_fern", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });
+      else map.addProp({ sheet: "d_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 12), row: Math.floor(rnd() * 2), x: tx * T + rnd() * T, y: ty * T + T });
+    }
+  }
+
+  /** The pack's flat sand tile → a subtly TEXTURED sand tile (grain), swapped into the atlas so
+   *  any revealed ground reads as real desert sand (the opaque procedural sand paints over it). */
+  private buildSandTexture() {
+    const S = 16, cv = document.createElement("canvas"); cv.width = S; cv.height = S;
+    const g = cv.getContext("2d")!; const rnd = rng(5252);
+    g.fillStyle = "#e2ca94"; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 34; i++) {
+      const x = Math.floor(rnd() * S), y = Math.floor(rnd() * S), r = rnd();
+      g.fillStyle = r < 0.5 ? "rgba(196,165,112,0.5)" : r < 0.8 ? "rgba(236,214,160,0.55)" : "rgba(176,146,100,0.5)";
+      g.fillRect(x, y, 1, 1);
+    }
+    (this.atlas.get("grass") as unknown as { img: HTMLCanvasElement }).img = cv;
+  }
+
+  /** Juice the oasis surface (bright water): sun sparkles + concentric ripple rings. */
+  private drawOasisJuice(c: CanvasRenderingContext2D, cam: Camera) {
+    if (this.reduce) return;
+    const inO = (wx: number, wy: number) => this.oasisField(wx / T, wy / T) > 0.25;
+    const cx = OASIS.cx * T, cy = OASIS.cy * T, RX = OASIS.rx * T, RY = OASIS.ry * T;
+    c.save(); c.globalCompositeOperation = "lighter";
+    for (let i = 0; i < 14; i++) {
+      const wx = cx + Math.sin(i * 2.1) * RX * 0.72, wy = cy + Math.cos(i * 1.3) * RY * 0.72;
+      if (!inO(wx, wy)) continue;
+      const tw = 0.5 + 0.5 * Math.sin(this.tsec * 2 + i * 1.7);
+      const [sx, sy] = this.ren.w2s(cam, wx, wy), s = Math.max(1, cam.scale * 0.6);
+      c.globalAlpha = tw * 0.9; c.fillStyle = "#ecffff"; c.fillRect(sx, sy, s, s);
+    }
+    const rings: [number, number][] = [[8, -6], [-10, 4], [2, 10]];
+    for (let i = 0; i < rings.length; i++) {
+      const ph = (this.tsec * 0.32 + i * 0.4) % 1, wx = cx + rings[i][0], wy = cy + rings[i][1];
+      if (!inO(wx, wy)) continue;
+      const [sx, sy] = this.ren.w2s(cam, wx, wy);
+      c.globalAlpha = (1 - ph) * 0.24; c.strokeStyle = "#cfefff"; c.lineWidth = Math.max(1, cam.scale * 0.5);
+      c.beginPath(); c.arc(sx, sy, ph * 11 * cam.scale, 0, Math.PI * 2); c.stroke();
+    }
+    c.restore(); c.globalAlpha = 1;
   }
 
   /** ANCHOR 2 — Shroom Hollow: a clustered hamlet around a plaza well (staggered, varied sizes). */
@@ -575,9 +796,16 @@ class TileLabEngine extends RetroEngine {
       const n = hash2(px, py);
       let col: number[], a = 255;
       // clean grass → sand → foam → shallow → deep bands (no grass/sand blending)
-      if (g > 1.55) {                                       // grass — soft, cohesive biome tone flows over the textured tiles (ALL rings)
-        const t = 0.5 + 0.5 * (this.meadow(tx, ty) * 0.78 + Math.sin(tx * 0.9 + 1) * Math.sin(ty * 0.8) * 0.22);
-        col = mix3(GDARK, GLITE, Math.max(0, Math.min(1, t))); a = 58;
+      if (g > 1.55) {                                       // inland ground
+        if (this.biome === "desert") {                      // OPAQUE warm sand (continuous with the beach) + dune-ridge contours
+          const grain = (n - 0.5) * 22, base = mix3(GDARK, GLITE, 0.5 + 0.5 * this.meadow(tx, ty));
+          const ridge = Math.sin(ty * 0.5 + Math.sin(tx * 0.12) * 3 + tx * 0.045);   // wavy dune ridges (topographic)
+          const dk = Math.max(0, ridge) * 0.1;
+          col = [base[0] * (1 - dk) + grain, base[1] * (1 - dk) + grain, base[2] * (1 - dk * 0.7) + grain * 0.8]; a = 255;
+        } else {                                            // grass — soft, cohesive biome tone flows over the textured tiles
+          const t = 0.5 + 0.5 * (this.meadow(tx, ty) * 0.78 + Math.sin(tx * 0.9 + 1) * Math.sin(ty * 0.8) * 0.22);
+          col = mix3(GDARK, GLITE, Math.max(0, Math.min(1, t))); a = 58;
+        }
       } else if (g > 0.1) {                                 // sand — grainy, easing into the grass at the top (edge colour-match)
         const grain = (n - 0.5) * 40, base = mix3(SANDD, SAND, smoothstep(0.1, 1.2, g));
         col = [base[0] + grain, base[1] + grain, base[2] + grain * 0.8]; a = 255;
@@ -600,6 +828,21 @@ class TileLabEngine extends RetroEngine {
           const ld = this.laneDist(tx, ty);                  // the footpath (leading line: plaza → pond)
           if (ld < 1.7) { const grain = (n - 0.5) * 16, worn = 1 - smoothstep(0.5, 1.7, ld); col = mix3(col, [PATHC[0] + grain, PATHC[1] + grain, PATHC[2] + grain], worn * 0.82); }
         }
+      }
+      // the OASIS — bright tropical blue water painted into the sand (Path A), + a worn sand track
+      if (this.biome === "desert" && g > 0.3) {
+        const ODEEP = [26, 104, 150], OSHAL = [92, 190, 214], OWL = [198, 236, 236];
+        const od = this.oasisField(tx, ty) * ((OASIS.rx + OASIS.ry) / 2);   // ~tiles inside the oasis
+        if (od > -0.22) {
+          if (od > 1.2) { const wv = Math.sin(od * 2.2 + tx * 0.5 + ty * 0.35) * 7 + (n - 0.5) * 8; col = [ODEEP[0] + wv, ODEEP[1] + wv, ODEEP[2] + wv]; }
+          else if (od > 0.28) { const b = mix3(OWL, OSHAL, smoothstep(-0.1, 1.2, od)); const r = (n - 0.5) * 12; col = [b[0] + r, b[1] + r, b[2] + r * 0.7]; }
+          else col = OWL;                                    // bright waterline rim
+          a = 255;
+        } else if (od > -2.4) {                              // a damp green fringe easing into the sand (the halo's foot)
+          const k = smoothstep(-2.4, -0.2, od) * 0.4; col = mix3(col, [150, 178, 120], k);
+        }
+        const ld = this.dLaneDist(tx, ty);                   // worn sand track: plaza → oasis
+        if (od < -0.5 && ld < 1.6) { const grain = (n - 0.5) * 14, worn = 1 - smoothstep(0.5, 1.6, ld); col = mix3(col, [180, 152, 104 + grain], worn * 0.55); }
       }
       const i = (py * cw + px) * 4;
       d[i] = clamp255(col[0]); d[i + 1] = clamp255(col[1]); d[i + 2] = clamp255(col[2]); d[i + 3] = a;
@@ -844,6 +1087,7 @@ class TileLabEngine extends RetroEngine {
     if (this.hasFountain) this.drawLogo(b);   // the spinning CIRQLBACK emblem over the wellspring
     this.drawLight(b, this.cam);
     if (this.biome === "shroom") { this.drawPondJuice(b, this.cam); this.drawCommons(b, this.cam); }   // ripples/fish + the bonfire
+    else if (this.biome === "desert") this.drawOasisJuice(b, this.cam);                                // oasis sparkles/ripples (campfire = an animated sprite)
   }
 
   /** The pack's grass "middle" tile is a FLAT colour, so revealed ground reads as a flat fill.
@@ -946,6 +1190,7 @@ class TileLabEngine extends RetroEngine {
     g.fillStyle = "rgba(6,12,22,.55)"; g.fillRect(10, 10, 300, 58);
     g.fillStyle = "#bfefff"; g.font = "12px monospace"; g.textBaseline = "middle";
     const title = this.biome === "shroom" ? "TILE LAB · Shroomwood (fungal ring)"
+      : this.biome === "desert" ? "TILE LAB · The Dunes (desert oasis)"
       : this.blank ? "TILE LAB · CIRQLSPACE (your home ring)" : "TILE LAB · Cloverfield (meadow ring)";
     g.fillText(title, 20, 24);
     g.fillStyle = "#9fd6ff";
@@ -1128,7 +1373,10 @@ export default function TileLabPage() {
     // /tile-lab?biome=shroom (or ?shroom) → the ShroomLands biome ring "The Shroomwood"
     const q = new URLSearchParams(window.location.search);
     const blank = q.has("cirqlspace") || q.has("blank");
-    const biome: Biome = q.get("biome") === "shroom" || q.has("shroom") ? "shroom" : "meadow";
+    const bq = q.get("biome");
+    const biome: Biome = bq === "shroom" || q.has("shroom") ? "shroom"
+      : bq === "desert" || q.has("desert") || q.has("dunes") ? "desert"
+      : "meadow";
     const eng = new TileLabEngine(canvas.current, {}, blank, biome);
     engRef.current = eng;
     eng.onProximity = (s) => setNear(s);

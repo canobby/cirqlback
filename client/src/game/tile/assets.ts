@@ -87,6 +87,22 @@ export const CF_SHEETS: Record<string, string> = {
   shroomling2: `${CF}/shroom/shroomling2.png`,        // 96×416 — purple shroomling @32
   shroom_rocks: `${CF}/shroom/shroom_rocks.png`,      // 208×192 — mossy rocks @16
   snail: `${CF}/shroom/snail.png`,                    // 16×16 tiny snail
+  // Desert DLC — biome ring "The Dunes" (an oasis in warm sand)
+  d_house1: `${CF}/desert/house1.png`,   // 80×80 adobe house
+  d_house2: `${CF}/desert/house2.png`,   // 96×128
+  d_house3: `${CF}/desert/house3.png`,   // 128×112
+  cactus: `${CF}/desert/cactus.png`,     // 224×256 — cactus variety (32×48 cells)
+  acacia: `${CF}/desert/acacia.png`,     // 240×64 — flat-top acacia (80×64 cells, col 1-2)
+  dead_tree: `${CF}/desert/dead_tree.png`,   // 48×64
+  dead_bush: `${CF}/desert/dead_bush.png`,   // 32×16 (2 frames)
+  d_rocks: `${CF}/desert/rocks.png`,     // 192×32 @16
+  d_fern: `${CF}/desert/fern.png`,       // 16×16 dry tuft
+  d_fire: `${CF}/desert/campfire.png`,   // 96×16 — 6-frame animated campfire
+  d_bones: `${CF}/desert/bones.png`,     // 160×128
+  d_npc: `${CF}/desert/npc.png`,         // 192×320 @64
+  d_trader: `${CF}/desert/trader.png`,   // 192×32
+  camel: `${CF}/desert/camel.png`,       // 480×288 camel anim
+  scarab: `${CF}/desert/scarab.png`,     // 64×48 @16
   // light layer (P3)
   waterfall1: `${CF}/waterfall/Waterfall_1.png`,
   waterfall2: `${CF}/waterfall/Waterfall_2.png`,

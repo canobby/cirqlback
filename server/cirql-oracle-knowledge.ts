@@ -18,10 +18,10 @@ export type OracleSpeaker =
   | { kind: "oracle" }
   | { kind: "npc"; ring: RingId; name: string; role: string };
 
-export type RingId = "meadow" | "shroom" | "cirqlspace";
+export type RingId = "meadow" | "shroom" | "desert" | "cirqlspace";
 
 export function isRingId(v: unknown): v is RingId {
-  return v === "meadow" || v === "shroom" || v === "cirqlspace";
+  return v === "meadow" || v === "shroom" || v === "desert" || v === "cirqlspace";
 }
 
 // ---- the ring registry: what each island IS, its cast, charm, and rumours ----
@@ -60,6 +60,18 @@ const RINGS: Record<RingId, RingLore> = {
     rumours: [
       "Travellers arrive by the southern dock, muttering about a bright green meadow ring closer to the centre.",
       "The elders say the fountain in the Town can answer questions no forager here could.",
+    ],
+  },
+  desert: {
+    id: "desert",
+    island: "The Dunes",
+    route: "/dunes  (or /tile-lab?biome=desert)",
+    what: "A warm desert ring of rolling sand around a bright blue OASIS called Sunmere, ringed by a green halo of acacia and palms. An adobe caravan town, Sandreach, clusters near a paved well plaza; a nomad campfire (the Ember Camp) burns out on the open sand; and a rocky sandstone MESA rises to the northeast with a lookout on top and a cave at its foot. Being a wild island, it has NO CIRQL Fountain — only the Town does.",
+    cast: "Sahra, the well-keeper at the plaza; Kesh, the camel-herder by the oasis; Tamm, the wayfarer at the campfire. Camels rest in the shade and scarab beetles cross the dunes.",
+    charm: "The bright oasis against endless sand, the green acacia halo, camels dozing, the sandstone mesa catching the light, and the cave beckoning at its base.",
+    rumours: [
+      "Caravans passing through speak of a green meadow ring and a glowing mushroom wood nearer the world's heart.",
+      "The well-keeper says the deep questions belong to the CIRQL Fountain in the Town, not to a desert well.",
     ],
   },
   cirqlspace: {
