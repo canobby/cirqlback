@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -233,6 +233,10 @@ function Router() {
           <Route path="/cirql">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CirqlPage /></Suspense>}</Route>
           <Route path="/music-test">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><MusicTestPage /></Suspense>}</Route>
           <Route path="/tile-lab">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><TileLabPage /></Suspense>}</Route>
+          {/* easy public shortcuts to the new tile-world (no login) */}
+          <Route path="/cirqlsphere">{() => <Redirect to="/tile-lab?biome=shroom" />}</Route>
+          <Route path="/world">{() => <Redirect to="/tile-lab?biome=shroom" />}</Route>
+          <Route path="/shroomwood">{() => <Redirect to="/tile-lab?biome=shroom" />}</Route>
           <Route path="/change-password">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><ChangePasswordPage /></Suspense>}</Route>
           <Route path="/play/harvest-moonlight">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><HarvestMoonlightPage /></Suspense>}</Route>
           <Route path="/play/green-thumb">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><GreenThumbPage /></Suspense>}</Route>
