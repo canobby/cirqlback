@@ -124,11 +124,10 @@ const PALETTES: Record<Biome, BiomePalette> = {
   // Water matches the SEA that rings the island, so the oasis reads as a piece of the same water
   // (cohesion), and gets the beach's foam→shallow→deep edge (thinner) so it reads as living water.
   desert: {
-    // BRACKET the packed dark-sand tone (~[169,118,72]) so the dune WASH shades ± around it and does
-    // NOT lighten the dominant ground away from the PATH's tone — the path is that same packed sand, so
-    // matching the dominant ground to it makes the path blend (owner: "use the pathway background as the
-    // dominant ground colour"). The lighter sand is now the accent PATCHES (sandRegion), not dominant.
-    glite: [186, 134, 86], gdark: [150, 104, 62], grassOpaque: false,
+    // BRACKET the LIGHTER sand tone (~[215,167,106] harmonised) — now the dominant floor — so the dune
+    // wash shades ± around it (not toward pale or dark). The path's surface is this same light tone, so
+    // the path blends into the dominant ground; the DARKER sand is the accent patches (sandRegion).
+    glite: [224, 178, 116], gdark: [198, 150, 96], grassOpaque: false,
     water: { deep: [26, 86, 132], shal: [118, 200, 228], foam: [212, 234, 240], wet: [150, 178, 120] },
   },
 };
@@ -415,7 +414,7 @@ class TileLabEngine extends RetroEngine {
     const rnd = rng(555);
     const O = OASIS;
     // TWO pink flamingos drifting on the pool (owner swapped the duck for a second flamingo)
-    this.addCritter(map, "flamingo", 32, 32, 0, 6, O.cx + 2, O.cy - 2, { water: true, wr: 1.2, sp: 4, bob: 0.9 });   // north bay
+    this.addCritter(map, "flamingo", 32, 32, 0, 6, O.cx + 1, O.cy - 1, { water: true, wr: 1.0, sp: 4, bob: 0.9 });   // nearer the centre (off the edge)
     this.addCritter(map, "flamingo", 32, 32, 0, 6, O.cx, O.cy, { water: true, wr: 0.9, sp: 3, bob: 0.8 });   // a water bird — floats in the MIDDLE of the pool (swan sheet, recoloured pink)
     // a couple of LONE butterflies (individuals, well apart — never a clump) + a single bee
     // butterfly.png is an 8×8 sheet: 2 cols = flap frames, 8 rows = colours. Draw ONE 8×8 butterfly
@@ -645,10 +644,10 @@ class TileLabEngine extends RetroEngine {
     const id = cx.getImageData(0, 0, w, h), d = id.data;
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] === 0) continue;
-      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;                  // recolour so the path's BACKGROUND tone == the sand-FLOOR tone
-      // (measured ground ~[194,133,76]); the path was reading ~40 darker → a dark strip. Now its dominant
-      // background matches the floor, so it blends; the faint stone texture is the only "path" that reads.
-      d[i] = clamp255(lum * 0.30 + 155); d[i + 1] = clamp255(lum * 0.26 + 104); d[i + 2] = clamp255(lum * 0.20 + 56);
+      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;                  // FLATTEN the cobble to a smooth packed-sand path (kill the grout
+      // lines that read as "defined cobble") in a tight range just BELOW the light floor tone (~[215,167,106])
+      // so it's a subtle worn trail of the same sand, blending into the dominant ground — no paved look.
+      d[i] = clamp255(lum * 0.16 + 170); d[i + 1] = clamp255(lum * 0.15 + 128); d[i + 2] = clamp255(lum * 0.12 + 76);
     }
     cx.putImageData(id, 0, 0);
     if (!this.atlas.has("sandpath")) this.atlas.add("sandpath", "");
@@ -714,11 +713,11 @@ class TileLabEngine extends RetroEngine {
       return cv;
     };
     const reg = (name: string, cv: HTMLCanvasElement) => { if (!this.atlas.has(name)) this.atlas.add(name, ""); (this.atlas.get(name) as unknown as { img: HTMLCanvasElement }).img = cv; };
-    reg("grass", cell(11, 1));            // base solid sand (dark tone) — the land fill
-    reg("sand_v1", cell(11, 1, 3, 5));    // sand + a real wind-ripple decal
-    reg("sand_v3", cell(11, 1, 6, 7));    // sand + a different real ripple
-    reg("sandlt", cell(11, 13));          // the LIGHTER sand tone — sun-bleached/dry patches (used by REGION, not per-tile)
-    reg("sandlt_rip", cell(11, 13, 3, 5)); // light sand + a ripple
+    reg("grass", cell(11, 13));           // DOMINANT floor = the LIGHTER sand tone (matches the path's surface — owner)
+    reg("sand_v1", cell(11, 13, 3, 5));   // light sand + a real wind-ripple decal
+    reg("sand_v3", cell(11, 13, 6, 7));   // light sand + a different real ripple
+    reg("sanddk", cell(11, 1));           // the DARKER sand tone — now the REGION patches (damp/shaded ground)
+    reg("sanddk_rip", cell(11, 1, 3, 5)); // dark sand + a ripple
   }
 
   /** REGION material patches (owner rule + SLYNYRD "regions with intent, never one tile"): large soft
@@ -726,7 +725,7 @@ class TileLabEngine extends RetroEngine {
    *  floor varies in patches — never a per-tile checkerboard. Returns a light tile inside a patch, else
    *  undefined (→ the dark-sand base + ripple variants). Uses the asset's own two sand tones. */
   private sandRegion(tx: number, ty: number): string | undefined {
-    if (this.meadow(tx * 0.42 + 30, ty * 0.39 - 10) > 0.42) return hash2(tx, ty) < 0.82 ? "sandlt" : "sandlt_rip";
+    if (this.meadow(tx * 0.42 + 30, ty * 0.39 - 10) > 0.42) return hash2(tx, ty) < 0.82 ? "sanddk" : "sanddk_rip";
     return undefined;
   }
 
