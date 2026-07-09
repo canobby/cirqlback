@@ -67,7 +67,7 @@ const MESA = { x0: 44, y0: 15, x1: 54, y1: 21, faceH: 3, ramps: [47, 51] };   //
 // purposeful object stays readable (the "don't obscure the firepit" rule — see the rulebook).
 const DNPC: Record<string, [number, number]> = {
   sahra: [DPLAZA.x + 3, DPLAZA.y],                 // well-keeper — east of the plaza well, not on it
-  kesh: [OASIS.cx + 5, OASIS.cy + 2],              // camel-herder — dry sand SE of the oasis, off the water
+  kesh: [OASIS.cx + 7, OASIS.cy + 3],              // camel-herder — well onto dry sand SE of the oasis (off the water)
   tamm: [DCAMP.x + 3, DCAMP.y],                    // wayfarer — beside the campfire seat-ring, fire left clear
 };
 // sanctumpixel desert props are single-image PNGs of varied size — dims hardcoded (props are
@@ -408,22 +408,27 @@ class TileLabEngine extends RetroEngine {
     }
   }
 
-  /** ANCHOR 1 dressing — a lush green HALO ringing the oasis (acacia signature + bushes + reeds),
-   *  dense at the water, thinning fast into the sand (the reference's green-only-at-water rule). */
+  /** ANCHOR 1 dressing — a lush green HALO ringing the oasis, pulled BACK from the water so no
+   *  canopy overhangs it: only reeds/ferns hug the waterline; bushes sit ≥2.2 tiles back, and the
+   *  big acacia trees ≥3.4 tiles back (their wide canopies can't reach the water). Rules §5f/§6c. */
   private placeOasisFlora(map: TileMap) {
     const rnd = rng(707);
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
       if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3.5)) continue;
       const d = -this.oasisField(tx + 0.5, ty + 0.5) * ((OASIS.rx + OASIS.ry) / 2);   // ~tiles OUTSIDE the water
-      if (d < 0.5 || d > 6) continue;
-      const dens = 1 - smoothstep(0.5, 6, d);
+      if (d < 0.4 || d > 6.5) continue;
       const r = rnd();
-      if (r < dens * 0.22) {                                                          // acacia (signature oasis tree), varied size
-        const col = 1 + Math.floor(rnd() * 2), sc = 0.65 + rnd() * 0.45;
+      if (d < 2.2) {                                                                  // WATER'S EDGE — reeds/ferns only (intended at the water)
+        if (r < 0.3) map.addProp({ sheet: "d_fern", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });
+        continue;
+      }
+      const dens = 1 - smoothstep(2.2, 6.5, d);                                       // the green halo, thinning outward
+      if (d >= 3.4 && r < dens * 0.2) {                                               // acacia (signature) — kept well back
+        const col = 1 + Math.floor(rnd() * 2), sc = 0.6 + rnd() * 0.3;
         map.addProp({ sheet: "acacia", fw: 80, fh: 64, col, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 7 * sc });
       } else if (r < dens * 0.5) {                                                    // green bushes (secondary)
         map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: DBUSH[0], row: DBUSH[1], x: tx * T + rnd() * T, y: ty * T + T, solidR: 3 });
-      } else if (r < dens * 0.72) {                                                   // dry reeds/ferns at the water (tertiary)
+      } else if (r < dens * 0.64) {                                                   // some ferns in the halo too
         map.addProp({ sheet: "d_fern", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });
       }
     }
