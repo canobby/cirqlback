@@ -119,14 +119,23 @@ class TileLabEngine extends RetroEngine {
   private bpal: BiomePalette = PALETTES.meadow;
   private glowSpots: { x: number; y: number; color: string; r: number }[] = [];   // per-object neon glow (mushrooms)
   private rx = RX; private ry = RY;                 // ring radii — CIRQLSPACE starts ~2/3, expands later
-  private labels: { x: number; y: number; text: string }[] = [];   // place/NPC name tags (world px)
+  private labels: { x: number; y: number; text: string; cave?: boolean }[] = [];   // place/NPC name tags (world px; cave-only tags flagged)
   private critters: Critter[] = [];                                // animals that frame-animate + wander
 
   // ---- in-world talk (the Fountain Oracle + ring NPCs) ----
   private interactables: Interactable[] = [];        // fountain + villagers you can talk to
   private nearInter: Interactable | null = null;     // the one currently in reach (drives the prompt)
   private chatPaused = false;                         // frozen while a conversation is open
-  private caveMouth: { x: number; y: number } | null = null;   // the mesa cave entrance (tiles) → the underground level (Stage 3)
+  private caveMouth: { x: number; y: number } | null = null;   // the mesa cave entrance (tiles) → the underground level
+  // ---- the underground level (a sub-map reached through the cave mouth) ----
+  private surfaceMap: TileMap | null = null;         // stashed while underground (this.map becomes the cave)
+  private caveMap: TileMap | null = null;            // the underground room (built once, on first entry)
+  private inCave = false;
+  private caveReturn = { x: 0, y: 0 };               // where to drop back on the surface (world px)
+  private caveExit: { x: number; y: number } | null = null;   // the up-ladder tile in the cave
+  private caveGem: { x: number; y: number } | null = null;    // the glowing focal gem (world px)
+  private fadeT = 0;                                 // quick black fade on a level transition
+  private portalArmed = true;                        // must step clear of a portal before it fires again (no ping-pong)
   /** Fired when the nearest talkable target changes (null = none in reach). Page shows a Talk prompt. */
   public onProximity: ((s: Speaker | null) => void) | null = null;
   /** Fired when the player chooses to talk (E / Space, or the Talk button). Page opens the chat. */
@@ -548,6 +557,121 @@ class TileLabEngine extends RetroEngine {
     };
     for (const p of this.map.props) if (p.solidR && p.solidR >= 4) shadow(p.x, p.y, Math.min(p.solidR * 1.25, 20));
     shadow(this.player.x, this.player.y, 6);
+    c.restore();
+  }
+
+  // ---- the underground CAVE level (a sub-map through the mesa's cave mouth) ----
+  /** Build the cave room once: a rounded rock chamber (floor walkable, rock solid), an up-ladder
+   *  exit, support pillars, and a glowing focal gem. Returns the entrance spawn (world px). */
+  private buildCave(): { x: number; y: number } {
+    const CW = 23, CH = 16;
+    const map = new TileMap(CW, CH, T, "rock");
+    map.solidTerrain.add("rock");
+    const cx = CW / 2, cy = CH / 2;
+    for (let ty = 0; ty < CH; ty++) for (let tx = 0; tx < CW; tx++) {
+      const dx = (tx + 0.5 - cx) / (cx - 2.2), dy = (ty + 0.5 - cy) / (cy - 2);
+      if (dx * dx + dy * dy < 1) { map.set(tx, ty, "floor"); map.setSolid(tx, ty, false); }   // rounded chamber
+    }
+    const exitX = Math.round(cx), exitY = CH - 3;
+    map.set(exitX, exitY, "floor"); map.setSolid(exitX, exitY, false);
+    map.addProp({ sheet: "cave_ladder", fw: 16, fh: 16, col: 0, row: 0, x: exitX * T + T / 2, y: exitY * T + T });
+    this.caveExit = { x: exitX, y: exitY };
+    // support pillars flanking the chamber
+    map.addProp({ sheet: "cave_support", fw: 80, fh: 96, col: 0, row: 0, x: 4 * T, y: (cy + 1) * T, scale: 0.5, solidR: 7 });
+    map.addProp({ sheet: "cave_support", fw: 80, fh: 96, col: 0, row: 0, x: (CW - 4) * T, y: (cy + 1) * T, scale: 0.5, solidR: 7 });
+    // the glowing gem — the cave's focal (a shard of light, drawn procedurally)
+    this.caveGem = { x: exitX * T + T / 2, y: 3.5 * T };
+    this.labels.push({ x: this.caveGem.x, y: this.caveGem.y - 22, text: "A Glimmer", cave: true });
+    this.labels.push({ x: this.caveExit.x * T + T / 2, y: (this.caveExit.y - 1.4) * T, text: "↑ Climb out", cave: true });
+    this.caveMap = map;
+    return { x: exitX * T + T / 2, y: (exitY - 1) * T };   // spawn just above the ladder
+  }
+
+  /** Step from the surface down into the cave (through the mesa's mouth). */
+  private enterCave() {
+    const spawn = this.caveMap ? { x: this.caveExit!.x * T + T / 2, y: (this.caveExit!.y - 1) * T } : this.buildCave();
+    this.caveReturn = { x: this.caveMouth!.x * T + T / 2, y: (this.caveMouth!.y + 3) * T };   // drop back below the mouth (clear of it)
+    this.surfaceMap = this.map; this.map = this.caveMap!;
+    this.player.x = spawn.x; this.player.y = spawn.y;
+    this.cam.x = this.player.x; this.cam.y = this.player.y;
+    this.inCave = true; this.fadeT = 1; this.portalArmed = false;
+    if (this.nearInter) { this.nearInter = null; this.onProximity?.(null); }
+  }
+  /** Climb the ladder back up to the surface. */
+  private exitCave() {
+    this.map = this.surfaceMap!; this.inCave = false; this.fadeT = 1; this.portalArmed = false;
+    this.player.x = this.caveReturn.x; this.player.y = this.caveReturn.y;
+    this.cam.x = this.player.x; this.cam.y = this.player.y;
+  }
+
+  /** Render the underground chamber: dark cave floor + rock walls, props, and a lantern-lit
+   *  darkness so you explore by the light you carry (on-theme: you're a light-bearer). */
+  private renderCave() {
+    const b = this.b, bw = b.canvas.width, bh = b.canvas.height, cam = this.cam;
+    b.imageSmoothingEnabled = false;
+    b.fillStyle = "#080610"; b.fillRect(0, 0, bw, bh);
+    cam.vw = bw; cam.vh = bh; cam.scale = this.zoom;
+    const floor = this.atlas.get("cave_floor_mid"), d = Math.ceil(T * cam.scale);
+    const near = (tx: number, ty: number) => this.map.get(tx, ty) === "floor"
+      || this.map.get(tx - 1, ty) === "floor" || this.map.get(tx + 1, ty) === "floor"
+      || this.map.get(tx, ty - 1) === "floor" || this.map.get(tx, ty + 1) === "floor";
+    for (let ty = 0; ty < this.map.h; ty++) for (let tx = 0; tx < this.map.w; tx++) {
+      const [sx, sy] = this.ren.w2s(cam, tx * T, ty * T);
+      if (sx < -d || sy < -d || sx > bw || sy > bh) continue;
+      if (this.map.get(tx, ty) === "floor") { floor.draw(b, 0, 0, T, T, Math.round(sx), Math.round(sy), d, d); }
+      else if (near(tx, ty)) {                                   // a dark rock wall bordering the floor
+        b.fillStyle = "#2a1d18"; b.fillRect(Math.round(sx), Math.round(sy), d, d);
+        if (this.map.get(tx, ty + 1) === "floor") { b.fillStyle = "#3c2a20"; b.fillRect(Math.round(sx), Math.round(sy + d - Math.max(2, cam.scale * 2)), d, Math.max(2, cam.scale * 2)); }
+      }
+    }
+    // the glowing gem (procedural crystal)
+    if (this.caveGem) this.drawGem(b, cam, this.caveGem.x, this.caveGem.y);
+    // props + player, depth-sorted
+    const [psx, psy] = this.ren.w2s(cam, this.player.x, this.player.y);
+    const playerItem: Drawable = { y: this.player.y, render: (c) => this.player.draw(c, this.atlas.get("player"), psx, psy, cam.scale) };
+    this.drawShadows(b, cam);
+    this.ren.drawEntities(b, this.map, cam, [playerItem]);
+    this.drawCaveLight(b, cam);
+  }
+
+  /** A small faceted crystal that pulses with light. */
+  private drawGem(c: CanvasRenderingContext2D, cam: Camera, wx: number, wy: number) {
+    const [sx, sy] = this.ren.w2s(cam, wx, wy), s = cam.scale, pulse = 0.7 + 0.3 * Math.sin(this.tsec * 2.4);
+    c.save();
+    c.fillStyle = "#bff4ff"; c.beginPath();
+    c.moveTo(sx, sy - 8 * s); c.lineTo(sx + 5 * s, sy - 1 * s); c.lineTo(sx + 2 * s, sy + 6 * s); c.lineTo(sx - 2 * s, sy + 6 * s); c.lineTo(sx - 5 * s, sy - 1 * s); c.closePath(); c.fill();
+    c.fillStyle = "#6cd6f0"; c.globalAlpha = 0.8;
+    c.beginPath(); c.moveTo(sx, sy - 8 * s); c.lineTo(sx + 5 * s, sy - 1 * s); c.lineTo(sx, sy + 1 * s); c.closePath(); c.fill();
+    c.globalAlpha = 1; c.globalCompositeOperation = "lighter";
+    const r = 26 * s * pulse, g = c.createRadialGradient(sx, sy, 0, sx, sy, r);
+    g.addColorStop(0, "rgba(150,235,255,0.5)"); g.addColorStop(1, "rgba(150,235,255,0)");
+    c.fillStyle = g; c.fillRect(sx - r, sy - r, r * 2, r * 2);
+    c.restore();
+  }
+
+  /** Lantern darkness: a dark overlay with soft light "holes" around the player, the gem, and the
+   *  exit — so the cave is explored by the light you carry. */
+  private drawCaveLight(c: CanvasRenderingContext2D, cam: Camera) {
+    c.save();
+    c.fillStyle = "rgba(8,5,14,0.6)"; c.fillRect(0, 0, cam.vw, cam.vh);   // moody but readable
+    c.globalCompositeOperation = "destination-out";
+    const hole = (wx: number, wy: number, r: number, soft = 0.5) => {
+      const [sx, sy] = this.ren.w2s(cam, wx, wy), g = c.createRadialGradient(sx, sy, 0, sx, sy, r);
+      g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(soft, "rgba(0,0,0,0.8)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = g; c.fillRect(sx - r, sy - r, r * 2, r * 2);
+    };
+    const pulse = 1 + 0.05 * Math.sin(this.tsec * 5);
+    hole(this.player.x, this.player.y - 8, 104 * cam.scale * pulse);       // the lantern you carry
+    if (this.caveGem) hole(this.caveGem.x, this.caveGem.y, 68 * cam.scale);
+    if (this.caveExit) hole(this.caveExit.x * T + T / 2, this.caveExit.y * T + T / 2, 44 * cam.scale);
+    c.globalCompositeOperation = "lighter";
+    const glow = (wx: number, wy: number, r: number, col: string) => {
+      const [sx, sy] = this.ren.w2s(cam, wx, wy), g = c.createRadialGradient(sx, sy, 0, sx, sy, r);
+      g.addColorStop(0, col); g.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = g; c.fillRect(sx - r, sy - r, r * 2, r * 2);
+    };
+    glow(this.player.x, this.player.y - 8, 72 * cam.scale, "rgba(255,196,120,0.16)");      // warm lantern
+    if (this.caveGem) glow(this.caveGem.x, this.caveGem.y, 58 * cam.scale, `rgba(150,235,255,${0.16 + 0.06 * Math.sin(this.tsec * 2.4)})`);   // the gem's cyan beacon
     c.restore();
   }
 
@@ -1111,12 +1235,28 @@ class TileLabEngine extends RetroEngine {
     }
     this.player.moving = moving;
     this.player.update(dt);
-    this.updateCritters(dt);
+    if (this.fadeT > 0) this.fadeT = Math.max(0, this.fadeT - dt * 3);
     const k = Math.min(1, dt * 6);
     this.cam.x += (this.player.x - this.cam.x) * k;
     this.cam.y += (this.player.y - this.cam.y) * k;
+    if (this.inCave) {
+      // climb the ladder → back to the surface (must step clear first, so you don't ping-pong)
+      if (this.caveExit) {
+        const d = Math.hypot(this.player.x - (this.caveExit.x * T + T / 2), this.player.y - (this.caveExit.y * T + T));
+        if (!this.portalArmed && d > 22) this.portalArmed = true;
+        if (this.portalArmed && d < 13) this.exitCave();
+      }
+      return;
+    }
+    this.updateCritters(dt);
     this.updateProximity();
     if (this.pressed.a && this.nearInter) this.onTalk?.(this.nearInter.speaker);
+    // step into the cave mouth → the underground level (armed only once you've stepped clear)
+    if (this.caveMouth) {
+      const d = Math.hypot(this.player.x - (this.caveMouth.x * T + T / 2), this.player.y - (this.caveMouth.y * T + T));
+      if (!this.portalArmed && d > 26) this.portalArmed = true;
+      if (this.portalArmed && d < 14) this.enterCave();
+    }
   }
 
   /** Track the nearest talkable target in reach; tell the page when it changes. */
@@ -1141,6 +1281,7 @@ class TileLabEngine extends RetroEngine {
       b.fillStyle = "#7fd8ff"; b.font = `${Math.round(bh * 0.05)}px monospace`; b.textAlign = "center";
       b.fillText("loading Cloverfield…", bw / 2, bh / 2); b.textAlign = "left"; return;
     }
+    if (this.inCave) { this.renderCave(); this.drawFade(b); return; }
     this.cam.vw = bw; this.cam.vh = bh; this.cam.scale = this.zoom;
     // crafted land tiles (grass + farm) — CLIPPED to the true shoreline curve so the square
     // tile grid rounds cleanly to the ring (no tiles poking past the edge; owner's mask idea).
@@ -1176,6 +1317,13 @@ class TileLabEngine extends RetroEngine {
     this.drawLight(b, this.cam);
     if (this.biome === "shroom") { this.drawPondJuice(b, this.cam); this.drawCommons(b, this.cam); }   // ripples/fish + the bonfire
     else if (this.biome === "desert") this.drawOasisJuice(b, this.cam);                                // oasis sparkles/ripples (campfire = an animated sprite)
+    this.drawFade(b);
+  }
+
+  /** A quick black fade on a level transition (surface ↔ cave). */
+  private drawFade(b: CanvasRenderingContext2D) {
+    if (this.fadeT <= 0) return;
+    b.fillStyle = `rgba(0,0,0,${this.fadeT})`; b.fillRect(0, 0, b.canvas.width, b.canvas.height);
   }
 
   /** The pack's grass "middle" tile is a FLAT colour, so revealed ground reads as a flat fill.
@@ -1298,7 +1446,7 @@ class TileLabEngine extends RetroEngine {
       g.strokeStyle = "rgba(0,0,0,.8)"; g.strokeText(text, dx, dy);
       g.fillStyle = color; g.fillText(text, dx, dy);
     };
-    for (const l of this.labels) tag(l.x, l.y, l.text, "#ffffff");
+    for (const l of this.labels) if (!!l.cave === this.inCave) tag(l.x, l.y, l.text, l.cave ? "#bff4ff" : "#ffffff");
     tag(this.player.x, this.player.y - 30, "You", "#ffe28a");
 
     // "press E to talk" prompt floating over the target in reach (a soft bob)
