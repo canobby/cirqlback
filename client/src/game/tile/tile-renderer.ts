@@ -177,7 +177,14 @@ export class TileRenderer {
     const [sx, sy] = this.w2s(cam, p.x, p.y);
     const ax = p.ax ?? 0.5, ay = p.ay ?? 1;
     const dx = Math.round(sx - dw * ax), dy = Math.round(sy - dh * ay);
-    sh.frame(ctx, p.fw, p.fh, p.col, p.row, dx, dy, Math.ceil(dw), Math.ceil(dh));
+    if (p.flip) {                                   // mirror horizontally about the sprite's centre
+      const cx = Math.round(sx);
+      ctx.save(); ctx.translate(cx, 0); ctx.scale(-1, 1); ctx.translate(-cx, 0);
+      sh.frame(ctx, p.fw, p.fh, p.col, p.row, dx, dy, Math.ceil(dw), Math.ceil(dh));
+      ctx.restore();
+    } else {
+      sh.frame(ctx, p.fw, p.fh, p.col, p.row, dx, dy, Math.ceil(dw), Math.ceil(dh));
+    }
   }
 
   /** Props + supplied actor/effect drawables, painted back-to-front by feet-Y. */

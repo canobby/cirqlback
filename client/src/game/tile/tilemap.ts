@@ -23,6 +23,7 @@ export interface Prop {
   overhead?: boolean;     // drawn over the player (tree canopy) when player is below
   solidR?: number;        // collision radius in world px (0/undefined = walk-through)
   ax?: number; ay?: number; // anchor override (0..1 within frame; default 0.5,1.0 = feet)
+  flip?: boolean;           // mirror horizontally (e.g. a critter facing its travel direction)
 }
 
 /** A hand-placed tile drawn above the autotiled ground (authored structures:

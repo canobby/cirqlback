@@ -348,7 +348,7 @@ class TileLabEngine extends RetroEngine {
         if (d > 1.5) {
           const step = Math.min(d, c.sp * dt), nx = c.gx + dx / d * step, ny = c.gy + dy / d * step;
           const ok = c.water ? this.pondField(nx / T, ny / T) > 0.5 : (this.landField(nx / T, ny / T) > 2.5 && !this.blocked(nx, ny, 4));
-          if (ok) { c.gx = nx; c.gy = ny; } else c.nt = 0;
+          if (ok) { c.gx = nx; c.gy = ny; if (Math.abs(dx) > 4) c.p.flip = dx < 0; } else c.nt = 0;   // face travel direction
         }
       }
       const bob = this.reduce ? 0 : Math.abs(Math.sin(this.tsec * 3 + c.ph)) * c.bob;   // a gentle hop
