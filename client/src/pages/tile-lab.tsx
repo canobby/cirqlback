@@ -48,9 +48,8 @@ const SFIELD = { x0: 30, y0: 11, x1: 37, y1: 16 };               // the mushroom
 const COMMONS = { x: 18, y: 37 };                                // the fungal bonfire commons (gathering spot)
 const POND_DOCK = { x0: SPOND.cx - 5, x1: SPOND.cx - 1, y: SPOND.cy };   // a little fishing pier off the west bank
 // fine ground-detail cells from the outdoor_decor sheet (grass tufts / small flowers / pebbles / a bush)
-const TUFTS: [number, number][] = [[6, 2], [6, 3], [7, 3], [8, 3], [6, 8], [7, 8]];
+const TUFTS: [number, number][] = [[0, 2], [1, 2], [2, 2], [6, 2], [6, 3]];   // LAND grass tufts only (no blue-water base)
 const DFLOWERS: [number, number][] = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [0, 1], [1, 1], [2, 1], [3, 2], [4, 2]];
-const PEBBLES: [number, number][] = [[0, 5], [1, 5], [6, 5], [7, 5]];   // dry grass rocks (no blue-water base)
 const DBUSH: [number, number] = [5, 5];
 
 // A ring's biome = a palette recolor + a different prop kit + optional inland water.
@@ -276,10 +275,8 @@ class TileLabEngine extends RetroEngine {
         if (rnd() < 0.5) map.addProp({ sheet: "tree_oak_med", fw: 32, fh: 48, col: Math.floor(rnd() * 3), row: 0, x: tx * T + 4, y: ty * T + 6, overhead: true, solidR: 5 });
         else map.addProp({ sheet: "outdoor_decor", fw: 16, fh: 16, col: DBUSH[0], row: DBUSH[1], x: tx * T + rnd() * T, y: ty * T + T, solidR: 3 });
       }
-      else if (r < dens * 0.72) {                                                                                                             // dense understory (forest floor)
-        if (rnd() < 0.5) map.addProp({ sheet: "shroom_other", fw: 16, fh: 16, col: Math.floor(rnd() * 3), row: 1 + Math.floor(rnd() * 5), x: tx * T + rnd() * T, y: ty * T + T });
-        else map.addProp({ sheet: "shroom_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 4), row: Math.floor(rnd() * 4), x: tx * T + rnd() * T, y: ty * T + T });
-      }
+      else if (r < dens * 0.72)                                                                                                               // dense understory: mossy rocks only (no lava-like shroom bits)
+        map.addProp({ sheet: "shroom_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 4), row: Math.floor(rnd() * 4), x: tx * T + rnd() * T, y: ty * T + T });
     }
     this.labels.push({ x: GROVE.x * T, y: (GROVE.y - 9) * T, text: "Deepshade Grove" });
   }
@@ -410,7 +407,7 @@ class TileLabEngine extends RetroEngine {
     const cell = (sheet: string, cr: [number, number]) => (tx: number, ty: number) => map.addProp({ sheet, fw: 16, fh: 16, col: cr[0], row: cr[1], x: tx * T + rnd() * T, y: ty * T + T });
     const tuft = (tx: number, ty: number) => cell("outdoor_decor", TUFTS[Math.floor(rnd() * TUFTS.length)])(tx, ty);
     const flow = (tx: number, ty: number) => cell("outdoor_decor", DFLOWERS[Math.floor(rnd() * DFLOWERS.length)])(tx, ty);
-    const peb = (tx: number, ty: number) => cell("outdoor_decor", PEBBLES[Math.floor(rnd() * PEBBLES.length)])(tx, ty);
+    const peb = (tx: number, ty: number) => map.addProp({ sheet: "shroom_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 5), row: Math.floor(rnd() * 4), x: tx * T + rnd() * T, y: ty * T + T });   // dry mossy rocks (no blue-water base)
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
       if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3.5) || !this.pondClear(tx, ty, 2.6) || this.inField(tx, ty) || Math.hypot(tx - COMMONS.x, ty - COMMONS.y) < 2.6) continue;
       const clump = Math.sin(tx * 0.45 + 0.3) * Math.sin(ty * 0.4 - 0.7) * Math.sin((tx + ty) * 0.2);   // big-med-small waves
