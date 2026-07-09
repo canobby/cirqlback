@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { RetroEngine, type RetroHooks } from "@/game/retro-engine";
+import OracleChat, { type Speaker } from "@/components/cirql/oracle-chat";
 import {
   cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
   DEFAULT_TERRAIN,
@@ -56,6 +57,11 @@ const DBUSH: [number, number] = [5, 5];
 // Proves the locked rules generalise: same procedural beach + edgepoint margins +
 // water-inside-the-ring, just a new coat of Cute-Fantasy (here the ShroomLands DLC).
 type Biome = "meadow" | "shroom";
+
+// A talk-to spot in the world (the Fountain Oracle or a villager NPC), with the reach
+// at which you can talk. `Speaker` is shared with the chat panel + the server route.
+interface Interactable { x: number; y: number; r: number; speaker: Speaker }
+
 interface BiomePalette {
   glite: number[]; gdark: number[];   // meadow grass shading (raised / shadowed)
   grassOpaque: boolean;               // paint the ground fully (recolour the biome) vs. a subtle overlay
@@ -99,6 +105,17 @@ class TileLabEngine extends RetroEngine {
   private rx = RX; private ry = RY;                 // ring radii — CIRQLSPACE starts ~2/3, expands later
   private labels: { x: number; y: number; text: string }[] = [];   // place/NPC name tags (world px)
   private critters: Critter[] = [];                                // animals that frame-animate + wander
+
+  // ---- in-world talk (the Fountain Oracle + ring NPCs) ----
+  private interactables: Interactable[] = [];        // fountain + villagers you can talk to
+  private nearInter: Interactable | null = null;     // the one currently in reach (drives the prompt)
+  private chatPaused = false;                         // frozen while a conversation is open
+  /** Fired when the nearest talkable target changes (null = none in reach). Page shows a Talk prompt. */
+  public onProximity: ((s: Speaker | null) => void) | null = null;
+  /** Fired when the player chooses to talk (E / Space, or the Talk button). Page opens the chat. */
+  public onTalk: ((s: Speaker) => void) | null = null;
+  /** Which ring this instance is, for scoping NPC knowledge. */
+  private ringId(): string { return this.blank ? "cirqlspace" : this.biome; }
 
   constructor(canvas: HTMLCanvasElement, hooks: RetroHooks = {}, blank = false, biome: Biome = "meadow") {
     super(canvas, hooks, 320, 200);
@@ -192,6 +209,33 @@ class TileLabEngine extends RetroEngine {
     [this.player.x, this.player.y] = this.snapToLand(map, ssx, ssy);
     this.cam.x = this.player.x; this.cam.y = this.player.y;
     this.buildCoast();
+    this.registerInteractables();
+  }
+
+  /** The folk (and the Fountain Oracle) a traveller can walk up to and talk with. Positions
+   *  mirror the NPC/fountain placements above; NPCs are scoped to this ring's knowledge. */
+  private registerInteractables() {
+    const ring = this.ringId();
+    const push = (tx: number, ty: number, speaker: Speaker, r = 30) =>
+      this.interactables.push({ x: tx * T, y: ty * T, r, speaker });
+    // The CIRQL Fountain = the all-knowing Oracle (town / your home ring only).
+    if (this.hasFountain) {
+      this.interactables.push({ x: WELL.x * T + T / 2, y: WELL.y * T + T / 2, r: 42, speaker: { kind: "oracle", name: "The CIRQL Fountain" } });
+    }
+    if (this.biome === "shroom") {
+      push(20, 19, { kind: "npc", ring, name: "Mycel", role: "the village keeper" });
+      push(27, 33, { kind: "npc", ring, name: "Spora", role: "the fisher" });
+      push(41, 29, { kind: "npc", ring, name: "Bramble", role: "the forager" });
+    } else if (!this.blank) {
+      push(30, 29, { kind: "npc", ring, name: "Bram", role: "the farmer" });
+      push(39, 30, { kind: "npc", ring, name: "Finn", role: "the fisher" });
+    }
+  }
+
+  /** Called by the page when the chat panel opens/closes — freezes the world + hides the prompt. */
+  setChatOpen(open: boolean) {
+    this.chatPaused = open;
+    if (open && this.nearInter) { this.nearInter = null; this.onProximity?.(null); }
   }
 
   // ---------- The Shroomwood (biome ring) ----------
@@ -721,6 +765,8 @@ class TileLabEngine extends RetroEngine {
   protected update(dt: number): void {
     this.tsec += dt;
     if (!this.loaded) return;
+    // Frozen while a conversation is open — keep gentle idle life, ignore input.
+    if (this.chatPaused) { this.player.moving = false; this.player.update(dt); this.updateCritters(dt); return; }
     let vx = 0, vy = 0;
     if (this.btn.left) vx -= 1; if (this.btn.right) vx += 1;
     if (this.btn.up) vy -= 1; if (this.btn.down) vy += 1;
@@ -739,6 +785,21 @@ class TileLabEngine extends RetroEngine {
     const k = Math.min(1, dt * 6);
     this.cam.x += (this.player.x - this.cam.x) * k;
     this.cam.y += (this.player.y - this.cam.y) * k;
+    this.updateProximity();
+    if (this.pressed.a && this.nearInter) this.onTalk?.(this.nearInter.speaker);
+  }
+
+  /** Track the nearest talkable target in reach; tell the page when it changes. */
+  private updateProximity() {
+    let best: Interactable | null = null, bestD = Infinity;
+    for (const it of this.interactables) {
+      const d = Math.hypot(this.player.x - it.x, this.player.y - it.y);
+      if (d <= it.r && d < bestD) { best = it; bestD = d; }
+    }
+    if (best !== this.nearInter) {
+      this.nearInter = best;
+      this.onProximity?.(best ? best.speaker : null);
+    }
   }
 
   protected render(): void {
@@ -906,6 +967,21 @@ class TileLabEngine extends RetroEngine {
     };
     for (const l of this.labels) tag(l.x, l.y, l.text, "#ffffff");
     tag(this.player.x, this.player.y - 30, "You", "#ffe28a");
+
+    // "press E to talk" prompt floating over the target in reach (a soft bob)
+    if (this.nearInter && !this.chatPaused) {
+      const it = this.nearInter, bob = Math.sin(this.tsec * 4) * 3;
+      const [bx, by] = this.ren.w2s(this.cam, it.x, it.y - 42);
+      const dx = bx * sc, dy = by * sc + bob;
+      const label = "▲ Press E to talk";
+      g.font = "bold 13px 'Segoe UI', Arial, sans-serif";
+      const w = g.measureText(label).width + 18;
+      g.fillStyle = "rgba(10,16,28,.82)"; g.fillRect(dx - w / 2, dy - 13, w, 22);
+      g.strokeStyle = "rgba(255,233,168,.5)"; g.lineWidth = 1; g.strokeRect(dx - w / 2, dy - 13, w, 22);
+      g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillStyle = "#ffe9a8"; g.fillText(label, dx, dy - 1);
+      g.textBaseline = "alphabetic";
+    }
     g.restore();
   }
 
@@ -1042,6 +1118,10 @@ class TileLabEngine extends RetroEngine {
 
 export default function TileLabPage() {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const engRef = useRef<TileLabEngine | null>(null);
+  const [near, setNear] = useState<Speaker | null>(null);   // a talkable target in reach
+  const [talking, setTalking] = useState<Speaker | null>(null);   // the open conversation
+
   useEffect(() => {
     if (!canvas.current) return;
     // /tile-lab?cirqlspace (or ?blank) → the blank personal home ring
@@ -1050,9 +1130,16 @@ export default function TileLabPage() {
     const blank = q.has("cirqlspace") || q.has("blank");
     const biome: Biome = q.get("biome") === "shroom" || q.has("shroom") ? "shroom" : "meadow";
     const eng = new TileLabEngine(canvas.current, {}, blank, biome);
+    engRef.current = eng;
+    eng.onProximity = (s) => setNear(s);
+    eng.onTalk = (s) => { eng.setChatOpen(true); setNear(null); setTalking(s); };
     if (import.meta.env.DEV) (window as any).__tilelab = { eng, anim: PLAYER_ANIM };
     return () => eng.destroy();
   }, []);
+
+  const closeChat = () => { engRef.current?.setChatOpen(false); setTalking(null); };
+  const openChat = () => { if (near) { engRef.current?.setChatOpen(true); setTalking(near); setNear(null); } };
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#05040f", touchAction: "none" }}>
       <div className="absolute left-4 top-4 z-10">
@@ -1061,6 +1148,19 @@ export default function TileLabPage() {
         </Link>
       </div>
       <canvas ref={canvas} className="block h-full w-full" style={{ imageRendering: "pixelated" }} />
+
+      {/* Talk button — appears when a villager or the Fountain is in reach (tap or press E) */}
+      {near && !talking && (
+        <button
+          onClick={openChat}
+          data-testid="button-talk"
+          className="fixed bottom-6 left-1/2 z-[55] -translate-x-1/2 rounded-full border border-amber-300/50 bg-[#0b1120]/90 px-5 py-2.5 text-sm font-semibold text-amber-100 shadow-lg backdrop-blur transition hover:scale-105 hover:border-amber-300"
+        >
+          💬 Talk to {near.name}
+        </button>
+      )}
+
+      {talking && <OracleChat speaker={talking} onClose={closeChat} />}
     </div>
   );
 }

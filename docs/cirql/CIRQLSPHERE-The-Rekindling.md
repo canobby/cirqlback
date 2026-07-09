@@ -35,6 +35,18 @@ Sailing between islands is a voyage across the low, shadowed sea — glowing wat
 
 ---
 
+# The Everturn — the sign of the circling light
+
+There is one mark older than any village, and it wears no words: a **ring of light that chases its own tail** — two curved arrows circling forever into each other. The folk call it **the Everturn**, and it is the holy sign of the whole CIRQLSPHERE.
+
+Its meaning is the world's first and simplest truth: **light given always comes back around.** When the First Spark passed the first light onward, the light did not leave and vanish — it *circled*, returning warmer for the giving. The Everturn is that promise made into a shape: give a light, and it turns back to you; the circle never truly ends, it only comes round again.
+
+You'll see it **spinning, wordless, above every true CIRQL Fountain** — turning slowly over the wellspring, a small sun of pure sign. Where the Everturn still turns, a place remembers how to give; where the grey has won, it has stopped, gone still and grey like everything else. **To relight a fountain is to set its Everturn turning again.** It is the one emblem the Makers all share, the seal on the Bridge to the real world, and the quiet heart of the game's name — *circling back*.
+
+*(In the world it is the emblem turning above the fountain; it carries no letters, because the sign is older than any word for it.)*
+
+---
+
 # The Makers
 
 Long ago the First Spark shed six lights of itself — the **Makers** — each an aspect of wonder, who shaped the islands and then, in the event called **the Scattering**, receded into the world they'd made, leaving fragments of themselves behind. Their fingerprints are still on every island; finding them is the lore hunt.

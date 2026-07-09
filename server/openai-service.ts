@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { getKnowledgeForRole, type AssistantRole } from "./assistant-knowledge";
+import { oracleKnowledge, npcKnowledge, islandName as knowledgeIslandName, type OracleSpeaker } from "./cirql-oracle-knowledge";
 
 // Lazily construct the OpenAI client so the server can boot without an
 // OPENAI_API_KEY. AI endpoints only fail (with a clear message) if actually
@@ -143,6 +144,65 @@ ${knowledge}
       messages: this.buildHelpMessages(role, messages, tier),
       temperature: 0.4,
       max_tokens: 700,
+      stream: true,
+    });
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content;
+      if (delta) yield delta;
+    }
+  }
+
+  // ---- The CIRQL Fountain Oracle + ring NPCs (in-world, public, kids-safe) ----
+  // The Oracle (the fountain) is grounded in the whole world; a ring NPC is grounded
+  // ONLY in its own island + rumours, and defers elsewhere to the fountain. Both stay
+  // warm, mythic, brief, and all-ages.
+  private buildOracleMessages(speaker: OracleSpeaker, messages: AssistantTurn[]) {
+    const isOracle = speaker.kind === "oracle";
+    const knowledge = isOracle ? oracleKnowledge() : npcKnowledge(speaker.ring);
+
+    const persona = isOracle
+      ? `You are the ORACLE of the CIRQL Fountain — the voice of the wellspring at the heart of the world, Mnemos's gift, the world remembering itself. You know all of CIRQLSPHERE: its story, its islands, and how a traveller finds their way. You are warm, mythic, and a little wondrous, but plain-spoken enough that a curious child understands you.`
+      : `You are ${speaker.name}, ${speaker.role} of ${knowledgeIslandName(speaker.ring)}, in the world of CIRQLSPHERE. You are a friendly local — you know your own island well and love it, but you have never left it. Speak simply and warmly, in your own voice.`;
+
+    const scopeRule = isOracle
+      ? `You may speak of the whole world — any island, the Makers, the Light and the Grey, the Rekindling, and how things work.`
+      : `IMPORTANT — stay in your lane: only speak with real knowledge about YOUR OWN island and the folk on it. You may share a vague RUMOUR of another place, but make clear it's only hearsay. For anything about the wider world — the Makers, the grey, the whole story, or another island a traveller wants to reach — say it's beyond you and send them to the CIRQL Fountain in the Town, whose Oracle knows all of it. Never invent details about places or lore you don't know.`;
+
+    const system = `${persona}
+
+${scopeRule}
+
+RULES:
+- This is a cozy, all-ages fantasy game. Keep everything kind, whimsical, and safe for children — no violence detail, no anything scary, cruel, romantic, political, or real-world-heavy. The villains here are lonely and forgetful, never evil.
+- Ground every answer in the WORLD KNOWLEDGE below. Do NOT invent islands, characters, features, prices, or lore that aren't in it. If you don't know, say so simply${isOracle ? "" : " and point them to the Fountain"}.
+- Be BRIEF and in-character — usually 1 to 3 short sentences, like a line of game dialogue. No markdown headers, no bullet lists unless truly helpful, no walls of text.
+- Only talk about CIRQLSPHERE and the player's journey. If asked about anything unrelated (homework, the real world, other games), gently steer back with a smile.
+- Speak directly to the traveller ("you").
+
+=== WORLD KNOWLEDGE ===
+${knowledge}
+=== END WORLD KNOWLEDGE ===`;
+
+    const trimmed = messages.slice(-8).map((m) => ({ role: m.role, content: String(m.content || "").slice(0, 600) }));
+    return [{ role: "system" as const, content: system }, ...trimmed];
+  }
+
+  async answerOracleQuestion(speaker: OracleSpeaker, messages: AssistantTurn[]): Promise<string> {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: this.buildOracleMessages(speaker, messages),
+      temperature: 0.8,
+      max_tokens: 260,
+    });
+    return response.choices[0]?.message?.content?.trim() || "…the water is still for a moment. Ask me again, traveller.";
+  }
+
+  async *streamOracleAnswer(speaker: OracleSpeaker, messages: AssistantTurn[]): AsyncGenerator<string> {
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: this.buildOracleMessages(speaker, messages),
+      temperature: 0.8,
+      max_tokens: 260,
       stream: true,
     });
     for await (const chunk of stream) {

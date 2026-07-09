@@ -35,6 +35,7 @@ import { registerLeaderboardRoutes } from "./routes/leaderboards";
 import { registerSpinEventRoutes } from "./routes/spin-events";
 import { registerSocialRoutes } from "./routes/social";
 import { registerAssistantRoutes } from "./routes/assistant";
+import { registerCirqlOracleRoutes } from "./routes/cirql-oracle";
 import { registerLegalRoutes } from "./routes/legal";
 import { registerBillingRoutes } from "./routes/billing";
 import { registerGameRoutes } from "./routes/game";
@@ -144,6 +145,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerSocialRoutes(app, deps);
   // In-dashboard Help Assistant (AI how-to guide, grounded in the manuals).
   registerAssistantRoutes(app, deps);
+  // Public in-world AI: the CIRQL Fountain Oracle + ring NPCs (no auth; rate-limited).
+  registerCirqlOracleRoutes(app, deps);
   // Public legal/compliance docs (Terms, Privacy, FAQ, agreements).
   registerLegalRoutes(app, deps);
   // Billing status + enforcement (Phase 1).
