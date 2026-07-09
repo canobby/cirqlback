@@ -7,3 +7,4 @@ export * from "./sprite";
 export * from "./tile-renderer";
 export * from "./assets";
 export * from "./packs";
+export * from "./catalog";

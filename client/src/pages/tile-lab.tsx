@@ -5,7 +5,7 @@ import { RetroEngine, type RetroHooks } from "@/game/retro-engine";
 import OracleChat, { type Speaker } from "@/components/cirql/oracle-chat";
 import {
   cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
-  DEFAULT_TERRAIN, registerPack, harmonizePack, spProp,
+  DEFAULT_TERRAIN, registerPack, harmonizePack, validatePlacements,
   type Atlas, type Camera, type Drawable, type TerrainConfig, type Prop,
 } from "@/game/tile";
 
@@ -173,6 +173,9 @@ class TileLabEngine extends RetroEngine {
       if (biome === "desert") { harmonizePack(this.atlas, "desert"); this.buildSandTexture(); }
       else this.buildGrassTexture();
       this.loaded = true;
+      // build-time safety check: warn if any placed land prop reads as a water sprite
+      // (blue bottom) or a near-empty fragment/edge piece — catches mis-scattered tiles.
+      if (import.meta.env.DEV) validatePlacements(this.atlas, this.map.props as any);
     }).catch((e) => console.error(e));
     this.start();
   }
@@ -438,35 +441,42 @@ class TileLabEngine extends RetroEngine {
     const cx = DCAMP.x, cy = DCAMP.y;
     this.addCritter(map, "d_fire", 16, 16, 0, 0, cx, cy, { frames: 6, fps: 8, bob: 0, wr: 0 });   // flickering campfire (6-frame anim)
     map.setSolid(cx, cy, true);
-    for (const [dx, dy] of [[-2, -1], [2, -1], [-2, 1], [2, 1], [0, -2]] as [number, number][])
-      map.addProp({ sheet: "d_rocks", fw: 16, fh: 16, col: Math.floor(hash2(cx + dx, cy + dy) * 6), row: 0, x: (cx + dx) * T + T / 2, y: (cy + dy) * T + T, solidR: 4 });
+    for (const [dx, dy] of [[-2, -1], [2, -1], [-2, 1], [2, 1], [0, -2]] as [number, number][]) {
+      const i = 6 + Math.floor(hash2(cx + dx, cy + dy) * 4);   // 6-9 = the small 32×32 whole rocks
+      this.dSpProp(map, `sp_desert_rock_${i}`, SP_ROCK[i], cx + dx, cy + dy, 0.7, false, 4);
+    }
     this.labels.push({ x: cx * T + T / 2, y: (cy - 3) * T, text: "The Ember Camp" });
   }
 
-  /** FILL — sparse desert flora/props in clusters of threes, thinning, clear of the oasis. */
+  /** Place a sanctumpixel desert STANDALONE prop (each is a whole-object PNG → always safe to
+   *  scatter; no risk of grabbing a wall/edge/partial/water cell). See [[catalog]]. */
+  private dSpProp(map: TileMap, name: string, dim: [number, number], tx: number, ty: number, sc: number, overhead = false, solidR = 0) {
+    map.addProp({ sheet: name, fw: dim[0], fh: dim[1], col: 0, row: 0, x: tx * T + T / 2 + (this.rndDetail() - 0.5) * 6, y: ty * T + T, scale: sc, solidR, overhead });
+  }
+  private _rd = rng(3131);
+  private rndDetail() { return this._rd(); }
+
+  /** FILL — sparse desert flora/props in clusters of threes, thinning, clear of the oasis.
+   *  Only whole standalone sanctumpixel props (cacti / joshua trees / rocks) — never a merged
+   *  sheet's edge cell, so no stray partials or "buttons". */
   private placeDuneScatter(map: TileMap) {
     const rnd = rng(909);
-    const clumps: [number, number, "cactus" | "dead" | "rock" | "bones"][] = [
-      [40, 36, "cactus"], [16, 30, "cactus"], [45, 40, "dead"], [14, 40, "rock"],
-      [38, 14, "cactus"], [51, 33, "rock"], [22, 44, "dead"], [30, 12, "bones"], [34, 46, "cactus"],
+    const pick = (max: number) => 1 + Math.floor(rnd() * max);
+    const clumps: [number, number, "cactus" | "joshua" | "rock"][] = [
+      [40, 36, "cactus"], [16, 30, "cactus"], [45, 40, "joshua"], [14, 40, "rock"],
+      [38, 14, "cactus"], [51, 33, "rock"], [22, 44, "joshua"], [34, 46, "cactus"], [30, 12, "rock"],
     ];
     for (const [cx, cy, kind] of clumps) {
-      if (kind === "cactus") this.dCluster(map, rnd, cx, cy, 3, 3, (tx, ty) => {
-        const col = Math.floor(rnd() * 5) * 2, row = Math.floor(rnd() * 4) * 3;       // cacti are 32×48 blocks (even col, row ×3)
-        map.addProp({ sheet: "cactus", fw: 32, fh: 48, col, row, x: tx * T + T / 2, y: ty * T + T, overhead: true, solidR: 5 });
-      });
-      else if (kind === "dead") this.dCluster(map, rnd, cx, cy, 3, 2, (tx, ty) => {
-        if (rnd() < 0.5) map.addProp({ sheet: "dead_tree", fw: 48, fh: 64, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T, overhead: true, solidR: 5 });
-        else map.addProp({ sheet: "dead_bush", fw: 16, fh: 16, col: Math.floor(rnd() * 2), row: 0, x: tx * T + rnd() * T, y: ty * T + T, solidR: 2 });
-      });
-      else if (kind === "rock") this.dCluster(map, rnd, cx, cy, 2, 3, (tx, ty) =>
-        map.addProp({ sheet: "d_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 12), row: Math.floor(rnd() * 2), x: tx * T + rnd() * T, y: ty * T + T, solidR: 3 }));
-      else this.dCluster(map, rnd, cx, cy, 2, 1, (tx, ty) =>
-        map.addProp({ sheet: "d_bones", fw: 32, fh: 32, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T }));
+      if (kind === "cactus") this.dCluster(map, rnd, cx, cy, 3, 3, (tx, ty) => { const i = pick(7); this.dSpProp(map, `sp_desert_cactus_${i}`, SP_CACTUS[i], tx, ty, 0.85 + rnd() * 0.3, true, 5); });
+      else if (kind === "joshua") this.dCluster(map, rnd, cx, cy, 3, 2, (tx, ty) => { const i = pick(4); this.dSpProp(map, `sp_desert_joshua_${i}`, SP_JOSHUA[i], tx, ty, 0.8 + rnd() * 0.25, true, 6); });
+      else this.dCluster(map, rnd, cx, cy, 2, 3, (tx, ty) => { const i = pick(11); this.dSpProp(map, `sp_desert_rock_${i}`, SP_ROCK[i], tx, ty, 0.6 + rnd() * 0.4, false, 3); });
     }
+    // a couple of sun-bleached skulls (a whole CF prop) as storytelling clutter
+    for (const [tx, ty] of [[43, 44], [18, 43]] as [number, number][]) if (this.dCanPlace(map, tx, ty)) map.addProp({ sheet: "d_bones", fw: 32, fh: 32, col: 0, row: 0, x: tx * T + T / 2, y: ty * T + T });
   }
 
-  /** FILL — a SPARSE dry ground carpet (fern tufts + pebbles), clustered in waves, off the oasis. */
+  /** FILL — a SPARSE dry ground carpet (whole grass tufts + small pebble-rocks), clustered in
+   *  waves, off the oasis. Whole standalone sprites only. */
   private scatterDuneDetail(map: TileMap) {
     const rnd = rng(1010);
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
@@ -475,8 +485,8 @@ class TileLabEngine extends RetroEngine {
       const p = 0.02 + Math.max(0, clump) * 0.16;                                     // sparse (desert)
       if (rnd() > p) continue;
       if (this.nearBigProp(map, tx * T + T / 2, ty * T + T, 12)) continue;
-      if (rnd() < 0.5) map.addProp({ sheet: "d_fern", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });
-      else map.addProp({ sheet: "d_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 12), row: Math.floor(rnd() * 2), x: tx * T + rnd() * T, y: ty * T + T });
+      if (rnd() < 0.6) this.dSpProp(map, `sp_desert_grass_${1 + Math.floor(rnd() * 8)}`, [32, 32], tx, ty, 0.75);   // whole dry grass tuft
+      else { const i = 6 + Math.floor(rnd() * 4); this.dSpProp(map, `sp_desert_rock_${i}`, SP_ROCK[i], tx, ty, 0.5); }   // small whole pebble-rock (6-9 = 32×32)
     }
   }
 
