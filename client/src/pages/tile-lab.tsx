@@ -106,7 +106,7 @@ class TileLabEngine extends RetroEngine {
       ? { ...DEFAULT_TERRAIN, farm: { fill: "farmland", cell: [5, 2] } }
       : undefined;
     this.ren = new TileRenderer(this.atlas, terr);
-    this.atlas.loadAll().then(() => { this.buildLogo(); this.loaded = true; }).catch((e) => console.error(e));
+    this.atlas.loadAll().then(() => { this.buildLogo(); this.buildGrassTexture(); this.loaded = true; }).catch((e) => console.error(e));
     this.start();
   }
 
@@ -707,6 +707,23 @@ class TileLabEngine extends RetroEngine {
     this.ren.drawEntities(b, this.map, this.cam, extra);
     if (this.hasFountain) this.drawLogo(b);   // the spinning CIRQLBACK emblem over the wellspring
     this.drawLight(b, this.cam);
+  }
+
+  /** The pack's grass "middle" tile is a FLAT colour, so revealed ground reads as a flat fill.
+   *  Generate a subtly TEXTURED grass tile (blades + flecks) and swap it into the atlas so the
+   *  ground shows real tile texture (like TMW), while the biome tone still flows over the top. */
+  private buildGrassTexture() {
+    const S = 16, cv = document.createElement("canvas"); cv.width = S; cv.height = S;
+    const g = cv.getContext("2d")!; const rnd = rng(4242);
+    g.fillStyle = "#6ea24e"; g.fillRect(0, 0, S, S);                                  // base grass green
+    for (let i = 0; i < 40; i++) {                                                    // mottle of darker/lighter greens + short blades
+      const x = Math.floor(rnd() * S), y = Math.floor(rnd() * S), r = rnd();
+      if (r < 0.5) g.fillStyle = "rgba(74,128,58,0.55)";                              // dark fleck
+      else if (r < 0.8) g.fillStyle = "rgba(150,190,110,0.5)";                        // light fleck
+      else g.fillStyle = "rgba(60,110,48,0.6)";                                       // a short blade
+      g.fillRect(x, y, 1, r < 0.8 ? 1 : 2);
+    }
+    (this.atlas.get("grass") as unknown as { img: HTMLCanvasElement }).img = cv;
   }
 
   /** Key the logo's cream background to transparent so it can spin over the well. */
