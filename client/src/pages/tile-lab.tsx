@@ -192,8 +192,8 @@ class TileLabEngine extends RetroEngine {
     // 3) the glowing giant-mushroom grove (replaces the oak grove) + a few landmark caps by the village
     this.placeShroomGrove(map);
     const GIANTS: [string, string, number, number, number][] = [
-      ["shroom_purple", "#c07bff", 33, 20, 1.3], ["shroom_blue", "#79d0ff", 30, 24, 1.1],
-      ["shroom_red", "#ff8a7b", 44, 24, 1.15], ["shroom_purple", "#c07bff", 39, 33, 1.2],
+      ["shroom_purple", "#c07bff", 33, 19, 1.3], ["shroom_blue", "#79d0ff", 25, 22, 1.1],
+      ["shroom_red", "#ff8a7b", 44, 24, 1.15], ["shroom_purple", "#c07bff", 43, 21, 1.2],
     ];
     for (const [sheet, color, tx, ty, sc] of GIANTS) this.giantShroom(map, sheet, color, tx, ty, sc);
 
@@ -204,16 +204,16 @@ class TileLabEngine extends RetroEngine {
     const shroomling = (tx: number, ty: number) => map.addProp({ sheet: "shroomling", fw: 32, fh: 48, col: 0, row: 0, x: tx * T, y: ty * T, solidR: 5 });
     for (const [tx, ty] of [[18, 34], [21, 36], [16, 31], [46, 33], [43, 36]] as [number, number][]) shroomling(tx, ty);
     const shroomling2 = (tx: number, ty: number) => map.addProp({ sheet: "shroomling2", fw: 32, fh: 32, col: 0, row: 0, x: tx * T, y: ty * T, solidR: 4 });
-    for (const [tx, ty] of [[27, 30], [50, 22], [24, 40]] as [number, number][]) shroomling2(tx, ty);
+    for (const [tx, ty] of [[23, 28], [50, 22], [24, 40]] as [number, number][]) shroomling2(tx, ty);
     const snail = (tx: number, ty: number) => map.addProp({ sheet: "snail", fw: 16, fh: 16, col: 0, row: 0, x: tx * T, y: ty * T });
     for (const [tx, ty] of [[36, 30], [30, 38], [45, 30]] as [number, number][]) snail(tx, ty);
 
-    // 6) two villagers, out in open clearings (Mycel in the meadow, Spora by the pond bank)
-    map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 38 * T, y: 27 * T, solidR: 6 });
-    map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 35 * T, y: 35 * T, solidR: 6 });
+    // 6) two villagers, out in open clearings (well clear of the pond)
+    map.addProp({ sheet: "farmer", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 39 * T, y: 27 * T, solidR: 6 });
+    map.addProp({ sheet: "fisher", fw: 64, fh: 64, col: 0, row: 0, ay: 0.66, x: 38 * T, y: 39 * T, solidR: 6 });
     this.labels.push(
-      { x: 38 * T, y: 27 * T - 30, text: "Mycel" },
-      { x: 35 * T, y: 35 * T - 30, text: "Spora" },
+      { x: 39 * T, y: 27 * T - 30, text: "Mycel" },
+      { x: 38 * T, y: 39 * T - 30, text: "Spora" },
     );
   }
 
@@ -223,6 +223,11 @@ class TileLabEngine extends RetroEngine {
     const ang = Math.atan2(ty - SPOND.cy, tx - SPOND.cx);
     const R = 1 + 0.1 * Math.sin(ang * 3 + 0.6) + 0.07 * Math.sin(ang * 2 - 1.1);   // soft bays, not a disc (gentle → clean banks)
     return R - (dx * dx + dy * dy);
+  }
+
+  /** True if a tile is clear of the pond by `margin` tiles — keeps props/NPCs off the water's edge. */
+  private pondClear(tx: number, ty: number, margin = 2.4): boolean {
+    return this.pondField(tx + 0.5, ty + 0.5) * ((SPOND.rx + SPOND.ry) / 2) < -margin;
   }
 
   /** Cattails / lily pads / water rocks clumped naturally around the pond (pack water-edge decor). */
@@ -240,7 +245,7 @@ class TileLabEngine extends RetroEngine {
 
   /** One giant mushroom (top-row cap @32×48), depth-sorted, casting a crisp neon glow. */
   private giantShroom(map: TileMap, sheet: string, color: string, tx: number, ty: number, sc = 1) {
-    if (!this.insideEdge(tx, ty, 5)) return;
+    if (!this.insideEdge(tx, ty, 5) || !this.pondClear(tx, ty)) return;
     const cap = Math.floor(hash2(tx, ty) * 4);   // one of the 4 caps in the top row
     map.addProp({ sheet, fw: 32, fh: 48, col: cap, row: 0, x: tx * T + T / 2, y: ty * T + T, scale: sc, overhead: true, solidR: 6 * sc });
     this.glowSpots.push({ x: tx * T + T / 2, y: ty * T + 12 * sc, color, r: 18 * sc });   // a tight glow at the cap (no smear)
@@ -267,7 +272,7 @@ class TileLabEngine extends RetroEngine {
       const n = 3 + Math.floor(rnd() * 5);
       for (let i = 0; i < n; i++) {
         const tx = cx + Math.round((rnd() - 0.5) * 4), ty = cy + Math.round((rnd() - 0.5) * 4);
-        if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3)) continue;
+        if (map.get(tx, ty) !== "grass" || !this.insideEdge(tx, ty, 3) || !this.pondClear(tx, ty, 1.4)) continue;
         if (rnd() < 0.6) map.addProp({ sheet: "shroom_other", fw: 16, fh: 16, col: Math.floor(rnd() * 3), row: 1 + Math.floor(rnd() * 5), x: tx * T + rnd() * T, y: ty * T + T });
         else map.addProp({ sheet: "shroom_rocks", fw: 16, fh: 16, col: Math.floor(rnd() * 4), row: Math.floor(rnd() * 4), x: tx * T + rnd() * T, y: ty * T + T });
       }
