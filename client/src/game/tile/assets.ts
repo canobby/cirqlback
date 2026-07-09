@@ -71,6 +71,8 @@ export const CF_SHEETS: Record<string, string> = {
   // life
   sheep: `${CF}/animals/sheep.png`,
   chicken: `${CF}/animals/chicken.png`,
+  duck: `${CF}/animals/duck.png`,     // 256×640 @32 — pond life
+  frog: `${CF}/animals/frog.png`,     // 320×128 @32
   farmer: `${CF}/npc/farmer_bob.png`,
   fisher: `${CF}/npc/fisherman_fin.png`,
   // ShroomLands DLC — biome ring "The Shroomwood" (same Cute Fantasy artist)
