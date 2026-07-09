@@ -1283,11 +1283,21 @@ class TileLabEngine extends RetroEngine {
       let col: number[], a = 255;
       // clean grass → sand → foam → shallow → deep bands (no grass/sand blending)
       if (g > 1.55) {                                       // inland ground
-        if (this.biome === "desert") {                      // OPAQUE warm sand (continuous with the beach) + dune-ridge contours
-          const grain = (n - 0.5) * 22, base = mix3(GDARK, GLITE, 0.5 + 0.5 * this.meadow(tx, ty));
-          const ridge = Math.sin(ty * 0.5 + Math.sin(tx * 0.12) * 3 + tx * 0.045);   // wavy dune ridges (topographic)
-          const dk = Math.max(0, ridge) * 0.1;
-          col = [base[0] * (1 - dk) + grain, base[1] * (1 - dk) + grain, base[2] * (1 - dk * 0.7) + grain * 0.8]; a = 255;
+        if (this.biome === "desert") {                      // real desert FLOOR — a designed surface, not one flat tone (rulebook §0)
+          // 1) base warm sand with BIG soft tonal dunes (low-freq sweeps of lighter/darker sand)
+          const dune = Math.sin(tx * 0.05 + 1.3) * Math.sin(ty * 0.045 - 0.6) * 0.5 + 0.5;   // 0..1 large sweeps
+          const t = 0.30 + 0.46 * this.meadow(tx, ty) + 0.22 * dune;
+          const base = mix3(GDARK, GLITE, Math.max(0, Math.min(1, t)));
+          const grain = (n - 0.5) * 20;
+          // 2) topographic dune RIDGES + fine wind RIPPLES etched across them (subtle darkening)
+          const ridge = Math.sin(ty * 0.5 + Math.sin(tx * 0.12) * 3 + tx * 0.045);
+          const ripple = Math.sin((ty * 1.1 + Math.sin(tx * 0.11) * 5 + tx * 0.06) * 2.1);
+          const dk = Math.max(0, ridge) * 0.11 + Math.max(0, ripple) * 0.05;
+          let c3 = [base[0] * (1 - dk) + grain, base[1] * (1 - dk) + grain, base[2] * (1 - dk * 0.7) + grain * 0.8];
+          // 3) GRAVELLY ground patches (material variety — cooler grey-tan, scattered)
+          const grav = this.meadow(tx * 0.7 + 40, ty * 0.7 - 20);
+          if (grav > 0.72) c3 = mix3(c3, [174, 160, 134], smoothstep(0.72, 0.92, grav) * 0.5);
+          col = c3; a = 255;
         } else {                                            // grass — soft, cohesive biome tone flows over the textured tiles
           const t = 0.5 + 0.5 * (this.meadow(tx, ty) * 0.78 + Math.sin(tx * 0.9 + 1) * Math.sin(ty * 0.8) * 0.22);
           col = mix3(GDARK, GLITE, Math.max(0, Math.min(1, t))); a = 58;
