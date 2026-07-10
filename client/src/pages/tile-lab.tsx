@@ -1081,6 +1081,8 @@ class TileLabEngine extends RetroEngine {
     // half-buried foundation blocks at the base front corners (base blends into the desert + history)
     this.dSpProp(map, "sp_desert_rock_8", SP_ROCK[8], rx - 3, ry + 0.5, 0.45);
     this.dSpProp(map, "sp_desert_rock_9", SP_ROCK[9], rx + 3, ry + 0.5, 0.45);
+    // a toppled/broken COLUMN fallen beside the approach (real kit piece) — "a greater people worshipped here"
+    map.addProp({ sheet: "temple_kit", fw: 16, fh: 32, col: 1, row: 3, x: (rx + 4) * T, y: (ry - 1) * T + T, scale: 0.85, solidR: 0, ax: 0.5, ay: 0.9 });
   }
 
   /** Universal grounding: a soft drop-shadow under the player + every solid prop — the single
@@ -1597,6 +1599,32 @@ class TileLabEngine extends RetroEngine {
       Math.sin(tx * 0.13 - 1.1) * Math.sin(ty * 0.19 + 2.0) * 0.7) / 1.7;
   }
 
+  /** Dry cracked-earth PLAYA patches — a few selective spots of pale sun-baked clay with branching
+   *  cracks (the "cracked sand" of the ground family, placed sparsely so most ground stays quiet).
+   *  Painted onto the pre-rendered coast canvas so it sits in the same layer as the dune wash. */
+  private drawCrackedPatches(cx: CanvasRenderingContext2D) {
+    const SS = this.coastSS, U = T * SS, rnd = rng(7373);
+    const patches: [number, number, number][] = [[40, 36, 3.0], [16, 30, 2.4], [33, 24, 2.6]];   // tx, ty, radius(tiles) — open sand, clear of water/structures
+    cx.save(); cx.lineCap = "round";
+    for (const [ptx, pty, pr] of patches) {
+      const x0 = ptx * U, y0 = pty * U, R = pr * U;
+      const g = cx.createRadialGradient(x0, y0, 0, x0, y0, R);
+      g.addColorStop(0, "rgba(225,203,163,0.5)"); g.addColorStop(0.7, "rgba(223,200,158,0.28)"); g.addColorStop(1, "rgba(223,200,158,0)");
+      cx.fillStyle = g; cx.beginPath(); cx.ellipse(x0, y0, R, R * 0.78, 0, 0, Math.PI * 2); cx.fill();
+      cx.strokeStyle = "rgba(118,90,62,0.42)";
+      const nodes = 6 + Math.floor(rnd() * 3);
+      for (let i = 0; i < nodes; i++) {
+        let a = rnd() * Math.PI * 2, x = x0 + (rnd() - 0.5) * R * 0.5, y = y0 + (rnd() - 0.5) * R * 0.5;
+        cx.lineWidth = Math.max(1, SS * 0.7);
+        cx.beginPath(); cx.moveTo(x, y);
+        const segs = 2 + Math.floor(rnd() * 3);
+        for (let s = 0; s < segs; s++) { a += (rnd() - 0.5) * 1.3; const len = R * (0.18 + rnd() * 0.28); x += Math.cos(a) * len; y += Math.sin(a) * len * 0.8; cx.lineTo(x, y); }
+        cx.stroke();
+      }
+    }
+    cx.restore();
+  }
+
   /**
    * Pre-render the static ground layer ONCE (super-sampled so it stays crisp):
    * a GRAINY sandy beach → foam waterline → shallows → deep ocean around the
@@ -1732,6 +1760,7 @@ class TileLabEngine extends RetroEngine {
       d[i] = clamp255(col[0]); d[i + 1] = clamp255(col[1]); d[i + 2] = clamp255(col[2]); d[i + 3] = a;
     }
     cx.putImageData(img, 0, 0);
+    if (this.biome === "desert") this.drawCrackedPatches(cx);   // dry cracked-earth playa patches (ground-family variation, placed selectively)
     this.coast = cv;
     // trace the shoreline (ray-march g→0 from the centre) for animated foam
     this.shore = [];
