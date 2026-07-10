@@ -6,7 +6,7 @@ import OracleChat, { type Speaker } from "@/components/cirql/oracle-chat";
 import {
   cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
   DEFAULT_TERRAIN, registerPack, harmonizePack, validatePlacements,
-  blobTile, BLOB_3x5, paintDualGrid, type DualMap,
+  paintDualGrid, type DualMap,
   type Atlas, type Camera, type Drawable, type TerrainConfig, type Prop,
 } from "@/game/tile";
 
@@ -684,24 +684,27 @@ class TileLabEngine extends RetroEngine {
    *  sand-tone family, on the finished ground, clipped to shore. The 3×5 blob handles width/corners
    *  cleanly (no big solid blocks near the wide mesa road). */
   private drawSandPaths(b: CanvasRenderingContext2D, cam: Camera) {
-    if (!this.atlas.has("sandpath")) return;
-    const sh = this.atlas.get("sandpath"); if (!sh.img) return;
+    const sand = this.atlas.get("sp_desert_ground"); if (!sand.img) return;
+    const stone = this.atlas.has("sandpath") ? this.atlas.get("sandpath") : null;
     b.imageSmoothingEnabled = false;
     const t = T, s = cam.scale, dsz = Math.ceil(t * s) + 1;
     const [wx0, wy0] = this.ren.s2w(cam, 0, 0), [wx1, wy1] = this.ren.s2w(cam, cam.vw, cam.vh);
-    const tx0 = Math.floor(wx0 / t) - 1, ty0 = Math.floor(wy0 / t) - 1;
-    const tx1 = Math.ceil(wx1 / t) + 1, ty1 = Math.ceil(wy1 / t) + 1;
+    const tx0 = Math.floor(wx0 / t) - 2, ty0 = Math.floor(wy0 / t) - 2;
+    const tx1 = Math.ceil(wx1 / t) + 2, ty1 = Math.ceil(wy1 / t) + 2;
     const P = (x: number, y: number) => this.isSandPath(x, y);
     b.save(); this.clipToShore(b);
-    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
-      if (!P(tx, ty)) continue;
-      const same = {
-        n: P(tx, ty - 1), s: P(tx, ty + 1), w: P(tx - 1, ty), e: P(tx + 1, ty),
-        ne: P(tx + 1, ty - 1), nw: P(tx - 1, ty - 1), se: P(tx + 1, ty + 1), sw: P(tx - 1, ty + 1),
-      };
-      const [c, r] = blobTile(BLOB_3x5, same);
+    // 1) ORGANIC dual-grid sand shape for the whole path — the sanctumpixel autotile's own soft edges,
+    //    so there are NEVER straight flat sides or square blocks (owner). Handles any width.
+    paintDualGrid(P, tx0, ty0, tx1, ty1, DUAL_SAND, (wx, wy, col, row) => {
+      const [sx, sy] = this.ren.w2s(cam, wx * t, wy * t);
+      sand.cell(b, 16, col, row, Math.round(sx), Math.round(sy), dsz, dsz);
+    });
+    // 2) the MADE stone pattern only on the INTERIOR (a tile whose 8 neighbours are all path) — a laid
+    //    centre that frays to organic sand at the edges: "made" look on the road, no hard flat edge.
+    if (stone?.img) for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+      if (!P(tx, ty) || !(P(tx - 1, ty) && P(tx + 1, ty) && P(tx, ty - 1) && P(tx, ty + 1) && P(tx - 1, ty - 1) && P(tx + 1, ty - 1) && P(tx - 1, ty + 1) && P(tx + 1, ty + 1))) continue;
       const [sx, sy] = this.ren.w2s(cam, tx * t, ty * t);
-      sh.cell(b, 16, c, r, Math.round(sx), Math.round(sy), dsz, dsz);
+      stone.cell(b, 16, 1, 1, Math.round(sx), Math.round(sy), dsz, dsz);
     }
     b.restore();
   }
