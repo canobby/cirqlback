@@ -1438,11 +1438,15 @@ class TileLabEngine extends RetroEngine {
       // ground read: a LIT raised top surface (so it reads as a shelf above the sand) + a short soft
       // contact shadow at the foot of the south face.
       if (this.biome === "desert") {
+        // ELEVATION read (rules): a clearly LIT+warmer plateau TOP (reads as a raised sun-caught shelf,
+        // distinctly lighter than the ground) + a BRIGHT warm top-LIP along the front edge + a STRONG
+        // base CAST SHADOW at the foot of the face → disambiguates plateau-vs-flat.
         if (tx >= MESA.x0 && tx <= MESA.x1 + 1 && ty >= MESA.y0 && ty <= MESA.y1 + 1) {
-          const lit = mix3(GDARK, GLITE, 0.9);                              // brighter, sun-caught plateau top
-          col = [lit[0] + (n - 0.5) * 14, lit[1] + (n - 0.5) * 14, lit[2] + (n - 0.5) * 12]; a = 255;
-        } else if (ty > MESA.y1 + MESA.faceH && ty < MESA.y1 + MESA.faceH + 1.8 && tx >= MESA.x0 - 1 && tx <= MESA.x1 + 1) {
-          const below = ty - (MESA.y1 + MESA.faceH), sh = (1 - below / 1.8) * 0.3;
+          const lit = [236, 198, 138];                                     // sun-caught sandstone top (clearly > the [215,167,106] ground)
+          col = [lit[0] + (n - 0.5) * 12, lit[1] + (n - 0.5) * 12, lit[2] + (n - 0.5) * 10]; a = 255;
+          if (ty > MESA.y1 + 0.35) { const k = smoothstep(MESA.y1 + 0.35, MESA.y1 + 1, ty); col = mix3(col, [252, 228, 176], k * 0.8); }   // bright warm LIP on the overhang edge
+        } else if (ty > MESA.y1 + MESA.faceH && ty < MESA.y1 + MESA.faceH + 2.6 && tx >= MESA.x0 - 1 && tx <= MESA.x1 + 1) {
+          const below = ty - (MESA.y1 + MESA.faceH), sh = (1 - below / 2.6) * 0.5;   // strong, short base cast shadow
           col = [col[0] * (1 - sh), col[1] * (1 - sh), col[2] * (1 - sh)];
         }
       }
