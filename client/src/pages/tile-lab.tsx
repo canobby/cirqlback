@@ -81,13 +81,14 @@ const DRESERVED: [number, number][] = [DNPC.sahra, DNPC.kesh, DNPC.tamm, ...DCAM
 // (dock → the trade road east of the oasis → mesa base, a spur to the camp, and plaza → the oasis
 // west bank). Routed to skip the water. Painted as packed sand; scatter/flora keep off it.
 const DPATHS: [number, number][][] = [
-  [[34, 45], [35, 39], [37, 34], [40, 30], [44, 26], [49, 24]],   // dock → trade road (east of the oasis) → mesa base
-  [[37, 34], [35, 38], [36, 39]],                                  // spur → APPROACHES the campfire commons, stops N of the fire (never through it)
-  [[22, 20], [21, 24], [22, 27], [20, 30], [21, 33]],             // plaza → the oasis west bank — WINDS (each segment changes BOTH axes, no straight flat side)
+  [[34, 45], [36, 41], [35, 37], [37, 34], [39, 31], [42, 28], [45, 25], [49, 24]],   // dock → trade road → mesa base (winds every segment)
+  [[37, 34], [35, 37], [37, 39]],                                  // spur → APPROACHES the campfire commons, stops N of the fire (winds)
+  [[22, 20], [21, 24], [23, 27], [20, 30], [22, 33]],             // plaza → the oasis west bank — WINDS (each segment changes BOTH axes)
 ];
 // PATH HIERARCHY (see [[cirqlback-paths-roads-expertise]]): the main caravan trade ROAD is wider;
-// the spurs are narrow FOOTPATHS. Half-width in tiles → the sprite path autotiles to this thickness.
-const DPATH_HALFW = [1.2, 0.72, 0.72];
+// the spurs are FOOTPATHS. Half-width in tiles — kept ≥1.05 so the path is always ≥2 tiles wide (the
+// AREA autotiler can't render a 1-tile line → it makes square blocks / flat sides at thin spots).
+const DPATH_HALFW = [1.5, 1.15, 1.15];
 // The darker-sand material PATCHES are laid with the REAL sanctumpixel sand DUAL-GRID autotile so they
 // have ORGANIC soft edges (not blocky hard tile boundaries). Corner-mask (TL=1 TR=2 BR=4 BL=8) → [col,row]
 // in ground_tile.png (dark tone, rows 0-3), mapped from the sheet's own quadrant fills.
@@ -220,7 +221,7 @@ class TileLabEngine extends RetroEngine {
         // The plaza "path" terrain uses the sandstone-recoloured cobble (matches the made stone path).
         // Dark-sand material PATCHES are drawn separately with ORGANIC dual-grid edges (drawSandPatches),
         // not per-tile here, so they never read as blocky.
-        ? { ...DEFAULT_TERRAIN, grass: { fill: "grass", variants: ["grass", "sand_v1", "sand_v3"] }, path: { fill: "sandpath", cell: [1, 1] } }
+        ? { ...DEFAULT_TERRAIN, grass: { fill: "grass" }, path: { fill: "sandpath", cell: [1, 1] } }
         : undefined;
     this.ren = new TileRenderer(this.atlas, terr);
     // pull in the matching sanctumpixel biome pack (terrain/cliffs/nature) for the Dunes,
@@ -721,11 +722,10 @@ class TileLabEngine extends RetroEngine {
       return cv;
     };
     const reg = (name: string, cv: HTMLCanvasElement) => { if (!this.atlas.has(name)) this.atlas.add(name, ""); (this.atlas.get(name) as unknown as { img: HTMLCanvasElement }).img = cv; };
-    reg("grass", cell(11, 13));           // DOMINANT floor = the LIGHTER sand tone (matches the path's surface — owner)
-    reg("sand_v1", cell(11, 13, 3, 5));   // light sand + a real wind-ripple decal
-    reg("sand_v3", cell(11, 13, 6, 7));   // light sand + a different real ripple
-    reg("sanddk", cell(11, 1));           // the DARKER sand tone — now the REGION patches (damp/shaded ground)
-    reg("sanddk_rip", cell(11, 1, 3, 5)); // dark sand + a ripple
+    reg("grass", cell(11, 12));           // DOMINANT floor = the PLAIN light-sand SOLID fill (row 12 is the
+    // solid tile; row 13 was a patterned/transition cell and the dark ripple decals composited onto it
+    // read as a "weird brown break-up" — owner. Keep the base PLAIN; the dual-grid dark PATCHES give the
+    // variation instead.
   }
 
   /** REGION material patches (owner rule + SLYNYRD "regions with intent, never one tile"): large soft
