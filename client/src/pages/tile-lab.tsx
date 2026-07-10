@@ -61,6 +61,10 @@ const DBUSH: [number, number] = [5, 5];
 // a rocky MESA (Stage 2) with a building on top + a cave, and sparse dry dune scatter.
 const OASIS = { cx: 28, cy: 31, rx: 6, ry: 4.3 };                 // the oasis pool (procedural blue water, inside the ring)
 const HAMLET = { x: 20, y: 16 };                                  // the adobe caravan cluster (NW)
+// a DRY WASH (seasonal riverbed) winding from the mesa foot down to the oasis — a composition LEADING
+// LINE tying the two hero landmarks + the water's story (flash floods feed the oasis). Meanders (no
+// straight runs), threads the open negative-space sand between mesa (NE) and oasis (SW-centre).
+const DWASH: [number, number][] = [[50, 26.5], [48, 28], [45.5, 28.7], [43, 29.5], [40.2, 29.8], [37.5, 30.6], [35.4, 31.2]];
 const DPLAZA = { x: 22, y: 19 };                                  // paved well plaza in the hamlet
 const DLANE: [number, number][] = [[22, 21], [24, 24], [26, 27], [27, 29]];   // plaza → oasis footpath (worn sand)
 const DCAMP = { x: 36, y: 41 };                                   // nomad campfire commons (open sand, S)
@@ -476,6 +480,17 @@ class TileLabEngine extends RetroEngine {
     let best = 99;
     for (const path of DPATHS) for (let i = 0; i < path.length - 1; i++) {
       const [ax, ay] = path[i], [bx, by] = path[i + 1];
+      const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+      let t = L ? ((px - ax) * dx + (py - ay) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
+      best = Math.min(best, Math.hypot(px - (ax + dx * t), py - (ay + dy * t)));
+    }
+    return best;
+  }
+  /** Distance (tiles) to the dry-wash centreline (the mesa→oasis riverbed leading line). */
+  private dWashDist(px: number, py: number): number {
+    let best = 99;
+    for (let i = 0; i < DWASH.length - 1; i++) {
+      const [ax, ay] = DWASH[i], [bx, by] = DWASH[i + 1];
       const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
       let t = L ? ((px - ax) * dx + (py - ay) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
       best = Math.min(best, Math.hypot(px - (ax + dx * t), py - (ay + dy * t)));
@@ -1502,6 +1517,18 @@ class TileLabEngine extends RetroEngine {
           const dk = Math.max(0, ridge) * 0.14;
           col = [shade[0] * (1 - dk), shade[1] * (1 - dk), shade[2] * (1 - dk)];
           a = 62;                                           // a translucent wash — the sand TILES beneath show
+          // DRY WASH — a pale sediment riverbed winding mesa→oasis (leading line + water's story): a
+          // lighter, smoother, faintly-braided channel that reads more solid than the rippled dune sand.
+          const wd = this.dWashDist(tx, ty);
+          if (wd < 2.0) {
+            const k = smoothstep(2.0, 0.12, wd);
+            const bank = smoothstep(2.0, 1.15, wd) * (1 - smoothstep(1.15, 0.55, wd));            // a darker rim at ~0.6–1.2 tiles = sunken banks
+            const braid = 0.5 + 0.5 * Math.sin(ty * 1.5 + tx * 0.5 + Math.sin(tx * 0.3) * 2.2);   // faint braided threads
+            col = mix3(col, [238, 222, 188], k * 0.66);                                           // pale bleached sediment bed
+            const db = 0.06 * k * braid + 0.11 * bank;                                            // faint braids + darker banks (reads as a channel, not a path)
+            col = [col[0] * (1 - db), col[1] * (1 - db), col[2] * (1 - db)];
+            a = Math.round(a + (238 - a) * k * 0.8);                                              // bed reads smoother/more solid than dune sand
+          }
         } else {                                            // grass — soft, cohesive biome tone flows over the textured tiles
           const t = 0.5 + 0.5 * (this.meadow(tx, ty) * 0.78 + Math.sin(tx * 0.9 + 1) * Math.sin(ty * 0.8) * 0.22);
           col = mix3(GDARK, GLITE, Math.max(0, Math.min(1, t))); a = 58;
