@@ -176,6 +176,7 @@ class TileLabEngine extends RetroEngine {
   private logo: HTMLCanvasElement | null = null;    // CIRQLBACK mark, cream keyed to transparent
   private blank = false;                            // CIRQLSPACE (home ring): blank buildable canvas
   private biome: Biome = "meadow";
+  private templeAnchor: { ax: number; ay: number; w: number; h: number } | null = null;   // 3/4 Sunken Temple sprite feet-anchor
   private hasFountain = true;                        // the CIRQL fountain lives in the TOWN only
   private bpal: BiomePalette = PALETTES.meadow;
   private glowSpots: { x: number; y: number; color: string; r: number }[] = [];   // per-object neon glow (mushrooms)
@@ -964,11 +965,83 @@ class TileLabEngine extends RetroEngine {
   /** ANCIENT RUIN — a stepped ziggurat TEMPLE + flanking OBELISKS out in the SW expanse, PARTLY BURIED
    *  by sand (Cute Fantasy Desert DLC). The "a greater civilization was here first" beat — the ring's
    *  ancient layer + a distant landmark, placed APART from the living hamlet (structures research). */
+  /** Pre-render the SUNKEN TEMPLE as a real THREE-QUARTER ziggurat (rulebook: 3/4 STRUCTURES) — stacked
+   *  tiers each showing a light TOP surface + a real-brick medium FRONT + a dark SIDE, a big purple-brown
+   *  cast shadow to the lower-right, contact shadows, a deep nested doorway, flanking columns, weathering.
+   *  Sun UPPER-LEFT. Composited once onto an offscreen canvas (like buildSandTexture) → one feet-anchored,
+   *  Y-sorted sprite. HYBRID: procedural massing + real Cute Fantasy brick/arch/column tiles. */
+  private buildTemple() {
+    if (this.atlas.has("temple_built")) return;
+    const kit = this.atlas.get("temple_kit"); if (!kit.img) return;
+    const kimg = kit.img as CanvasImageSource;
+    const W = 212, H = 182, cx = 84, baseY0 = 140;                    // canvas + base-front-centre (the feet anchor)
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    const g = cv.getContext("2d")!; g.imageSmoothingEnabled = false;
+    const TOP = "rgb(231,205,151)", RIM = "rgb(250,233,190)", SIDE = "rgb(110,82,54)";
+    const fh = 16, td = 11, sk = 8, ins = 12, tiers = 4;
+    // --- big CAST SHADOW (muted purple-brown, thrown to the lower-right; drawn first, under everything) ---
+    g.fillStyle = "rgba(54,38,50,0.6)";
+    g.beginPath();
+    g.moveTo(cx - 48, baseY0 - 3); g.lineTo(cx + 56, baseY0 - 3);
+    g.lineTo(cx + 56 + 54, baseY0 + 26); g.lineTo(cx + 42, baseY0 + 34); g.lineTo(cx - 26, baseY0 + 18);
+    g.closePath(); g.fill();
+    // a stepped "finger" reaching further right from the tall centre (tallest section = longest shadow)
+    g.beginPath(); g.moveTo(cx + 8, baseY0 - 3); g.lineTo(cx + 46, baseY0 - 3); g.lineTo(cx + 122, baseY0 + 18); g.lineTo(cx + 86, baseY0 + 24); g.closePath(); g.fill();
+    // --- TIERS, bottom → top (painter's order: each higher tier sits on the ledge of the one below) ---
+    const drawTier = (w: number, by: number) => {
+      const xl = Math.round(cx - w / 2), xr = Math.round(cx + w / 2), yt = by - fh;
+      // TOP surface (lightest) — a parallelogram receding up-right
+      g.fillStyle = TOP;
+      g.beginPath(); g.moveTo(xl, yt); g.lineTo(xr, yt); g.lineTo(xr + sk, yt - td); g.lineTo(xl + sk, yt - td); g.closePath(); g.fill();
+      // RIGHT SIDE wall (darkest) — the sliver revealed by the right skew
+      g.fillStyle = SIDE;
+      g.beginPath(); g.moveTo(xr, yt); g.lineTo(xr + sk, yt - td); g.lineTo(xr + sk, by - td); g.lineTo(xr, by); g.closePath(); g.fill();
+      // FRONT face (medium) — REAL brick, tiled + darkened to the medium tone
+      g.save(); g.beginPath(); g.rect(xl, yt, w, fh); g.clip();
+      for (let yy = yt; yy < by; yy += 16) for (let xx = xl; xx < xr; xx += 16) g.drawImage(kimg, 1 * 16, 3 * 16, 16, 16, xx, yy, 16, 16);
+      g.globalCompositeOperation = "multiply"; g.fillStyle = "rgba(196,164,122,1)"; g.fillRect(xl, yt, w, fh);
+      g.globalCompositeOperation = "source-over"; g.restore();
+      // sunlit RIM (pale gold, top-front edge) + AO underline just under it (the overhang "pop")
+      g.fillStyle = RIM; g.fillRect(xl, yt, w, 1);
+      g.fillStyle = "rgba(44,28,22,0.55)"; g.fillRect(xl, yt + 1, w, 1);
+      // narrow contact shadow under the tier's front base
+      g.fillStyle = "rgba(44,28,22,0.4)"; g.fillRect(xl, by - 1, w, 1);
+    };
+    let w = 104, by = baseY0;
+    for (let i = 0; i < tiers; i++) { drawTier(w, by); by = Math.round(by - fh - td * 0.5); w -= ins * 2; }
+    // shrine cap (peaks the silhouette) — a tiny lit block on the top tier
+    g.fillStyle = TOP; g.fillRect(cx - 5, by + fh - 6, 12, 6); g.fillStyle = RIM; g.fillRect(cx - 5, by + fh - 7, 12, 1);
+    // --- flanking COLUMNS (real kit pillars) on the bottom-tier front, framing the door (walk-behind later) ---
+    g.drawImage(kimg, 0, 5 * 16, 16, 48, cx - 30, baseY0 - 48, 16, 48);
+    g.drawImage(kimg, 0, 5 * 16, 16, 48, cx + 14, baseY0 - 48, 16, 48);
+    // --- deep DOORWAY: real peaked arch + a nested-dark recess + threshold + warm torch glow ---
+    const dw = 32, dh = 48, dx = cx - dw / 2, dyy = baseY0 - dh;
+    g.fillStyle = "rgb(51,38,31)"; g.fillRect(dx + 6, dyy + 16, dw - 12, dh - 16);                 // corridor void behind the arch
+    g.fillStyle = "rgb(36,26,20)"; g.fillRect(dx + 9, dyy + 20, dw - 18, dh - 22);                 // deeper band
+    g.drawImage(kimg, 3 * 16, 5 * 16, dw, dh, dx, dyy, dw, dh);                                     // the peaked arch (over the recess)
+    g.fillStyle = "rgb(184,150,94)"; g.fillRect(dx + 10, baseY0 - 2, dw - 20, 2);                  // lit threshold sliver
+    // faint warm torch glow inside the doorway
+    const tg = g.createRadialGradient(cx, baseY0 - 16, 0, cx, baseY0 - 16, 12);
+    tg.addColorStop(0, "rgba(255,178,90,0.5)"); tg.addColorStop(1, "rgba(255,178,90,0)");
+    g.fillStyle = tg; g.fillRect(cx - 12, baseY0 - 28, 24, 24);
+    // --- WEATHERING (strong silhouette, wear in the surfaces): a chipped top corner + a vine + cracks ---
+    g.clearRect(cx - w / 2 - ins * 2 + 1, by - td + 1, 3, 3);                                       // chip the top-tier back-left corner
+    g.fillStyle = "rgba(92,122,60,0.9)"; g.fillRect(cx - 18, baseY0 - fh, 2, fh - 3);               // a vine down the bottom tier
+    g.fillStyle = "rgba(92,122,60,0.7)"; g.fillRect(cx - 17, baseY0 - fh + 4, 2, 4);
+    if (!this.atlas.has("temple_built")) this.atlas.add("temple_built", "");
+    (this.atlas.get("temple_built") as unknown as { img: HTMLCanvasElement }).img = cv;
+    this.templeAnchor = { ax: cx / W, ay: baseY0 / H, w: W, h: H };
+  }
+
   private placeRuin(map: TileMap) {
     const rx = 26, ry = 43, rnd = rng(9091);
     // the temple (a stepped ziggurat with an arched door) — block its footprint solid
     for (let ty = ry - 5; ty <= ry; ty++) for (let tx = rx - 3; tx <= rx + 3; tx++) if (Math.abs(tx - rx) <= (ry - ty)) map.setSolid(tx, ty, true);
-    map.addProp({ sheet: "temple", fw: 128, fh: 128, col: 0, row: 0, x: rx * T + T / 2, y: ry * T + T, scale: 0.95, solidR: 0 });
+    // the real 3/4 ziggurat sprite (built once), feet-anchored at its base-front-centre and Y-sorted
+    this.buildTemple();
+    const ta = this.templeAnchor;
+    if (ta) map.addProp({ sheet: "temple_built", fw: ta.w, fh: ta.h, col: 0, row: 0, x: rx * T + T / 2, y: ry * T + T, scale: 1, solidR: 0, ax: ta.ax, ay: ta.ay });
+    else map.addProp({ sheet: "temple", fw: 128, fh: 128, col: 0, row: 0, x: rx * T + T / 2, y: ry * T + T, scale: 0.95, solidR: 0 });   // fallback
     this.labels.push({ x: rx * T + T / 2, y: (ry - 6.5) * T, text: "The Sunken Temple" });
     // flanking obelisks (one tilted-looking pairing) + partly-buried sand drift + a couple of toppled rocks
     map.addProp({ sheet: "obelisk1", fw: 32, fh: 80, col: 0, row: 0, x: (rx - 5) * T, y: (ry - 1) * T + T, scale: 1, solidR: 6, overhead: true });
