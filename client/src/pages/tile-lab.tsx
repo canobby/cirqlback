@@ -65,6 +65,9 @@ const HAMLET = { x: 20, y: 16 };                                  // the adobe c
 // LINE tying the two hero landmarks + the water's story (flash floods feed the oasis). Meanders (no
 // straight runs), threads the open negative-space sand between mesa (NE) and oasis (SW-centre).
 const DWASH: [number, number][] = [[50, 26.5], [48, 28], [45.5, 28.7], [43, 29.5], [40.2, 29.8], [37.5, 30.6], [35.4, 31.2]];
+// a WORN approach PATH — compacted trodden sand winding from the open desert to the Sunken Temple door
+// (rulebook: base-into-desert + a defined route, more compacted nearer the doorway). Door ≈ (26, 45).
+const DTEMPLE: [number, number][] = [[36, 40.5], [33, 42], [30, 43.2], [27.6, 44], [26, 44.5]];   // approaches the door front from the SE (stays just below the temple footprint)
 const DPLAZA = { x: 22, y: 19 };                                  // paved well plaza in the hamlet
 const DLANE: [number, number][] = [[22, 21], [24, 24], [26, 27], [27, 29]];   // plaza → oasis footpath (worn sand)
 const DCAMP = { x: 36, y: 41 };                                   // nomad campfire commons (open sand, S)
@@ -396,6 +399,9 @@ class TileLabEngine extends RetroEngine {
    *  campfire, sparse dry scatter, camels — a rocky MESA + cave come in Stages 2-3.
    *  TMW Tulimshar reference (sand meets sea, oasis with a green halo, sandstone town). */
   private buildDunes(map: TileMap) {
+    // ONE global light (rulebook: sun UPPER-LEFT → shadows LOWER-RIGHT) — every object rakes a
+    // directional cast shadow the same way (obelisks long, camel wide, etc.).
+    this.setSun(0.82, 0.58, 0.42);
     // STRUCTURE → PATHS → FILL per docs/cirql/CIRQL-Placement-Rules.md.
     // ANCHOR 1 — the OASIS (procedural blue water inside the ring; paint FIRST so nothing spawns in it)
     map.solidTerrain.add("water");
@@ -492,6 +498,17 @@ class TileLabEngine extends RetroEngine {
     let best = 99;
     for (let i = 0; i < DWASH.length - 1; i++) {
       const [ax, ay] = DWASH[i], [bx, by] = DWASH[i + 1];
+      const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+      let t = L ? ((px - ax) * dx + (py - ay) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
+      best = Math.min(best, Math.hypot(px - (ax + dx * t), py - (ay + dy * t)));
+    }
+    return best;
+  }
+  /** Distance (tiles) to the worn temple-approach path centreline. */
+  private dTempleDist(px: number, py: number): number {
+    let best = 99;
+    for (let i = 0; i < DTEMPLE.length - 1; i++) {
+      const [ax, ay] = DTEMPLE[i], [bx, by] = DTEMPLE[i + 1];
       const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
       let t = L ? ((px - ax) * dx + (py - ay) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
       best = Math.min(best, Math.hypot(px - (ax + dx * t), py - (ay + dy * t)));
@@ -1028,6 +1045,16 @@ class TileLabEngine extends RetroEngine {
     g.clearRect(cx - w / 2 - ins * 2 + 1, by - td + 1, 3, 3);                                       // chip the top-tier back-left corner
     g.fillStyle = "rgba(92,122,60,0.9)"; g.fillRect(cx - 18, baseY0 - fh, 2, fh - 3);               // a vine down the bottom tier
     g.fillStyle = "rgba(92,122,60,0.7)"; g.fillRect(cx - 17, baseY0 - fh + 4, 2, 4);
+    // BASE BLENDS INTO THE DESERT (rulebook): a strong base contact shadow + wind-blown sand piled
+    // against the lower wall (highest at the corners, tapering to the door) so it's half-buried, not
+    // placed on top of the sand.
+    g.fillStyle = "rgba(34,22,18,0.5)"; g.fillRect(cx - 54, baseY0 - 1, 108, 2);
+    g.fillStyle = "rgba(223,197,152,0.92)";
+    for (let x = -54; x <= 54; x += 2) {
+      const corner = Math.max(0, (Math.abs(x) - 20) * 0.28);                                        // more sand toward the outer corners
+      const up = Math.round(corner + (hash2(x + 500, 3) - 0.5) * 2);
+      if (up > 0 && Math.abs(x) > 20) g.fillRect(cx + x, baseY0 - up, 2, up + 1);
+    }
     if (!this.atlas.has("temple_built")) this.atlas.add("temple_built", "");
     (this.atlas.get("temple_built") as unknown as { img: HTMLCanvasElement }).img = cv;
     this.templeAnchor = { ax: cx / W, ay: baseY0 / H, w: W, h: H };
@@ -1051,6 +1078,9 @@ class TileLabEngine extends RetroEngine {
     for (const [dx, dy] of [[-4, 2], [4, 2], [2, 3], [-1, 3]] as [number, number][]) { const i = 6 + Math.floor(rnd() * 4); this.dSpProp(map, `sp_desert_rock_${i}`, SP_ROCK[i], rx + dx, ry + dy, 0.5 + rnd() * 0.3); }
     this.addCritter(map, "scarab", 16, 16, 0, 0, rx + 3, ry + 3, { wr: 1.2, sp: 3, bob: 0.3 });
     map.addProp({ sheet: "d_bones", fw: 32, fh: 32, col: 0, row: 0, x: (rx - 2) * T, y: (ry + 4) * T });
+    // half-buried foundation blocks at the base front corners (base blends into the desert + history)
+    this.dSpProp(map, "sp_desert_rock_8", SP_ROCK[8], rx - 3, ry + 0.5, 0.45);
+    this.dSpProp(map, "sp_desert_rock_9", SP_ROCK[9], rx + 3, ry + 0.5, 0.45);
   }
 
   /** Universal grounding: a soft drop-shadow under the player + every solid prop — the single
@@ -1067,19 +1097,21 @@ class TileLabEngine extends RetroEngine {
     const drop = (wx: number, wy: number, baseW: number, height: number) => {
       const [sx, sy] = this.ren.w2s(cam, wx, wy), s = cam.scale;
       if (sx < -80 || sy < -80 || sx > cam.vw + 80 || sy > cam.vh + 80) return;
-      if (!directional || height < 7) {
+      if (!directional) {
         c.fillStyle = "rgba(20,18,28,0.22)";
         c.beginPath(); c.ellipse(sx, sy - s, baseW * s, baseW * 0.42 * s, 0, 0, Math.PI * 2); c.fill();
         return;
       }
-      const len = (baseW * 1.1 + height * this.sunLen);                  // taller → longer
+      // ONE directional cast shadow raking away from the sun (never a centred oval — that read as
+      // levitating). Length ∝ the object's height (obelisks long, rocks short); warm purple-brown.
+      const len = (baseW * 0.9 + height * this.sunLen);                  // taller → longer
       c.save();
       c.translate(sx + sun.x * len * 0.5 * s, sy + sun.y * len * 0.5 * s - s);
       c.rotate(ang);
       const g = c.createLinearGradient(-len * 0.5 * s, 0, len * 0.5 * s, 0);
-      g.addColorStop(0, "rgba(18,16,26,0.3)"); g.addColorStop(1, "rgba(18,16,26,0)");   // fades to the tip
+      g.addColorStop(0, "rgba(46,34,50,0.34)"); g.addColorStop(1, "rgba(46,34,50,0)");   // muted purple-brown, fades to the tip
       c.fillStyle = g;
-      c.beginPath(); c.ellipse(0, 0, len * 0.5 * s, baseW * 0.85 * s, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(0, 0, len * 0.5 * s, baseW * 0.8 * s, 0, 0, Math.PI * 2); c.fill();
       c.restore();
     };
     for (const p of this.map.props) {
@@ -1089,6 +1121,12 @@ class TileLabEngine extends RetroEngine {
       drop(p.x, p.y, baseW, height);
     }
     drop(this.player.x, this.player.y, 6, 15);
+    // animals (the camel gets a wider body-shaped shadow; scarabs a small one)
+    for (const cr of this.critters) {
+      if (cr.water || !cr.p.solidR || cr.p.solidR < 4) continue;
+      const scc = (cr.p as unknown as { scale?: number }).scale ?? 1;
+      drop(cr.gx, cr.gy, Math.min(cr.p.fw * scc * 0.32, 20), cr.p.fh * scc * 0.5);
+    }
     c.restore();
   }
 
@@ -1602,6 +1640,14 @@ class TileLabEngine extends RetroEngine {
             col = [col[0] * (1 - db), col[1] * (1 - db), col[2] * (1 - db)];
             a = Math.round(a + (238 - a) * k * 0.8);                                              // bed reads smoother/more solid than dune sand
           }
+          // WORN TEMPLE PATH — compacted trodden sand to the doorway, more defined nearer the door.
+          const ptd = this.dTempleDist(tx, ty);
+          if (ptd < 1.35) {
+            const k = smoothstep(1.35, 0.1, ptd);
+            const doorNear = smoothstep(7, 1.5, Math.hypot(tx - 26, ty - 44.5));                  // stronger/compacted near the door
+            col = mix3(col, [146, 117, 80], k * (0.34 + 0.26 * doorNear));                        // trodden compacted earth
+            a = Math.round(a + (238 - a) * k * (0.55 + 0.3 * doorNear));
+          }
         } else {                                            // grass — soft, cohesive biome tone flows over the textured tiles
           const t = 0.5 + 0.5 * (this.meadow(tx, ty) * 0.78 + Math.sin(tx * 0.9 + 1) * Math.sin(ty * 0.8) * 0.22);
           col = mix3(GDARK, GLITE, Math.max(0, Math.min(1, t))); a = 58;
@@ -1945,7 +1991,7 @@ class TileLabEngine extends RetroEngine {
         },
       });
     }
-    // this.drawShadows(b, this.cam);   // DISABLED (owner) — the extra oval made sprites look levitating; they already have baked shadows
+    if (this.biome === "desert") this.drawShadows(b, this.cam, true);   // ONE-light directional cast shadows (rulebook P2) — raked, not centred ovals
     this.ren.drawEntities(b, this.map, this.cam, extra);
     if (this.hasFountain) this.drawLogo(b);   // the spinning CIRQLBACK emblem over the wellspring
     this.drawLight(b, this.cam);
