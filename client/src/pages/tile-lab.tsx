@@ -64,7 +64,13 @@ const HAMLET = { x: 20, y: 16 };                                  // the adobe c
 const DPLAZA = { x: 22, y: 19 };                                  // paved well plaza in the hamlet
 const DLANE: [number, number][] = [[22, 21], [24, 24], [26, 27], [27, 29]];   // plaza → oasis footpath (worn sand)
 const DCAMP = { x: 36, y: 41 };                                   // nomad campfire commons (open sand, S)
-const MESA = { x0: 44, y0: 15, x1: 54, y1: 21, faceH: 4, ramps: [47, 51] };   // the raised sandstone plateau (NE, pulled inside the ring) + its 2 south ramp columns (taller face = more relief)
+// The raised sandstone MESA — a TWO-LEVEL TERRACE (mesa research: a setback bench ~doubles perceived
+// height): plateau TOP → upper cliff → a walkable BENCH ledge → lower cliff → sand. y1 = top's south edge.
+const MESA = { x0: 44, y0: 15, x1: 54, y1: 21, upperH: 2, benchH: 1, lowerH: 2, ramps: [47, 51] };
+const M_UF0 = MESA.y1 + 1, M_UF1 = MESA.y1 + MESA.upperH;            // upper cliff face rows (22..23)
+const M_BENCH = M_UF1 + 1, M_BENCH1 = M_UF1 + MESA.benchH;           // the walkable BENCH ledge (24)
+const M_LF0 = M_BENCH1 + 1, M_LF1 = M_BENCH1 + MESA.lowerH;          // lower cliff face rows (25..26)
+const M_FOOT = M_LF1 + 1;                                            // the foot where rock meets sand (27)
 // NPCs stand BESIDE their focal object (well/oasis/campfire), never on top of it, so the
 // purposeful object stays readable (the "don't obscure the firepit" rule — see the rulebook).
 const DNPC: Record<string, [number, number]> = {
@@ -490,7 +496,7 @@ class TileLabEngine extends RetroEngine {
     }
   }
   private inHamlet(tx: number, ty: number): boolean { return tx >= HAMLET.x - 5 && tx <= HAMLET.x + 8 && ty >= HAMLET.y - 4 && ty <= HAMLET.y + 8; }
-  private inMesa(tx: number, ty: number): boolean { return tx >= MESA.x0 - 1 && tx <= MESA.x1 + 1 && ty >= MESA.y0 - 1 && ty <= MESA.y1 + MESA.faceH + 1; }
+  private inMesa(tx: number, ty: number): boolean { return tx >= MESA.x0 - 1 && tx <= MESA.x1 + 1 && ty >= MESA.y0 - 1 && ty <= M_FOOT; }
   private inRuin(tx: number, ty: number): boolean { return tx >= 21 && tx <= 32 && ty >= 37 && ty <= 47; }   // the ancient-ruin clearing (temple+obelisks at ~26,43)
   /** Near a reserved spot (an NPC / camel / flamingo) — kept clear of scatter so they read. */
   private nearReserved(tx: number, ty: number, r = 2.4): boolean {
@@ -691,51 +697,53 @@ class TileLabEngine extends RetroEngine {
    *  eases down the strata; then a few DESERT-VARNISH streaks hang from the rim (the iconic Southwest
    *  cliff cue — high value-contrast vertical stains). */
   private drawMesaFace(b: CanvasRenderingContext2D, cam: Camera) {
-    const { x0, x1, y1, faceH, ramps } = MESA;
+    const { x0, x1, ramps } = MESA;
     const cx = this.caveMouth ? this.caveMouth.x : -1;
-    const open = (tx: number) => ramps.includes(tx) || tx === cx;   // ramps + cave column carry no face tile
     const t = T, s = cam.scale, dsz = Math.ceil(t * s) + 1;
+    const bands: [number, number][] = [[M_UF0, M_UF1], [M_LF0, M_LF1]];   // upper cliff, then lower cliff
     b.save();
     b.imageSmoothingEnabled = false;
-    // 1) warm shade over the face — darkest at the top band (the overhang casts shadow down the wall).
-    //    RELIEF cue 4: the bottom band eases LIGHTER + warmer (bounce light off the hot sand) so the
-    //    strata read as receding; a per-column jitter breaks the "one repeated strip" look.
-    b.globalCompositeOperation = "multiply";
-    for (let ty = y1 + 1; ty <= y1 + faceH; ty++) {
-      const band = ty - y1;                                          // 1 = under the lip … faceH = base
-      const mul = 0.58 + 0.18 * ((band - 1) / Math.max(1, faceH - 1)); // 0.58 (top, darkest) → 0.76 (base, bounce-lit)
-      for (let tx = x0; tx <= x1; tx++) {
-        if (open(tx)) continue;
-        const j = 1 + (hash2(tx * 13 + ty, 7) - 0.5) * 0.1;          // ±5% per-tile jitter (kill the flat repeat)
-        const m = mul * j;
-        b.fillStyle = `rgba(${Math.round(150 * m)},${Math.round(116 * m)},${Math.round(84 * m)},1)`;
-        b.globalAlpha = 0.6;
-        const [sx, sy] = this.ren.w2s(cam, tx * t, ty * t);
-        b.fillRect(Math.round(sx), Math.round(sy), dsz, dsz);
+    for (const [a, bb] of bands) {
+      const h = bb - a + 1;
+      const open = (tx: number, ty: number) => ramps.includes(tx) || (tx === cx && ty >= M_LF0);   // ramps + the lower-cliff cave column carry no tile
+      // 1) warm shade over the cliff — darkest under the lip (overhang AO), easing LIGHTER+warmer to the
+      //    base (bounce light off the hot sand/bench) so strata recede; per-tile jitter kills the repeat.
+      b.globalCompositeOperation = "multiply";
+      for (let ty = a; ty <= bb; ty++) {
+        const band = ty - a + 1;                                       // 1 = under the lip … h = base
+        const mul = 0.58 + 0.18 * ((band - 1) / Math.max(1, h - 1));   // 0.58 (top, darkest) → 0.76 (base)
+        for (let tx = x0; tx <= x1; tx++) {
+          if (open(tx, ty)) continue;
+          const j = 1 + (hash2(tx * 13 + ty, 7) - 0.5) * 0.1;
+          const m = mul * j;
+          b.fillStyle = `rgba(${Math.round(150 * m)},${Math.round(116 * m)},${Math.round(84 * m)},1)`;
+          b.globalAlpha = 0.6;
+          const [sx, sy] = this.ren.w2s(cam, tx * t, ty * t);
+          b.fillRect(Math.round(sx), Math.round(sy), dsz, dsz);
+        }
       }
-    }
-    b.globalAlpha = 1;
-    // 1b) the OVERHANG underside line — a crisp near-black warm AO strip along the TOP of the face,
-    //     directly under the bright caprock lip. Bright cap + this dark underline = the top visibly
-    //     OVERHANGS the wall (RELIEF cue 2, the single strongest "it jumps out" cue).
-    b.globalCompositeOperation = "source-over";
-    b.fillStyle = "rgba(28,17,10,0.5)";
-    for (let tx = x0; tx <= x1; tx++) {
-      if (open(tx)) continue;
-      const [sx, sy] = this.ren.w2s(cam, tx * t, (y1 + 1) * t);
-      b.fillRect(Math.round(sx), Math.round(sy), dsz, Math.max(2, Math.round(0.18 * t * s)));
-    }
-    // 2) desert-varnish streaks — thin dark warm stains from the rim, fading down the face.
-    const rnd = rng(2211);
-    for (let tx = x0; tx <= x1; tx++) {
-      if (open(tx) || rnd() > 0.5) continue;                         // ~half the columns get a streak
-      const [sx, sy] = this.ren.w2s(cam, tx * t + (0.2 + rnd() * 0.6) * t, (y1 + 1) * t);
-      const w = Math.max(2, Math.round((1.4 + rnd() * 1.4) * s));
-      const h = (1.4 + rnd() * (faceH - 0.6)) * t * s;
-      const g = b.createLinearGradient(sx, sy, sx, sy + h);
-      g.addColorStop(0, "rgba(46,30,18,0.55)"); g.addColorStop(1, "rgba(46,30,18,0)");
-      b.fillStyle = g;
-      b.fillRect(Math.round(sx), Math.round(sy), w, Math.round(h));
+      b.globalAlpha = 1;
+      // 1b) OVERHANG underside line — a crisp near-black warm AO strip along the TOP of this cliff,
+      //     directly under the bright caprock/bench lip. Bright shelf + dark underline = it OVERHANGS.
+      b.globalCompositeOperation = "source-over";
+      b.fillStyle = "rgba(28,17,10,0.5)";
+      for (let tx = x0; tx <= x1; tx++) {
+        if (open(tx, a)) continue;
+        const [sx, sy] = this.ren.w2s(cam, tx * t, a * t);
+        b.fillRect(Math.round(sx), Math.round(sy), dsz, Math.max(2, Math.round(0.18 * t * s)));
+      }
+      // 2) desert-varnish streaks — thin dark warm stains hanging from this cliff's rim, fading down.
+      const rnd = rng(2211 + a);
+      for (let tx = x0; tx <= x1; tx++) {
+        if (open(tx, a) || rnd() > 0.5) continue;
+        const [sx, sy] = this.ren.w2s(cam, tx * t + (0.2 + rnd() * 0.6) * t, a * t);
+        const w = Math.max(2, Math.round((1.4 + rnd() * 1.4) * s));
+        const hh = (1.0 + rnd() * (h - 0.4)) * t * s;
+        const g = b.createLinearGradient(sx, sy, sx, sy + hh);
+        g.addColorStop(0, "rgba(46,30,18,0.55)"); g.addColorStop(1, "rgba(46,30,18,0)");
+        b.fillStyle = g;
+        b.fillRect(Math.round(sx), Math.round(sy), w, Math.round(hh));
+      }
     }
     b.restore();
   }
@@ -864,49 +872,58 @@ class TileLabEngine extends RetroEngine {
   // ringed by rock edge tiles, a 3-row strata FACE dropping south, boulders breaking the lines.
   /** True if a tile is on the walkable plateau TOP. */
   private onMesaTop(tx: number, ty: number): boolean { return tx >= MESA.x0 && tx <= MESA.x1 && ty >= MESA.y0 && ty <= MESA.y1; }
-  /** A south-facing rock FACE tile (the visible cliff wall) below the plateau's south edge. */
-  private onMesaFace(tx: number, ty: number): boolean { return tx >= MESA.x0 && tx <= MESA.x1 && ty > MESA.y1 && ty <= MESA.y1 + MESA.faceH; }
-  /** A walkable RAMP corridor down the south face. */
+  /** The walkable mid-height BENCH ledge (the terrace step between the two cliffs). */
+  private onMesaBench(tx: number, ty: number): boolean { return tx >= MESA.x0 && tx <= MESA.x1 && ty >= M_BENCH && ty <= M_BENCH1; }
+  /** A south-facing rock FACE tile (either cliff of the terrace). */
+  private onMesaFace(tx: number, ty: number): boolean { return tx >= MESA.x0 && tx <= MESA.x1 && ((ty >= M_UF0 && ty <= M_UF1) || (ty >= M_LF0 && ty <= M_LF1)); }
+  /** A walkable RAMP corridor cut through a cliff face. */
   private onMesaRamp(tx: number, ty: number): boolean { return this.onMesaFace(tx, ty) && MESA.ramps.includes(tx); }
 
   /** Build the mesa: collision (solid rock; only the top + south ramps walk), the sanctumpixel
    *  sandstone cliff sprites (rim + strata face + boulders), the lookout on top, and the cave mouth. */
   private placeMesa(map: TileMap) {
-    const { x0, y0, x1, y1, faceH, ramps } = MESA;
-    // --- collision ---
-    for (let ty = y1 + 1; ty <= y1 + faceH; ty++) for (let tx = x0; tx <= x1; tx++) if (!ramps.includes(tx)) map.setSolid(tx, ty, true);   // south face
-    for (let tx = x0 - 1; tx <= x1 + 1; tx++) map.setSolid(tx, y0 - 1, true);                                                              // north lip
-    for (let ty = y0; ty <= y1; ty++) { map.setSolid(x0 - 1, ty, true); map.setSolid(x1 + 1, ty, true); }                                  // W/E lips (can't step off)
+    const { x0, y0, x1, y1, ramps } = MESA;
+    // --- collision (a TWO-LEVEL TERRACE) ---
+    // both cliff FACES are solid rock except the ramp columns; the plateau TOP and the BENCH walk.
+    for (const [a, b] of [[M_UF0, M_UF1], [M_LF0, M_LF1]] as [number, number][])
+      for (let ty = a; ty <= b; ty++) for (let tx = x0; tx <= x1; tx++) if (!ramps.includes(tx)) map.setSolid(tx, ty, true);
+    for (let tx = x0 - 1; tx <= x1 + 1; tx++) map.setSolid(tx, y0 - 1, true);                                       // north lip
+    for (let ty = y0; ty <= M_LF1; ty++) { map.setSolid(x0 - 1, ty, true); map.setSolid(x1 + 1, ty, true); }        // W/E rims down the WHOLE mass (can't step off the sides)
 
-    // the cave mouth — centre of the south face (kept clear so the arch carves into the wall)
-    this.caveMouth = { x: Math.round((x0 + x1) / 2), y: y1 + 2 };
-    map.setSolid(this.caveMouth.x, this.caveMouth.y, false);
-    map.setSolid(this.caveMouth.x, this.caveMouth.y + 1, false);
+    // the cave mouth — carved into the LOWER cliff = a ground-level entrance from the sand
+    this.caveMouth = { x: Math.round((x0 + x1) / 2), y: M_LF0 };
+    const cmx = this.caveMouth.x;
+    map.setSolid(cmx, M_LF0, false);
+    map.setSolid(cmx, M_LF1, false);
 
-    // --- the STRATA CLIFF FACE — REAL Cute Fantasy Desert DLC cliff tiles (horizontal-strata sandstone
-    // wall), faceH rows tall dropping SOUTH toward the camera. Ramp columns + the cave arch stay open.
-    // Row 1 = top band under the lip, row 3 = base; middle rows repeat the mid strata (continuous wall). ---
+    // --- the STRATA CLIFF FACES — REAL Cute Fantasy Desert DLC cliff tiles. Each cliff is a mini-wall:
+    // row 0 = lip (under the caprock / bench overhang) · last row = base · middles repeat the mid strata.
+    // Ramp columns stay open (the ascent); the LOWER cliff's centre column stays open for the cave arch. ---
     const F = "cliff_desert";
-    for (let tx = x0; tx <= x1; tx++) {
-      if (ramps.includes(tx) || tx === this.caveMouth.x) continue;   // ramps = sandy slope up; cave = carved arch
-      for (let r = 1; r <= faceH; r++) {
-        const srcRow = r === 1 ? 1 : r === faceH ? 3 : 2;            // top lip / base / repeated mid strata
-        map.setOverlay(tx, y1 + r, F, 10, srcRow);
+    const cliff = (a: number, b: number, cave: boolean) => {
+      const h = b - a + 1;
+      for (let tx = x0; tx <= x1; tx++) {
+        if (ramps.includes(tx) || (cave && tx === cmx)) continue;
+        for (let r = 0; r < h; r++) map.setOverlay(tx, a + r, F, 10, r === 0 ? 1 : r === h - 1 ? 3 : 2);
       }
-    }
-    // a LADDER up the west ramp column (climb the mesa)
-    map.addProp({ sheet: "ladder_desert", fw: 16, fh: 48, col: 0, row: 0, x: ramps[0] * T + T / 2, y: (y1 + faceH + 1) * T, solidR: 0 });
+    };
+    cliff(M_UF0, M_UF1, false);   // upper cliff (drops from the plateau top to the bench)
+    cliff(M_LF0, M_LF1, true);    // lower cliff (drops from the bench to the sand; cave in the centre)
+    // LADDERS climbing each cliff on the west ramp column (sand → bench → top)
+    map.addProp({ sheet: "ladder_desert", fw: 16, fh: 48, col: 0, row: 0, x: ramps[0] * T + T / 2, y: (M_LF1 + 1) * T, solidR: 0 });   // lower ladder (foot → bench)
+    map.addProp({ sheet: "ladder_desert", fw: 16, fh: 48, col: 0, row: 0, x: ramps[0] * T + T / 2, y: (M_UF1 + 1) * T, solidR: 0 });   // upper ladder (bench → top)
 
     // --- a chunky BOULDER rim (sanctumpixel rocks) framing the raised top on N/E/W + base rubble.
     // Boulders (not fiddly autotile edges) give an organic rocky drop-off that clearly reads. ---
     const rnd = rng(4747);
     const rock = (tx: number, ty: number, sc = 1) => { const i = 1 + Math.floor(rnd() * 11); const [w, h] = SP_ROCK[i]; map.addProp({ sheet: `sp_desert_rock_${i}`, fw: w, fh: h, col: 0, row: 0, x: tx * T + T / 2 + (rnd() - 0.5) * 6, y: ty * T + T, scale: sc, solidR: 0, overhead: true }); };
     for (let tx = x0; tx <= x1; tx++) rock(tx, y0 - 1, 0.7 + rnd() * 0.4);                                  // N rim (boulders along the top back edge)
-    for (let ty = y0; ty <= y1; ty++) { rock(x0 - 1, ty, 0.65 + rnd() * 0.35); rock(x1 + 1, ty, 0.65 + rnd() * 0.35); }   // W/E rims
+    for (let ty = y0; ty <= M_LF1; ty++) { rock(x0 - 1, ty, 0.6 + rnd() * 0.35); rock(x1 + 1, ty, 0.6 + rnd() * 0.35); }   // W/E rims down the whole mass
+    for (const bx2 of [x0 + 1, x1 - 1]) rock(bx2, M_BENCH, 0.5 + rnd() * 0.25);                             // a couple of boulders dressing the BENCH ledge (sell the setback)
     // BASE TREATMENT (RELIEF cue 5 — plant the mass so it doesn't knife into the desert): a dense talus
     // SKIRT of rubble at the foot + scree spilling one tile onto the sand (TMW Reid's "line of sand"),
     // dry tufts across the rock→sand seam, sparse rim tufts, and a couple of crack plants on the face.
-    const foot = y1 + faceH + 1;
+    const foot = M_FOOT;
     for (let tx = x0 - 1; tx <= x1 + 1; tx++) {
       if (tx === this.caveMouth.x) continue;                                                     // keep the cave approach clear
       const near = Math.abs(tx - this.caveMouth.x) <= 1;
@@ -919,14 +936,14 @@ class TileLabEngine extends RetroEngine {
       }
     }
     for (let tx = x0; tx <= x1; tx += 3) if (rnd() < 0.5) map.addProp({ sheet: "d_fern", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: (y0 - 1) * T + T });   // sparse rim tufts (top back edge)
-    for (const cx2 of [x0 + 2, x1 - 2]) if (!ramps.includes(cx2) && cx2 !== this.caveMouth.x) map.addProp({ sheet: "d_fern", fw: 16, fh: 16, col: 0, row: 0, x: cx2 * T + T / 2, y: (y1 + faceH) * T + T, overhead: true });   // crack plants clinging to the face base
+    for (const cx2 of [x0 + 2, x1 - 2]) if (!ramps.includes(cx2) && cx2 !== this.caveMouth.x) map.addProp({ sheet: "d_fern", fw: 16, fh: 16, col: 0, row: 0, x: cx2 * T + T / 2, y: M_LF1 * T + T, overhead: true });   // crack plants clinging to the lower-cliff base
 
     // --- the lookout building crowning the plateau + the cave door ---
     const bx = Math.round((x0 + x1) / 2), by = y0 + 3;
     map.addProp({ sheet: "d_house3", fw: 128, fh: 112, col: 0, row: 0, x: bx * T + T / 2, y: by * T + T, scale: 0.8, solidR: 15 });
     this.labels.push({ x: bx * T + T / 2, y: (y0 - 1.8) * T, text: "The Sun Lookout" });
-    map.addProp({ sheet: "cave_door", fw: 32, fh: 48, col: 0, row: 0, x: this.caveMouth.x * T + T / 2, y: this.caveMouth.y * T + T, solidR: 0 });
-    this.labels.push({ x: this.caveMouth.x * T + T / 2, y: (this.caveMouth.y - 2.6) * T, text: "Cave" });
+    map.addProp({ sheet: "cave_door", fw: 32, fh: 48, col: 0, row: 0, x: this.caveMouth.x * T + T / 2, y: M_FOOT * T, solidR: 0 });   // arch rises from the sand up the lower cliff
+    this.labels.push({ x: this.caveMouth.x * T + T / 2, y: (M_LF0 - 1) * T, text: "Cave" });
   }
 
   /** ANCIENT RUIN — a stepped ziggurat TEMPLE + flanking OBELISKS out in the SW expanse, PARTLY BURIED
@@ -1534,21 +1551,30 @@ class TileLabEngine extends RetroEngine {
       // ground read: a LIT raised top surface (so it reads as a shelf above the sand) + a short soft
       // contact shadow at the foot of the south face.
       if (this.biome === "desert") {
-        // ELEVATION read (rules): a clearly LIT+warmer plateau TOP (reads as a raised sun-caught shelf,
-        // distinctly lighter than the ground) + a BRIGHT warm top-LIP along the front edge + a STRONG
-        // base CAST SHADOW at the foot of the face → disambiguates plateau-vs-flat.
-        if (tx >= MESA.x0 && tx <= MESA.x1 && ty >= MESA.y0 && ty <= MESA.y1 + 1) {
-          // LIT plateau TOP — the sun-caught cap must be the BRIGHTEST thing around (RELIEF cue 3),
-          // clearly > the sand; matched symmetrically to the walkable top (onMesaTop x0..x1, y0..y1).
+        // TERRACE ELEVATION read: two lit sun-caught shelves (plateau TOP + mid BENCH) + a big hero cast
+        // shadow on the sand at the foot. The bench carries an AO band at its north edge (upper-cliff
+        // shadow) so the setback reads as a real step.
+        const onTop = tx >= MESA.x0 && tx <= MESA.x1 && ty >= MESA.y0 && ty <= MESA.y1 + 1;
+        const onBench = tx >= MESA.x0 && tx <= MESA.x1 && ty >= M_BENCH && ty <= M_BENCH1 + 1;
+        if (onTop) {
+          // LIT plateau TOP — the sun-caught cap must be the BRIGHTEST thing around (RELIEF cue 3).
           const lit = [246, 210, 150];
           col = [lit[0] + (n - 0.5) * 12, lit[1] + (n - 0.5) * 12, lit[2] + (n - 0.5) * 10]; a = 255;
           if (ty > MESA.y1 + 0.35) { const k = smoothstep(MESA.y1 + 0.35, MESA.y1 + 1, ty); col = mix3(col, [255, 236, 188], k * 0.85); }   // bright warm LIP on the overhang front edge
+        } else if (onBench) {
+          // the mid-height BENCH — a lower sun-caught shelf (a touch dimmer than the top), an AO band tight
+          // under the upper cliff (the setback shadow) + its own front lip.
+          const lit = [232, 196, 138];
+          col = [lit[0] + (n - 0.5) * 12, lit[1] + (n - 0.5) * 12, lit[2] + (n - 0.5) * 10]; a = 255;
+          const ao = (1 - smoothstep(M_BENCH - 0.05, M_BENCH + 0.9, ty)) * 0.34;   // darkest tight under the upper cliff overhang
+          col = [col[0] * (1 - ao), col[1] * (1 - ao * 1.05), col[2] * (1 - ao * 1.18)];
+          if (ty > M_BENCH1 + 0.35) { const k = smoothstep(M_BENCH1 + 0.35, M_BENCH1 + 1, ty); col = mix3(col, [252, 226, 176], k * 0.8); }   // front lip on the bench edge
         } else if (g > 0.6) {
-          // BIG hero CAST SHADOW (RELIEF cue 1 — the strongest "it stands UP" cue): the whole mesa mass
-          // blocks the high sun, pooling a warm-dark shadow on the sand at the S/SE foot — echoes the top
-          // width, offset slightly E, darkest at the foot, soft L/R + tip. Hero exception to the ≤1-tile
-          // cliff-shadow rule (the rulebook allows the flagship landform a real thrown shadow).
-          const shX0 = MESA.x0 + 0.6, shX1 = MESA.x1 + 1.4, shY0 = MESA.y1 + MESA.faceH, shLen = 2.7;
+          // BIG hero CAST SHADOW (RELIEF cue 1 — the strongest "it stands UP" cue): the whole terraced
+          // mass blocks the high sun, pooling a warm-dark shadow on the sand at the S/SE foot of the LOWER
+          // cliff — echoes the top width, offset slightly E, darkest at the foot. Hero exception to the
+          // ≤1-tile cliff-shadow rule (the rulebook allows the flagship landform a real thrown shadow).
+          const shX0 = MESA.x0 + 0.6, shX1 = MESA.x1 + 1.4, shY0 = M_LF1 + 0.7, shLen = 3.0;
           if (ty >= shY0 && ty <= shY0 + shLen && tx >= shX0 - 0.9 && tx <= shX1 + 0.9) {
             const fy = (ty - shY0) / shLen, ex = Math.min(tx - shX0, shX1 - tx);
             const sh = 0.5 * smoothstep(-0.9, 0.4, ex) * (1 - fy) * (1 - fy * 0.5);   // darkest at the foot, feathering out
