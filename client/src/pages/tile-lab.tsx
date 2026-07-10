@@ -425,9 +425,9 @@ class TileLabEngine extends RetroEngine {
     // buzzing via the 4-frame row-0 cycle.
     this.addCritter(map, "bee", 16, 16, 0, 0, O.cx + 6, O.cy - 4, { frames: 4, fps: 12, wr: 1.4, sp: 7, bob: 1.2 });
     // a couple of extra palm clumps set around the lagoon (varied spots — asymmetric, not the even halo)
-    const palm = (tx: number, ty: number, sc: number) => { const wx = tx * T + T / 2, wy = ty * T + T; if (this.dCanPlace(map, tx, ty, 3.5, 3) && this.oasisClear(tx, ty, 2.8) && !this.propTooClose(map, wx, wy, 30)) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: wx, y: wy, scale: 0.85 + rnd() * 0.3, overhead: true, solidR: 5 }); };
-    for (const [cx, cy] of [[O.cx - 8, O.cy - 4], [O.cx + 8, O.cy + 2], [O.cx + 2, O.cy - 7]] as [number, number][])
-      for (let i = 0; i < 2; i++) palm(cx + Math.round((rnd() - 0.5) * 3), cy + Math.round((rnd() - 0.5) * 3), 1);
+    const palm = (tx: number, ty: number, sc: number) => { const wx = tx * T + T / 2, wy = ty * T + T; if (this.dCanPlace(map, tx, ty, 3.5, 3) && this.oasisClear(tx, ty, 2.8) && !this.propTooClose(map, wx, wy, 15)) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: wx, y: wy, scale: 0.85 + rnd() * 0.3, overhead: true, solidR: 5 }); };
+    for (const [cx, cy] of [[O.cx - 8, O.cy - 4], [O.cx + 8, O.cy + 2], [O.cx + 2, O.cy - 7], [O.cx - 9, O.cy + 3], [O.cx + 6, O.cy - 6]] as [number, number][])
+      for (let i = 0; i < 3; i++) palm(cx + Math.round((rnd() - 0.5) * 4), cy + Math.round((rnd() - 0.5) * 4), 1);
   }
 
   /** The oasis outline: >0 inside. Non-circular, gentle lobes (a natural pool). */
@@ -500,9 +500,9 @@ class TileLabEngine extends RetroEngine {
         continue;
       }
       const dens = 1 - smoothstep(2.2, 6.5, d);                                       // the green halo, thinning outward
-      if (d >= 2.9 && r < dens * 0.24) {                                              // PALMS (signature oasis tree) — varied size
+      if (d >= 2.9 && r < dens * 0.42) {                                              // PALMS (signature oasis tree) — a fuller, organic grove
         const sc = 0.85 + rnd() * 0.35, wx = tx * T + T / 2, wy = ty * T + T;
-        if (this.propTooClose(map, wx, wy, 30 * sc)) continue;                         // palms need WIDE spacing (~2 tiles) so canopies don't overlap + hide each other's trunk
+        if (this.propTooClose(map, wx, wy, 15 * sc)) continue;                         // ~1 tile apart: a natural grove (some depth-overlap) but trunks still read (feet-Y sort)
         // palm1 = 48×64 (col0 stump, col1-2 full palms); palm2 = 32×48 (col0 stump, col1-2 full palms).
         // Use cols 1-2 only (a whole palm WITH trunk) — never col0 (a trunkless stump), and the right fw.
         if (rnd() < 0.7) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: wx, y: wy, scale: sc, overhead: true, solidR: 5 * sc });
@@ -1635,10 +1635,13 @@ class TileLabEngine extends RetroEngine {
     this.clipToShore(b);
     this.ren.drawGround(b, this.map, this.cam);
     b.restore();
-    // textured sandy coast + procedural inland water + meadow shading, then shore foam
+    // LAYER 3 — the sprite path, drawn BEHIND the coast wash so the SAME dune tonal "filter" tints the
+    // path exactly like the ground (owner: the wash was applied to the ground but not the path → colour
+    // variance; putting the path behind it makes them blend).
+    if (this.biome === "desert") this.drawSandPaths(b, this.cam);
+    // textured sandy coast + procedural inland water + meadow shading (the wash), then shore foam
     this.blitCoast(b);
     this.drawShoreFoam(b, this.cam);
-    if (this.biome === "desert") this.drawSandPaths(b, this.cam);   // LAYER 3 — true sprite paths on the finished ground
     this.drawDock(b, this.cam);   // the ring's dock (visual for now; ring-to-ring travel is the /cirql merge)
     if (this.biome === "shroom") this.drawPondDock(b, this.cam);   // the pond's little fishing pier (under the player/props)
     // the bridge, then depth-sorted actors
