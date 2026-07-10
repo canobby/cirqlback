@@ -108,6 +108,15 @@ export const CF_SHEETS: Record<string, string> = {
   d_trader: `${CF}/desert/trader.png`,   // 192×32
   camel: `${CF}/desert/camel.png`,       // 480×288 camel anim
   scarab: `${CF}/desert/scarab.png`,     // 64×48 @16
+  // Cute Fantasy DESERT DLC — the real desert kit (native art) for the MESA + ancient RUIN
+  cliff_desert: `${CF}/desert/cliff_desert.png`,     // 208×176 (13×11 @16) — caprock rim autotile + strata FACE tiles + fill
+  cliff_waterfall: `${CF}/desert/cliff_waterfall.png`, // 288×96 — a waterfall off the mesa
+  ladder_desert: `${CF}/desert/ladder_desert.png`,   // 16×48 — climb the mesa
+  temple: `${CF}/desert/temple.png`,     // 128×128 — a stepped ziggurat temple (arched door)
+  obelisk1: `${CF}/desert/obelisk1.png`, // 32×80
+  obelisk2: `${CF}/desert/obelisk2.png`, // 32×80
+  obelisk_sm1: `${CF}/desert/obelisk_sm1.png`,
+  obelisk_sm2: `${CF}/desert/obelisk_sm2.png`,
   // Cave — the underground level reached through the mesa (Stage 3)
   cave_door: `${CF}/cave/doorway.png`,   // 32×96 — cave entrance arch (top 32×48 = the mouth)
   cave_floor: `${CF}/cave/floor1.png`,   // 48×80 @16 floor variants

@@ -398,6 +398,7 @@ class TileLabEngine extends RetroEngine {
     this.placeHamlet(map);
     this.placeDuneCamp(map);
     this.placeMesa(map);
+    this.placeRuin(map);   // ANCIENT ruin landmark (SW expanse) — the "world forgot this" beat
     // FILL — sparse dry scatter (clustered by threes) + a fine dry ground carpet, kept sparse
     // (desert = sparse-but-still-detailed) and well clear of the oasis.
     this.placeDuneScatter(map);
@@ -490,6 +491,7 @@ class TileLabEngine extends RetroEngine {
   }
   private inHamlet(tx: number, ty: number): boolean { return tx >= HAMLET.x - 5 && tx <= HAMLET.x + 8 && ty >= HAMLET.y - 4 && ty <= HAMLET.y + 8; }
   private inMesa(tx: number, ty: number): boolean { return tx >= MESA.x0 - 1 && tx <= MESA.x1 + 1 && ty >= MESA.y0 - 1 && ty <= MESA.y1 + MESA.faceH + 1; }
+  private inRuin(tx: number, ty: number): boolean { return tx >= 21 && tx <= 32 && ty >= 37 && ty <= 47; }   // the ancient-ruin clearing (temple+obelisks at ~26,43)
   /** Near a reserved spot (an NPC / camel / flamingo) — kept clear of scatter so they read. */
   private nearReserved(tx: number, ty: number, r = 2.4): boolean {
     for (const [rx, ry] of DRESERVED) if (Math.hypot(tx - rx, ty - ry) < r) return true;
@@ -498,7 +500,7 @@ class TileLabEngine extends RetroEngine {
   /** Desert placement gate: sand, WELL inside the edgepoint, clear of oasis/hamlet/mesa/camp/reserved, off the track. */
   private dCanPlace(map: TileMap, tx: number, ty: number, edge = 4, oM = 2.8): boolean {
     return map.get(tx, ty) === "grass" && this.insideEdge(tx, ty, edge) && this.oasisClear(tx, ty, oM)
-      && !this.inHamlet(tx, ty) && !this.inMesa(tx, ty) && !this.nearReserved(tx, ty)
+      && !this.inHamlet(tx, ty) && !this.inMesa(tx, ty) && !this.inRuin(tx, ty) && !this.nearReserved(tx, ty)
       && this.dPathDist(tx + 0.5, ty + 0.5) > 1.7
       && Math.hypot(tx - DCAMP.x, ty - DCAMP.y) > 3;
   }
@@ -821,20 +823,22 @@ class TileLabEngine extends RetroEngine {
     for (let tx = x0 - 1; tx <= x1 + 1; tx++) map.setSolid(tx, y0 - 1, true);                                                              // north lip
     for (let ty = y0; ty <= y1; ty++) { map.setSolid(x0 - 1, ty, true); map.setSolid(x1 + 1, ty, true); }                                  // W/E lips (can't step off)
 
-    // --- the sandstone cliff (sanctumpixel wall_tile overlay sprites) ---
-    const W = "sp_desert_wall";
-    // south FACE: a 3-row strata wall (ramp columns stay open = a sandy slope up)
-    for (let tx = x0; tx <= x1; tx++) {
-      if (ramps.includes(tx)) continue;
-      const fc = tx === x0 ? 5 : tx === x1 ? 9 : 6 + ((tx - x0 - 1) % 3);   // left edge / fill(6-8) / right edge
-      map.setOverlay(tx, y1 + 1, W, fc, 0);   // lip / top of wall
-      map.setOverlay(tx, y1 + 2, W, fc, 1);   // mid strata
-      map.setOverlay(tx, y1 + 3, W, fc, 2);   // base
-    }
-    // the cave mouth (needed before the rim so we can keep it clear) — centre of the south face
+    // the cave mouth — centre of the south face (kept clear so the arch carves into the wall)
     this.caveMouth = { x: Math.round((x0 + x1) / 2), y: y1 + 2 };
     map.setSolid(this.caveMouth.x, this.caveMouth.y, false);
     map.setSolid(this.caveMouth.x, this.caveMouth.y + 1, false);
+
+    // --- the STRATA CLIFF FACE — REAL Cute Fantasy Desert DLC cliff tiles (horizontal-strata sandstone
+    // wall), 3 rows tall dropping SOUTH toward the camera. Ramp columns + the cave arch stay open. ---
+    const F = "cliff_desert";
+    for (let tx = x0; tx <= x1; tx++) {
+      if (ramps.includes(tx) || tx === this.caveMouth.x) continue;   // ramps = sandy slope up; cave = carved arch
+      map.setOverlay(tx, y1 + 1, F, 10, 1);   // face TOP band (the overhang, below the caprock lip)
+      map.setOverlay(tx, y1 + 2, F, 10, 2);   // mid strata
+      map.setOverlay(tx, y1 + 3, F, 10, 3);   // base strata
+    }
+    // a LADDER up the west ramp column (climb the mesa)
+    map.addProp({ sheet: "ladder_desert", fw: 16, fh: 48, col: 0, row: 0, x: ramps[0] * T + T / 2, y: (y1 + faceH + 1) * T, solidR: 0 });
 
     // --- a chunky BOULDER rim (sanctumpixel rocks) framing the raised top on N/E/W + base rubble.
     // Boulders (not fiddly autotile edges) give an organic rocky drop-off that clearly reads. ---
@@ -850,6 +854,25 @@ class TileLabEngine extends RetroEngine {
     this.labels.push({ x: bx * T + T / 2, y: (y0 - 1.8) * T, text: "The Sun Lookout" });
     map.addProp({ sheet: "cave_door", fw: 32, fh: 48, col: 0, row: 0, x: this.caveMouth.x * T + T / 2, y: this.caveMouth.y * T + T, solidR: 0 });
     this.labels.push({ x: this.caveMouth.x * T + T / 2, y: (this.caveMouth.y - 2.6) * T, text: "Cave" });
+  }
+
+  /** ANCIENT RUIN — a stepped ziggurat TEMPLE + flanking OBELISKS out in the SW expanse, PARTLY BURIED
+   *  by sand (Cute Fantasy Desert DLC). The "a greater civilization was here first" beat — the ring's
+   *  ancient layer + a distant landmark, placed APART from the living hamlet (structures research). */
+  private placeRuin(map: TileMap) {
+    const rx = 26, ry = 43, rnd = rng(9091);
+    // the temple (a stepped ziggurat with an arched door) — block its footprint solid
+    for (let ty = ry - 5; ty <= ry; ty++) for (let tx = rx - 3; tx <= rx + 3; tx++) if (Math.abs(tx - rx) <= (ry - ty)) map.setSolid(tx, ty, true);
+    map.addProp({ sheet: "temple", fw: 128, fh: 128, col: 0, row: 0, x: rx * T + T / 2, y: ry * T + T, scale: 0.95, solidR: 0 });
+    this.labels.push({ x: rx * T + T / 2, y: (ry - 6.5) * T, text: "The Sunken Temple" });
+    // flanking obelisks (one tilted-looking pairing) + partly-buried sand drift + a couple of toppled rocks
+    map.addProp({ sheet: "obelisk1", fw: 32, fh: 80, col: 0, row: 0, x: (rx - 5) * T, y: (ry - 1) * T + T, scale: 1, solidR: 6, overhead: true });
+    map.addProp({ sheet: "obelisk2", fw: 32, fh: 80, col: 0, row: 0, x: (rx + 5) * T, y: (ry + 1) * T + T, scale: 1, solidR: 6, overhead: true });
+    map.addProp({ sheet: "obelisk_sm1", fw: 32, fh: 32, col: 0, row: 0, x: (rx - 3) * T, y: (ry + 2) * T + T, scale: 1, solidR: 4, overhead: true });
+    // toppled rubble + a scarab crawling the ruin (life) + a couple of skulls (storytelling)
+    for (const [dx, dy] of [[-4, 2], [4, 2], [2, 3], [-1, 3]] as [number, number][]) { const i = 6 + Math.floor(rnd() * 4); this.dSpProp(map, `sp_desert_rock_${i}`, SP_ROCK[i], rx + dx, ry + dy, 0.5 + rnd() * 0.3); }
+    this.addCritter(map, "scarab", 16, 16, 0, 0, rx + 3, ry + 3, { wr: 1.2, sp: 3, bob: 0.3 });
+    map.addProp({ sheet: "d_bones", fw: 32, fh: 32, col: 0, row: 0, x: (rx - 2) * T, y: (ry + 4) * T });
   }
 
   /** Universal grounding: a soft drop-shadow under the player + every solid prop — the single
