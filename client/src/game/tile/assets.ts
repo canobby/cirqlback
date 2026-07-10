@@ -117,6 +117,7 @@ export const CF_SHEETS: Record<string, string> = {
   obelisk2: `${CF}/desert/obelisk2.png`, // 32×80
   obelisk_sm1: `${CF}/desert/obelisk_sm1.png`,
   obelisk_sm2: `${CF}/desert/obelisk_sm2.png`,
+  temple_kit: `${CF}/desert/Temple-House_Interior.png`,   // 160×128 — modular sandstone-brick kit: wall fill + window + columns + peaked door-arch + beams (for the 3/4 Sunken Temple rebuild)
   // Cave — the underground level reached through the mesa (Stage 3)
   cave_door: `${CF}/cave/doorway.png`,   // 32×96 — cave entrance arch (top 32×48 = the mouth)
   cave_floor: `${CF}/cave/floor1.png`,   // 48×80 @16 floor variants
