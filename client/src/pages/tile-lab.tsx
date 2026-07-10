@@ -1968,7 +1968,8 @@ class TileLabEngine extends RetroEngine {
     }
     c.globalAlpha = 1;
     // fireflies / spores — crisp drifting light motes (no full-frame blur), biome-tinted
-    const fce = this.biome === "shroom" ? "#b681ff" : "#cdff88", fcc = this.biome === "shroom" ? "#ecd9ff" : "#f2ffb0";
+    const fce = this.biome === "shroom" ? "#b681ff" : this.biome === "desert" ? "#ffdca0" : "#cdff88";   // desert = warm golden DUST motes (not green fireflies)
+    const fcc = this.biome === "shroom" ? "#ecd9ff" : this.biome === "desert" ? "#fff1d6" : "#f2ffb0";
     for (let i = 0; i < 20; i++) {
       const t = this.tsec * 0.25 + i * 1.7;
       const wx = (12 + ((i * 79) % 46)) * T + Math.sin(t) * 22;
