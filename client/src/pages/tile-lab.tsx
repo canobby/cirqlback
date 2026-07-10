@@ -685,6 +685,47 @@ class TileLabEngine extends RetroEngine {
    *  cobble (blobTile + BLOB_3x5): a MADE stone path (the pattern reads as laid, not just worn) in the
    *  sand-tone family, on the finished ground, clipped to shore. The 3×5 blob handles width/corners
    *  cleanly (no big solid blocks near the wide mesa road). */
+  /** MESA FACE polish (drawn OVER the strata cliff tiles, UNDER the actors): the south face is in shade,
+   *  so it must read value-DARKER + warmer than the sun-caught top (mesa research: bright top vs dark
+   *  face = the height cue). A warm MULTIPLY shade, deepest just under the caprock lip (overhang AO),
+   *  eases down the strata; then a few DESERT-VARNISH streaks hang from the rim (the iconic Southwest
+   *  cliff cue — high value-contrast vertical stains). */
+  private drawMesaFace(b: CanvasRenderingContext2D, cam: Camera) {
+    const { x0, x1, y1, faceH, ramps } = MESA;
+    const cx = this.caveMouth ? this.caveMouth.x : -1;
+    const open = (tx: number) => ramps.includes(tx) || tx === cx;   // ramps + cave column carry no face tile
+    const t = T, s = cam.scale, dsz = Math.ceil(t * s) + 1;
+    b.save();
+    b.imageSmoothingEnabled = false;
+    // 1) warm shade over the face — darkest at the top band (the overhang casts shadow down the wall).
+    b.globalCompositeOperation = "multiply";
+    for (let ty = y1 + 1; ty <= y1 + faceH; ty++) {
+      const band = ty - y1;                                          // 1 = under the lip … faceH = base
+      const mul = 0.58 + 0.16 * ((band - 1) / Math.max(1, faceH - 1)); // 0.58 (top, darkest) → 0.74 (base)
+      b.fillStyle = `rgba(${Math.round(150 * mul)},${Math.round(116 * mul)},${Math.round(84 * mul)},1)`;
+      b.globalAlpha = 0.6;
+      for (let tx = x0; tx <= x1; tx++) {
+        if (open(tx)) continue;
+        const [sx, sy] = this.ren.w2s(cam, tx * t, ty * t);
+        b.fillRect(Math.round(sx), Math.round(sy), dsz, dsz);
+      }
+    }
+    b.globalAlpha = 1;
+    // 2) desert-varnish streaks — thin dark warm stains from the rim, fading down the face.
+    const rnd = rng(2211);
+    for (let tx = x0; tx <= x1; tx++) {
+      if (open(tx) || rnd() > 0.5) continue;                         // ~half the columns get a streak
+      const [sx, sy] = this.ren.w2s(cam, tx * t + (0.2 + rnd() * 0.6) * t, (y1 + 1) * t);
+      const w = Math.max(2, Math.round((1.4 + rnd() * 1.4) * s));
+      const h = (1.4 + rnd() * (faceH - 0.6)) * t * s;
+      const g = b.createLinearGradient(sx, sy, sx, sy + h);
+      g.addColorStop(0, "rgba(46,30,18,0.55)"); g.addColorStop(1, "rgba(46,30,18,0)");
+      b.fillStyle = g;
+      b.fillRect(Math.round(sx), Math.round(sy), w, Math.round(h));
+    }
+    b.restore();
+  }
+
   private drawSandPaths(b: CanvasRenderingContext2D, cam: Camera) {
     const sand = this.atlas.get("sp_desert_ground"); if (!sand.img) return;
     const stone = this.atlas.has("sandpath") ? this.atlas.get("sandpath") : null;
@@ -1718,6 +1759,9 @@ class TileLabEngine extends RetroEngine {
     if (this.biome === "shroom") this.drawPondDock(b, this.cam);   // the pond's little fishing pier (under the player/props)
     // the bridge, then depth-sorted actors
     this.ren.drawOverlay(b, this.map, this.cam);
+    // shade the mesa's strata FACE (over the cliff tiles, under the actors) so it reads as a shadowed
+    // rock wall dropping from the sun-caught top — the height cue + desert-varnish streaks.
+    if (this.biome === "desert") this.drawMesaFace(b, this.cam);
     const [psx, psy] = this.ren.w2s(this.cam, this.player.x, this.player.y);
     const playerItem: Drawable = { y: this.player.y, render: (c) => this.player.draw(c, this.atlas.get("player"), psx, psy, this.cam.scale) };
     const extra: Drawable[] = [playerItem];
