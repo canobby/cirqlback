@@ -89,6 +89,7 @@ const TownPage = lazy(() => import("@/pages/town"));
 const CirqlPage = lazy(() => import("@/pages/cirql"));
 const MusicTestPage = lazy(() => import("@/pages/music-test"));
 const TileLabPage = lazy(() => import("@/pages/tile-lab"));
+const TileArrangerPage = lazy(() => import("@/pages/tile-arranger"));
 const ChangePasswordPage = lazy(() => import("@/pages/change-password"));
 const HarvestMoonlightPage = lazy(() => import("@/pages/harvest-moonlight"));
 const GreenThumbPage = lazy(() => import("@/pages/green-thumb"));
@@ -233,6 +234,7 @@ function Router() {
           <Route path="/cirql">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><CirqlPage /></Suspense>}</Route>
           <Route path="/music-test">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><MusicTestPage /></Suspense>}</Route>
           <Route path="/tile-lab">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><TileLabPage /></Suspense>}</Route>
+          <Route path="/tile-arranger">{() => <Suspense fallback={<div className="min-h-screen" style={{ background: "#05040f" }} />}><TileArrangerPage /></Suspense>}</Route>
           {/* easy public shortcuts to the new tile-world (no login) */}
           <Route path="/cirqlsphere">{() => <Redirect to="/tile-lab?biome=shroom" />}</Route>
           <Route path="/world">{() => <Redirect to="/tile-lab?biome=shroom" />}</Route>
