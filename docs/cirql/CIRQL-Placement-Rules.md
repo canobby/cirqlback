@@ -100,6 +100,18 @@ An elevated form is convincing only when the eye reads **three planes at once**:
 
 Sources: SLYNYRD Pixelblog 6/11/43 (light dir, value-per-face, cast shadows, wedge tiles, terraces, warm-near/cool-far), RPG Maker "Mapping Cliffs" + FlareBlitzed + finalbossblues (height consistency, jog the rim, stepped layers, rock/veg placement, common mistakes), gablaxian ALttP ground/world/top layers + separate collision, TCRF ALttP 8×8 sub-tile collision.
 
+### SMALL-OBJECT SPACING — every prop must read as its own thing (researched 2026-07-09)
+Scattered props must never merge into an unreadable blob or sit *on* each other (a rock on two bushes, two bushes fused). The goal is **readability**: after placement you can still trace each object's silhouette. Overlap is a tool, not the enemy — but only when it clearly reads as **depth**, never as a **merge**.
+- **Place BIG props first** (trees/cacti/boulders/large bushes) — they claim space + set the hierarchy; scatter medium then small detail into the gaps.
+- **Size-aware rejection radius (Poisson-disc):** reject a candidate whose centre is within a keep-clear radius of an already-placed prop, scaled to the LARGER footprint. *(We enforce this: `propTooClose` — palms ~2 tiles apart so canopies don't overlap and hide each other's trunk; bushes distinct; `dSpProp` rocks/cacti don't stack.)*
+- **No prop's centre inside another's silhouette; no two solid props on the same/adjacent tile.** (The "rock on two bushes" killer.)
+- **Overlap only small-in-front-of-BIG, at the base:** a tuft/pebble may cover the bottom ~25–30% of a bigger prop for depth, but must not cover its upper silhouette or another small prop's centre. **Similar-size props never overlap** (two bushes, two rocks: full separation).
+- **Clumps of odd count (3/5), with open ground BETWEEN clumps** (no cluster-to-cluster contact); target ~70/30 detail-to-negative-space; vary type/size/rotation within a clump. **Frame the focal point (water/palms), don't bury it.**
+- **Sort by feet-Y** so any permitted overlap reads as front-of, never on-top-of. Sources: SLYNYRD (clusters/readability/negative space), RPG Maker mapping (threes, avoid crowding), Level Design Book / 80.lv (hierarchy, contrast, focal points).
+
+### PATH look — MADE vs WORN, and no filters (owner)
+A path may read as **made/constructed** (a laid stone pattern) — that's good; keep the stone PATTERN, just recolour it into the **sand-tone family** so it belongs to the ground (a warm sandstone, a touch darker than the floor), never blue-grey and never *faded/flattened* (flattening the pattern to blend = a filter, which reads as "faded stones"). Autotile the path with the 3×5 **blob** (handles width/corners cleanly — the dual-grid left big solid blocks on the wide mesa road). Real asset tiles only.
+
 > The Dunes was built mid-stream as we learned the rules, so its method isn't perfectly in this order yet. **Once the ring's visuals are locked, refactor buildDunes to read exactly as stages 1→7** (a cleanup pass, not a behaviour change) — that's the streamlined template every future ring is generated from.
 
 ---
