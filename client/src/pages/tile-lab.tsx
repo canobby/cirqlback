@@ -6,7 +6,7 @@ import OracleChat, { type Speaker } from "@/components/cirql/oracle-chat";
 import {
   cuteFantasyAtlas, TileMap, TileRenderer, Actor, PLAYER_ANIM,
   DEFAULT_TERRAIN, registerPack, harmonizePack, validatePlacements,
-  blobTile, BLOB_3x5,
+  blobTile, BLOB_3x5, paintDualGrid, type DualMap,
   type Atlas, type Camera, type Drawable, type TerrainConfig, type Prop,
 } from "@/game/tile";
 
@@ -83,11 +83,20 @@ const DRESERVED: [number, number][] = [DNPC.sahra, DNPC.kesh, DNPC.tamm, ...DCAM
 const DPATHS: [number, number][][] = [
   [[34, 45], [35, 39], [37, 34], [40, 30], [44, 26], [49, 24]],   // dock → trade road (east of the oasis) → mesa base
   [[37, 34], [35, 38], [36, 39]],                                  // spur → APPROACHES the campfire commons, stops N of the fire (never through it)
-  [[22, 20], [21, 25], [20, 30], [20, 33]],                       // plaza → the oasis west bank (to Kesh + the herd)
+  [[22, 20], [21, 24], [22, 27], [20, 30], [21, 33]],             // plaza → the oasis west bank — WINDS (each segment changes BOTH axes, no straight flat side)
 ];
 // PATH HIERARCHY (see [[cirqlback-paths-roads-expertise]]): the main caravan trade ROAD is wider;
 // the spurs are narrow FOOTPATHS. Half-width in tiles → the sprite path autotiles to this thickness.
 const DPATH_HALFW = [1.2, 0.72, 0.72];
+// The darker-sand material PATCHES are laid with the REAL sanctumpixel sand DUAL-GRID autotile so they
+// have ORGANIC soft edges (not blocky hard tile boundaries). Corner-mask (TL=1 TR=2 BR=4 BL=8) → [col,row]
+// in ground_tile.png (dark tone, rows 0-3), mapped from the sheet's own quadrant fills.
+const DUAL_SAND: DualMap = {
+  0b0001: [4, 3], 0b0010: [0, 3], 0b0011: [4, 0], 0b0100: [1, 0],
+  0b0101: [4, 0], 0b0110: [0, 2], 0b0111: [1, 3], 0b1000: [3, 0],
+  0b1001: [4, 2], 0b1010: [4, 0], 0b1011: [3, 3], 0b1100: [2, 0],
+  0b1101: [4, 0], 0b1110: [1, 1], 0b1111: [4, 0],
+};
 // sanctumpixel desert props are single-image PNGs of varied size — dims hardcoded (props are
 // placed before the atlas finishes loading, so we can't read w/h off the atlas at build time).
 const SP_ROCK: Record<number, [number, number]> = { 1: [32, 64], 2: [32, 64], 3: [32, 64], 4: [48, 48], 5: [48, 48], 6: [32, 32], 7: [32, 32], 8: [32, 32], 9: [32, 32], 10: [48, 32], 11: [48, 32] };
@@ -209,7 +218,9 @@ class TileLabEngine extends RetroEngine {
         // the desert LAND is a real SPRITE sand floor (base + 3 varied tiles), laid across everything
         // but the water — only the lagoon/sea stay procedural. (Owner rule: sprite floor laid first.)
         // The plaza "path" terrain uses the sandstone-recoloured cobble (matches the made stone path).
-        ? { ...DEFAULT_TERRAIN, grass: { fill: "grass", variants: ["grass", "sand_v1", "sand_v3"], variantAt: (tx: number, ty: number) => this.sandRegion(tx, ty) }, path: { fill: "sandpath", cell: [1, 1] } }
+        // Dark-sand material PATCHES are drawn separately with ORGANIC dual-grid edges (drawSandPatches),
+        // not per-tile here, so they never read as blocky.
+        ? { ...DEFAULT_TERRAIN, grass: { fill: "grass", variants: ["grass", "sand_v1", "sand_v3"] }, path: { fill: "sandpath", cell: [1, 1] } }
         : undefined;
     this.ren = new TileRenderer(this.atlas, terr);
     // pull in the matching sanctumpixel biome pack (terrain/cliffs/nature) for the Dunes,
@@ -222,7 +233,7 @@ class TileLabEngine extends RetroEngine {
       this.loaded = true;
       // build-time safety check: warn if any placed land prop reads as a water sprite
       // (blue bottom) or a near-empty fragment/edge piece — catches mis-scattered tiles.
-      if (import.meta.env.DEV) validatePlacements(this.atlas, this.map.props as any);
+      if (import.meta.env.DEV) { validatePlacements(this.atlas, this.map.props as any); if (biome === "desert") this.warnStraightPaths(); }
     }).catch((e) => console.error(e));
     this.start();
   }
@@ -425,7 +436,7 @@ class TileLabEngine extends RetroEngine {
     // buzzing via the 4-frame row-0 cycle.
     this.addCritter(map, "bee", 16, 16, 0, 0, O.cx + 6, O.cy - 4, { frames: 4, fps: 12, wr: 1.4, sp: 7, bob: 1.2 });
     // a couple of extra palm clumps set around the lagoon (varied spots — asymmetric, not the even halo)
-    const palm = (tx: number, ty: number, sc: number) => { const wx = tx * T + T / 2, wy = ty * T + T; if (this.dCanPlace(map, tx, ty, 3.5, 3) && this.oasisClear(tx, ty, 2.8) && !this.propTooClose(map, wx, wy, 15)) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: wx, y: wy, scale: 0.85 + rnd() * 0.3, overhead: true, solidR: 5 }); };
+    const palm = (tx: number, ty: number, sc: number) => { const wx = tx * T + T / 2, wy = ty * T + T; if (this.dCanPlace(map, tx, ty, 3.5, 3) && this.oasisClear(tx, ty, 2.8) && !this.propTooClose(map, wx, wy, 15)) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1, row: 0, x: wx, y: wy, scale: 0.85 + rnd() * 0.3, overhead: true, solidR: 5, flip: rnd() < 0.5 }); };
     for (const [cx, cy] of [[O.cx - 8, O.cy - 4], [O.cx + 8, O.cy + 2], [O.cx + 2, O.cy - 7], [O.cx - 9, O.cy + 3], [O.cx + 6, O.cy - 6]] as [number, number][])
       for (let i = 0; i < 3; i++) palm(cx + Math.round((rnd() - 0.5) * 4), cy + Math.round((rnd() - 0.5) * 4), 1);
   }
@@ -463,6 +474,19 @@ class TileLabEngine extends RetroEngine {
     }
     return best;
   }
+  /** DEV build check: a path must WIND — warn if any segment is a long axis-aligned STRAIGHT run
+   *  (a flat side, the thing the autotiler renders as a straight wall of stones). Enforces the rule
+   *  on build so it can't sneak back in. */
+  private warnStraightPaths() {
+    for (let p = 0; p < DPATHS.length; p++) {
+      const path = DPATHS[p];
+      for (let i = 0; i < path.length - 1; i++) {
+        const [ax, ay] = path[i], [bx, by] = path[i + 1];
+        const dx = Math.abs(bx - ax), dy = Math.abs(by - ay), len = Math.hypot(bx - ax, by - ay);
+        if (len >= 3 && (dx === 0 || dy === 0)) console.warn(`[path] DPATHS[${p}] seg ${i} is a straight ${len}-tile ${dx === 0 ? "vertical" : "horizontal"} run — paths must WIND (change BOTH axes). Add a bend.`);
+      }
+    }
+  }
   private inHamlet(tx: number, ty: number): boolean { return tx >= HAMLET.x - 5 && tx <= HAMLET.x + 8 && ty >= HAMLET.y - 4 && ty <= HAMLET.y + 8; }
   private inMesa(tx: number, ty: number): boolean { return tx >= MESA.x0 - 1 && tx <= MESA.x1 + 1 && ty >= MESA.y0 - 1 && ty <= MESA.y1 + MESA.faceH + 1; }
   /** Near a reserved spot (an NPC / camel / flamingo) — kept clear of scatter so they read. */
@@ -495,18 +519,18 @@ class TileLabEngine extends RetroEngine {
       const d = -this.oasisField(tx + 0.5, ty + 0.5) * ((OASIS.rx + OASIS.ry) / 2);   // ~tiles OUTSIDE the water
       if (d < 0.4 || d > 6.5) continue;
       const r = rnd();
-      if (d < 2.2) {                                                                  // WATER'S EDGE — reeds/ferns only (intended at the water)
+      if (d < 1.3) {                                                                  // the very WATERLINE — reeds/ferns only
         if (r < 0.3) map.addProp({ sheet: "d_fern", fw: 16, fh: 16, col: 0, row: 0, x: tx * T + rnd() * T, y: ty * T + T });
         continue;
       }
-      const dens = 1 - smoothstep(2.2, 6.5, d);                                       // the green halo, thinning outward
-      if (d >= 2.9 && r < dens * 0.42) {                                              // PALMS (signature oasis tree) — a fuller, organic grove
+      const dens = 1 - smoothstep(1.3, 6.5, d);                                       // the green halo, densest AT the water, thinning outward
+      if (d >= 1.5 && r < dens * 0.5) {                                               // PALMS grow at the WATER (owner: they need the water) — FRAME the lagoon
         const sc = 0.85 + rnd() * 0.35, wx = tx * T + T / 2, wy = ty * T + T;
         if (this.propTooClose(map, wx, wy, 15 * sc)) continue;                         // ~1 tile apart: a natural grove (some depth-overlap) but trunks still read (feet-Y sort)
-        // palm1 = 48×64 (col0 stump, col1-2 full palms); palm2 = 32×48 (col0 stump, col1-2 full palms).
-        // Use cols 1-2 only (a whole palm WITH trunk) — never col0 (a trunkless stump), and the right fw.
-        if (rnd() < 0.7) map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1 + Math.floor(rnd() * 2), row: 0, x: wx, y: wy, scale: sc, overhead: true, solidR: 5 * sc });
-        else map.addProp({ sheet: "palm2", fw: 32, fh: 48, col: 1 + Math.floor(rnd() * 2), row: 0, x: wx, y: wy, scale: sc, overhead: true, solidR: 5 * sc });
+        // ONLY palm1 COL 1 — the one WITH a baked shadow = a grounded full palm with a bottom (owner rule,
+        // verified: c1 has 244 shadow px, c2 has ZERO — c2 is a no-shadow "place-behind" palm). col0 = a
+        // stump. ~half FLIPPED horizontally so palms lean both ways — variety from the one good frame.
+        map.addProp({ sheet: "palm1", fw: 48, fh: 64, col: 1, row: 0, x: wx, y: wy, scale: sc, overhead: true, solidR: 5 * sc, flip: rnd() < 0.5 });
       } else if (r < dens * 0.5) {                                                    // green bushes (secondary)
         const wx = tx * T + rnd() * T, wy = ty * T + T;
         if (this.propTooClose(map, wx, wy, 11)) continue;                              // bushes stay DISTINCT — no merged bush blobs
@@ -606,7 +630,7 @@ class TileLabEngine extends RetroEngine {
       const nearPath = this.dPathDist(tx + 0.5, ty + 0.5) < 3.4;                       // detail thickens along the walked trail
       const p = 0.16 + Math.max(0, clump) * 0.5 + (nearPath ? 0.22 : 0);               // a genuine carpet, not a sprinkle
       if (rnd() > p) continue;
-      if (this.nearBigProp(map, tx * T + T / 2, ty * T + T, 11)) continue;
+      if (this.nearBigProp(map, tx * T + T / 2, ty * T + T, 16)) continue;   // keep pebbles/detail off palm/tree/house BASES (no rock at a trunk)
       if (this.occludedByTall(map, tx * T + T / 2, ty * T + T)) continue;              // don't hide detail behind tall props
       const r = rnd();
       if (r < 0.46) this.dSpProp(map, `sp_desert_grass_${1 + Math.floor(rnd() * 8)}`, [32, 32], tx, ty, 0.65 + rnd() * 0.3);   // dry grass tuft
@@ -708,9 +732,27 @@ class TileLabEngine extends RetroEngine {
    *  areas of the LIGHTER sand tone (sun-bleached/dry ground) chosen by a low-frequency noise, so the
    *  floor varies in patches — never a per-tile checkerboard. Returns a light tile inside a patch, else
    *  undefined (→ the dark-sand base + ripple variants). Uses the asset's own two sand tones. */
-  private sandRegion(tx: number, ty: number): string | undefined {
-    if (this.meadow(tx * 0.42 + 30, ty * 0.39 - 10) > 0.42) return hash2(tx, ty) < 0.82 ? "sanddk" : "sanddk_rip";
-    return undefined;
+  private inSandPatch(tx: number, ty: number): boolean {
+    return this.map.get(tx, ty) !== "water" && this.meadow(tx * 0.42 + 30, ty * 0.39 - 10) > 0.42;
+  }
+
+  /** Lay the darker-sand material PATCHES with the REAL sanctumpixel sand DUAL-GRID autotile (organic
+   *  soft edges — never blocky), drawn BEHIND the coast wash like the path. Marching-squares over the
+   *  inSandPatch region. */
+  private drawSandPatches(b: CanvasRenderingContext2D, cam: Camera) {
+    const sh = this.atlas.get("sp_desert_ground"); if (!sh.img) return;
+    b.imageSmoothingEnabled = false;
+    const t = T, s = cam.scale, dsz = Math.ceil(t * s) + 1;
+    const [wx0, wy0] = this.ren.s2w(cam, 0, 0), [wx1, wy1] = this.ren.s2w(cam, cam.vw, cam.vh);
+    const tx0 = Math.floor(wx0 / t) - 2, ty0 = Math.floor(wy0 / t) - 2;
+    const tx1 = Math.ceil(wx1 / t) + 2, ty1 = Math.ceil(wy1 / t) + 2;
+    const inR = (x: number, y: number) => this.inSandPatch(x, y);
+    b.save(); this.clipToShore(b);
+    paintDualGrid(inR, tx0, ty0, tx1, ty1, DUAL_SAND, (wx, wy, col, row) => {
+      const [sx, sy] = this.ren.w2s(cam, wx * t, wy * t);
+      sh.cell(b, 16, col, row, Math.round(sx), Math.round(sy), dsz, dsz);
+    });
+    b.restore();
   }
 
   /** The MADE stone path (owner: the cobble PATTERN reads as laid/constructed, not just worn). Recolour
@@ -1635,10 +1677,10 @@ class TileLabEngine extends RetroEngine {
     this.clipToShore(b);
     this.ren.drawGround(b, this.map, this.cam);
     b.restore();
-    // LAYER 3 — the sprite path, drawn BEHIND the coast wash so the SAME dune tonal "filter" tints the
-    // path exactly like the ground (owner: the wash was applied to the ground but not the path → colour
-    // variance; putting the path behind it makes them blend).
-    if (this.biome === "desert") this.drawSandPaths(b, this.cam);
+    // Dark-sand material PATCHES (organic dual-grid edges) then the sprite path — BOTH drawn BEHIND the
+    // coast wash so the SAME dune tonal "filter" tints them exactly like the ground (owner: the wash hit
+    // the ground but not the path → colour variance; behind it, everything blends).
+    if (this.biome === "desert") { this.drawSandPatches(b, this.cam); this.drawSandPaths(b, this.cam); }
     // textured sandy coast + procedural inland water + meadow shading (the wash), then shore foam
     this.blitCoast(b);
     this.drawShoreFoam(b, this.cam);
