@@ -1,0 +1,10 @@
+import "dotenv/config";
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import ws from "ws";
+neonConfig.webSocketConstructor = ws;
+if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL must be set.");
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+await pool.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "streak_last_date" varchar;`);
+const { rows } = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='streak_last_date'`);
+console.log("Applied. streak_last_date present:", rows.length === 1);
+await pool.end();

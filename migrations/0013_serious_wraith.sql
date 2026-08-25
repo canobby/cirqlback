@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "streak_last_date" varchar;

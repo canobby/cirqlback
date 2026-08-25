@@ -1,0 +1,386 @@
+# CIRQL — Ring Placement Rulebook
+
+*How to lay out every ring-island so it reads as a thought-out, full-fledged RPG area (The Mana World / Stardew / Zelda quality) — not random scatter.*
+
+Researched from real practice: The Mana World's own mapping tutorial, the official RPG Maker town-mapping guide, and level-design composition theory (see **References**). This is the doc we build ring-generators against. Pairs with the locked art direction in the world-redesign memory + `CIRQL-World-Redesign-Build-Plan.md`.
+
+---
+
+## The core idea
+
+**A ring is a designed map, not a bucket of random props.** Real RPG areas feel organized because everything is placed for a *reason* — either **function** (this village grew here because of that water/road/resource) or **composition** (this cluster frames that focal point). Randomly sprinkling one plant species across a band is the #1 thing that makes a map read as "computer-generated."
+
+So the build order is always **STRUCTURE → PATHS → FILL**, never "scatter then hope":
+
+1. **Anchors first.** Pick 3–5 focal points (the pond, the plaza/well, a landmark, the dock, one big grove). Place *those*.
+2. **Connect them.** Run a path/road between the anchors the way people would actually walk.
+3. **Grow the settlement** around one anchor (buildings facing in, clustered, short sensible paths).
+4. **Fill** the rest with nature that has *land-use logic* + composition clustering.
+5. **Leave clearings.** Negative space is a feature, not a gap to fill.
+
+---
+
+## The RING BUILD PIPELINE (the fixed linear order)
+
+*Every ring is built in this exact sequence — same order, every time — so the process is streamlined and repeatable instead of ad-hoc. A later stage may READ earlier stages (scatter avoids the path; the path stops at the water) but never reorders them. This mirrors the TMW layer model and the STRUCTURE→PATHS→FILL rule; it's how a ring's build method should read top-to-bottom.*
+
+*Refined 2026-07-09 from a TMW / RPG-Maker / SLYNYRD build-order research pass: pros treat WATER and ELEVATION as part of the GROUND pass (terrain regions painted over the base fill), not separate later phases — so they're folded into stage 1. Collision's exit gate is a flood-fill reachability check.*
+
+**BUILD stages (author the data):**
+1. **GROUND** — the designed surface, built in sub-steps and **filled completely** (TMW: never leave a hole, never one flat tone):
+   - **1a SPRITE FLOOR — laid FIRST, always (owner rule, LOCKED).** Real sprite tiles cover the ENTIRE land — everything except the water the lagoon/sea take up. Never an opaque procedural wash *instead of* tiles (that's what made the desert "look weird — nothing changed"). Procedural may only **tint** the tiles (a light translucent tone wash, like the meadow's grass shade) or paint the **water**; it must never replace the floor. Use a base tile + a few varied tiles (e.g. sand base + sand_v1/v2/v3) so the floor reads as tiles, not one repeat. *(desert: buildSandTexture → "grass"+sand_v1..3, terrain `variants`; buildCoast paints only a ~a62 dune wash over them.)*
+   - **1b regions** — the other ground materials as blended, autotiled regions (a *designed surface, not a fill*): for desert, packed/hard-pan near roads · loose rippled dune sand in the open · a cooler gravel/cracked third material. 1 dominant + 1–2 secondaries + a path material + accents; more reads as noise.
+   - **1c WATER** — carve water bodies (oasis/pond/river) into the terrain + their SDF edge; mark solid. Paint before anything else spawns. *(oasisField → "water" + solid)*
+   - **1d ELEVATION** — cliffs/mesa: rim autotile + a south-dropping face strip + boulders to break lines + a short contact shadow. *(placeMesa)*
+   *(buildCoast · buildSandTexture/buildGrassTexture · the ground enrichment)*
+2. **PATHS** — the sprite-autotiled path network connecting the anchors (hierarchy: road → footpath → desire; winding; stops at water). A true tile layer, never painted. *(DPATHS + buildSandPath/drawSandPaths)* — see §3.
+3. **STRUCTURES** — the anchored builds placed *relative to the paths*: settlements/plazas, landmarks, docks. Feet-anchored props + overlay tiles. *(placeHamlet · placeDuneCamp)*
+4. **FILL / SCATTER** — nature with land-use logic + composition clustering; **must read stages 1–3** and keep clear of water/structures/paths/reserved spots. Big-med-small, clustered never gridded; break monotony but don't become a second uniform layer. *(placeDuneScatter · scatterDuneDetail, gated by dCanPlace/dPathDist)*
+5. **LIFE** — critters + NPCs placed *beside* their anchor (never on the focal object), out of any building's occlusion zone. *(camels/scarabs/oasis life · addNpc)*
+6. **COLLISION** — derived from terrain + each prop's solidR; set as stages run. **Exit gate: flood-fill the walkable area from the spawn — any unreachable pocket is a bug** (TMW's cheapest bug-catch). Also keep a non-walkable designed BORDER around the ring so the camera never shows an ugly edge.
+7. **LIGHT / POLISH** — glow/particles/juice + ambient life, last.
+
+**RENDER order (draw the data) — must match the layer model:**
+GROUND (autotiled terrain, clipped to shore) → procedural coast/water → **PATHS (sprite layer)** → overlay structures → depth-sorted props + actors + player (feet-Y sort) → shadows/light/juice last.
+
+### MOVEMENT CLEARANCE (ground-movers must be able to move)
+Landscape + architecture must **never box in** an NPC/animal or choke a route people/creatures use. When placing structures/water/cliffs/dense props (stages 2–4), leave the movers of stages 5–6 real room to walk:
+- **Every wandering NPC/animal needs open, walkable ground around its post** — not a pocket ringed by solids (buildings, cliffs, water, big props). A mover in a sealed pocket = a bug.
+- **Keep the PATHS walkable** — don't drop a solid prop *on* the lane. Paths are movement corridors first (they can also be pretty).
+- **Ground-movers step only onto walkable ground** — the per-step check refuses water / off-ring / any solid, and retargets. Verify posts aren't so tight the mover just jitters in place.
+- **Exceptions:** (a) **flying** things (butterflies/bees) ignore ground clearance — they roam freely over water/props; (b) a **quest** may deliberately gate a route (a locked gate, a guard, rubble) — but that's an *authored* block with a reason, never accidental terrain trapping.
+- Rule of thumb: if you place something big, ask "can everyone who lives here still get where they'd go?" If not, move it or open a way through.
+
+### DEPTH & OCCLUSION — a 2D thing still has height/depth/width (researched 2026-07-09)
+The world is drawn with a **feet-Y sort** (sort every sprite by the screen-Y of its base; lower-on-screen draws in front). That fakes 3D height — but a tall object's drawn silhouette rises UP-SCREEN (north) from its base, so anything standing north of it, within its width, is **hidden behind it**. Three distinct footprints must each be respected (TMW / Elias Daler / GameDeveloper):
+- **(a) collision footprint** = the base only (what physically blocks walking).
+- **(b) visual silhouette** = the full drawn shape, rising north with the object's height.
+- **(c) occlusion zone** = the up-screen area the silhouette covers, where a *stationary* sprite disappears.
+
+**Rules:**
+1. **Never POST an NPC / interactive object / meaningful prop in a tall object's occlusion zone** (the tiles north of its base, within its silhouette width). A mover briefly *passing behind* is fine and realistic; something *parked* behind is the bug. *(We enforce this: `occludedByTall` treats overhead props AND tall buildings as occluders; `clearNpcPost` nudges an NPC south until it's out of every silhouette; NPC wander won't drift behind a building.)*
+2. **Leave ~1–2 tiles of clearance** north of any tall prop before placing something that must read.
+3. **Entrances / doors / interaction faces open toward the camera (south)** and stay unobstructed — a south door is never hidden by its own building; a player approaching from below is never occluded.
+4. **Put tall objects at the back (north) of a scene**, keep the foreground low — communicates depth and minimises silhouette falling over walkable/used space.
+5. **Sort by the FEET; keep a sprite's sort/collision footprint ~1 tile.** Oversized sprites and multi-tile buildings are the main sort-failure sources — split a very tall prop into stacked Z-slices (trunk sorts behind, canopy in front) rather than one giant sprite. (Our trees/palms use `overhead` for exactly this — canopy over the player.)
+6. **Fade / cut out a roof or canopy when the player walks behind it** (Stardew model: ramp alpha by proximity), so a briefly-occluded player/NPC is never lost. *(Future polish — not yet built.)*
+7. **Height/elevation = tall props too:** per-elevation layers, Y-sort within each; keep ramps/stairs (the traversal points) facing the camera and clear; don't park interactables in the zone above a cliff face.
+
+Applies to **everything, even the smallest item** — check height, depth AND width before placing. Sources: TMW Mapping Tutorial (Ground/Fringe/Over/Collision layers), Elias Daler *Z-order in top-down 2D*, GameDev.net sprite-sort threads, Stardew transparent-occluder behaviour, GameDeveloper *Real-Time Cameras: Occlusion*.
+
+### ASSETS, GROUND VARIATION & SEAM BLENDING (owner rules + research 2026-07-09)
+**Assets:** **ALWAYS use the real asset sprites** (the packs the owner supplied), never generated/painted stand-ins, for the floor, paths, props — everything. Harmonise every pack to the one warm palette at load. *(desert floor = sliced from the sanctumpixel `ground_tile` tileset.)*
+
+**No drop-shadow ovals:** the sprites carry their own baked shadows — do NOT add a separate oval/contact shadow under them; it makes everything look levitating. (`drawShadows` is disabled.)
+
+**Ground = designed surface, laid FIRST, sprite tiles cover ALL land** (rule 1a). Then:
+- **Vary the colour in PATCHES using the asset's own tone variants** — where a large area would be one flat tile-colour, break it into soft **regions** of the pack's lighter/darker/dry/wet/cracked variants (a low-freq noise picks the region, so it's *patches, never a per-tile checkerboard*). SLYNYRD: "never one tile — mix flat with textured, regions with intent." *(desert: `terrain.variantAt`/`sandRegion` paints light sun-bleached sand patches from the tileset's lighter tone.)*
+- Small material count: 1 dominant + 1–2 secondary + a path material + accents.
+
+**Blend paths + objects into the scene — kill the "cutout" seam** (attack the hard, high-contrast, straight, unbroken edge):
+1. **Path = the ground, compacted.** Same **hue family** as the ground; separate by **VALUE + texture** (packed vs loose), not hue.
+   - ⭐ **A walkway's BACKGROUND colour should BE the dominant ground colour** (owner rule) — when a path tile has a background/base tone, make *that* the dominant ground so the path's shoulders melt into the floor and only its worn centre reads; don't instead tint the path to chase a different dominant ground. Blend by **matching the ground to the path**, not by filtering the path. *(desert: the dune-wash palette brackets the packed dark-sand tone = the path's tone; the lighter sand is demoted to accent patches.)* Exception: only if that background wouldn't make sense as the ground.
+2. **A path needs its OWN sand→path transition edge, never a hard rectangle**; recolour the transition **shoulder to the sand tone** (a wrong-coloured shoulder is just a new hard ring). Wind the centreline; **fray** the shoulders.
+3. **Scatter ground detail ACROSS every seam** (path↔sand, region↔region) — ripples/pebbles/tufts/cracks that straddle the line erase it. Let props overlap the path shoulder. Loose organic clumps, never a grid.
+4. **Blend by lowering CONTRAST**, not by piling on dither — low-contrast edges need only 1–2 dither pixels; if a seam needs a wide dither band, nudge the two tones closer instead.
+5. **Object bases sit IN the ground:** a ground-tinted contact shadow that hugs the footprint (soft, not black — the sprite's own baked one usually suffices), a few **ground-coloured pixels at the base** ("bottoms the same colour as the ground"), and a little skirt of tufts/pebbles/sand-drift at the foot.
+
+Sources: SLYNYRD Pixelblog 20/43 (connection tiles, busy-vs-calm, regions), TMW Mapping/Tilesets (no straight lines; outlines are for sprites, not map tiles; break repetition with scatter), Pixel Parmesan / drububu (dithering density ramps), Spritesheet-Generator (one job per edge; keep dither to the transition band).
+
+### ELEVATED LANDFORMS — mesa / cliff / plateau (researched 2026-07-09)
+An elevated form is convincing only when the eye reads **three planes at once**: a **lit TOP** you stand on, a **shadowed FACE** dropping toward the camera, and a **grounded BASE** touching the lower terrain. If top and face are close in value, the rim is a clean rectangle, and there's no base shadow, the brain can't tell **plateau vs pit vs flat texture** — that ambiguity is the "not convincing" read. Kill it:
+1. **Two flat LEVELS connected only by a face + ramp** — never a gradient. Author as FOUR pieces: top surface · rim/top-edge autotile · face strip · base/contact.
+2. **Face is ≥2 tiles tall and clearly value-DARKER than the lit top** (top, side, front = distinct values). A 1-tile lip is a curb, not a cliff.
+3. **Highlighted top LIP + base CAST SHADOW = plateau (not pit).** Highlight at the *top* of the face (caught light on the overhang), shadow at the *bottom* where it meets the ground. Invert them and you've drawn a pit.
+4. **Cast shadows stay short (≤~1 tile) and constant length** regardless of wall height, so they don't fight passing sprites.
+5. **Ramps/stairs face the CAMERA (south), span the FULL face height, and are the ONLY walkable ascent;** the rest of the face is solid collision. Cut the ramp *into* the face with a wedge/triangle tile (not pasted on); no stubby stairs; give the lookout a real path (1–2 routes = "reach it a few ways").
+6. **Break every rim and base:** jog the rim (no straight run > a few tiles), terrace the drop into stepped ledges (each a consistent height), scatter cliff-coloured boulders/**talus** rubble at the foot (randomised, no repeating clusters), grade vegetation dense-low → sparse-high.
+7. **Layer + sort (ALttP model):** lower level under, upper level (top+rim+occupants) over; feet-sort within each; a SEPARATE collision layer (ideally sub-tile on the face/ramp) — three states: face=blocked, ramp=passable link, top=walkable-but-bounded.
+8. **Desert mesa:** broad flat top + steep tall face (mesa, not butte); **2–3 horizontal sandstone STRATA bands** on the face (decorates *and* sells verticality — likely our current gap if the face is flat); **talus skirt**; **warm top-lip highlight / cooler shadowed face**. Reference **Tulimshar** (pull the real TMW maps first — standing rule).
+
+Sources: SLYNYRD Pixelblog 6/11/43 (light dir, value-per-face, cast shadows, wedge tiles, terraces, warm-near/cool-far), RPG Maker "Mapping Cliffs" + FlareBlitzed + finalbossblues (height consistency, jog the rim, stepped layers, rock/veg placement, common mistakes), gablaxian ALttP ground/world/top layers + separate collision, TCRF ALttP 8×8 sub-tile collision.
+
+#### RELIEF — making a landform REALLY stand UP out of the ground (researched 2026-07-10)
+Height in top-down pixel art is a STACK of illusions, in strict priority order — do the top ones or it reads as a flat shelf no matter how good the face art is:
+1. **A BIG offset ground CAST SHADOW is the #1 cue** (bigger than any face detail). The whole mass throws a distinct shadow POOLED on the ground on the anti-sun side — a solid darkened-sand blob whose shape echoes the **TOP outline** (not the base), extending ~1.5–2.5 tiles (24–40px) out, hard-ish inner edge, 1–2px dither/fade only at the outer edge. This is the exception to the "all cliff shadows ≤1 tile" rule — the *hero* landform gets a real big shadow; small tile-ledges keep the short one. (ALttP, SLYNYRD, MapEffects.)
+2. **Overhang / caprock LIP = the "it jumps out" cue.** Project the lit top plane 3–5px out PAST the face around front+sides, and paint the underside of that lip as the **single darkest band in the whole sprite** (near-black warm brown, 1–2px, directly under the overhang). Bright cap + dark underline forces the eye to read the top as floating above the wall. Cheapest strong relief cue there is.
+3. **Value jump: the sunlit CAP must be the BRIGHTEST thing on screen** — ~15–25% lighter + warmer/yellower than the sand; face 30–50% darker than the sand; +1px warm rim-light on the sun edge; slight desaturation/haze on the far/back edge (atmospheric depth).
+4. **Stacked/foreshortened FACE + TERRACE.** ~16–32px of face reads before "wall of text"; make the strata rows RECEDE (darkest under-lip AO → mid band → slightly LIGHTER warmer bottom band catching sand bounce), vary row heights (e.g. 6/5/8px). **Terracing multiplies height:** top → short face → ledge/bench → short face reads far taller than one tall face; each setback = one "height unit."
+5. **Plant the mass at the base:** a tight 2–3px ambient-occlusion band where face meets sand (under the big shadow), a talus/rubble skirt tapering outward, and a slight sand MOUND bulging around the foot so it looks pushed-up, not set-on-top.
+6. **Occlusion + scale props:** let a palm/camel/NPC pass BEHIND the top edge (feet-Y sort across the elevation) and put a tiny figure at the base — overlap + a size reference quantify the height the shading only suggests.
+
+#### FRINGE layers & edges — TMW model (researched 2026-07-10)
+Depth comes from splitting a tall object across layers: **Ground** (flat, never sorted, 100% filled — cast shadows + terrain blends live here) · **Fringe** (the ONE y-sorted layer — cliff faces + tall object bodies, so the player walks behind the top and in front of the base) · **Over** (always above sprites — treetop/overhang crowns you can never stand in front of) · **Collision** (invisible, authored separately). Reserve Fringe strictly for feet-Y-sorted things; flat decals stay on Ground; unreachable crowns go to Over. Edge craft: every material boundary gets its OWN transition tile (never a hard butt-join); chain big jumps through an intermediate strip (sand→beach→water); author inner AND outer corners (never reuse a straight edge at a corner); overlap/bleed the transition graphic a few px past the cell so the seam falls mid-object, not on the grid line; put the cast shadow on Ground and the body on Fringe; **Reid's rule — always add a "little line of sand" deposit at the foot of a cliff or the wild knifes into the rock.** (TMW Dev:Mapping_Tutorial, Tulimshar/Source-of-Mana devlog, RedBlobGames/BorisTheBrave autotiling.)
+
+#### BEAUTIFY / SMOOTH — grid-killing & cohesion (researched 2026-07-10)
+Render order for a cohesive scene: ground variants → transition/edge tiles → AO boundary bands → contact shadows → object sprites → offset scatter decals → ambient wash → sparse accents. Rules: weighted-random ground variants (~80% plain / 20% textured) · detail as separate transparent decals at sub-tile offsets so seams fall mid-object · cluster scatter in big/med/small clumps (never uniform sprinkle) · dither the SEAM not the region · break every straight line ±1 cell · ONE global light direction enforced everywhere · one contact-shadow convention so nothing floats · a low-alpha warm ambient wash (~8–15% multiply/soft-light) to harmonise mixed Cute Fantasy packs into one palette · limited palette + busy-next-to-calm so focal points pop. Warm rock/sand ramp: cream `#F5E4C3` → sand `#E8C98F` → tan `#D9A566` → ochre `#C67A3E` → terracotta `#A64B2A` → maroon `#6E2A1E` (caprock = 2 darkest, talus = 2 lightest). Oasis (the single cool focal pop, reserved for water): turquoise `#37B0A0` → teal `#1E6E6B`. Shadows shift toward violet-terracotta `#5A3550`/`#7A3B33`, NEVER gray. (SLYNYRD 20/21/43, Cyangmou, Saint11, Pedro Medeiros, BJG; Monument Valley geology.)
+
+### THREE-QUARTER STRUCTURES — temples / buildings / ruins in real 2.5D (researched 2026-07-10)
+Built structures must NOT mix a top-down roof with a straight-on front (the "flat facade" bug). Use a consistent **three-quarter (oblique) SNES perspective** so every surface reads as facing UP, FORWARD, or SIDEWAYS. This is the standing rule for ANY temple/building/ruin/monument going forward (the desert Sunken Temple is the first application — see [[cirqlback-sunken-temple-redesign]]).
+- **The 3-surface rule (this does ~all the 3D work):** one material hue, three big values — **TOP surface = lightest** (catches sky), **FRONT face = medium**, **SIDE wall = darkest**. TOP ≈ +25% lightness over FRONT; SIDE ≈ −20% under FRONT. Crisp steps, **no gradients**. Sandstone spec: TOP `#d9c08a` (+1px sunlit rim `#f0e0b0`) · FRONT `#b8965e` · SIDE `#8a6b44` · under-overhang/deep `#5a4436` · recess/void `#33261f`.
+- **ONE global light — sun UPPER-LEFT, shadows LOWER-RIGHT — applied to EVERYTHING** (structure, obelisks, player, camel, rocks, plants, small ruins). Sunlit upper edges = pale gold; front = warm sandstone; sides = darker red-brown; **deepest shadow = muted purple-brown, NEVER black** (colored shadows keep the scene warm, not muddy). Reuse the SAME dark shadow colours across every object for unity.
+- **Oblique geometry (16px tiles):** FRONT faces ~12px tall (reads tall/heavy); TOP surfaces are **receding parallelograms** ~6px deep, skewed ~26° (1px right per 2px up — the SNES cheat, not true 45°); each stacked tier **inset 8–10px** so the tier below's top reads as a walkable ledge; draw **back-to-front** (painter's order). **1px bright rim on every top-front edge + 1px dark line under every overhang** = the ledge "pop".
+- **Deep doorway (never a black rectangle):** nested ~2px bands — outer arch (side-value, lit left edge) → 1px bevel `#5a4436` → void `#33261f` → 2–3 darker bands (`#4a382c`→`#33261f`→`#241a14`) → 1px lit threshold `#b8965e` → optional 2px torch dots `#ff9a3c` + additive `#ffcf7a` glow. Must read tall enough to walk through.
+- **Cast + contact shadows (SOLID/DITHERED pixels, never blur):** the whole mass throws a **big cluster to the lower-right**, offset ~40% of its height, tallest sections longest, stepped outward per tier, far edge a 2px checkerboard dither into the sand; a **1–2px solid contact line (no offset)** under every ledge/stair lip + the base. (Hero landforms get a big thrown shadow — the ≤1-tile rule is for small tile-ledges.)
+- **Modular pieces + Y-sort (walk-behind):** break the structure into draw-pieces (foundation · lower walls · stairs · ledges · tiers · shrine · doorway · columns · carvings · damaged blocks · vines · torches) each with **feet-Y = its base row** so the player passes IN FRONT when below / BEHIND when above (between columns, under the arch, under overhangs). Split big trees/buildings into LOWER (interacts) + UPPER (draws above player). Object lower on screen draws in front.
+- **Elevation:** ground = 0, tiers 1/2/3; stairs move the player between levels; the player sprite visually RISES climbing while its **shadow stays on the surface below** (and shrinks slightly with height). If a continuous system is too complex, connected sub-areas per level are the fallback.
+- **Weathering (strong silhouette, wear in the surfaces):** chip TOP corners only (2–3px), keep the base silhouette solid; missing upper stones, one collapsed stair (rubble = small 3-plane blocks), vines (2–3px `#5a7a3c`) from cracks, sand half-burying the base, carved reliefs / faded symbols / mismatched blocks / stains. **Blend the base into the ground** — sand piled against lower walls, broken blocks + half-buried stones at the foundation, a worn compacted-sand path more defined near the door.
+- **Approach for CIRQL = HYBRID:** procedural 3/4 tier geometry + shading (port `drawMesaFace`'s per-face multiply-shade + AO underline) **skinned with REAL Cute Fantasy brick tiles** + real recessed arch + corner columns (owner's LOCKED "always use the asset sprites"), not flat colored rects.
+Sources: SLYNYRD Pixelblog 3/6 (3-plane oblique, one-light) · Zelda LttP Desert Palace/Pyramid (ledge rim+under-shadow, half-buried base) · Illusion of Gaia / Terranigma / Secret of Mana (stepped stone tiers, nested fake-depth doorways) · FFVI/Chrono Trigger (dithered non-blur shadows, purple-shifted deepest shadow).
+
+### FOREGROUND / BACKGROUND SEPARATION — atmospheric depth (2026-07-10)
+Frame the scene in depth layers (no smooth fog): **foreground** props (big palm leaves, dark rocks, broken columns, tall grass, ruined masonry) partly enter the bottom corners — **darker, larger, higher-contrast/saturation**; **background** (top of screen: distant rocks, far water edge, high vegetation) — **lighter, lower-contrast, slightly cooler**. Player/camel/interactive objects get **stronger outlines** than distant scenery. Outlines are **controlled, not uniform black**: sandstone/wood = warm dark-brown; water/deep shadow = cool dark-purple; sunlit edges = lighter.
+
+### GROUND-TILE FAMILY + LABELS (2026-07-10)
+- **Ground = a FAMILY, never one repeating tile:** plain · rippled · rocky · cracked · compacted-path · footprint · wet-shore · sand-piled-against-walls. Keep MOST ground **quiet** (readable); scatter pebbles/cracks/bones/pottery/tufts/footprints **selectively**, not on every tile.
+- **Labels:** no permanent "You" tag; on area entry show a brief **fading title card** top-centre (e.g. "The Sunken Temple" / "Sunmere Oasis"), then fade; a temporary bouncing arrow/glow marks the player on load, then disappears. Labels must never overlap a structure or each other.
+
+### SMALL-OBJECT SPACING — every prop must read as its own thing (researched 2026-07-09)
+Scattered props must never merge into an unreadable blob or sit *on* each other (a rock on two bushes, two bushes fused). The goal is **readability**: after placement you can still trace each object's silhouette. Overlap is a tool, not the enemy — but only when it clearly reads as **depth**, never as a **merge**.
+- **Place BIG props first** (trees/cacti/boulders/large bushes) — they claim space + set the hierarchy; scatter medium then small detail into the gaps.
+- **Size-aware rejection radius (Poisson-disc):** reject a candidate whose centre is within a keep-clear radius of an already-placed prop, scaled to the LARGER footprint. *(We enforce this: `propTooClose` — palms ~2 tiles apart so canopies don't overlap and hide each other's trunk; bushes distinct; `dSpProp` rocks/cacti don't stack.)*
+- **No prop's centre inside another's silhouette; no two solid props on the same/adjacent tile.** (The "rock on two bushes" killer.)
+- **Overlap only small-in-front-of-BIG, at the base:** a tuft/pebble may cover the bottom ~25–30% of a bigger prop for depth, but must not cover its upper silhouette or another small prop's centre. **Similar-size props never overlap** (two bushes, two rocks: full separation).
+- **Clumps of odd count (3/5), with open ground BETWEEN clumps** (no cluster-to-cluster contact); target ~70/30 detail-to-negative-space; vary type/size/rotation within a clump. **Frame the focal point (water/palms), don't bury it.**
+- **Sort by feet-Y** so any permitted overlap reads as front-of, never on-top-of. Sources: SLYNYRD (clusters/readability/negative space), RPG Maker mapping (threes, avoid crowding), Level Design Book / 80.lv (hierarchy, contrast, focal points).
+
+### PATH look — MADE vs WORN, and no filters (owner)
+A path may read as **made/constructed** (a laid stone pattern) — that's good; keep the stone PATTERN, just recolour it into the **sand-tone family** so it belongs to the ground (a warm sandstone, a touch darker than the floor), never blue-grey and never *faded/flattened* (flattening the pattern to blend = a filter, which reads as "faded stones"). Autotile the path with the 3×5 **blob** (handles width/corners cleanly — the dual-grid left big solid blocks on the wide mesa road). Real asset tiles only.
+
+> The Dunes was built mid-stream as we learned the rules, so its method isn't perfectly in this order yet. **Once the ring's visuals are locked, refactor buildDunes to read exactly as stages 1→7** (a cleanup pass, not a behaviour change) — that's the streamlined template every future ring is generated from.
+
+---
+
+## 0. The GROUND is tiles, not a flat fill (the "placed vs. part of" fix)
+
+The biggest thing that makes our maps read as "everything is *placed on* the ground instead of *part of* it" is that the ground is one flat colour with props sitting on top. **TMW/Zelda/Stardew build the ground itself out of tiles** — textured grass, dirt, sand, tilled soil, cobble, forest-floor — with blended transitions. The ground becomes a rich *surface*, and props are fewer and purposeful. This is the fix for "flat / placed / lifeless."
+
+**DO (TMW ground rules)**
+- **Fill the ground layer completely, with real tiles.** TMW: *"Ground1, the lowest ground layer, has to be filled completely before the map is finished"* — never leave raw fill showing. Our textured grass tile IS that layer; don't hide it under a flat colour.
+- **Use several GROUND TYPES, not one.** Grass **and** dirt paths **and** tilled farm soil **and** cobble plaza **and** a darker forest-floor under the trees. Varying the ground *type* (not just scattering props) is what reads as a real place.
+- **Blend terrain edges with autotiles.** Where two ground types meet, use the pack's border/blob autotile so the edge feathers (grass fringing into dirt), never a hard blocky seam. TMW: plain ground tiles "make the ways even more blocky than they have to be" — use the grass-border autotiles. (Options: 47-piece bitmask, or the compact **dual-grid**/Wang approach.)
+- **Layer it (TMW layer model):** *Ground1/2/3* (terrain) → *Fringe* (oversized props drawn relative to sprites, depth-sorted) → *Over* (treetops/roofs above the player) → *Collision* (invisible walk/block). Depth = richness.
+- **A fence or wall can hide a hard edge.** Where a soil field meets grass, a fence around it hides the seam — no perfect autotile needed.
+- **Paths are tiles too.** A dirt/cobble path is a *ground type* laid into the terrain (blended edges), not a prop strip — that's what makes it feel walked-on and "part of" the map.
+
+**DON'T**
+- Don't paint one flat colour over the whole ground and rely on props for all detail — that's the exact "placed, not part of" look.
+- Don't leave a terrain type as a hard rectangle — feather it (autotile) or hide the edge (fence/wall/prop line).
+
+### Reference looks — what real TMW maps actually look like (studied their good/bad examples)
+Compared TMW's own **Goodmap** vs **Badmap**:
+- **Both** have **textured grass TILES** as the ground — never a flat colour. That's the baseline; our old flat-fill was below even their *bad* example.
+- **Good** = trees **clustered organically** (not a grid), a **winding dirt path** with soft blended edges, an **organic water shore**, and **lighter tall-grass patches laid in as tiles** to break up the base grass.
+- **Bad** = trees in a **perfect grid**, a **straight path with a hard 90° corner**, a **straight water edge**, and **uniform grass** with no tile variation.
+- **The bar:** every time we build an area, ask **"is this better than The Mana World?"** — if not, fix it. Study a reference for *that specific biome* (forest/desert/rainforest/etc.) before building it, don't build from memory.
+- **Mix biomes on one ring.** A ring doesn't have to be one biome — blend e.g. meadow → wetland → woodland across it (with tiled transitions). More visual interest, and it scales as rings get bigger.
+- **Colour must FLOW and match the biome.** Each biome gets a cohesive palette that *matches and enhances* it (enchanted forest = lush sunlit green → deep cool teal-green shade; desert = warm sand→ochre; ember = ash→ember-glow). Flow it as **soft tonal patches** over the textured ground tiles — never a flat single colour, never hard-edged tone tiles (those fight the natural flow). Ease terrain-to-terrain colour transitions (sand greens into grass at the shore) so nothing has a hard seam.
+- **Round the tile grid to the ring with a MASK.** Since the ring is a curved disk but tiles are a square grid, clip the tile ground to the true shoreline curve and let the procedural beach paint around it, colour-matched to the ground it meets — so tiles never poke past the edge and the coast reads smooth. Keep all props inside the edgepoint so none hang over the mask (a dock/reeds at the water is a deliberate exception).
+
+## 1. Structure & focal points
+
+**DO**
+- Give every ring **3–5 focal points** where the player naturally stops (RPG Maker: "3–4 anchor points"; TMW: "set aside points where players stop and spend time, make them memorable in a small window").
+- Make the focal point **stand out** — brighter, more contrast, framed by negative space and clustered props pointing at it (composition: the dominant element must not merge with the scene).
+- Use **leading lines** — a road, a river/shore, a row of trees, the way a fence runs — to pull the eye toward the focal point.
+- Make sure **every screen-sized frame is pleasing on its own** ("that is what players actually see in game").
+
+**DON'T**
+- Don't make a ring with no hierarchy where every area is equally busy — the eye has nowhere to rest and nothing to head toward.
+- Don't bury the focal point in clutter or let it blend into the surrounding density.
+
+## 2. Village / settlement layout
+
+**DO**
+- **Decide why the village exists first** (RPG Maker: "think about the purpose of the town and how it came to exist"). Fishing hamlet → by the water. Mushroom-farmers → around the fungal grove. That single decision drives *everything*.
+- **Cluster buildings around a center** (a well, plaza, market, or shrine) so foot-traffic and sightlines converge.
+- **Face entrances toward the action** (the plaza / road) so "ways are short and make sense."
+- **Vary building size by role/wealth** — the inn/chief's house is bigger and prominent; a single villager's hut is small. Same-size houses in a row = fake.
+- **Keep material consistent** with the biome/economy ("where do they get their building materials?") — one coherent building set per settlement.
+- Position **work-buildings near their resource** (fisher's hut by the cove, mill by the river, farm by the open field).
+
+**DON'T**
+- **No grid / no straight rows of identical houses** ("the map is very square-y" is the classic failure). Stagger position, rotation, and spacing.
+- Don't spread the village evenly across the whole ring — a settlement is a *dense cluster*, with wilderness between it and the next pocket.
+- Don't put every door facing the same way — some variety reads as organic.
+
+## 3. Roads & paths
+
+**DO**
+- **A path exists to connect anchors** (dock → village → pond → landmark). It has a job; it's not decoration.
+- Route it **where people would actually walk** — mostly direct, with gentle bends around obstacles.
+- **Line the road** with the things that belong beside a road (fences, signposts, lamp-posts, a bench, worn grass, the odd cart) so it feels travelled.
+
+**DON'T**
+- **No hard 90° corners** where a real path would curve, and no needless S-curves where people would walk straight (TMW + RPG Maker both call this out).
+- Don't let a path dead-end for no reason, or run parallel-hugging a river the whole way (a nit we already hit).
+
+## 4. Nature & biome (the part that's been reading as random)
+
+**DO**
+- **Break up every straight line and grid.** "Trees don't grow in grid patterns; rivers, ridges and shores should never be perfectly straight" (TMW). Our SDF pond/shore already does this — keep props off grids too.
+- **Cluster plants in odd-numbered groups** (rule of threes) with varied spacing — a copse of 3–5 trees, then open ground, then a clump of 7 mushrooms. Clusters read far better than an even scatter (composition rule: "small groups are more pleasing than randomly scattered props").
+- **Three tiers of flora, spread by threes** (RPG Maker "balance by threes"): a **signature** plant (the giant mushrooms), a **secondary** (bushes/small mushrooms), and a **tertiary** ground detail (tufts, flowers, pebbles, fallen leaves). Never one species alone.
+- **Density gradients, not uniform coverage** — dense near water/village/landmark, thinning to open meadow, denser again at the wild rim. Outward rings get *more* pockets, never emptier.
+- **Land-use logic — each thing near what it "wants":** trees form a *grove on one side* (a forest has an edge), cattails/reeds/lilypads only at the water, rocks/boulders on higher/rougher ground, mushrooms thickest in shade near the grove, flowers in sunny open meadow and around homes.
+- **Eye-catching tiles used sparingly** (TMW) — the rare bright flower, the one big boulder, a glowing mushroom. If everything is loud, nothing is.
+
+**DON'T**
+- **Don't ring the whole shore evenly with one prop** (our current "grove band at radius 4.5–8" is exactly the random-looking thing to kill — it's a uniform annulus of one species).
+- **Don't scatter a single species uniformly** across a band — that's the signature "generated" look.
+- Don't place canopy props so they overhang water, paths, or the ring edge (keep the edgepoint margin).
+
+## 5. Density, variety & negative space
+
+**DO**
+- **Vary the ground** so open areas don't read as flat fill (TMW/RPG Maker: ground variation is the single biggest fix for empty-looking space) — our procedural moss shading covers this; add scattered tufts/detail props too.
+- **Leave deliberate clearings** — a clean patch of meadow, the open ring around the pond, a village square. Negative space frames the busy bits and gives the eye rest.
+- **Balance clutter by threes, spread over the map** — small storytelling details (firewood by a hut, a basket, a signpost, worn stones) that imply life.
+
+**DON'T**
+- Don't fill every tile. "If you have empty space you can't fill, the map is too large" — shrink the ring or add a *pocket*, don't carpet it.
+- Don't repeat the same object dozens of times on one screen; don't line things up evenly.
+
+## 5b. Density & detail — never leave the ground bare (the anti-empty rules)
+
+The #1 reason a map feels "lifeless / dull / bare" (even a well-structured one) is **empty ground**. TMW, Zelda and Stardew maps are *densely textured everywhere* — open areas are still full of low ground-detail. "A clean green field of grass is empty walking space in a game." Negative space means *lower detail + no big props*, **not** blank ground.
+
+**DO**
+- **Carpet the ground with a fine DETAIL layer** — grass tufts, sprouts, pebbles, tiny flowers, fallen leaves, small mushrooms — everywhere the player walks. This is the single biggest fix for "empty."
+- **Cluster the detail big-medium-small** — a dense patch, a medium sprinkle, a lone tuft, then a gap. An *even* coating of detail is as boring as bare ground; vary the density in waves.
+- **Layer it** — ground detail (tufts/pebbles) UNDER mid props (bushes/rocks) UNDER tall props (trees/giant mushrooms, overhead). Depth reads as richness.
+- **Storytelling clutter** — a few objects that say what a place *is*: a farm has tilled rows + a scarecrow + a basket; a home has a garden + laundry + firewood; a forest floor has logs, stumps, mushrooms, ferns.
+- **Match density to the biome** — a *rainforest/grove* is thick (overlapping canopy, dense undergrowth); a *meadow* is medium (tufts + flower clumps); a *desert* is sparse-but-still-detailed (dunes, dry shrubs, bones, rocks). "Bare" is never the answer — thin biomes still have texture.
+- **Give big props breathing room** — don't shove a house/tree flush against a wall or another big prop, or it reads as a flat cardboard cutout; let ground detail fill the gap around it.
+
+**DON'T**
+- Don't leave wide stretches of untouched base ground — that's the "empty" the owner is reacting to.
+- Don't carpet detail perfectly evenly (looks like wallpaper) — cluster it.
+- Don't over-detail with loud/eye-catching tiles everywhere — those stay rare; the carpet is *quiet* detail.
+
+## 5c. Enclosures, farms & crops (what makes a village read as lived-in)
+
+**DO**
+- **Fence the yards.** Real village houses have a fenced garden/yard. Enclose a bit of ground by each home (or a shared plot) with a fence — instantly reads as "someone lives and works here."
+- **Grow crops in neat rows.** A farm = **tilled soil with furrow rows + a fence + regular rows of the same crop** (here: cultivated mushrooms in rows on dark soil). Rows are the one place *regularity is correct* — crops are planted deliberately.
+- **Tie the farm to the village economy** — mushroom-farmers → a mushroom field beside the hamlet; fishers → drying racks by the water. The clutter should explain how these people live.
+- **Gardens & window-boxes** — flower beds inside the fences, a well/trough, benches, a cart, barrels, a stump for chopping.
+
+## 5d. Breadcrumb trails — guide the player with flora & landmarks
+
+**DO**
+- **Lead the eye with a trail.** Line the path with flowers, lanterns, stepping-stones, tufts — a *breadcrumb trail* the player subconsciously follows from one anchor to the next (plaza → pond → grove).
+- **Landmarks create "gravity."** A tall bright focal (a great glowing mushroom, a lighthouse) pulls the player toward it; place them so the player naturally orbits between anchors.
+- **The triangle rule** — arrange your 3 big anchors so sightlines form triangles; the player always sees the next point of interest, never a dead flat expanse.
+
+## 5e. Water features — juice the pond (never leave it bare)
+
+A focal pond should be *lush*, not a flat puddle (researched pond design):
+- **Lush shore ring** — cattails/reeds + tall water-grass + **encircling smooth stones** around the whole bank.
+- **Lily pads afloat** (some with a flower) + the odd rock breaking the surface.
+- **Life** — a duck swimming, a frog on the bank, fish shadows gliding *under* the surface, dragonflies/fireflies darting above.
+- **Animated surface** — concentric ripple rings + sun-sparkle glints; deep-teal water with warm highlights.
+- **Palette** — deep teal water + sage-green reeds + a warm accent; keep it cohesive with the biome.
+
+## 5e2. Water — palette, edges & rivers (2026-07-09)
+- **One WATER palette per ring** (deep / shallow / foam / wet-fringe) shared by ALL water on the ring (sea + oasis + rivers) so water reads as *one biome-appropriate water* (cohesion). Match the inland water to the ring's SEA where it makes sense (the desert oasis uses the sea's blue → reads as a piece of the same water).
+- **Give inland water the BEACH's edge** (deep → shallow → foam waterline → wet/green fringe), thinner — so a pond/oasis reads as *living* water, not a flat blue fill. (The plain-fill version reads as "empty of water in the environment.")
+- **Big/organic water stays PROCEDURAL** (Path A) — it's the canvas for the depth engine's reflections/shimmer, which tiles can't do. Tiled water is only for tiny incidental water (a well, a trough).
+- **▶ RIVERS & STREAMS (planned, owner 2026-07-09):** we WILL use **sprites** for cool flowing-water features (streams/rivers/waterfalls) — make their rules when we build them, including **border rules** like the lagoon's (nothing overhangs the water; only reeds/edge-plants hug it; keep the edgepoint). A river is a leading line + a border to respect, same as a shore.
+
+## 5f. Keep objects WELL inside the ring
+
+Nothing sits near the shoreline. Every placement gate uses a generous **edgepoint margin (~4+ tiles)** so props/NPCs/detail read as *on the land*, not teetering on the coast. No "rim band" of props hugging the beach. (Water-edge exceptions like a dock are deliberate.)
+
+## 5g. Water clearance & no bad overlaps
+
+- **Only water things go near water.** Animals (duck/frog) and *intended* water plants (reeds, cattails, lily pads, encircling stones, overhanging bushes) may sit in/near a pond. **Every other object keeps ~3 tiles clear of the water** — no random mushroom/tree/detail crowding the shore.
+- **No prop-on-prop overlaps.** Small ground detail (pebbles, tufts, flowers) must not land on top of a cap/trunk/house — gate it against nearby big props (a rock on a mushroom's head reads as a bug).
+
+## 5h. One gathering spot + a dock per ring
+
+- **A gathering spot** — one communal **Commons** per ring (a bonfire clearing with seats, or biome equivalent), placed in an open clearing kept clear of clutter. It's where festivals / the Welcome Dance / crowd moments happen.
+- **A dock** — a little jetty at the shore as the ring's departure point (a deliberate water-edge exception). Ring-to-ring sailing wires up when the world is assembled.
+
+## 6. Believability & story
+
+**DO**
+- Every placed thing should answer "**why is it here?**" — a person, a purpose, or a natural cause put it there.
+- **Put NPCs where their function is** — the fisher at the pond bank/cove, the farmer in the field, the keeper at the plaza — not floating at random coordinates.
+- **Imply daily life** with clutter that tells a micro-story (tools by a workshop, laundry line, a campfire, tracks).
+- **Make things interactive** where you can (TMW/RPG Maker) — a sign that reads, a bush that rustles, a critter you can pet — even tiny reactions sell the world.
+
+**DON'T**
+- Don't place a landmark/prop with no reason or relationship to its surroundings.
+
+## 6b. Functional clearance — don't obscure purposeful objects (readability)
+
+A purposeful/interactive object (firepit, well, fountain, market stall, quest-giver spot, a sign, a chest, a landmark) must stay **visually unobstructed** so the player reads it as *what it is* and *that it's interactive*. This is the level-design **readability / affordance** rule (TMW: focal points get negative space and must "not merge with the scene"; RPG-Maker town guides say the same for shops/wells). It takes finesse: it's not "keep everything away," it's "keep the *right* things clear."
+
+**DO**
+- **Reserve a clear zone** around each purposeful object (~1–2 tiles), free of scatter and of NPCs/props that aren't part of it. The firepit's flames, the well's mouth, a stall's counter must be seen.
+- **Place NPCs BESIDE their object, facing in** — the well-keeper stands *next to* the well, the smith *beside* the anvil, a traveller *on a seat* around the fire. Never centre an NPC on the object it tends.
+- **Only "intended" occupants may occupy** — a person *sitting on a bench/stump*, a lantern *on a post*, a pot *on a shelf* is correct (the object exists to hold them). A person standing *in the fire* is not.
+- **Spread NPCs** — don't let 3–4 pile onto one tile/object; give each its own spot with breathing room (ties to the "cluster by threes + negative space" rules).
+
+**DON'T**
+- Don't drop an NPC, tree, rock, or scatter prop on top of a firepit/well/fountain/sign/chest — it hides the thing's purpose and reads as a bug.
+- Don't ring a focal object so tightly with figures that its silhouette is lost.
+
+*Implementation:* NPC/prop placement offsets from the focal tile (e.g. desert `DNPC` stands each keeper beside the well/oasis/campfire); scatter gates already exclude the commons/plaza. When adding a purposeful object, reserve its clear radius and place its tenders at the radius edge.
+
+## 6c. Object depth — don't place things BEHIND anything tall (occlusion)
+
+Applies to **every object that would be 3D in real life** — buildings, towers, trees, cliffs/mesas, big rocks, cacti, giant mushrooms, statues, market stalls. Each has **visual height**: it's feet-anchored and its body rises UP the screen. Because the world depth-sorts by Y, anything placed **directly behind it (north / up-screen, at a higher or equal draw order)** is **occluded** — drawn *behind* the tall sprite and lost. This is correct 3D-ish behaviour, but it means you must not *place things there* expecting to see them.
+
+**DO**
+- **Keep a clear zone behind (north of) every building** roughly as tall as the building (its footprint width × its sprite height in tiles). Put props/NPCs/detail **in front of (south), or to the sides** where they read.
+- **Stage important things in front of or beside** a structure — a market stall's goods in front, a garden to the side, a sign at the door (south face).
+- Let **overhead** elements (treetops, roof eaves) pass ABOVE the player deliberately — that's the *intended* overlap; unintended overlap (a cactus vanishing behind a house) is the bug.
+
+**DON'T**
+- Don't scatter flora/rocks/NPCs in the tiles directly behind a house, tower, or big tree — they'll be half or fully hidden and read as clipping.
+- Don't tuck a quest-giver or interactable where a structure covers them.
+
+*Implementation:* scatter gates exclude building clusters (e.g. desert `inHamlet`/`inMesa`), which also protects the behind-zone; when placing a lone building, reserve the rectangle from its feet up ~its height in tiles.
+
+## 6d. The DEPTH model — how top-down RPGs fake 3D (TMW / Elias Daler / general)
+
+How the pros make a flat top-down map read as 3D shapes with correct front/behind:
+1. **Y-SORT BY FEET.** Sort every sprite by the **bottom of its bounding box** (`top + height` — the feet/base), lowest→highest, and draw in that order. A thing lower on screen is nearer the camera → drawn on top. **Center-anchor sorting fails** (tall things sort wrong). Our `TileRenderer.drawEntities` already sorts props by feet-Y — always anchor props at the feet (`y = ty*T + T`).
+2. **THE "OVER" / OVERHEAD LAYER.** Split tall things the player walks *under* — treetops, roof eaves, an arch, a giant-mushroom cap — into a piece drawn **always on top** (z=1). The trunk/base Y-sorts normally; the canopy is overhead. Our props have an **`overhead`** flag = this layer (use it for trees/cacti/tall mushrooms/roofs).
+3. **HEIGHT / ELEVATION = a Z-level.** Things on a raised level (a mesa top) get a higher Z; sort within each Z by feet, higher Z drawn after. Keep a level's height *consistent*.
+4. **COLLISION ≠ SILHOUETTE.** Collision lives at the **base** (feet footprint), separate from the tall visual — you bump the trunk, not the canopy.
+5. **CONTACT SHADOWS** (soft ellipse at the feet) ground every object — the cheapest, biggest depth cue (we have `drawShadows`).
+6. **Placement follows from this:** because sprites have height + Y-sort, **don't place things behind (north of) tall objects** (§6c) and **don't obscure purposeful objects** (§6b).
+7. **Polish (later):** fade a tall object to ~70% alpha when the player is *behind* it, so they're not lost; parallax/oblique for distant depth.
+
+## 7. Borders (already handled — keep it)
+
+- A ring needs a **designed, non-walkable border** (TMW: ~20-tile designed border). Our **procedural beach → sea void** rim *is* that border. Keep the wild rim framed (fauna fringe, the shore) rather than props running to the water's edge.
+
+---
+
+## Applying it to the Shroomwood (the fix)
+
+**What's random now:** giant mushrooms placed by `placeShroomGrove` as a *uniform ring band* + small mushrooms/rocks scattered around arbitrary `centers[]` + houses at hand-typed coords not organized as a village. One species dominates; no path; no clear focal hierarchy; NPCs near-arbitrary.
+
+**The redesign (STRUCTURE → PATHS → FILL):**
+1. **Anchors:** the **pond** (rest/beauty focal), a **village plaza** (a small clearing with a shared well/fire), one **great glowing mushroom** as a landmark, the **dock** (entry).
+2. **Village = a real cluster:** 4–5 shroom houses grouped around the plaza on *one side* of the ring, entrances facing in, staggered (no row), sizes varied (a big inn-cap + small huts), a short lane linking plaza → dock and plaza → pond.
+3. **The "mushroom forest" as a grove with an edge:** mass the giant mushrooms into **one dense stand** (a corner/arc), thinning outward — not an even ring. Odd-numbered clumps, varied scale.
+4. **Three flora tiers:** giant mushrooms (signature) → bushes + small mushrooms (secondary) → tufts/pebbles/fallen-caps (tertiary), clustered by threes with gaps.
+5. **Land-use:** cattails/lilypads only at the pond (done), rocks on a rise, mushrooms thickest in the grove's shade, a few flower/bush clumps by the houses.
+6. **Clearings:** keep the open ring around the pond, an open plaza, and a clean meadow stretch — breathing room between pockets.
+7. **NPCs by function:** fisher at the pond bank, a forager in the grove, a keeper at the plaza.
+
+Net effect: you arrive at the dock, a path leads you past the pond to a real little mushroom village, with a fungal forest massed beyond it and quiet meadow between — an area that was *designed*, not sprinkled.
+
+---
+
+## References
+- **The Mana World — Development:Mapping Tutorial** (break up grids/straight lines, sparse eye-catching tiles, memorable focal points, designed 20-tile border, fill the ground layer): https://wiki.themanaworld.org/wiki/Development:Mapping_Tutorial and **Maps**: https://wiki.themanaworld.org/wiki/Maps
+- **RPG Maker — official "Mapping: Towns" guide** (town purpose first, cluster around anchors, entrances face activity, vary building size/role, avoid grid/square maps, every frame pleasing): https://www.rpgmakerweb.com/blog/mapping-towns
+- **RPG Maker forums — Mapping & Map Design tips** (avoid empty space / start small, ground variation, balance clutter by threes, interactivity): https://forums.rpgmakerweb.com/threads/mapping-and-map-design-tips.140273/
+- **Composition in Level Design** (leading lines, focal point/dominant, negative space, cluster > scatter): https://www.gamedeveloper.com/design/composition-in-level-design and http://level-design.org/?page_id=2274
+- **How To Design a Town** (settlement grows from its resources/economy; logical building placement; ≥1 point of interest): https://2minutetabletop.com/how-to-design-a-town/

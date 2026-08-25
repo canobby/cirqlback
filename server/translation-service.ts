@@ -1,11 +1,26 @@
 import OpenAI from "openai";
 import { Request, Response } from "express";
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY environment variable must be set");
+// Lazily construct the OpenAI client so the server can boot without an
+// OPENAI_API_KEY. Translation endpoints only fail (with a clear message) if
+// actually called without a key, rather than crashing the server at startup.
+let openaiClient: OpenAI | null = null;
+function getOpenAIClient(): OpenAI {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY environment variable must be set to use AI features");
+  }
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openaiClient;
 }
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new Proxy({} as OpenAI, {
+  get(_target, prop, receiver) {
+    const client = getOpenAIClient();
+    const value = Reflect.get(client as any, prop, receiver);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
 
 // Language mapping for OpenAI
 const LANGUAGE_MAPPING: Record<string, string> = {
@@ -87,8 +102,8 @@ export class TranslationService {
       });
 
       // Convert speech response to buffer for audio URL
-      const audioBuffer = Buffer.from(await speechResponse.arrayBuffer());
-      const audioUrl = `data:audio/mp3;base64,${audioBuffer.toString('base64')}`;
+      const speechBuffer = Buffer.from(await speechResponse.arrayBuffer());
+      const audioUrl = `data:audio/mp3;base64,${speechBuffer.toString('base64')}`;
 
       return {
         originalText,
@@ -139,12 +154,22 @@ export class TranslationService {
 export const translationService = new TranslationService();
 
 // Route handlers
+// CHR-82: these endpoints are intentionally public (customers are anonymous —
+// they tap without an account and read offers in their language), so cost is
+// bounded by the CHR-17 rate limit PLUS a per-request input cap here, so a
+// single anonymous call can't push an unbounded payload to the OpenAI API.
+const MAX_TRANSLATE_CHARS = 2000;
+const MAX_TTS_CHARS = 1000;
+
 export async function handleTextTranslation(req: Request, res: Response) {
   try {
     const { text, targetLanguage, sourceLanguage = 'en' } = req.body;
 
     if (!text || !targetLanguage) {
       return res.status(400).json({ error: 'Text and target language are required' });
+    }
+    if (String(text).length > MAX_TRANSLATE_CHARS) {
+      return res.status(400).json({ error: `Text too long (max ${MAX_TRANSLATE_CHARS} characters)` });
     }
 
     const translatedText = await translationService.translateText(text, targetLanguage, sourceLanguage);
@@ -180,6 +205,9 @@ export async function handleTextToSpeech(req: Request, res: Response) {
 
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
+    }
+    if (String(text).length > MAX_TTS_CHARS) {
+      return res.status(400).json({ error: `Text too long (max ${MAX_TTS_CHARS} characters)` });
     }
 
     const audioBuffer = await translationService.textToSpeech(text, language);

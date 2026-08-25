@@ -1,0 +1,681 @@
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Link } from "wouter";
+import { ArrowLeft, Share2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { HelpButton } from "@/components/how-to";
+import {
+  CirqlbreakEngine,
+  RELICS,
+  type HudState,
+  type RunResult,
+  type CirqlbreakMode,
+  type Difficulty,
+  type RelicId,
+  type PowerupType,
+} from "@/game/cirqlbreak-engine";
+import { PERKS } from "@shared/cirql-perks";
+import { COSMETICS, getCosmetic, isUnlocked, DEFAULT_COSMETIC, levelInfo } from "@shared/cirql-cosmetics";
+import { GAME_ACHIEVEMENTS, nextWorldMilestone } from "@shared/cirql-achievements";
+
+// CHR-124: a galaxy you light up as you restore worlds — each star is a world,
+// the first `worlds` are lit and joined into a constellation.
+function GalaxyCanvas({ worlds, accent }: { worlds: number; accent: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = ref.current; if (!cv) return;
+    const ctx = cv.getContext("2d"); if (!ctx) return;
+    const DPR = Math.min(window.devicePixelRatio || 1, 2), S = 300, TAU = Math.PI * 2, N = 84;
+    cv.width = S * DPR; cv.height = S * DPR; cv.style.width = S + "px"; cv.style.height = S + "px"; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const cx = S / 2, cy = S / 2;
+    const pts = Array.from({ length: N }, (_, i) => { const a = i * 2.399963, r = Math.sqrt(i / N) * (S * 0.45); return { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, lit: i < worlds }; });
+    ctx.clearRect(0, 0, S, S);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, S * 0.5);
+    g.addColorStop(0, "rgba(124,58,237,.28)"); g.addColorStop(1, "rgba(5,4,15,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, S * 0.5, 0, TAU); ctx.fill();
+    ctx.strokeStyle = accent + "55"; ctx.lineWidth = 1;
+    for (let i = 1; i < Math.min(worlds, N); i++) { ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke(); }
+    for (const p of pts) {
+      if (p.lit) { ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = accent; ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(p.x, p.y, 2.6, 0, TAU); ctx.fill(); ctx.restore(); }
+      else { ctx.fillStyle = "rgba(150,130,255,.22)"; ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, TAU); ctx.fill(); }
+    }
+  }, [worlds, accent]);
+  return <canvas ref={ref} className="mx-auto block" />;
+}
+
+// The banked power-up tokens (everything but the Partner Power) map 1:1 to engine
+// power-up types.
+const TOKEN_TYPES = ["multi", "wide", "slow", "catch", "life"] as const;
+
+// A spin dial that lives BELOW the circle so your thumb never covers the field.
+// The angle of your touch around the dial maps 1:1 to the paddle's rim angle
+// (dial "up" = paddle top), so it reads like a mini-map of the rim. Lifting off
+// releases a caught ball (aim-and-shoot).
+function AimWheel({ onAim, onRelease }: { onAim: (a: number) => void; onRelease: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [ang, setAng] = useState(-Math.PI / 2);
+  const dragging = useRef(false);
+  const SZ = 132, R = 47;
+  const compute = (e: React.PointerEvent) => {
+    const el = ref.current; if (!el) return;
+    const r = el.getBoundingClientRect();
+    const a = Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2));
+    setAng(a); onAim(a);
+  };
+  return (
+    <div
+      ref={ref}
+      data-testid="aim-wheel"
+      onPointerDown={(e) => { dragging.current = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ } compute(e); }}
+      onPointerMove={(e) => { if (dragging.current) compute(e); }}
+      onPointerUp={() => { dragging.current = false; onRelease(); }}
+      onPointerCancel={() => { dragging.current = false; }}
+      className="relative flex-none rounded-full"
+      style={{ width: SZ, height: SZ, touchAction: "none", cursor: "grab", background: "radial-gradient(circle at 50% 38%, rgba(124,58,237,.2), rgba(11,9,24,.92))", border: "1px solid rgba(150,130,255,.3)", boxShadow: "0 10px 34px rgba(0,0,0,.5), inset 0 0 22px rgba(124,58,237,.16)" }}
+    >
+      <div className="absolute inset-[10px] rounded-full" style={{ border: "1px dashed rgba(150,130,255,.22)" }} />
+      <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: "rgba(196,181,253,.5)" }} />
+      <div className="absolute h-7 w-7 rounded-full" style={{ left: SZ / 2 + Math.cos(ang) * R, top: SZ / 2 + Math.sin(ang) * R, transform: "translate(-50%,-50%)", background: "radial-gradient(circle at 38% 34%, #fff, #ec4899 75%)", boxShadow: "0 0 15px rgba(236,72,153,.75)" }} />
+      <div className="pointer-events-none absolute bottom-[9px] left-0 right-0 text-center text-[9px] uppercase tracking-[0.24em] text-violet-300/40">spin</div>
+    </div>
+  );
+}
+
+// Cirqlbreak — the in-app arcade game (lazy-loaded at /play, code-split). A
+// circular Breakout roguelike: rally the spark, shatter the rings, out-time the
+// boss core, restore a dead world. This page is a thin React host around
+// `CirqlbreakEngine` (which owns the canvas); it renders the menu, HUD, relic
+// pick, and end screen and drives the engine via its callbacks + action methods.
+//
+// Guests play without saving; logged-in players persist (server-backed in CHR-113,
+// local for now). Real taps → power-ups is CHR-115/116.
+
+const lsGet = (k: string) => { try { return window.localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k: string, v: string) => { try { window.localStorage.setItem(k, v); } catch { /* ignore */ } };
+
+const MODES: { id: CirqlbreakMode; label: string; hint: string }[] = [
+  { id: "journey", label: "Journey", hint: "endless climb" },
+  { id: "daily", label: "Daily", hint: "shared · streak" },
+  { id: "freestyle", label: "Freestyle", hint: "your rules" },
+  { id: "party", label: "Party", hint: "2-player co-op" },
+];
+const DIFFS: { id: Difficulty; label: string; hint: string }[] = [
+  { id: "easy", label: "Easy", hint: "slow · wide · 5♥" },
+  { id: "medium", label: "Medium", hint: "balanced · 3♥" },
+  { id: "hard", label: "Hard", hint: "fast · narrow · 2♥" },
+];
+
+export default function Play() {
+  const { user } = useAuth();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const engineRef = useRef<CirqlbreakEngine | null>(null);
+  const progressRef = useRef<Record<string, any>>({}); // logged-in players: the server-side game_progress.state blob
+  const userRef = useRef(user); userRef.current = user; // fresh user for the engine's once-bound callbacks
+
+  const [phase, setPhase] = useState<"menu" | "playing" | "over">("menu");
+  const [hud, setHud] = useState<HudState | null>(null);
+  const [mode, setMode] = useState<CirqlbreakMode>("journey");
+  const [diff, setDiff] = useState<Difficulty>("medium");
+  const [spd, setSpd] = useState(1);
+  const [chaos, setChaos] = useState(true);
+  const [relic, setRelic] = useState<{ options: RelicId[]; pick: (id: RelicId) => void } | null>(null);
+  const [result, setResult] = useState<RunResult | null>(null);
+  const [sound, setSound] = useState(() => lsGet("cb_sound") !== "0");
+  const [haptics, setHaptics] = useState(() => lsGet("cb_hap") !== "0");
+  const [menuInfo, setMenuInfo] = useState({ jbest: 0, jworld: 0, streak: 0, dailyNum: 0 });
+  const [shareLabel, setShareLabel] = useState("Share result");
+  const [bank, setBank] = useState<Record<string, number>>({}); // tap-earned rewards (Partner Power + power-ups)
+  const [dailyRank, setDailyRank] = useState<{ rank: number; total: number } | null>(null); // your rank after a Daily run
+  const [leaderboard, setLeaderboard] = useState<{ top: any[]; you: { rank: number; score: number } | null; total: number } | null>(null);
+  const [greatRing, setGreatRing] = useState<number | null>(null); // community-wide worlds restored
+  const [echoes, setEchoes] = useState<{ name?: string; world?: string }[]>([]);
+  const [daily, setDaily] = useState<{ canClaim: boolean; streak: number; reward: number } | null>(null); // daily reward status
+  const [equipped, setEquipped] = useState<string>(DEFAULT_COSMETIC); // equipped cosmetic id
+  const [worldsRestored, setWorldsRestored] = useState(0); // lifetime worlds restored (drives cosmetic unlocks)
+  const [showSkins, setShowSkins] = useState(false);
+  const [showAwards, setShowAwards] = useState(false);
+  const [showGalaxy, setShowGalaxy] = useState(false);
+  const [earnedBadges, setEarnedBadges] = useState<Set<string>>(new Set()); // lowercased keys/names of earned game badges
+
+  // Menu stats come from the server for logged-in players (cross-device), and from
+  // the engine's localStorage for guests.
+  const refreshMenuInfo = useCallback((eng: CirqlbreakEngine) => {
+    const st = progressRef.current;
+    if (user && (st.journeyBest != null || st.furthestWorld != null || st.dailyStreak != null)) {
+      setMenuInfo({ jbest: st.journeyBest || 0, jworld: st.furthestWorld || 0, streak: st.dailyStreak ?? eng.peekStreak(), dailyNum: eng.dailyNumber() });
+    } else {
+      const jb = eng.journeyBest();
+      setMenuInfo({ jbest: jb.score, jworld: jb.world, streak: eng.peekStreak(), dailyNum: eng.dailyNumber() });
+    }
+  }, [user]);
+
+  // Merge a patch into the server state blob and persist it (logged-in only).
+  const persist = useCallback((patch: Record<string, any>) => {
+    progressRef.current = { ...progressRef.current, ...patch };
+    if (!user) return;
+    fetch("/api/game/progress", {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state: progressRef.current }),
+    }).catch(() => {});
+  }, [user]);
+
+  // Build the engine once, on mount.
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const eng = new CirqlbreakEngine(canvasRef.current, {
+      sound,
+      haptics,
+      onHud: setHud,
+      onRelicOffer: (options, pick) => setRelic({ options, pick }),
+      onWorldRestored: (info) => {
+        // CHR-117/120: record the restoration → points, achievement badges, and
+        // the community Echoes feed + Great Ring total.
+        if (!userRef.current) return;
+        fetch("/api/game/restored", {
+          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ worldName: info.worldName, perfect: info.noBallLost }),
+        }).catch(() => {});
+      },
+      onRunEnd: (r) => { setResult(r); setPhase("over"); setShareLabel("Share result"); },
+    });
+    engineRef.current = eng;
+    refreshMenuInfo(eng);
+    return () => { eng.destroy(); engineRef.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Hydrate the server progress blob when a logged-in player arrives (settings +
+  // best/streak sync across devices); reset to local for guests.
+  useEffect(() => {
+    if (!user) { progressRef.current = {}; setBank({}); if (engineRef.current) refreshMenuInfo(engineRef.current); return; }
+    let cancelled = false;
+    fetch("/api/game/progress", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d) return;
+        progressRef.current = d.state || {};
+        setBank((progressRef.current.perks as Record<string, number>) || {});
+        setWorldsRestored(Number(d.worldsRestored) || 0);
+        const cos = progressRef.current.cosmetic;
+        if (cos) { setEquipped(cos); engineRef.current?.setCosmetic(getCosmetic(cos).accent); }
+        const s = progressRef.current.settings;
+        if (s && typeof s.sound === "boolean") { setSound(s.sound); engineRef.current?.setMuted(!s.sound); }
+        if (s && typeof s.haptics === "boolean") { setHaptics(s.haptics); engineRef.current?.setHaptics(s.haptics); }
+        if (engineRef.current) refreshMenuInfo(engineRef.current);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user, refreshMenuInfo]);
+
+  // Persist bests / streak / worlds-restored at the end of each run.
+  useEffect(() => {
+    if (!result) return;
+    const st = progressRef.current;
+    const patch: Record<string, any> = {};
+    if (result.mode === "journey") {
+      patch.journeyBest = Math.max(st.journeyBest || 0, result.score);
+      patch.furthestWorld = Math.max(st.furthestWorld || 0, result.world);
+    }
+    if (result.mode === "daily") patch.dailyStreak = result.streak;
+    const cleared = result.mode === "daily" ? (result.restored ? 1 : 0) : Math.max(0, result.world - 1);
+    if (cleared) patch.worldsRestored = (st.worldsRestored || 0) + cleared;
+    if (Object.keys(patch).length) persist(patch);
+    if (engineRef.current) refreshMenuInfo(engineRef.current);
+    // Submit the Daily run to the cross-player leaderboard (logged-in only).
+    if (result.mode === "daily" && user) {
+      setDailyRank(null);
+      fetch("/api/game/daily/score", {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ score: result.score, bestCombo: result.comboMax, restored: result.restored }),
+      }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setDailyRank({ rank: d.rank, total: d.total }); }).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
+
+  // Load the Daily leaderboard when viewing the Daily menu (and refresh after a run).
+  useEffect(() => {
+    if (phase !== "menu" || mode !== "daily" || !user) return;
+    let cancelled = false;
+    fetch("/api/game/daily/leaderboard", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled) setLeaderboard(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [phase, mode, user, dailyRank]);
+
+  // CHR-125: load earned game badges when the Awards screen opens (match by key
+  // or name, defensively — the endpoint returns enriched award objects).
+  useEffect(() => {
+    if (!showAwards || !user) return;
+    fetch("/api/game/badges", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!Array.isArray(d)) return;
+        const s = new Set<string>();
+        for (const b of d) {
+          const key = b?.key || b?.badgeKey || b?.badge?.key || b?.definition?.key;
+          const nm = b?.name || b?.badge?.name || b?.definition?.name;
+          if (key) s.add(String(key).toLowerCase());
+          if (nm) s.add(String(nm).toLowerCase());
+          if (b?.emoji) s.add(String(b.emoji)); // stable across badge renames
+        }
+        setEarnedBadges(s);
+      })
+      .catch(() => {});
+  }, [showAwards, user]);
+
+  // CHR-120: community stats on the menu — the Great Ring (worlds restored by
+  // everyone) and a recent-restorations feed.
+  useEffect(() => {
+    if (phase !== "menu") return;
+    fetch("/api/game/great-ring", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && typeof d.total === "number") setGreatRing(d.total); })
+      .catch(() => {});
+    if (user) {
+      fetch("/api/game/echoes", { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { const list = Array.isArray(d) ? d : d?.echoes || []; setEchoes(list.slice(0, 3)); })
+        .catch(() => {});
+      fetch("/api/game/daily", { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d) setDaily({ canClaim: !!d.canClaim, streak: d.streak || 0, reward: d.reward || 0 }); })
+        .catch(() => {});
+    }
+  }, [phase, user]);
+
+  const startRun = async () => {
+    setResult(null);
+    setRelic(null);
+    // Redeem tap-earned rewards into this run (Partner Power + power-ups), server-
+    // authoritative so the bank can't be over-spent.
+    let boot: { nova?: boolean; powerups?: PowerupType[] } = {};
+    if (user && mode !== "daily") { // Daily is competitive → perk-free
+      const spend: Record<string, number> = {};
+      if (bank.nova) spend.nova = 1;
+      TOKEN_TYPES.forEach((t) => { if (bank[t]) spend[t] = bank[t]; });
+      if (Object.keys(spend).length) {
+        const r = await fetch("/api/game/perks/redeem", {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" }, body: JSON.stringify({ spend }),
+        }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+        if (r?.spent) {
+          const powerups: PowerupType[] = [];
+          TOKEN_TYPES.forEach((t) => { for (let i = 0; i < (r.spent[t] || 0); i++) powerups.push(t); });
+          boot = { nova: (r.spent.nova || 0) > 0, powerups };
+          setBank(r.perks || {});
+          progressRef.current = { ...progressRef.current, perks: r.perks || {} };
+        }
+      }
+    }
+    engineRef.current?.start(mode, { diff, spd, chaos }, boot);
+    setPhase("playing");
+  };
+  const quitToMenu = () => {
+    engineRef.current?.toMenu();
+    setRelic(null);
+    setResult(null);
+    setPhase("menu");
+    if (engineRef.current) refreshMenuInfo(engineRef.current);
+  };
+  const pickRelic = (id: RelicId) => { relic?.pick(id); setRelic(null); };
+  // CHR-118: claim the once-a-day reward (server-authoritative + idempotent). The
+  // daily streak it advances is the single source of truth the menu shows.
+  const claimDaily = () => {
+    fetch("/api/game/daily", { method: "POST", credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        setDaily({ canClaim: false, streak: d.streak, reward: 0 });
+        progressRef.current = { ...progressRef.current, dailyStreak: d.streak };
+        if (engineRef.current) refreshMenuInfo(engineRef.current);
+      })
+      .catch(() => {});
+  };
+  // CHR-123: equip a cosmetic skin (server validates the unlock). Tints the spark.
+  const equipCosmetic = (id: string) => {
+    const cos = getCosmetic(id);
+    engineRef.current?.setCosmetic(cos.accent); // optimistic
+    setEquipped(id);
+    progressRef.current = { ...progressRef.current, cosmetic: id };
+    if (!user) return;
+    fetch("/api/game/cosmetic", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cosmetic: id }) })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!d) { /* rollback on reject */ setEquipped(DEFAULT_COSMETIC); engineRef.current?.setCosmetic(getCosmetic(DEFAULT_COSMETIC).accent); } })
+      .catch(() => {});
+  };
+  const toggleSound = () => setSound((v) => { const n = !v; engineRef.current?.setMuted(!n); lsSet("cb_sound", n ? "1" : "0"); persist({ settings: { sound: n, haptics } }); return n; });
+  const toggleHaptics = () => setHaptics((v) => { const n = !v; engineRef.current?.setHaptics(n); lsSet("cb_hap", n ? "1" : "0"); if (n) navigator.vibrate?.(20); persist({ settings: { sound, haptics: n } }); return n; });
+
+  const shareDaily = () => {
+    if (!result) return;
+    const stars = result.comboMax >= 10 ? "★★★" : result.comboMax >= 5 ? "★★☆" : "★☆☆";
+    const rankLine = dailyRank ? `\nRanked #${dailyRank.rank} of ${dailyRank.total}` : "";
+    const txt = `CirqlBreak · Daily Circle #${result.dailyNum} ${stars}\nScore ${result.score.toLocaleString()} · best combo ×${result.comboMax}${rankLine}\n${result.restored ? "restored 🟣" : "faded ⚫"}\ncirqlback.onrender.com/play`;
+    if (navigator.share) navigator.share({ text: txt }).catch(() => {});
+    else navigator.clipboard?.writeText(txt).then(() => { setShareLabel("Copied!"); setTimeout(() => setShareLabel("Share result"), 1600); }).catch(() => {});
+  };
+
+  const seg = (active: boolean) =>
+    "rounded-xl border px-2 py-3 text-sm font-bold transition text-center " +
+    (active ? "text-white border-transparent" : "text-violet-300/70 border-violet-400/20 bg-white/[0.03] hover:text-white");
+  const segStyle = (active: boolean) => (active ? { background: "linear-gradient(135deg,rgba(124,58,237,.5),rgba(236,72,153,.4))" } : undefined);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center overflow-hidden text-slate-100 select-none"
+      style={{ background: "radial-gradient(1100px 780px at 50% -10%, rgba(124,58,237,.22), transparent 60%), #05040f", touchAction: "none" }}
+    >
+      {/* the game surface — fills the space above the control band */}
+      <div className="flex w-full flex-1 items-center justify-center p-2" style={{ minHeight: 0 }}>
+        <div className="relative" style={{ height: "min(100%, 94vw, 660px)", aspectRatio: "1" }}>
+          <canvas ref={canvasRef} className="block touch-none rounded-full" style={{ boxShadow: "0 0 90px rgba(124,58,237,.15)" }} aria-label="CirqlBreak" />
+        </div>
+      </div>
+
+      {/* ---------- control band (below the circle, so your thumb never covers the field) ---------- */}
+      {phase === "playing" && hud && (
+        <div className="flex w-full flex-none items-center justify-center gap-6 px-4 pb-5 pt-1">
+          <button onClick={() => engineRef.current?.firePulse()} data-testid="button-pulse"
+            className="flex h-14 w-14 flex-col items-center justify-center rounded-full border leading-none transition"
+            style={{ borderColor: "rgba(34,211,238,.5)", background: "rgba(34,211,238,.12)", color: "#a5f3fc", opacity: hud.pulseReady ? 1 : 0.4, boxShadow: "0 0 20px rgba(34,211,238,.2)" }}>
+            <span className="text-lg">⟳</span><span className="mt-0.5 text-[8px] font-extrabold tracking-wider">PULSE</span>
+          </button>
+          {mode !== "party"
+            ? <AimWheel onAim={(a) => engineRef.current?.aimTo(a)} onRelease={() => engineRef.current?.releaseStuck()} />
+            : <div className="w-[132px] text-center text-[11px] leading-tight text-violet-300/60">2 players<br />two thumbs on the circle<br />P1 top · P2 bottom</div>}
+          <button onClick={() => engineRef.current?.fireSuper()} data-testid="button-super"
+            className={"flex h-14 w-14 flex-col items-center justify-center rounded-full border leading-none transition " + (hud.superCharge >= 1 ? "animate-pulse" : "")}
+            style={{ borderColor: "rgba(251,191,36,.5)", background: "rgba(251,191,36,.1)", color: "#fde68a", opacity: hud.superCharge >= 1 ? 1 : 0.3 + 0.4 * hud.superCharge, boxShadow: hud.superCharge >= 1 ? "0 0 28px rgba(251,191,36,.6)" : "0 0 16px rgba(251,191,36,.18)" }}>
+            <span className="text-lg">★</span><span className="mt-0.5 text-[8px] font-extrabold tracking-wider">NOVA</span>
+          </button>
+        </div>
+      )}
+
+      {/* ---------- HUD (in-run) ---------- */}
+      {phase === "playing" && hud && (
+        <div className="pointer-events-none fixed inset-0">
+          <div className="absolute top-0 left-0 right-0 flex items-start justify-between gap-3 p-4">
+            <div>
+              <div className="text-[12px] uppercase tracking-[0.16em] text-violet-300/70">Score<b className="block text-[26px] leading-none text-white tabular-nums" data-testid="hud-score">{hud.score.toLocaleString()}</b></div>
+              <div className="mt-1.5 flex max-w-[120px] flex-wrap gap-1.5" data-testid="hud-lives">
+                {Array.from({ length: Math.max(hud.lives, 0) }).map((_, i) => (
+                  <span key={i} className="h-3 w-3 rounded-full" style={{ background: "radial-gradient(circle at 38% 34%,#fff,#ec4899 70%)", boxShadow: "0 0 10px rgba(236,72,153,.7)" }} />
+                ))}
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-[12px] uppercase tracking-[0.16em] text-violet-300/70">{hud.mode === "daily" ? "Daily" : "World"}<b className="block text-[26px] leading-none text-white tabular-nums">{hud.mode === "daily" ? "#" + hud.dailyNum : hud.world}</b></div>
+              {hud.combo >= 2 && <div className="mt-2 text-[12px] uppercase tracking-[0.16em]" style={{ color: "#22d3ee", textShadow: "0 0 18px rgba(34,211,238,.6)" }}>Combo<b className="block text-[22px] leading-none tabular-nums">×{hud.combo}</b></div>}
+            </div>
+            <div className="pointer-events-auto flex gap-2">
+              <button onClick={toggleHaptics} title="Haptics" className={"grid h-9 w-9 place-items-center rounded-xl border border-violet-400/20 bg-white/[0.04] text-base " + (haptics ? "" : "opacity-40")}>📳</button>
+              <button onClick={toggleSound} title="Sound" className={"grid h-9 w-9 place-items-center rounded-xl border border-violet-400/20 bg-white/[0.04] text-base " + (sound ? "" : "opacity-40")}>{sound ? "🔊" : "🔇"}</button>
+              <button onClick={quitToMenu} title="Menu" data-testid="button-quit" className="grid h-9 w-9 place-items-center rounded-xl border border-violet-400/20 bg-white/[0.04] text-base">⏸</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- Menu ---------- */}
+      {phase === "menu" && (
+        <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }}>
+          <div className="w-[min(92vw,440px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
+            <div className="text-[12px] font-extrabold uppercase tracking-[0.44em] text-violet-400" style={{ marginLeft: ".44em" }}>Cirqlback</div>
+            <h1 className="mb-1 mt-2 text-[clamp(28px,6.5vw,42px)] font-extrabold leading-none tracking-tight" style={{ background: "linear-gradient(115deg,#e9d5ff,#ec4899 55%,#22d3ee)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>CirqlBreak</h1>
+
+            <div className="mb-2 mt-4 text-left text-[11px] uppercase tracking-[0.2em] text-violet-300/60">Mode</div>
+            <div className="grid grid-cols-2 gap-2">
+              {MODES.map((m) => (
+                <button key={m.id} onClick={() => setMode(m.id)} data-testid={`mode-${m.id}`} className={seg(mode === m.id)} style={segStyle(mode === m.id)}>
+                  {m.label}<small className="mt-0.5 block text-[10.5px] font-medium opacity-70">{m.hint}</small>
+                </button>
+              ))}
+            </div>
+
+            {user && daily && (daily.canClaim ? (
+              <button onClick={claimDaily} data-testid="claim-daily" className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-white transition hover:brightness-110" style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)", boxShadow: "0 8px 24px rgba(124,58,237,.3)" }}>
+                🎁 Claim daily reward · +{daily.reward} ✦{daily.streak > 0 && <span className="inline-flex items-center gap-0.5 text-amber-200/90">🔥{daily.streak}</span>}
+              </button>
+            ) : (
+              <div className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-[13px] font-semibold text-emerald-200" data-testid="daily-claimed">
+                ✓ Daily reward claimed{daily.streak > 0 && <span className="inline-flex items-center gap-1 text-amber-300/90">· 🔥 {daily.streak}-day streak</span>}
+              </div>
+            ))}
+            {mode === "journey" && (
+              <p className="mt-4 min-h-[40px] px-1 text-[13px] leading-relaxed text-violet-300/70">
+                {menuInfo.jbest ? <>Your best: <b className="text-violet-100">{menuInfo.jbest.toLocaleString()}</b> · reached World {menuInfo.jworld}.<br />Starts gentle, climbs forever — beat it.</> : <>One long run that starts gentle and climbs forever.<br />How deep into the dark can you get?</>}
+              </p>
+            )}
+            {mode === "daily" && (
+              <>
+                <p className="mt-4 min-h-[40px] px-1 text-[13px] leading-relaxed text-violet-300/70">
+                  <b className="text-violet-100">Daily Circle #{menuInfo.dailyNum}</b> — the same board for everyone today, one ranked run.<br />
+                  {menuInfo.streak ? <>🔥 <b className="text-amber-400">{menuInfo.streak}-day streak</b> — play today to keep it alive.</> : "Play today to start a streak."}
+                </p>
+                {user && leaderboard && leaderboard.top.length > 0 && (
+                  <div className="mt-3 rounded-2xl border border-violet-400/20 bg-white/[0.03] px-4 py-3 text-left" data-testid="daily-leaderboard">
+                    <div className="mb-1.5 flex items-center justify-between text-[11px] uppercase tracking-[0.16em] text-violet-300/60">
+                      <span>Today's leaderboard</span><span className="tabular-nums">{leaderboard.total} player{leaderboard.total === 1 ? "" : "s"}</span>
+                    </div>
+                    <div className="space-y-1">
+                      {leaderboard.top.slice(0, 5).map((r: any) => (
+                        <div key={r.rank} className={"flex items-center justify-between text-[13px] " + (r.you ? "font-bold text-cyan-300" : "text-violet-100/90")}>
+                          <span className="truncate pr-2 tabular-nums">#{r.rank} {r.name}{r.you ? " (you)" : ""}</span>
+                          <span className="tabular-nums">{r.score.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {leaderboard.you && leaderboard.you.rank > 5 && (
+                      <div className="mt-1.5 flex items-center justify-between border-t border-violet-400/10 pt-1.5 text-[13px] font-bold text-cyan-300">
+                        <span className="tabular-nums">#{leaderboard.you.rank} You</span><span className="tabular-nums">{leaderboard.you.score.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+            {mode === "party" && (
+              <p className="mt-4 min-h-[40px] px-1 text-[13px] leading-relaxed text-violet-300/70">
+                Two players, one circle. <b className="text-violet-100">P1 guards the top</b>, <b className="text-violet-100">P2 guards the bottom</b> — pass the ball across and restore each world together.<br /><b>P1:</b> A / D · <b>P2:</b> ← / → · or two thumbs on touch.
+              </p>
+            )}
+            {mode === "freestyle" && (
+              <div className="mt-4 text-left">
+                <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-violet-300/60">Difficulty</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {DIFFS.map((d) => (
+                    <button key={d.id} onClick={() => setDiff(d.id)} data-testid={`diff-${d.id}`} className={seg(diff === d.id)} style={segStyle(diff === d.id)}>
+                      {d.label}<small className="mt-0.5 block text-[10.5px] font-medium opacity-70">{d.hint}</small>
+                    </button>
+                  ))}
+                </div>
+                <div className="mb-2 mt-4 text-[11px] uppercase tracking-[0.2em] text-violet-300/60">Ball speed</div>
+                <div className="flex items-center gap-3">
+                  <input type="range" min={0.6} max={1.6} step={0.05} value={spd} onChange={(e) => setSpd(parseFloat(e.target.value))} className="h-1 flex-1" style={{ accentColor: "#ec4899" }} />
+                  <span className="w-11 text-right text-sm tabular-nums text-cyan-300">{spd.toFixed(1)}×</span>
+                </div>
+                <div className="mb-2 mt-4 text-[11px] uppercase tracking-[0.2em] text-violet-300/60">Modifiers</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setChaos(true)} className={seg(chaos)} style={segStyle(chaos)}>On<small className="mt-0.5 block text-[10.5px] font-medium opacity-70">gravity, chains, orbits</small></button>
+                  <button onClick={() => setChaos(false)} className={seg(!chaos)} style={segStyle(!chaos)}>Off<small className="mt-0.5 block text-[10.5px] font-medium opacity-70">pure breakout</small></button>
+                </div>
+              </div>
+            )}
+
+            {user && mode !== "daily" && (
+              Object.values(bank).some((n) => n > 0) ? (
+                <div className="mt-4 rounded-2xl border border-amber-400/25 bg-amber-500/10 px-4 py-2.5 text-left" data-testid="tap-bank">
+                  <div className="mb-1 text-[11px] uppercase tracking-[0.16em] text-amber-300/80">From your taps</div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-amber-100">
+                    {PERKS.filter((p) => (bank[p.id] || 0) > 0).map((p) => (
+                      <span key={p.id}>{p.emoji} {p.name}{(bank[p.id] || 0) > 1 ? ` ×${bank[p.id]}` : ""}</span>
+                    ))}
+                  </div>
+                  <div className="mt-1 text-[11px] text-amber-300/50">Unleashed when you press Play.</div>
+                </div>
+              ) : (
+                <p className="mt-4 text-[11px] text-amber-300/45">🎯 Tap partner shops to charge your Partner Power &amp; earn power-ups.</p>
+              )
+            )}
+            <button onClick={startRun} data-testid="button-play" className="mt-5 w-full rounded-2xl py-4 text-base font-extrabold text-white transition hover:brightness-110" style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)", boxShadow: "0 12px 34px rgba(124,58,237,.4)" }}>Play</button>
+            <div className="mt-3 flex justify-center"><HelpButton gameId="cirqlbreak" name="Cirql Bounce" accent="#ec4899" /></div>
+            <p className="mt-3.5 text-[12px] leading-relaxed text-violet-300/60">
+              <b className="text-violet-100">Move</b> your mouse or finger to swing the paddle around the rim. Catch <b className="text-violet-100">power-ups</b>, clear every ring to wake the <b className="text-violet-100">core</b>, then strike its glowing gap. <b className="text-violet-100">E</b> Pulse · <b className="text-violet-100">Q</b> Supernova.
+            </p>
+            {greatRing != null && (
+              <div className="mt-3 text-[11px] text-violet-300/55" data-testid="great-ring">
+                🌍 <b className="text-violet-200/80">{greatRing.toLocaleString()}</b> worlds restored by the community
+                {echoes[0]?.name && <> · latest: <span className="text-violet-200/70">{echoes[0].name}{echoes[0].world ? ` restored ${echoes[0].world}` : ""}</span></>}
+              </div>
+            )}
+            {!user && <p className="mt-3 text-[11px] text-violet-300/40">Log in to save your progress and earn power-ups from real taps.</p>}
+            <div className="mt-4 flex items-center justify-center gap-4">
+              <Link href="/customer" className="inline-flex items-center gap-1 text-xs text-violet-300/60"><ArrowLeft className="h-3 w-3" /> Back</Link>
+              {user && <button onClick={() => setShowSkins(true)} data-testid="button-skins" className="inline-flex items-center gap-1 text-xs text-violet-300/60 transition hover:text-violet-200">🎨 Skins</button>}
+              {user && <button onClick={() => setShowAwards(true)} data-testid="button-awards" className="inline-flex items-center gap-1 text-xs text-violet-300/60 transition hover:text-violet-200">🏆 Awards</button>}
+              {user && <button onClick={() => setShowGalaxy(true)} data-testid="button-galaxy" className="inline-flex items-center gap-1 text-xs text-violet-300/60 transition hover:text-violet-200">🌌 Galaxy</button>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- Skins (cosmetics) ---------- */}
+      {showSkins && (
+        <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }} data-testid="skins-overlay" onClick={() => setShowSkins(false)}>
+          <div className="w-[min(92vw,460px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="text-[12px] font-extrabold uppercase tracking-[0.44em] text-violet-400" style={{ marginLeft: ".44em" }}>Skins</div>
+            <h1 className="mb-1 mt-2 text-[clamp(24px,5.5vw,34px)] font-extrabold" style={{ background: "linear-gradient(115deg,#e9d5ff,#ec4899 55%,#22d3ee)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Your spark</h1>
+            <p className="mx-auto mt-1 max-w-[36ch] text-sm text-violet-300/70">Tint your spark &amp; trail. Unlock more by restoring worlds and keeping streaks.</p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {COSMETICS.map((c) => {
+                const unlocked = isUnlocked(c, { worlds: worldsRestored, streak: menuInfo.streak });
+                const active = equipped === c.id;
+                return (
+                  <button key={c.id} disabled={!unlocked} onClick={() => equipCosmetic(c.id)} data-testid={`skin-${c.id}`}
+                    className={"flex items-center gap-2.5 rounded-2xl border p-3 text-left transition " + (active ? "border-cyan-400/60 bg-cyan-400/10" : unlocked ? "border-violet-400/20 bg-white/[0.03] hover:border-violet-400/40" : "cursor-not-allowed border-violet-400/10 opacity-50")}>
+                    <span className="h-8 w-8 flex-none rounded-full" style={{ background: c.accent, boxShadow: `0 0 12px ${c.accent}` }} />
+                    <span className="min-w-0">
+                      <b className="block truncate text-[13px] text-white">{c.name}{active ? " ✓" : ""}</b>
+                      <span className="block truncate text-[11px] text-violet-300/60">{unlocked ? c.kind : c.unlockLabel}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <button onClick={() => setShowSkins(false)} className="mt-4 w-full rounded-2xl border border-violet-400/20 py-3 font-semibold text-violet-300/80 transition hover:bg-white/[0.04] hover:text-white">Done</button>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- Awards (achievements) ---------- */}
+      {showAwards && (() => {
+        const earned = (a: typeof GAME_ACHIEVEMENTS[number]) =>
+          a.metric === "worlds" ? worldsRestored >= a.threshold
+          : a.metric === "streak" ? menuInfo.streak >= a.threshold
+          : earnedBadges.has(a.key.toLowerCase()) || earnedBadges.has(a.name.toLowerCase()) || earnedBadges.has(a.emoji);
+        const progress = (a: typeof GAME_ACHIEVEMENTS[number]) =>
+          a.metric === "worlds" ? `${Math.min(worldsRestored, a.threshold)} / ${a.threshold} worlds`
+          : a.metric === "streak" ? `${Math.min(menuInfo.streak, a.threshold)} / ${a.threshold}-day streak`
+          : a.desc;
+        const got = GAME_ACHIEVEMENTS.filter(earned).length;
+        return (
+          <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }} data-testid="awards-overlay" onClick={() => setShowAwards(false)}>
+            <div className="w-[min(92vw,460px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }} onClick={(e) => e.stopPropagation()}>
+              <div className="text-[12px] font-extrabold uppercase tracking-[0.44em] text-violet-400" style={{ marginLeft: ".44em" }}>Awards</div>
+              <h1 className="mb-1 mt-2 text-[clamp(24px,5.5vw,34px)] font-extrabold" style={{ background: "linear-gradient(115deg,#e9d5ff,#ec4899 55%,#22d3ee)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Achievements</h1>
+              <p className="mx-auto mt-1 max-w-[36ch] text-sm text-violet-300/70">{got} of {GAME_ACHIEVEMENTS.length} earned — they land on your Cirqlback profile too.</p>
+              <div className="mt-4 grid gap-2">
+                {GAME_ACHIEVEMENTS.map((a) => {
+                  const done = earned(a);
+                  return (
+                    <div key={a.key} data-testid={`award-${a.key}`} className={"flex items-center gap-3 rounded-2xl border p-3 text-left transition " + (done ? "border-amber-400/40 bg-amber-400/10" : "border-violet-400/15 bg-white/[0.02]")}>
+                      <span className={"grid h-9 w-9 flex-none place-items-center rounded-xl text-lg " + (done ? "" : "opacity-40 grayscale")} style={{ background: done ? a.color + "33" : "rgba(255,255,255,.04)" }}>{a.emoji}</span>
+                      <span className="min-w-0 flex-1">
+                        <b className={"block text-[14px] " + (done ? "text-white" : "text-violet-200/70")}>{a.name}{done ? " ✓" : ""}</b>
+                        <span className="block text-[11.5px] text-violet-300/55">{done ? a.desc : progress(a)}</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <button onClick={() => setShowAwards(false)} className="mt-4 w-full rounded-2xl border border-violet-400/20 py-3 font-semibold text-violet-300/80 transition hover:bg-white/[0.04] hover:text-white">Done</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ---------- Galaxy map ---------- */}
+      {showGalaxy && (() => {
+        const lvl = levelInfo(worldsRestored);
+        const next = nextWorldMilestone(worldsRestored);
+        return (
+          <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }} data-testid="galaxy-overlay" onClick={() => setShowGalaxy(false)}>
+            <div className="w-[min(92vw,400px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }} onClick={(e) => e.stopPropagation()}>
+              <div className="text-[12px] font-extrabold uppercase tracking-[0.44em] text-violet-400" style={{ marginLeft: ".44em" }}>Galaxy</div>
+              <h1 className="mb-3 mt-2 text-[clamp(24px,5.5vw,34px)] font-extrabold" style={{ background: "linear-gradient(115deg,#e9d5ff,#ec4899 55%,#22d3ee)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Bring back the light</h1>
+              <GalaxyCanvas worlds={worldsRestored} accent={getCosmetic(equipped).accent} />
+              <div className="mt-3 text-sm text-violet-100"><b>{worldsRestored.toLocaleString()}</b> world{worldsRestored === 1 ? "" : "s"} restored · <b>Level {lvl.level}</b></div>
+              <div className="mt-1 text-[12px] text-violet-300/60">{next ? <>Next: <span className="text-violet-200/80">{next.name}</span> at {next.to} worlds</> : "Every milestone reached — keep the light going."}</div>
+              <button onClick={() => setShowGalaxy(false)} className="mt-4 w-full rounded-2xl border border-violet-400/20 py-3 font-semibold text-violet-300/80 transition hover:bg-white/[0.04] hover:text-white">Done</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ---------- Relic pick (Journey) ---------- */}
+      {relic && (
+        <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }} data-testid="relic-offer">
+          <div className="w-[min(92vw,440px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
+            <div className="text-[12px] font-extrabold uppercase tracking-[0.44em] text-violet-400" style={{ marginLeft: ".44em" }}>Choose a boon</div>
+            <h1 className="mb-1 mt-2 text-[clamp(24px,5.5vw,34px)] font-extrabold" style={{ background: "linear-gradient(115deg,#e9d5ff,#ec4899 55%,#22d3ee)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Pick your power</h1>
+            <p className="mx-auto mt-1 max-w-[36ch] text-sm text-violet-300/70">A relic for the rest of your run — and they stack.</p>
+            <div className="mt-4 grid gap-2.5">
+              {relic.options.map((id, i) => (
+                <button key={i} onClick={() => pickRelic(id)} data-testid={`relic-${id}`} className="flex items-center gap-3 rounded-2xl border border-violet-400/20 bg-white/[0.03] p-3.5 text-left transition hover:-translate-y-px hover:border-violet-400/50 hover:bg-violet-500/15">
+                  <div className="grid h-10 w-10 flex-none place-items-center rounded-xl text-xl" style={{ background: "rgba(124,58,237,.22)" }}>{RELICS[id].i}</div>
+                  <div><b className="block text-[15px] text-white">{RELICS[id].n}</b><span className="text-[12.5px] leading-snug text-violet-300/70">{RELICS[id].d}</span></div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- End screen ---------- */}
+      {phase === "over" && result && (
+        <div className="fixed inset-0 grid place-items-center overflow-y-auto p-5" style={{ background: "rgba(5,4,15,.72)", backdropFilter: "blur(3px)" }} data-testid="end-screen">
+          <div className="w-[min(92vw,440px)] rounded-3xl border border-violet-400/15 p-6 text-center" style={{ background: "radial-gradient(600px 320px at 50% -20%, rgba(124,58,237,.32), transparent 60%), #0b0918", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
+            <div className="text-[12px] font-extrabold uppercase tracking-[0.44em]" style={{ marginLeft: ".44em", color: result.restored ? "#34d399" : "#7c3aed" }}>{result.restored ? "Restored" : "Faded"}</div>
+            <h1 className="mb-1 mt-2 text-[clamp(24px,5.5vw,34px)] font-extrabold text-white">
+              {result.mode === "daily" ? (result.restored ? "Daily Restored" : "Daily Complete") : "The Light Faded"}
+            </h1>
+            <p className="mx-auto mt-1 max-w-[38ch] text-sm text-violet-300/70">
+              {result.mode === "daily"
+                ? result.restored ? "You cleared today’s circle — come back tomorrow for a new one." : "Today’s circle held. One shot a day — try again tomorrow."
+                : result.mode === "party" ? `Together you restored ${result.world - 1} world${result.world - 1 === 1 ? "" : "s"} before the dark closed in.`
+                : `You reached World ${result.world} before the spark slipped away.`}
+            </p>
+            <div className="mt-3 flex justify-center gap-4">
+              <div className="text-[13px] text-violet-300/70">{result.mode === "daily" ? "Daily" : "World"}<b className="mt-0.5 block text-[22px] text-white tabular-nums">{result.mode === "daily" ? "#" + result.dailyNum : result.world}</b></div>
+              <div className="text-[13px] text-violet-300/70">Best combo<b className="mt-0.5 block text-[22px] text-white tabular-nums">×{result.comboMax}</b></div>
+            </div>
+            <div className="mt-2 text-[15px] text-violet-300/70">Score<b className="block text-[34px] text-white tabular-nums" data-testid="end-score">{result.score.toLocaleString()}</b></div>
+            {result.mode === "daily" && (
+              <div className="mt-2.5 text-xs text-cyan-300" data-testid="daily-rank">
+                {dailyRank && <span className="mr-2">🏆 <b className="text-white">#{dailyRank.rank}</b> of {dailyRank.total}</span>}
+                🔥 <b className="text-amber-400">{result.streak}-day streak</b>
+              </div>
+            )}
+            <button onClick={startRun} data-testid="button-again" className="mt-5 w-full rounded-2xl py-4 text-base font-extrabold text-white transition hover:brightness-110" style={{ background: "linear-gradient(135deg,#7c3aed,#ec4899)", boxShadow: "0 12px 34px rgba(124,58,237,.4)" }}>{result.mode === "daily" ? "Replay (unranked)" : "Play again"}</button>
+            {result.mode === "daily" && (
+              <button onClick={shareDaily} data-testid="button-share" className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl border border-violet-400/20 py-3 font-semibold text-violet-300/80 transition hover:bg-white/[0.04] hover:text-white"><Share2 className="h-4 w-4" /> {shareLabel}</button>
+            )}
+            <button onClick={quitToMenu} data-testid="button-menu" className="mt-2.5 w-full rounded-2xl border border-violet-400/20 py-3 font-semibold text-violet-300/80 transition hover:bg-white/[0.04] hover:text-white">Menu</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

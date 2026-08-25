@@ -113,7 +113,7 @@ export default function BusinessWebsitePreview() {
             <CardContent>
               <div className="mx-auto max-w-[280px] bg-gray-900 rounded-[2rem] p-2">
                 <div className="bg-white rounded-[1.5rem] overflow-hidden shadow-xl">
-                  <div className={`bg-gradient-to-r ${themes[selectedTheme].colors} text-white p-4 text-center`}>
+                  <div className={`bg-gradient-to-r ${themes[selectedTheme as keyof typeof themes].colors} text-white p-4 text-center`}>
                     <h2 className="text-lg font-bold">Local Coffee House</h2>
                     <p className="text-sm opacity-90">Artisan coffee & fresh pastries</p>
                   </div>
@@ -160,7 +160,7 @@ export default function BusinessWebsitePreview() {
             </CardHeader>
             <CardContent>
               <div className="border rounded-lg overflow-hidden shadow-lg bg-white">
-                <div className={`bg-gradient-to-r ${themes[selectedTheme].colors} text-white p-8 text-center`}>
+                <div className={`bg-gradient-to-r ${themes[selectedTheme as keyof typeof themes].colors} text-white p-8 text-center`}>
                   <h1 className="text-3xl font-bold mb-2">Local Coffee House</h1>
                   <p className="text-lg opacity-90">Artisan coffee and fresh pastries in the heart of downtown</p>
                 </div>

@@ -5,61 +5,147 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Gift, Star, CheckCircle, Clock, Camera, Sparkles, Play, Share2 } from "lucide-react";
-import { useLocation } from "wouter";
+import { Zap, Gift, Star, CheckCircle, Clock, Camera, Sparkles, Play, Share2, Heart } from "lucide-react";
+import { useLocation, useParams } from "wouter";
+
+// Preview data for the bare /tap entry point (menu links / "how it works"),
+// where no physical tag id is present. A real scan always carries /tap/<id>.
+const DEMO_TAG_INFO = {
+  tag: { id: "demo_tag_1", tagIdentifier: "nfc_tag_001", location: "Counter", businessId: "demo_business_1" },
+  business: { id: "demo_business_1", name: "Demo Coffee Shop", description: "Great coffee and pastries" },
+  campaign: {
+    id: "demo_campaign_1",
+    name: "Welcome Reward",
+    description: "Get 10% off your first order",
+    type: "discount",
+    value: "10.00",
+    pointsAwarded: 100,
+    arEnabled: true,
+    arScene: "coffee_cup_rising",
+    collectibles: ["Golden Coffee Bean Badge", "First Timer Trophy"],
+  },
+};
+
+// CHR-48: a stable per-browser device id for anti-abuse. Combines a hash of
+// device attributes with a random suffix persisted in localStorage, so the
+// same device reports the same fingerprint across taps (no account needed).
+function getDeviceFingerprint(): string {
+  const KEY = "cirql_device_id";
+  try {
+    let id = localStorage.getItem(KEY);
+    if (!id) {
+      const seed = [
+        navigator.userAgent,
+        screen.width,
+        screen.height,
+        screen.colorDepth,
+        Intl.DateTimeFormat().resolvedOptions().timeZone,
+        navigator.language,
+      ].join("|");
+      let h = 0;
+      for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+      id = `dev_${(h >>> 0).toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch {
+    return "dev_unknown";
+  }
+}
+
+// CHR-48: best-effort geolocation for the optional per-campaign GPS gate.
+// Resolves empty (never rejects) if unavailable or denied.
+function getGeo(): Promise<{ latitude?: number; longitude?: number }> {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve({});
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      () => resolve({}),
+      { timeout: 5000, maximumAge: 60000 }
+    );
+  });
+}
 
 export default function TapPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
-  // Simulated NFC tap data (in real app this would come from NFC scan)
+
+  // The physical tag encodes /tap/<tagId>; read it from the route (with a
+  // ?tag= / ?t= query fallback for QR/short links). Empty => demo preview.
+  const params = useParams<{ tagId?: string }>();
+  const tagId = (() => {
+    if (params?.tagId) return params.tagId;
+    try {
+      const q = new URLSearchParams(window.location.search);
+      return q.get("tag") || q.get("t") || "";
+    } catch {
+      return "";
+    }
+  })();
+
   const [tapData, setTapData] = useState({
-    tagId: "nfc_tag_001",
     customerEmail: "",
     customerName: "",
   });
-  
+
   const [tagInfo, setTagInfo] = useState<any>(null);
+  const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(false);
   const [tapResult, setTapResult] = useState<any>(null);
   const [hasArEnabled, setHasArEnabled] = useState(true);
+  // CHR-68: custom tap-screen branding (only present when the business is entitled).
+  const [branding, setBranding] = useState<any>(null);
+  // CHR-75: favorite state for the tapped business.
+  const [favorited, setFavorited] = useState(false);
 
-  // Simulate getting tag info (normally from NFC scan)
+  const toggleFavorite = async () => {
+    const businessId = tagInfo?.business?.id;
+    if (!businessId) return;
+    const path = favorited ? "/api/favorites/remove" : "/api/favorites";
+    try {
+      await apiRequest("POST", path, {
+        businessId,
+        email: tapData.customerEmail || undefined,
+        deviceFingerprint: getDeviceFingerprint(),
+      });
+      setFavorited(!favorited);
+      toast({ title: favorited ? "Removed from favorites" : "Added to favorites ♥" });
+    } catch {
+      toast({ title: "Couldn't update favorite", variant: "destructive" });
+    }
+  };
+
+  // Load the tapped tag's business + campaign (re-runs if the id changes).
   useEffect(() => {
     loadTagInfo();
-  }, []);
+  }, [tagId]);
+
+  // CHR-68: fetch branding once we know the business (null = default styling).
+  useEffect(() => {
+    const businessId = tagInfo?.business?.id;
+    if (!businessId) return;
+    fetch(`/api/tap-branding/${businessId}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => setBranding(b))
+      .catch(() => setBranding(null));
+  }, [tagInfo?.business?.id]);
 
   const loadTagInfo = async () => {
+    // No id in the URL → this is the demo/preview entry (menu, "how it works").
+    if (!tagId) {
+      setTagInfo(DEMO_TAG_INFO);
+      setNotFound(false);
+      return;
+    }
     try {
-      // For demo, create a sample tag if none exists
-      const response = await apiRequest("GET", `/api/tap/${tapData.tagId}`);
-      setTagInfo(response);
+      const response = await apiRequest("GET", `/api/tap/${encodeURIComponent(tagId)}`);
+      setTagInfo(await response.json());
+      setNotFound(false);
     } catch (error) {
-      // Create demo data if no tag exists
-      setTagInfo({
-        tag: {
-          id: "demo_tag_1",
-          tagIdentifier: "nfc_tag_001",
-          location: "Counter",
-          businessId: "demo_business_1"
-        },
-        business: {
-          id: "demo_business_1",
-          name: "Demo Coffee Shop",
-          description: "Great coffee and pastries"
-        },
-        campaign: {
-          id: "demo_campaign_1",
-          name: "Welcome Reward",
-          description: "Get 10% off your first order",
-          type: "discount",
-          value: "10.00",
-          pointsAwarded: 100,
-          arEnabled: true,
-          arScene: "coffee_cup_rising",
-          collectibles: ["Golden Coffee Bean Badge", "First Timer Trophy"]
-        }
-      });
+      // A real tag id that doesn't resolve — show a clear error instead of
+      // silently pretending it's the demo coffee shop.
+      setTagInfo(null);
+      setNotFound(true);
     }
   };
 
@@ -75,28 +161,25 @@ export default function TapPage() {
 
     setLoading(true);
     try {
-      const result = await apiRequest("POST", "/api/taps", {
-        tagId: tagInfo?.tag?.id || "demo_tag_1",
-        businessId: tagInfo?.business?.id || "demo_business_1",
-        campaignId: tagInfo?.campaign?.id || "demo_campaign_1",
+      const geo = await getGeo();
+      const response = await apiRequest("POST", "/api/taps", {
+        tagId: tagInfo?.tag?.id,
+        businessId: tagInfo?.business?.id,
+        campaignId: tagInfo?.campaign?.id || undefined,
         customerEmail: tapData.customerEmail,
         customerName: tapData.customerName,
-        pointsEarned: tagInfo?.campaign?.pointsAwarded || 100,
-        rewardValue: tagInfo?.campaign?.value || "10.00",
+        pointsEarned: tagInfo?.campaign?.pointsAwarded ?? 0,
+        rewardValue: tagInfo?.campaign?.value || undefined,
+        deviceFingerprint: getDeviceFingerprint(),
+        latitude: geo.latitude,
+        longitude: geo.longitude,
       });
 
-      setTapResult(result);
+      setTapResult(await response.json());
       toast({
         title: "Tap Successful! 🎉",
         description: "You've earned a reward!",
       });
-
-      // Trigger AR experience if enabled
-      if (tagInfo?.campaign?.arEnabled && hasArEnabled) {
-        setTimeout(() => {
-          setLocation(`/ar/${tagInfo.tag.id}`);
-        }, 1500);
-      }
     } catch (error) {
       toast({
         title: "Tap Failed",
@@ -111,6 +194,28 @@ export default function TapPage() {
   const handleViewRewards = () => {
     setLocation(`/customer?email=${tapData.customerEmail}`);
   };
+
+  if (notFound) {
+    return (
+      <div className="bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center p-4 min-h-[80vh]">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center space-y-3">
+            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <Zap className="h-7 w-7 text-muted-foreground" />
+            </div>
+            <h2 className="text-lg font-semibold">Cirql tag not recognized</h2>
+            <p className="text-muted-foreground text-sm">
+              This tag isn’t registered or is no longer active. Ask the business to check
+              its Cirql tag setup, or explore nearby participating shops.
+            </p>
+            <Button variant="outline" className="w-full" onClick={() => setLocation("/map")}>
+              Discover nearby businesses
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!tagInfo) {
     return (
@@ -129,14 +234,51 @@ export default function TapPage() {
     <div className="bg-gradient-to-br from-primary/10 to-secondary/10 p-4 min-h-[80vh]">
       <div className="max-w-md mx-auto space-y-6 pt-8">
         
-        {/* Business Info */}
+        {/* Business Info (CHR-68: custom branding when entitled) */}
         <Card className="card-hover glow-effect">
           <CardHeader className="text-center pb-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-primary to-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-              <Zap className="h-8 w-8 text-white" />
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden bg-gradient-to-r from-primary to-secondary"
+              style={branding?.brandColor ? { background: branding.accentColor ? `linear-gradient(to right, ${branding.brandColor}, ${branding.accentColor})` : branding.brandColor } : undefined}
+            >
+              {branding?.logoUrl ? (
+                <img src={branding.logoUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <Zap className="h-8 w-8 text-white" />
+              )}
             </div>
-            <CardTitle className="gradient-text text-xl">{tagInfo.business?.name}</CardTitle>
-            <p className="text-muted-foreground">{tagInfo.business?.description}</p>
+            <CardTitle
+              className="gradient-text text-xl"
+              style={branding?.brandColor ? { color: branding.brandColor, WebkitTextFillColor: branding.brandColor } : undefined}
+            >
+              {tagInfo.business?.name}
+            </CardTitle>
+            <p className="text-muted-foreground">{branding?.slogan || tagInfo.business?.description}</p>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={toggleFavorite}
+              className={`mt-2 mx-auto ${favorited ? "text-rose-600" : "text-muted-foreground"}`}
+            >
+              <Heart className={`h-4 w-4 mr-1 ${favorited ? "fill-current" : ""}`} />
+              {favorited ? "Favorited" : "Favorite"}
+            </Button>
+            {Array.isArray(branding?.links) && branding.links.length > 0 && (
+              <div className="flex flex-wrap gap-3 justify-center mt-3">
+                {branding.links.map((l: any, i: number) => (
+                  <a
+                    key={i}
+                    href={l.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm underline"
+                    style={branding?.brandColor ? { color: branding.brandColor } : undefined}
+                  >
+                    {l.label || l.url}
+                  </a>
+                ))}
+              </div>
+            )}
           </CardHeader>
         </Card>
 
@@ -233,7 +375,55 @@ export default function TapPage() {
             <CardContent className="space-y-4">
               <div className="text-center">
                 <p className="text-green-700 mb-4">{tapResult.message}</p>
-                
+
+                {/* Lucky-tap surprise bonus */}
+                {tapResult.luckyBonus > 0 && (
+                  <div className="p-3 mb-4 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 text-white font-semibold">
+                    🎰 Lucky tap! +{tapResult.luckyBonus} bonus points
+                  </div>
+                )}
+
+                {/* Newly-earned achievement badges */}
+                {Array.isArray(tapResult.earnedBadges) && tapResult.earnedBadges.length > 0 && (
+                  <div className="p-3 mb-4 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 text-sm">
+                    🏅 Badge unlocked: <b>{tapResult.earnedBadges.join(", ")}</b>
+                  </div>
+                )}
+
+                {/* CHR-73: punch-card progress toward a multi-tap reward */}
+                {tapResult.progress && tapResult.progress.goal > 1 && (
+                  <div className="p-3 bg-white rounded-lg border-2 border-primary/20 mb-4 text-left">
+                    <p className="text-sm font-medium text-gray-900 mb-2">
+                      {tapResult.progress.rewardEarned
+                        ? "Punch card complete! 🎉"
+                        : `You're on tap ${tapResult.progress.count} of ${tapResult.progress.goal}`}
+                    </p>
+                    <div className="flex gap-1">
+                      {Array.from({ length: tapResult.progress.goal }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-3 flex-1 rounded-full ${i < tapResult.progress.count ? "bg-primary" : "bg-gray-200"}`}
+                        />
+                      ))}
+                    </div>
+                    {!tapResult.progress.rewardEarned && (
+                      <p className="text-xs text-gray-500 mt-2">Keep tapping to earn your reward!</p>
+                    )}
+                  </div>
+                )}
+
+                {/* CHR-72: donation-per-tap acknowledgement */}
+                {Array.isArray(tapResult.donations) && tapResult.donations.length > 0 && (
+                  <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 mb-4 text-left">
+                    {tapResult.donations.map((d: any) => (
+                      <p key={d.campaignId} className="text-sm text-rose-700 flex items-center gap-2">
+                        <Gift className="h-4 w-4" />
+                        Your tap donated ${((d.amountCents || 0) / 100).toFixed(2)} to <span className="font-semibold">{d.name}</span>. 💜
+                      </p>
+                    ))}
+                  </div>
+                )}
+
                 {tapResult.reward && (
                   <div className="p-4 bg-white rounded-lg border-2 border-green-200">
                     <h4 className="font-semibold text-green-800 mb-2">{tapResult.reward.title}</h4>
@@ -245,6 +435,16 @@ export default function TapPage() {
                         30 days
                       </div>
                     </div>
+                    {tapResult.reward.code && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full mt-3 border-green-300 text-green-700 hover:bg-green-50"
+                        onClick={() => setLocation(`/reward?code=${tapResult.reward.code}`)}
+                      >
+                        View / redeem reward
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

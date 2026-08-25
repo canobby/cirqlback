@@ -1,0 +1,2 @@
+ALTER TABLE "group_campaigns" ADD COLUMN "funding_business_id" varchar;--> statement-breakpoint
+ALTER TABLE "group_campaigns" ADD CONSTRAINT "group_campaigns_funding_business_id_businesses_id_fk" FOREIGN KEY ("funding_business_id") REFERENCES "public"."businesses"("id") ON DELETE no action ON UPDATE no action;

@@ -1,11 +1,26 @@
 import OpenAI from "openai";
+import { getKnowledgeForRole, type AssistantRole } from "./assistant-knowledge";
+import { oracleKnowledge, npcKnowledge, islandName as knowledgeIslandName, type OracleSpeaker } from "./cirql-oracle-knowledge";
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY environment variable must be set");
+// Lazily construct the OpenAI client so the server can boot without an
+// OPENAI_API_KEY. AI endpoints only fail (with a clear message) if actually
+// called without a key, rather than crashing the whole server at startup.
+let openaiClient: OpenAI | null = null;
+function getOpenAIClient(): OpenAI {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY environment variable must be set to use AI features");
+  }
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openaiClient;
 }
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const openai = new Proxy({} as OpenAI, {
+  get(_target, prop, receiver) {
+    const client = getOpenAIClient();
+    const value = Reflect.get(client as any, prop, receiver);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
 });
 
 export interface BusinessInsight {
@@ -50,7 +65,182 @@ export interface PredictiveAnalytics {
   };
 }
 
+// A tailored sales pitch for a single prospect (shape mirrors the coordinator
+// Pitch Assistant so the dialog can render AI and template pitches identically).
+export interface GeneratedPitch {
+  hook: string;
+  pain: string;
+  leadFeatures: string[];
+  pictureIt: string;
+  roi: string;
+  objection: { q: string; a: string };
+  bundle: string;
+  close: string;
+}
+
+// One turn of a Help Assistant conversation.
+export interface AssistantTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+const ROLE_LABEL: Record<AssistantRole, string> = {
+  customer: "a customer using the Cirqlback app to tap, earn points and rewards, and discover local shops",
+  business: "a local business owner using the Cirqlback business (merchant) dashboard",
+  coordinator: "a Community Coordinator using the Cirqlback coordinator dashboard",
+  admin: "a Cirqlback platform administrator using the admin dashboard",
+};
+
 export class OpenAIService {
+  // Build the grounded system+conversation messages shared by the streaming and
+  // non-streaming Help Assistant paths. `tier` scopes business grounding
+  // (Core vs Pro) and is ignored otherwise.
+  private buildHelpMessages(role: AssistantRole, messages: AssistantTurn[], tier?: string) {
+    const knowledge = getKnowledgeForRole(role, tier);
+    const planNote =
+      role === "business"
+        ? tier === "pro"
+          ? "\n\nThis business is on the PRO plan, so all Pro features are available to them."
+          : `\n\nThis business is on the ${tier === "core" ? "CORE" : "STARTER (free trial)"} plan. If they ask about a Pro-only feature, briefly explain it's available on the Pro plan and encourage the upgrade — but do NOT walk them through Pro-only steps in detail.`
+        : "";
+    const system = `You are the Cirqlback Help Assistant — a friendly, concise in-product guide embedded in the dashboard. The person talking to you is ${ROLE_LABEL[role]}.${planNote}
+
+Cirqlback is a "tap-to-earn" local loyalty and discovery platform: customers tap an NFC tag (or scan a QR) at a shop to earn points, rewards, streaks and badges; businesses run loyalty campaigns, a hosted page and cross-store trails; Community Coordinators grow a territory for a revenue share; admins run the platform.
+
+Your job is to help this user navigate and succeed — explain the WHY, WHAT, WHERE and HOW of features, and walk them through steps. When you explain how to do something, name where it lives (the dashboard tab, panel, or button) so they can find it.
+
+RULES:
+- Ground every answer in the REFERENCE GUIDE below. Do not invent features, prices, menu items, or steps that aren't supported by it.
+- If the answer isn't in the guide, say so plainly and suggest where to look (e.g. the relevant dashboard tab) or to contact Cirqlback support — don't guess.
+- Be concise and practical. Prefer short paragraphs and numbered steps. Use **bold** for UI labels. No huge walls of text.
+- Speak directly to the user ("you"). Friendly, encouraging, never condescending.
+- Only answer questions about using Cirqlback. Politely decline unrelated requests.
+
+=== REFERENCE GUIDE (${role}) ===
+${knowledge}
+=== END REFERENCE GUIDE ===`;
+
+    const trimmed = messages.slice(-10).map((m) => ({ role: m.role, content: String(m.content || "").slice(0, 4000) }));
+    return [{ role: "system" as const, content: system }, ...trimmed];
+  }
+
+  // In-dashboard "how-to" guide (non-streaming). Answers grounded ONLY in the
+  // role's shipped manual(s), so it never invents features or prices.
+  async answerHelpQuestion(role: AssistantRole, messages: AssistantTurn[], tier?: string): Promise<string> {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: this.buildHelpMessages(role, messages, tier),
+      temperature: 0.4,
+      max_tokens: 700,
+    });
+    return response.choices[0]?.message?.content?.trim() || "Sorry, I couldn't come up with an answer. Try rephrasing, or check the relevant dashboard tab.";
+  }
+
+  // Streaming variant — yields answer text deltas as they arrive so the widget
+  // can render the reply progressively.
+  async *streamHelpAnswer(role: AssistantRole, messages: AssistantTurn[], tier?: string): AsyncGenerator<string> {
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: this.buildHelpMessages(role, messages, tier),
+      temperature: 0.4,
+      max_tokens: 700,
+      stream: true,
+    });
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content;
+      if (delta) yield delta;
+    }
+  }
+
+  // ---- The CIRQL Fountain Oracle + ring NPCs (in-world, public, kids-safe) ----
+  // The Oracle (the fountain) is grounded in the whole world; a ring NPC is grounded
+  // ONLY in its own island + rumours, and defers elsewhere to the fountain. Both stay
+  // warm, mythic, brief, and all-ages.
+  private buildOracleMessages(speaker: OracleSpeaker, messages: AssistantTurn[]) {
+    const isOracle = speaker.kind === "oracle";
+    const knowledge = isOracle ? oracleKnowledge() : npcKnowledge(speaker.ring);
+
+    const persona = isOracle
+      ? `You are the ORACLE of the CIRQL Fountain — the voice of the wellspring at the heart of the world, Mnemos's gift, the world remembering itself. You know all of CIRQLSPHERE: its story, its islands, and how a traveller finds their way. You are warm, mythic, and a little wondrous, but plain-spoken enough that a curious child understands you.`
+      : `You are ${speaker.name}, ${speaker.role} of ${knowledgeIslandName(speaker.ring)}, in the world of CIRQLSPHERE. You are a friendly local — you know your own island well and love it, but you have never left it. Speak simply and warmly, in your own voice.`;
+
+    const scopeRule = isOracle
+      ? `You may speak of the whole world — any island, the Makers, the Light and the Grey, the Rekindling, and how things work.`
+      : `IMPORTANT — stay in your lane: only speak with real knowledge about YOUR OWN island and the folk on it. You may share a vague RUMOUR of another place, but make clear it's only hearsay. For anything about the wider world — the Makers, the grey, the whole story, or another island a traveller wants to reach — say it's beyond you and send them to the CIRQL Fountain in the Town, whose Oracle knows all of it. Never invent details about places or lore you don't know.`;
+
+    const system = `${persona}
+
+${scopeRule}
+
+RULES:
+- This is a cozy, all-ages fantasy game. Keep everything kind, whimsical, and safe for children — no violence detail, no anything scary, cruel, romantic, political, or real-world-heavy. The villains here are lonely and forgetful, never evil.
+- Ground every answer in the WORLD KNOWLEDGE below. Do NOT invent islands, characters, features, prices, or lore that aren't in it. If you don't know, say so simply${isOracle ? "" : " and point them to the Fountain"}.
+- Be BRIEF and in-character — usually 1 to 3 short sentences, like a line of game dialogue. No markdown headers, no bullet lists unless truly helpful, no walls of text.
+- Only talk about CIRQLSPHERE and the player's journey. If asked about anything unrelated (homework, the real world, other games), gently steer back with a smile.
+- Speak directly to the traveller ("you").
+
+=== WORLD KNOWLEDGE ===
+${knowledge}
+=== END WORLD KNOWLEDGE ===`;
+
+    const trimmed = messages.slice(-8).map((m) => ({ role: m.role, content: String(m.content || "").slice(0, 600) }));
+    return [{ role: "system" as const, content: system }, ...trimmed];
+  }
+
+  async answerOracleQuestion(speaker: OracleSpeaker, messages: AssistantTurn[]): Promise<string> {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: this.buildOracleMessages(speaker, messages),
+      temperature: 0.8,
+      max_tokens: 260,
+    });
+    return response.choices[0]?.message?.content?.trim() || "…the water is still for a moment. Ask me again, traveller.";
+  }
+
+  async *streamOracleAnswer(speaker: OracleSpeaker, messages: AssistantTurn[]): AsyncGenerator<string> {
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: this.buildOracleMessages(speaker, messages),
+      temperature: 0.8,
+      max_tokens: 260,
+      stream: true,
+    });
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content;
+      if (delta) yield delta;
+    }
+  }
+
+  // Generate a bespoke coordinator sales pitch for one local business.
+  async generateSalesPitch(biz: { name: string; category?: string; city?: string }): Promise<GeneratedPitch> {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: `You are a sales coach for Cirqlback, a tap-to-earn local loyalty platform. Cirqlback gives a local business: (1) NFC "tap to earn" loyalty rewards and digital punch cards, (2) a hosted one-page website at cirqlback.com/biz/<name> with their brand, hours, specials and live rewards, (3) a pin on a local discovery map, (4) cross-business "trails" that share foot traffic with neighboring shops, plus paid add-ons (custom tap-screen branding, advanced analytics, map priority, contest/scavenger-hunt builder). Pricing is $19.99/mo Core or $49.99/mo Pro (hosted page included), with a free 6-month trial. Write a short, punchy, SPOKEN pitch a community coordinator can deliver in the doorway, tailored to THIS specific business and its town. Reference the business by name and lead with the 2-3 features that matter most for its type. Return ONLY JSON with these keys: "hook" (a 1-2 sentence opening that names a real pain), "pain" (one sentence), "leadFeatures" (array of exactly 3 short strings), "pictureIt" (a concrete 1-2 sentence scenario using their world), "roi" (one sentence tying the value to the ~$20/month cost), "objection" (an object {"q": a likely objection, "a": a rebuttal}), "bundle" (recommended plan + add-ons), "close" (a 1-2 sentence closing line that mentions the free 6-month trial). Keep every line conversational and concise; no markdown.`,
+        },
+        {
+          role: "user",
+          content: `Business name: ${biz.name}\nType / category: ${biz.category || "local business"}\nTown / city: ${biz.city || "their town"}`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.8,
+    });
+    const r = JSON.parse(response.choices[0].message.content || "{}");
+    return {
+      hook: String(r.hook || ""),
+      pain: String(r.pain || ""),
+      leadFeatures: Array.isArray(r.leadFeatures) ? r.leadFeatures.slice(0, 4).map(String) : [],
+      pictureIt: String(r.pictureIt || ""),
+      roi: String(r.roi || ""),
+      objection: { q: String(r.objection?.q || ""), a: String(r.objection?.a || "") },
+      bundle: String(r.bundle || ""),
+      close: String(r.close || ""),
+    };
+  }
+
   // Generate business insights based on analytics data
   async generateBusinessInsights(businessData: {
     type: string;

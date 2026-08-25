@@ -193,7 +193,7 @@ export default function CommunicationPage() {
                     <p className="text-sm mb-3">{demoScenarios[activeDemo as keyof typeof demoScenarios].customer}</p>
                     <div className="border-t pt-3">
                       <Badge variant="secondary" className="mb-2">
-                        <TranslatedText>Translated to {currentLanguage.toUpperCase()}</TranslatedText>
+                        <TranslatedText>{`Translated to ${currentLanguage.toUpperCase()}`}</TranslatedText>
                       </Badge>
                       <p className="text-sm font-medium">
                         <TranslatedText>
@@ -208,7 +208,7 @@ export default function CommunicationPage() {
                     <p className="text-sm mb-3">{demoScenarios[activeDemo as keyof typeof demoScenarios].merchant}</p>
                     <div className="border-t pt-3">
                       <Badge variant="secondary" className="mb-2">
-                        <TranslatedText>Translated to {currentLanguage.toUpperCase()}</TranslatedText>
+                        <TranslatedText>{`Translated to ${currentLanguage.toUpperCase()}`}</TranslatedText>
                       </Badge>
                       <p className="text-sm font-medium">
                         <TranslatedText>

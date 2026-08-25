@@ -1,0 +1,1 @@
+ALTER TABLE "coordinators" ALTER COLUMN "share_pct" SET DEFAULT 70;

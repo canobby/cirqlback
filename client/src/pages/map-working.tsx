@@ -1,269 +1,402 @@
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { QuickTranslate } from "@/components/ui/translated-text";
-import { 
-  MapPin, ArrowRight, Coffee, Smartphone, Store, Utensils, Star, Gift, Navigation
-} from "lucide-react";
+import { MapPin, ArrowRight, Navigation, Store, Gift, Footprints, Check, Star } from "lucide-react";
+
+interface MapBusiness {
+  id: string;
+  name: string;
+  address: string | null;
+  lat: number;
+  lng: number;
+  description: string | null;
+  category: string;
+  isActive: boolean;
+  featured?: boolean; // CHR-54: coordinator map promotion
+  isNonprofit?: boolean; // CHR-72
+}
+
+// CHR-72: active donation-per-tap campaigns for the "Support a Cause" section.
+interface DonationCampaignMember {
+  businessId: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+interface DonationCampaign {
+  id: string;
+  name: string;
+  description: string | null;
+  nonprofitName: string | null;
+  donationPerTapCents: number;
+  totalRaisedCents: number;
+  members: DonationCampaignMember[];
+}
+
+interface TrailMember {
+  businessId: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+interface Trail {
+  id: string;
+  name: string;
+  description: string | null;
+  ruleType: string;
+  requiredStores: number;
+  rewardTitle: string | null;
+  isFeatured?: boolean; // CHR-54: coordinator map promotion
+  members: TrailMember[];
+}
+interface TrailProgress {
+  groupCampaignId: string;
+  required: number;
+  visited: string[];
+  visitedCount: number;
+  completed: boolean;
+}
+
+const containerStyle = { width: "100%", height: "420px" };
+// Default view: downtown Yakima, WA (used until businesses load).
+const DEFAULT_CENTER = { lat: 46.6021, lng: -120.5059 };
 
 export default function MapWorking() {
   const [, setLocation] = useLocation();
+  const [selected, setSelected] = useState<MapBusiness | null>(null);
 
-  const businesses = [
-    {
-      id: 1,
-      name: "Yakima Coffee Company",
-      category: "Coffee",
-      rating: 4.8,
-      rewards: 3,
-      isOpen: true,
-      distance: "0.1 mi"
-    },
-    {
-      id: 2,
-      name: "Valley Electronics",
-      category: "Electronics", 
-      rating: 4.6,
-      rewards: 2,
-      isOpen: true,
-      distance: "0.2 mi"
-    },
-    {
-      id: 3,
-      name: "Hop Nation Brewing",
-      category: "Food",
-      rating: 4.7,
-      rewards: 4,
-      isOpen: false,
-      distance: "0.3 mi"
-    }
-  ];
+  const apiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || "";
+  const { isLoaded } = useJsApiLoader({
+    id: "cirqlback-google-map",
+    googleMapsApiKey: apiKey,
+  });
 
-  const getIcon = (category: string) => {
-    switch (category) {
-      case "Coffee": return Coffee;
-      case "Electronics": return Smartphone;
-      case "Food": return Utensils;
-      default: return Store;
-    }
+  const { data: businesses = [], isLoading } = useQuery<MapBusiness[]>({
+    queryKey: ["/api/map/businesses"],
+  });
+
+  // CHR-59: active multi-store group campaigns ("trails") + progress lookup.
+  const [selectedTrailId, setSelectedTrailId] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const { data: trails = [] } = useQuery<Trail[]>({
+    queryKey: ["/api/group-campaigns/active"],
+  });
+  // CHR-72: active donation-per-tap campaigns.
+  const { data: donationCampaigns = [] } = useQuery<DonationCampaign[]>({
+    queryKey: ["/api/donation-campaigns/active"],
+  });
+  const { data: progress } = useQuery<TrailProgress>({
+    queryKey: ["group-progress", selectedTrailId, email],
+    enabled: !!selectedTrailId && !!email,
+    retry: false,
+    queryFn: async () => {
+      const r = await fetch(
+        `/api/group-campaigns/${selectedTrailId}/progress?email=${encodeURIComponent(email)}`,
+        { credentials: "include" },
+      );
+      if (!r.ok) throw new Error("Failed to load progress");
+      return r.json();
+    },
+  });
+  // CHR-54: featured (coordinator-promoted) placements float to the top.
+  const sortedBusinesses = useMemo(
+    () => [...businesses].sort((a, b) => Number(!!b.featured) - Number(!!a.featured)),
+    [businesses],
+  );
+  const sortedTrails = useMemo(
+    () => [...trails].sort((a, b) => Number(!!b.isFeatured) - Number(!!a.isFeatured)),
+    [trails],
+  );
+  const selectedTrail = trails.find((t) => t.id === selectedTrailId) || null;
+  const highlightedIds = useMemo(
+    () => new Set((selectedTrail?.members || []).map((m) => m.businessId)),
+    [selectedTrail],
+  );
+
+  // Center on the average of the loaded businesses, else the default.
+  const center = useMemo(() => {
+    if (businesses.length === 0) return DEFAULT_CENTER;
+    return {
+      lat: businesses.reduce((s, b) => s + b.lat, 0) / businesses.length,
+      lng: businesses.reduce((s, b) => s + b.lng, 0) / businesses.length,
+    };
+  }, [businesses]);
+
+  const openDirections = (b: MapBusiness) => {
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}`,
+      "_blank",
+    );
   };
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20 pb-8">
       <div className="max-w-4xl mx-auto px-4">
-        
         {/* Header */}
         <div className="mb-6">
-          <Button 
-            variant="ghost" 
-            onClick={() => setLocation('/')}
-            className="mb-4"
-          >
+          <Button variant="ghost" onClick={() => setLocation("/")} className="mb-4">
             <ArrowRight className="h-4 w-4 rotate-180 mr-2" />
             <QuickTranslate text="Back to Home" />
           </Button>
-          
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             <QuickTranslate text="Discover Local Businesses" />
           </h1>
           <p className="text-gray-600">
-            <QuickTranslate text="Tap Cirql tags to earn rewards and discover amazing local spots in Yakima, WA" />
+            <QuickTranslate text="Tap Cirql tags to earn rewards and discover amazing local spots." />
           </p>
         </div>
 
-        {/* Interactive Map Section */}
+        {/* Map */}
         <div className="mb-6 bg-white rounded-xl shadow-lg overflow-hidden">
-          {/* Map Header Bar */}
-          <div className="bg-white border-b border-gray-200 px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <MapPin className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <h2 className="font-semibold text-gray-900">Yakima, WA</h2>
-                  <p className="text-sm text-gray-600">{businesses.length} businesses with rewards</p>
-                </div>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  const url = "https://www.google.com/maps/search/restaurants+near+Yakima,+WA";
-                  window.open(url, '_blank');
-                }}
-              >
-                <Navigation className="h-4 w-4 mr-2" />
-                Navigate
-              </Button>
+          <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+              <MapPin className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-gray-900">Local businesses</h2>
+              <p className="text-sm text-gray-600">
+                {isLoading ? "Loading…" : `${businesses.length} businesses on the map`}
+              </p>
             </div>
           </div>
-          
-          {/* Full-Width Interactive Map */}
-          <div className="relative h-80 bg-gray-100">
-            {import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? (
-              <iframe
-                className="w-full h-full"
-                src={`https://www.google.com/maps/embed/v1/search?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&q=restaurants+coffee+shops+electronics+stores+Yakima+WA&zoom=14&center=46.6021,-120.5059`}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="Yakima Business Locations"
-              ></iframe>
+
+          <div className="relative h-[420px] bg-gray-100">
+            {apiKey && isLoaded ? (
+              <GoogleMap
+                mapContainerStyle={containerStyle}
+                center={center}
+                zoom={14}
+                options={{ streetViewControl: false, mapTypeControl: false }}
+              >
+                {businesses.map((b) => (
+                  <Marker
+                    key={b.id}
+                    position={{ lat: b.lat, lng: b.lng }}
+                    title={b.name}
+                    onClick={() => setSelected(b)}
+                    icon={
+                      selectedTrailId && highlightedIds.has(b.id)
+                        ? { url: "http://maps.google.com/mapfiles/ms/icons/purple-dot.png" }
+                        : b.isNonprofit
+                        ? { url: "http://maps.google.com/mapfiles/ms/icons/green-dot.png" }
+                        : b.featured
+                        ? { url: "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png" }
+                        : undefined
+                    }
+                  />
+                ))}
+                {selected && (
+                  <InfoWindow
+                    position={{ lat: selected.lat, lng: selected.lng }}
+                    onCloseClick={() => setSelected(null)}
+                  >
+                    <div className="max-w-xs p-1">
+                      <h3 className="font-bold text-gray-900">{selected.name}</h3>
+                      {selected.address && (
+                        <p className="text-xs text-gray-600 mb-1">{selected.address}</p>
+                      )}
+                      {selected.description && (
+                        <p className="text-sm text-gray-700 mb-2">{selected.description}</p>
+                      )}
+                      <Button size="sm" className="w-full" onClick={() => openDirections(selected)}>
+                        <Navigation className="h-4 w-4 mr-2" /> Directions
+                      </Button>
+                    </div>
+                  </InfoWindow>
+                )}
+              </GoogleMap>
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                <p className="text-gray-600">Loading map...</p>
+              <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
+                <MapPin className="h-8 w-8 text-gray-400 mb-2" />
+                <p className="text-gray-600">
+                  {apiKey
+                    ? "Loading map…"
+                    : "Interactive map unavailable — set VITE_GOOGLE_MAPS_API_KEY to enable it."}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  The businesses below are live from the database.
+                </p>
               </div>
             )}
-            
-            {/* Quick Action Buttons */}
-            <div className="absolute top-4 right-4 flex flex-col gap-2">
-              <Button 
-                size="sm" 
-                className="bg-white text-gray-900 hover:bg-gray-50 shadow-md border"
-                onClick={() => {
-                  const url = "https://www.google.com/maps/dir//Yakima,+WA";
-                  window.open(url, '_blank');
-                }}
-              >
-                <Navigation className="h-4 w-4" />
-              </Button>
-              <Button 
-                size="sm" 
-                className="bg-white text-gray-900 hover:bg-gray-50 shadow-md border"
-                onClick={() => {
-                  const url = "https://www.google.com/maps/search/restaurants+near+Yakima,+WA";
-                  window.open(url, '_blank');
-                }}
-              >
-                <Store className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
-          
-          {/* Business Quick Access */}
-          <div className="p-4 bg-gray-50">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">📍 Interactive map shows real business locations with markers - click any business on the map or below:</h4>
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {businesses.map((business, index) => {
-                const IconComponent = getIcon(business.category);
-                const markerColors = ['red', 'blue', 'green'];
-                const markerLabels = ['C', 'E', 'B'];
-                return (
-                  <div 
-                    key={business.id} 
-                    className="flex-shrink-0 bg-white rounded-lg p-3 shadow-sm border cursor-pointer hover:shadow-md transition-all"
-                    onClick={() => {
-                      const url = `https://www.google.com/maps/search/?api=1&query=${business.name}+Yakima+WA`;
-                      window.open(url, '_blank');
-                    }}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="relative">
-                        <div className={`p-2 rounded-lg ${
-                          business.isOpen ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          <IconComponent className="h-4 w-4" />
-                        </div>
-                        <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-xs flex items-center justify-center font-bold ${
-                          markerColors[index] === 'red' ? 'bg-red-500' : 
-                          markerColors[index] === 'blue' ? 'bg-blue-500' : 'bg-green-500'
-                        }`}>
-                          {markerLabels[index]}
-                        </div>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm text-gray-900 truncate">{business.name}</p>
-                        <p className="text-xs text-green-600">{business.rewards} rewards • {business.distance}</p>
+        </div>
+
+        {/* CHR-72: Support a Cause (active donation-per-tap campaigns) */}
+        {donationCampaigns.length > 0 && (
+          <div className="mb-6 bg-white rounded-xl shadow-sm border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+              <Gift className="h-5 w-5 text-rose-600" />
+              Support a Cause
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Tap Cirql tags at participating shops — each tap donates to these local nonprofits.
+            </p>
+            <div className="space-y-3">
+              {donationCampaigns.map((d) => (
+                <div key={d.id} className="rounded-lg border border-rose-100 bg-rose-50/40 p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-gray-900">{d.name}</div>
+                      <div className="text-xs text-gray-500">
+                        {d.nonprofitName ? `${d.nonprofitName} · ` : ""}
+                        ${((d.donationPerTapCents || 0) / 100).toFixed(2)} per tap · {d.members.length} shop{d.members.length === 1 ? "" : "s"}
                       </div>
                     </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-rose-700">
+                        ${((d.totalRaisedCents || 0) / 100).toFixed(2)}
+                      </div>
+                      <div className="text-[10px] text-gray-500 uppercase tracking-wide">raised</div>
+                    </div>
+                  </div>
+                  {d.members.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {d.members.map((m) => (
+                        <span key={m.businessId} className="text-xs px-2 py-0.5 rounded-full bg-white border border-rose-200 text-gray-600">
+                          {m.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* CHR-59: Group Trails (active multi-store group campaigns) */}
+        {trails.length > 0 && (
+          <div className="mb-6 bg-white rounded-xl shadow-sm border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+              <Footprints className="h-5 w-5 text-purple-600" />
+              Group Trails
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Tap Cirql tags across several shops to unlock a bonus reward. Select a trail to
+              highlight its stops on the map.
+            </p>
+            <div className="space-y-3">
+              {sortedTrails.map((t) => {
+                const isSel = t.id === selectedTrailId;
+                return (
+                  <div key={t.id} className={`rounded-lg border ${isSel ? "border-purple-300 bg-purple-50/50" : t.isFeatured ? "border-amber-300 bg-amber-50/40" : "border-gray-200"}`}>
+                    <button
+                      className="w-full flex items-center justify-between p-3 text-left"
+                      onClick={() => { setSelectedTrailId(isSel ? null : t.id); }}
+                    >
+                      <div>
+                        <div className="font-medium text-gray-900 flex items-center gap-2">
+                          {t.name}
+                          {t.isFeatured && (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-600">
+                              <Star className="h-3 w-3 fill-current" /> Featured
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Tap {t.requiredStores} of {t.members.length} stores
+                          {t.rewardTitle ? ` · ${t.rewardTitle}` : ""}
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="text-xs">{isSel ? "Hide" : "View"}</Badge>
+                    </button>
+
+                    {isSel && (
+                      <div className="px-3 pb-3">
+                        <div className="flex gap-2 mb-3">
+                          <Input
+                            type="email"
+                            placeholder="Enter your email to see your progress"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          {t.members.map((m) => {
+                            const done = progress?.visited?.includes(m.businessId);
+                            return (
+                              <div key={m.businessId} className="flex items-center gap-2 text-sm">
+                                <span className={`flex h-5 w-5 items-center justify-center rounded-full ${done ? "bg-green-500 text-white" : "bg-gray-200 text-gray-400"}`}>
+                                  {done ? <Check className="h-3 w-3" /> : null}
+                                </span>
+                                <span className={done ? "text-gray-900" : "text-gray-600"}>{m.name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {progress && email && (
+                          <p className="mt-2 text-sm font-medium text-purple-700">
+                            {progress.visitedCount} of {progress.required} visited
+                            {progress.completed ? " — completed! 🎉" : ""}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Quick Navigation Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <Button 
-            onClick={() => setLocation('/customer')}
-            className="h-16 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-          >
-            <div className="flex items-center gap-3">
-              <Gift className="h-6 w-6" />
-              <div className="text-left">
-                <div className="font-semibold"><QuickTranslate text="View My Rewards" /></div>
-                <div className="text-sm opacity-90">Check points & earnings</div>
-              </div>
-            </div>
-          </Button>
-          
-          <Button 
-            variant="outline"
-            onClick={() => setLocation('/merchant')}
-            className="h-16 border-2 hover:bg-gray-50"
-          >
-            <div className="flex items-center gap-3">
-              <Store className="h-6 w-6" />
-              <div className="text-left">
-                <div className="font-semibold"><QuickTranslate text="Business Owner? Get Started" /></div>
-                <div className="text-sm text-gray-600">Set up rewards program</div>
-              </div>
-            </div>
-          </Button>
-        </div>
-        
-        {/* Detailed Business Info */}
+        {/* Business list (live from /api/map/businesses) */}
         <div className="bg-white rounded-xl shadow-sm border p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Nearby Businesses</h3>
-          <div className="space-y-3">
-            {businesses.map((business) => {
-              const IconComponent = getIcon(business.category);
-              return (
-                <div 
-                  key={business.id} 
-                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
-                  onClick={() => {
-                    const url = `https://www.google.com/maps/search/?api=1&query=${business.name}+Yakima+WA`;
-                    window.open(url, '_blank');
-                  }}
+          {businesses.length === 0 && !isLoading ? (
+            <p className="text-gray-500 text-sm">No businesses on the map yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {sortedBusinesses.map((b) => (
+                <div
+                  key={b.id}
+                  className={`flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors border ${b.featured ? "border-amber-300 bg-amber-50/40" : ""}`}
+                  onClick={() => setSelected(b)}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      business.isOpen ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      <IconComponent className="h-4 w-4" />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`p-2 rounded-lg flex-shrink-0 ${b.featured ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"}`}>
+                      {b.featured ? <Star className="h-4 w-4 fill-current" /> : <Store className="h-4 w-4" />}
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{business.name}</p>
-                      <div className="flex items-center gap-3 text-sm text-gray-600">
-                        <span className="flex items-center gap-1">
-                          <Star className="h-3 w-3 text-yellow-500" fill="currentColor" />
-                          {business.rating}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Gift className="h-3 w-3 text-green-600" />
-                          {business.rewards} rewards
-                        </span>
-                        <span>{business.distance}</span>
-                        <Badge 
-                          variant={business.isOpen ? "default" : "secondary"}
-                          className="text-xs"
-                        >
-                          <QuickTranslate text={business.isOpen ? "Open" : "Closed"} />
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 truncate flex items-center gap-2">
+                        {b.name}
+                        {b.featured && (
+                          <span className="text-xs text-amber-600 font-normal">Featured</span>
+                        )}
+                      </p>
+                      <p className="text-sm text-gray-600 truncate">
+                        {b.address || b.description}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="secondary" className="text-xs capitalize">
+                          {b.category}
                         </Badge>
+                        <span className="text-xs text-purple-600 flex items-center gap-1">
+                          <Gift className="h-3 w-3" /> Rewards available
+                        </span>
                       </div>
                     </div>
                   </div>
-                  <Navigation className="h-4 w-4 text-gray-400" />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDirections(b);
+                    }}
+                  >
+                    <Navigation className="h-4 w-4" />
+                  </Button>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
-
       </div>
     </div>
   );

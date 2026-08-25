@@ -13,7 +13,7 @@ export default function PricingOptimizer() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // AI-powered pricing recommendations query
-  const { data: aiRecommendations, isLoading, refetch } = useQuery({
+  const { data: aiRecommendations, isLoading, refetch } = useQuery<any>({
     queryKey: ['/api/ai/pricing-optimization'],
     queryFn: async () => {
       const businessData = {
@@ -198,7 +198,7 @@ export default function PricingOptimizer() {
         </div>
 
         <TabsContent value="recommendations" className="space-y-4">
-          {recommendations.map((rec, index) => (
+          {recommendations.map((rec: any, index: number) => (
             <Card key={index} className="card-hover">
               <CardContent className="p-6">
                 <div className="space-y-4">

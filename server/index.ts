@@ -1,38 +1,65 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { startScheduler } from "./scheduler";
 
 const app = express();
-app.use(express.json());
+
+// --- Security middleware (CHR-17) ---
+// CSP/COEP are disabled because the SPA embeds Google Maps, Stripe and Google
+// Fonts; a proper Content-Security-Policy is a separate, larger task.
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+
+const isProdEnv = process.env.NODE_ENV === "production";
+const allowedOrigins = (process.env.CORS_ORIGINS ||
+  "http://localhost:5000,http://127.0.0.1:5000")
+  .split(",").map((s) => s.trim()).filter(Boolean);
+app.use(cors((req: any, cb: (err: Error | null, options: any) => void) => {
+  const origin: string | undefined = req.headers?.origin;
+  const host: string | undefined = req.headers?.host;
+  // Same-origin request: the Origin's host equals the server's own Host. This is
+  // always safe and covers the deployed app (client + API on one domain), so we
+  // don't need CORS_ORIGINS to list the live URL.
+  let sameOrigin = false;
+  if (origin && host) {
+    try { sameOrigin = new URL(origin).host === host; } catch { sameOrigin = false; }
+  }
+  // Allow: no Origin (non-browser/same-origin GET), any origin in development
+  // (LAN/tunnel sharing), same-origin, or an explicitly allowlisted cross-origin.
+  // For anything else we simply omit CORS headers (the browser blocks it) rather
+  // than throwing a 500.
+  const ok = !origin || !isProdEnv || sameOrigin || allowedOrigins.includes(origin);
+  cb(null, { origin: ok, credentials: true });
+}));
+
+// Global rate limit, with tighter limits on auth and AI/translation endpoints
+// (unauthenticated AI/payment calls are a cost-amplification/DoS risk).
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000, standardHeaders: true, legacyHeaders: false }));
+const strictLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 50, standardHeaders: true, legacyHeaders: false });
+app.use("/api/auth", strictLimiter);
+app.use("/api/translate", strictLimiter);
+app.use("/api/ai", strictLimiter);
+
+// Capture the raw body so the Stripe webhook can verify signatures
+// (stripe.webhooks.constructEvent needs the exact bytes, not parsed JSON).
+app.use(express.json({ verify: (req, _res, buf) => { (req as any).rawBody = buf; } }));
 app.use(express.urlencoded({ extended: false }));
 
+// Request logger — status + timing only. (CHR-18) It previously serialized the
+// JSON response body into the log, leaking PII (emails, subscription/admin data).
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
   res.on("finish", () => {
-    const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+      const duration = Date.now() - start;
+      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
     }
   });
-
   next();
 });
 
@@ -43,8 +70,12 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
+    // (CHR-18) Don't re-throw after responding — that crashed the process and
+    // could double-send. Log server-side and return a clean error.
+    console.error("Unhandled error:", err);
+    if (!res.headersSent) {
+      res.status(status).json({ message });
+    }
   });
 
   // importantly only setup vite in development and after
@@ -61,11 +92,12 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  // Production hosts (Render/Railway/etc.) route to the container's public
+  // interface, so bind 0.0.0.0 there; keep localhost-only in development.
+  const host = process.env.HOST || (isProdEnv ? "0.0.0.0" : "127.0.0.1");
+  server.listen(port, host, () => {
+    log(`serving on http://${host}:${port}`);
+    // Start in-process scheduled jobs (billing dunning + monthly payouts).
+    startScheduler();
   });
 })();

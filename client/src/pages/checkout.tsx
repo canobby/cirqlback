@@ -12,9 +12,8 @@ import { useLocation } from "wouter";
 // Load Stripe - check multiple possible environment variable names
 const getStripePublicKey = () => {
   if (typeof window === 'undefined') return null;
-  return import.meta.env.VITE_STRIPE_PUBLIC_KEY || 
-         import.meta.env.Stripevite ||
-         'pk_live_51RvBnvHfTI7iuDsWQmpnpC7uvT1LjcwLfwpowIENWaoqstKYWvSDVmAXh09abw5FM3jFJOrnEEEbtniaYX2WM1nTRJ00KeOkBjBR';
+  // Never hardcode a key here — it comes only from the environment.
+  return import.meta.env.VITE_STRIPE_PUBLIC_KEY || null;
 };
 
 const stripePromise = getStripePublicKey() ? loadStripe(getStripePublicKey()) : null;
@@ -37,7 +36,7 @@ const CheckoutForm = ({ amount, description }: { amount: number; description: st
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: window.location.origin + '/account',
+        return_url: window.location.origin + '/merchant',
       },
     });
 
@@ -96,32 +95,48 @@ export default function Checkout() {
   const [clientSecret, setClientSecret] = useState("");
   const [, setLocation] = useLocation();
   
-  // Example checkout data (would come from props/query params in real app)
+  // The plan to purchase comes from the URL (?plan=&interval=), defaulting to
+  // Core monthly. The PRICE is decided server-side from the plan id —
+  // the client never sends an amount.
+  const params = new URLSearchParams(window.location.search);
   const checkoutData = {
-    amount: 39.00,
-    description: "Professional Plan - Monthly subscription with unlimited campaigns"
+    planId: params.get("plan") || "core",
+    billingInterval: params.get("interval") === "yearly" ? "yearly" : "monthly",
+    amount: 19.99, // cosmetic default; server response overrides via displayAmount
+    description: "Subscription",
   };
+  const [displayAmount, setDisplayAmount] = useState(checkoutData.amount);
+  const [planName, setPlanName] = useState("Subscription");
+  const [billingInterval, setBillingInterval] = useState(checkoutData.billingInterval);
 
   useEffect(() => {
-    // Create PaymentIntent when component loads
-    const createPaymentIntent = async () => {
+    // Create a recurring subscription (anchored to the 10th) and use the first
+    // invoice's client secret to confirm the (prorated) first payment.
+    const createSubscription = async () => {
       try {
-        const response = await fetch("/api/create-payment-intent", {
+        const response = await fetch("/api/subscription/create", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ amount: checkoutData.amount }),
+          credentials: "include",
+          body: JSON.stringify({
+            planId: checkoutData.planId,
+            billingInterval: checkoutData.billingInterval,
+          }),
         });
         const data = await response.json();
         setClientSecret(data.clientSecret);
+        if (typeof data.firstChargeAmount === "number") setDisplayAmount(data.firstChargeAmount);
+        if (data.planName) setPlanName(data.planName);
+        if (data.billingInterval) setBillingInterval(data.billingInterval);
       } catch (error) {
-        console.error("Error creating payment intent:", error);
+        console.error("Error creating subscription:", error);
       }
     };
 
     if (getStripePublicKey()) {
-      createPaymentIntent();
+      createSubscription();
     }
   }, []);
 
@@ -204,40 +219,35 @@ export default function Checkout() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold">10</span>
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <CreditCard className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h4 className="font-medium">Premium Cirql Tags Package</h4>
-                    <p className="text-sm text-gray-600">10 NFC tags with setup support</p>
+                    <h4 className="font-medium">{planName} plan</h4>
+                    <p className="text-sm text-gray-600">Billed {billingInterval} on the 10th</p>
                   </div>
                 </div>
 
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between">
-                    <span>Subtotal</span>
-                    <span>${checkoutData.amount.toFixed(2)}</span>
+                    <span>Due today {billingInterval === "monthly" ? "(prorated to the 10th)" : ""}</span>
+                    <span className="font-semibold">${displayAmount.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Shipping</span>
-                    <span className="text-green-600">Free</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-lg border-t pt-2">
-                    <span>Total</span>
-                    <span>${checkoutData.amount.toFixed(2)}</span>
+                  <div className="flex justify-between text-sm text-gray-500">
+                    <span>Then {billingInterval}, on the 10th</span>
+                    <span>auto-renews</span>
                   </div>
                 </div>
 
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                   <div className="flex items-center space-x-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-800">What's Included:</span>
+                    <Check className="h-4 w-4 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-800">How billing works:</span>
                   </div>
-                  <ul className="text-sm text-green-700 mt-2 space-y-1">
-                    <li>• 10 premium Cirql tags</li>
-                    <li>• Setup and installation guide</li>
-                    <li>• 24/7 customer support</li>
-                    <li>• Free shipping worldwide</li>
+                  <ul className="text-sm text-purple-700 mt-2 space-y-1">
+                    <li>• Your first charge is prorated to the next 10th</li>
+                    <li>• After that you're billed {billingInterval} on the 10th</li>
+                    <li>• Cancel anytime; if payment fails your dashboard locks at month-end</li>
                   </ul>
                 </div>
               </div>
@@ -252,7 +262,7 @@ export default function Checkout() {
             <CardContent>
               {stripePromise ? (
                 <Elements stripe={stripePromise} options={{ clientSecret }}>
-                  <CheckoutForm amount={checkoutData.amount} description={checkoutData.description} />
+                  <CheckoutForm amount={displayAmount} description={planName} />
                 </Elements>
               ) : (
                 <div className="text-center py-8 text-gray-500">

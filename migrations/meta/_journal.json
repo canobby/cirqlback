@@ -1,0 +1,125 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1782952342915,
+      "tag": "0000_baseline_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782976614115,
+      "tag": "0001_majestic_butterfly",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782978685121,
+      "tag": "0002_fixed_silver_surfer",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783060794000,
+      "tag": "0003_talented_shadowcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783063823877,
+      "tag": "0004_lovely_marauders",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783064994083,
+      "tag": "0005_tiny_zemo",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783066282517,
+      "tag": "0006_cynical_leopardon",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783067649805,
+      "tag": "0007_magenta_the_professor",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783091164505,
+      "tag": "0008_burly_smiling_tiger",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783092236379,
+      "tag": "0009_outgoing_archangel",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783093760241,
+      "tag": "0010_funny_spiral",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783096697245,
+      "tag": "0011_left_kate_bishop",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783098565361,
+      "tag": "0012_careless_nehzno",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783099438564,
+      "tag": "0013_serious_wraith",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1783100260780,
+      "tag": "0014_dizzy_maddog",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1783100534754,
+      "tag": "0015_striped_echo",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1783101946803,
+      "tag": "0016_rainy_dragon_man",
+      "breakpoints": true
+    }
+  ]
+}

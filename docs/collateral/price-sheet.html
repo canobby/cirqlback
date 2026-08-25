@@ -1,0 +1,74 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cirqlback — Price Sheet</title>
+<style>
+  @page { size:A4; margin:14mm; }
+  :root { --p:#7c3aed; --p2:#ec4899; --dark:#1b1e28; --ink:#2b2f3a; --mut:#6b7280; --line:#ece9fb; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif; color:var(--ink); margin:0; font-size:12px; line-height:1.5; }
+  .wrap { max-width:820px; margin:0 auto; }
+  .hero { border-bottom:3px solid var(--p); padding-bottom:12px; margin-bottom:16px; }
+  .brand { font-size:24px; font-weight:800; color:var(--p); letter-spacing:-.5px; }
+  .doctitle { font-size:20px; font-weight:800; color:var(--dark); margin-top:4px; }
+  .docsub { color:var(--mut); font-size:12px; }
+  h2 { color:#4c1d95; font-size:15px; margin:20px 0 8px; }
+  table { width:100%; border-collapse:collapse; margin:8px 0; }
+  th,td { border:1px solid #eef0f4; padding:7px 9px; text-align:left; vertical-align:top; }
+  th { background:#f6f4fc; color:#5b21b6; font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; }
+  .plan th { text-align:center; font-size:12px; }
+  .plan td:first-child { font-weight:600; color:var(--dark); }
+  .plan td { text-align:center; }
+  .plan td.feat { text-align:left; font-weight:600; color:var(--dark); }
+  .price { font-size:19px; font-weight:800; color:var(--p); }
+  .per { font-size:10px; color:var(--mut); font-weight:600; }
+  .free { color:#16a34a; font-weight:800; }
+  .yes { color:#16a34a; font-weight:700; } .no { color:#cbd0d8; }
+  .pop { background:linear-gradient(135deg,#faf5ff,#fdf2f8); }
+  .note { color:var(--mut); font-size:11px; margin:6px 0; }
+  .badge { display:inline-block; background:var(--p); color:#fff; border-radius:999px; padding:1px 8px; font-size:9.5px; font-weight:700; vertical-align:middle; }
+  .foot { margin-top:20px; padding-top:10px; border-top:1px solid var(--line); color:var(--mut); font-size:10px; }
+  strong { color:var(--dark); }
+</style></head><body><div class="wrap">
+  <div class="hero"><div class="brand">Cirqlback</div><div class="doctitle">Price Sheet</div><div class="docsub">Business subscriptions, add‑ons & the coordinator revenue share · prices in USD</div></div>
+
+  <h2>Subscription plans</h2>
+  <table class="plan">
+    <thead><tr><th style="text-align:left">&nbsp;</th><th>Starter</th><th>Core</th><th class="pop">Pro <span class="badge">popular</span></th></tr></thead>
+    <tbody>
+      <tr><td class="feat">Price</td><td><span class="free">Free</span><div class="per">6‑month trial</div></td><td><span class="price">$19.99</span><div class="per">/month</div></td><td class="pop"><span class="price">$49.99</span><div class="per">/month</div></td></tr>
+      <tr><td class="feat">Yearly (2 months free)</td><td>—</td><td>$199.90/yr</td><td class="pop">$499.90/yr</td></tr>
+      <tr><td class="feat">Locations</td><td>1</td><td>1</td><td class="pop">Up to 3</td></tr>
+      <tr><td class="feat">Tap‑to‑earn loyalty & campaigns</td><td class="yes">✓</td><td class="yes">✓</td><td class="pop yes">✓</td></tr>
+      <tr><td class="feat">NFC tag management + QR</td><td class="yes">✓</td><td class="yes">✓</td><td class="pop yes">✓</td></tr>
+      <tr><td class="feat">Discovery‑map pin</td><td class="yes">✓</td><td class="yes">✓</td><td class="pop yes">✓</td></tr>
+      <tr><td class="feat">Point perks, badges & analytics</td><td class="no">basic</td><td class="yes">✓</td><td class="pop yes">✓</td></tr>
+      <tr><td class="feat">Group / multi‑store campaigns</td><td class="no">join only</td><td class="yes">✓</td><td class="pop yes">✓ create</td></tr>
+      <tr><td class="feat">Hosted business page</td><td class="no">—</td><td>add‑on $14.99</td><td class="pop yes">Included</td></tr>
+      <tr><td class="feat">Priority support</td><td class="no">—</td><td class="no">—</td><td class="pop yes">✓</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Starter is a free 6‑month trial; a discounted conversion offer may appear before it ends. Pricing is enforced server‑side — customers are always charged the correct amount via Stripe.</p>
+
+  <h2>Add‑ons <span style="font-size:11px;font-weight:400;color:var(--mut)">(monthly, stack on any paid plan)</span></h2>
+  <table>
+    <thead><tr><th>Add‑on</th><th>Price</th><th>What it unlocks</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Hosted Business Page</strong></td><td>$14.99</td><td>A customizable one‑page site at cirqlback.com/biz/you with live rewards. <strong>Free on Pro.</strong></td></tr>
+      <tr><td><strong>Map Priority Placement</strong></td><td>$14.99</td><td>A boosted, highlighted pin on the discovery map.</td></tr>
+      <tr><td><strong>Contest & Scavenger‑Hunt Builder</strong></td><td>$14.99</td><td>Build multi‑stop scavenger hunts and prize contests.</td></tr>
+      <tr><td><strong>Advanced Analytics Pack</strong></td><td>$12.99</td><td>Top tag zones, return‑delay insights, busiest‑hour heatmaps.</td></tr>
+      <tr><td><strong>Custom Tap‑Screen Branding</strong></td><td>$7.99</td><td>Your colors, slogan & links on the customer tap page.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Community Coordinator revenue share</h2>
+  <table>
+    <thead><tr><th>Who</th><th>Keeps</th><th>Of what</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Community Coordinator</strong></td><td><span class="price" style="font-size:15px">70%</span></td><td>of gross subscription + add‑on revenue from businesses in their territory.</td></tr>
+      <tr><td><strong>Platform</strong></td><td><strong>30%</strong></td><td>of that same territory revenue (plus 100% of any direct, non‑territory business).</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Admin‑adjustable per coordinator within a 50–100% band for special deals. Each charge snapshots the rate at time of charge, so past earnings are never re‑priced. Customers are always free.</p>
+
+  <div class="foot">Cirqlback — tap‑to‑earn loyalty & local discovery. Prices effective as published; subject to change. See the financial projection for account‑type economics.</div>
+</div></body></html>

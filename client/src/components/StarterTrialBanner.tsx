@@ -14,7 +14,7 @@ export function StarterTrialBanner({ userId }: StarterTrialBannerProps) {
   const [, setLocation] = useLocation();
   const [isVisible, setIsVisible] = useState(true);
 
-  const { data: expirationData } = useQuery({
+  const { data: expirationData } = useQuery<any>({
     queryKey: ["/api/account/check-expiration", userId],
     enabled: !!userId,
     refetchInterval: 60000, // Check every minute

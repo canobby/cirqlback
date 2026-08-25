@@ -9,9 +9,30 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import HelpAssistant from "@/components/assistant/help-assistant";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { CoordinatorSharePanel } from "@/components/admin/coordinator-share-panel";
+import CommandCenter from "@/components/admin/command-center";
+import AdminInsights from "@/components/admin/admin-insights";
+import AtRiskPanel from "@/components/admin/at-risk-panel";
+import AdminGeoPanel from "@/components/admin/geo-panel";
+import CustomerHealthPanel from "@/components/admin/customer-health-panel";
+import UserDetailDialog from "@/components/admin/user-detail-dialog";
+import AuditPanel from "@/components/admin/audit-panel";
+import RevenuePanel from "@/components/admin/revenue-panel";
+import TrustSafetyPanel from "@/components/admin/trust-safety-panel";
+import CoordinatorLeaderboard from "@/components/admin/coordinator-leaderboard";
+import TerritoryManager from "@/components/admin/territory-manager";
+import PlatformConfigPanel from "@/components/admin/platform-config-panel";
+import MessageCenter from "@/components/messaging/message-center";
+import BroadcastComposer from "@/components/messaging/broadcast-composer";
+import RewardSettlementsPanel from "@/components/admin/reward-settlements-panel";
+import BadgesPanel from "@/components/badges/badges-panel";
+import PointsAdminPanel from "@/components/admin/points-admin-panel";
+import CollectionsAdminPanel from "@/components/admin/collections-admin-panel";
+import EventsAdminPanel from "@/components/admin/events-admin-panel";
 import { 
   Shield,
   Users,
@@ -75,9 +96,11 @@ interface CampaignTemplateAdmin {
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
+  const [adminTab, setAdminTab] = useState("overview");
+  const [detailUserId, setDetailUserId] = useState<string | null>(null);
+
   // AI Platform Insights Query
-  const { data: aiPlatformInsights, isLoading: aiLoading, refetch: refetchAI } = useQuery({
+  const { data: aiPlatformInsights, isLoading: aiLoading, refetch: refetchAI } = useQuery<any>({
     queryKey: ['/api/ai/admin-insights'],
     queryFn: async () => {
       const platformData = {
@@ -95,7 +118,7 @@ export default function AdminDashboard() {
         },
         timeframe: "last_30_days"
       };
-      return await apiRequest("POST", "/api/ai/admin-insights", platformData);
+      return (await apiRequest("POST", "/api/ai/admin-insights", platformData)).json();
     }
   });
 
@@ -120,80 +143,27 @@ export default function AdminDashboard() {
     }
   });
 
-  const [adminStats] = useState<AdminStats>({
-    totalUsers: 2847,
-    activeBusinesses: 456,
-    totalRevenue: 127850,
-    campaignsActive: 234,
-    monthlyGrowth: 18.5,
-    churnRate: 2.1
-  });
+  // Real platform stats + user list from the admin API.
+  const { data: statsData } = useQuery<any>({ queryKey: ["/api/admin/platform-stats"], retry: false });
+  const adminStats = {
+    totalUsers: statsData?.totalUsers ?? 0,
+    activeBusinesses: statsData?.activeBusinesses ?? 0,
+    totalRevenue: statsData?.totalRevenue ?? 0,
+    campaignsActive: statsData?.activeCampaigns ?? 0,
+  };
 
-  const [platformUsers, setPlatformUsers] = useState<PlatformUser[]>([
-    {
-      id: "1",
-      name: "Sarah Johnson",
-      email: "sarah@example.com",
-      role: "Business Owner",
-      subscriptionTier: "Premium",
-      status: "Active",
-      totalSpent: 450,
-      joinDate: "2024-08-01",
-      lastActive: "2 hours ago"
-    },
-    {
-      id: "2",
-      name: "Mike Chen",
-      email: "mike@example.com",
-      role: "Customer",
-      subscriptionTier: "Free",
-      status: "Active",
-      totalSpent: 0,
-      joinDate: "2024-07-15",
-      lastActive: "1 day ago"
-    },
-    {
-      id: "3",
-      name: "Emma Rodriguez",
-      email: "emma@example.com",
-      role: "Business Owner",
-      subscriptionTier: "Basic",
-      status: "Suspended",
-      totalSpent: 150,
-      joinDate: "2024-06-20",
-      lastActive: "5 days ago"
-    }
-  ]);
+  const { data: platformUsers = [] } = useQuery<any[]>({ queryKey: ["/api/admin/platform-users"], retry: false });
 
-  const [campaignTemplates, setCampaignTemplates] = useState<CampaignTemplateAdmin[]>([
-    {
-      id: "coffee_loyalty",
-      name: "Coffee Loyalty Punch Card",
-      category: "Loyalty",
-      isActive: true,
-      seasonality: "Year-round",
-      usageCount: 45,
-      conversionRate: 78
-    },
-    {
-      id: "halloween_spook",
-      name: "Halloween Spook-tacular",
-      category: "Seasonal",
-      isActive: false,
-      seasonality: "October",
-      usageCount: 23,
-      conversionRate: 85
-    },
-    {
-      id: "winter_warmup",
-      name: "Winter Warmup Special",
-      category: "Seasonal",
-      isActive: true,
-      seasonality: "Dec-Feb",
-      usageCount: 67,
-      conversionRate: 72
-    }
-  ]);
+  // Real built-in template catalog + real subscription plans.
+  const { data: campaignTemplates = [] } = useQuery<any[]>({ queryKey: ["/api/admin/campaign-templates"], retry: false });
+  const { data: subscriptionPlans = [] } = useQuery<any[]>({ queryKey: ["/api/subscription/plans"], retry: false });
+
+  // Real per-tier user counts derived from the platform users list.
+  const tierCounts = platformUsers.reduce((acc: Record<string, number>, u: any) => {
+    const t = u.subscriptionTier || "starter";
+    acc[t] = (acc[t] || 0) + 1;
+    return acc;
+  }, {});
 
   const [newTemplate, setNewTemplate] = useState({
     name: '',
@@ -205,65 +175,17 @@ export default function AdminDashboard() {
     estimatedROI: ''
   });
 
-  const updateUserStatus = (userId: string, newStatus: string) => {
-    setPlatformUsers(users => 
-      users.map(user => 
-        user.id === userId ? { ...user, status: newStatus } : user
-      )
-    );
+  const updateUserStatus = (_userId: string, newStatus: string) => {
     toast({
-      title: "User Updated",
-      description: `User status changed to ${newStatus}`
-    });
-  };
-
-  const updateTemplateStatus = (templateId: string, isActive: boolean) => {
-    setCampaignTemplates(templates =>
-      templates.map(template =>
-        template.id === templateId ? { ...template, isActive } : template
-      )
-    );
-    toast({
-      title: "Template Updated",
-      description: `Template ${isActive ? 'activated' : 'deactivated'}`
+      title: "Not available",
+      description: `Changing status to ${newStatus} isn't wired up yet.`
     });
   };
 
   const addNewTemplate = () => {
-    const template: CampaignTemplateAdmin = {
-      id: Date.now().toString(),
-      name: newTemplate.name,
-      category: newTemplate.category,
-      isActive: true,
-      seasonality: newTemplate.seasonality,
-      usageCount: 0,
-      conversionRate: 0
-    };
-    
-    setCampaignTemplates([...campaignTemplates, template]);
-    setNewTemplate({
-      name: '',
-      category: '',
-      description: '',
-      seasonality: '',
-      businessTypes: '',
-      rewards: '',
-      estimatedROI: ''
-    });
-    
     toast({
-      title: "Template Added",
-      description: "New campaign template created successfully"
-    });
-  };
-
-  const deleteTemplate = (templateId: string) => {
-    setCampaignTemplates(templates => 
-      templates.filter(template => template.id !== templateId)
-    );
-    toast({
-      title: "Template Deleted",
-      description: "Campaign template removed from platform"
+      title: "Not available yet",
+      description: "Custom platform templates aren't persisted yet — the built-in catalog is shown."
     });
   };
 
@@ -328,7 +250,6 @@ export default function AdminDashboard() {
                 </div>
                 <Users className="h-8 w-8 text-blue-600" />
               </div>
-              <p className="text-xs text-green-600 mt-1">+{adminStats.monthlyGrowth}% this month</p>
             </CardContent>
           </Card>
 
@@ -341,7 +262,6 @@ export default function AdminDashboard() {
                 </div>
                 <MapPin className="h-8 w-8 text-green-600" />
               </div>
-              <p className="text-xs text-green-600 mt-1">+12% this week</p>
             </CardContent>
           </Card>
 
@@ -354,7 +274,6 @@ export default function AdminDashboard() {
                 </div>
                 <DollarSign className="h-8 w-8 text-purple-600" />
               </div>
-              <p className="text-xs text-green-600 mt-1">+23% vs last month</p>
             </CardContent>
           </Card>
 
@@ -367,25 +286,45 @@ export default function AdminDashboard() {
                 </div>
                 <Target className="h-8 w-8 text-orange-600" />
               </div>
-              <p className="text-xs text-red-600 mt-1">Churn: {adminStats.churnRate}%</p>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-6">
+        <Tabs value={adminTab} onValueChange={setAdminTab} className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="grid grid-cols-6 min-w-max lg:w-full">
-              <TabsTrigger value="users" className="px-2 text-xs lg:px-3 lg:text-sm">Users</TabsTrigger>
+            <TabsList className="grid grid-cols-[repeat(13,minmax(0,1fr))] min-w-max lg:w-full">
+              <TabsTrigger value="overview" className="px-2 text-xs lg:px-3 lg:text-sm">Overview</TabsTrigger>
+              <TabsTrigger value="messages" className="px-2 text-xs lg:px-3 lg:text-sm">Messages</TabsTrigger>
+              <TabsTrigger value="revenue" className="px-2 text-xs lg:px-3 lg:text-sm">Revenue</TabsTrigger>
+              <TabsTrigger value="trust" className="px-2 text-xs lg:px-3 lg:text-sm">Trust &amp; Safety</TabsTrigger>
+              <TabsTrigger value="coordinators" className="px-2 text-xs lg:px-3 lg:text-sm">Territories</TabsTrigger>
+              <TabsTrigger value="map" className="px-2 text-xs lg:px-3 lg:text-sm">Map</TabsTrigger>
+              <TabsTrigger value="customers" className="px-2 text-xs lg:px-3 lg:text-sm">Customers</TabsTrigger>
+              <TabsTrigger value="users" className="px-2 text-xs lg:px-3 lg:text-sm">People</TabsTrigger>
               <TabsTrigger value="templates" className="px-2 text-xs lg:px-3 lg:text-sm">Templates</TabsTrigger>
               <TabsTrigger value="subscriptions" className="px-2 text-xs lg:px-3 lg:text-sm">Subscriptions</TabsTrigger>
               <TabsTrigger value="analytics" className="px-2 text-xs lg:px-3 lg:text-sm">Analytics</TabsTrigger>
-              <TabsTrigger value="payments" className="px-2 text-xs lg:px-3 lg:text-sm">Payments</TabsTrigger>
               <TabsTrigger value="platform" className="px-2 text-xs lg:px-3 lg:text-sm">Platform</TabsTrigger>
+              <TabsTrigger value="audit" className="px-2 text-xs lg:px-3 lg:text-sm">Audit</TabsTrigger>
             </TabsList>
           </div>
 
+          {/* Command center + insights */}
+          <TabsContent value="overview" className="space-y-6">
+            <CommandCenter onGo={setAdminTab} />
+            <AdminInsights />
+            <AtRiskPanel />
+          </TabsContent>
+
+          {/* Messages: support threads + broadcasts (Slice 2) */}
+          <TabsContent value="messages" className="space-y-6">
+            <BroadcastComposer />
+            <MessageCenter role="admin" />
+          </TabsContent>
+
           {/* Users Management */}
           <TabsContent value="users" className="space-y-6">
+            <BadgesPanel mode="admin" />
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">User Management</h2>
               <div className="flex space-x-2">
@@ -410,60 +349,46 @@ export default function AdminDashboard() {
                         <th className="text-left p-4 font-medium">Role</th>
                         <th className="text-left p-4 font-medium">Subscription</th>
                         <th className="text-left p-4 font-medium">Status</th>
-                        <th className="text-left p-4 font-medium">Revenue</th>
-                        <th className="text-left p-4 font-medium">Last Active</th>
+                        <th className="text-left p-4 font-medium">Joined</th>
                         <th className="text-left p-4 font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {platformUsers.map((user) => (
-                        <tr key={user.id} className="border-b hover:bg-gray-50">
-                          <td className="p-4">
-                            <div>
-                              <p className="font-medium">{user.name}</p>
-                              <p className="text-sm text-gray-500">{user.email}</p>
-                            </div>
-                          </td>
-                          <td className="p-4">
-                            <Badge variant="outline">{user.role}</Badge>
-                          </td>
-                          <td className="p-4">
-                            <Badge className={getTierColor(user.subscriptionTier)}>
-                              {user.subscriptionTier}
-                            </Badge>
-                          </td>
-                          <td className="p-4">
-                            <Badge className={getStatusColor(user.status)}>
-                              {user.status}
-                            </Badge>
-                          </td>
-                          <td className="p-4 font-medium">${user.totalSpent}</td>
-                          <td className="p-4 text-sm text-gray-500">{user.lastActive}</td>
-                          <td className="p-4">
-                            <div className="flex space-x-1">
-                              <Button size="sm" variant="ghost">
-                                <Eye className="h-4 w-4" />
+                      {platformUsers.length === 0 && (
+                        <tr><td colSpan={6} className="p-6 text-center text-gray-500">No users yet.</td></tr>
+                      )}
+                      {platformUsers.map((user) => {
+                        const name = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.email || "—";
+                        const tier = user.subscriptionTier ?? "starter";
+                        const status = user.subscriptionStatus ?? "—";
+                        return (
+                          <tr key={user.id} className="border-b hover:bg-gray-50">
+                            <td className="p-4">
+                              <div>
+                                <p className="font-medium">{name}</p>
+                                <p className="text-sm text-gray-500">{user.email}</p>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <Badge variant="outline">{user.role ?? "—"}</Badge>
+                            </td>
+                            <td className="p-4">
+                              <Badge className={getTierColor(tier)}>{tier}</Badge>
+                            </td>
+                            <td className="p-4">
+                              <Badge className={getStatusColor(status)}>{status}</Badge>
+                            </td>
+                            <td className="p-4 text-sm text-gray-500">
+                              {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}
+                            </td>
+                            <td className="p-4">
+                              <Button size="sm" variant="outline" onClick={() => setDetailUserId(user.id)}>
+                                <Eye className="h-4 w-4 mr-1" /> 360
                               </Button>
-                              <Button size="sm" variant="ghost">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Select
-                                value={user.status}
-                                onValueChange={(status) => updateUserStatus(user.id, status)}
-                              >
-                                <SelectTrigger className="h-8 w-24">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Active">Active</SelectItem>
-                                  <SelectItem value="Suspended">Suspend</SelectItem>
-                                  <SelectItem value="Pending">Pending</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -494,8 +419,11 @@ export default function AdminDashboard() {
                   <CardTitle>Active Templates</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {campaignTemplates.length === 0 && (
+                    <p className="text-sm text-gray-500">No templates.</p>
+                  )}
                   {campaignTemplates.map((template) => (
-                    <div key={template.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div key={template.key} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-1">
                           <p className="font-medium">{template.name}</p>
@@ -503,24 +431,13 @@ export default function AdminDashboard() {
                             {template.category}
                           </Badge>
                         </div>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <span>{template.seasonality}</span>
-                          <span>{template.usageCount} uses</span>
-                          <span>{template.conversionRate}% conversion</span>
-                        </div>
+                        <p className="text-sm text-gray-600">{template.description}</p>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Switch
-                          checked={template.isActive}
-                          onCheckedChange={(checked) => updateTemplateStatus(template.id, checked)}
-                        />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteTemplate(template.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                        <Badge variant="outline" className="text-xs">Built-in</Badge>
+                        {template.pointsAwarded ? (
+                          <span className="text-xs text-gray-500">{template.pointsAwarded} pts</span>
+                        ) : null}
                       </div>
                     </div>
                   ))}
@@ -619,28 +536,21 @@ export default function AdminDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600 mb-4">Manage subscription tiers, pricing, and custom billing</p>
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-semibold text-green-600">Starter</h3>
-                    <p className="text-2xl font-bold">$0/month</p>
-                    <p className="text-sm text-gray-600">1,234 users</p>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-semibold text-blue-600">Professional</h3>
-                    <p className="text-2xl font-bold">$39/month</p>
-                    <p className="text-sm text-gray-600">567 users</p>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-semibold text-purple-600">Business</h3>
-                    <p className="text-2xl font-bold">$79/month</p>
-                    <p className="text-sm text-gray-600">234 users</p>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-semibold text-orange-600">Enterprise</h3>
-                    <p className="text-2xl font-bold">$149/month</p>
-                    <p className="text-sm text-gray-600">89 users</p>
-                  </div>
+                <p className="text-gray-600 mb-4">Live plan catalog and how many users are on each tier</p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {subscriptionPlans.map((plan: any, i: number) => {
+                    const count = tierCounts[plan.id] ?? 0;
+                    const colors = ["text-green-600", "text-blue-600", "text-purple-600"];
+                    return (
+                      <div key={plan.id} className="p-4 border rounded-lg">
+                        <h3 className={`font-semibold ${colors[i % colors.length]}`}>{plan.name}</h3>
+                        <p className="text-2xl font-bold">
+                          {plan.price > 0 ? `$${plan.price}/month` : "Free"}
+                        </p>
+                        <p className="text-sm text-gray-600">{count} {count === 1 ? "user" : "users"}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -683,7 +593,17 @@ export default function AdminDashboard() {
                   </div>
                 )}
                 
-                {aiPlatformInsights && (
+                {aiPlatformInsights?.configured === false && !aiLoading && (
+                  <div className="text-center py-8">
+                    <Brain className="h-12 w-12 mx-auto text-blue-300 mb-3" />
+                    <p className="text-blue-600 mb-2">AI insights are not configured</p>
+                    <p className="text-sm text-gray-600">
+                      {aiPlatformInsights.message || "Add an OPENAI_API_KEY to enable AI analysis."}
+                    </p>
+                  </div>
+                )}
+
+                {aiPlatformInsights && aiPlatformInsights.configured !== false && (
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Platform Health Score */}
@@ -798,64 +718,58 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Payment Management */}
-          <TabsContent value="payments" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <CreditCard className="h-5 w-5 mr-2" />
-                  Payment & Billing Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-gray-600">Process custom payments, refunds, and billing adjustments</p>
-                <div className="flex space-x-2">
-                  <Button>Process Custom Payment</Button>
-                  <Button variant="outline">Issue Refund</Button>
-                  <Button variant="outline">Apply Discount</Button>
-                  <Button variant="outline">Billing Override</Button>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Revenue */}
+          <TabsContent value="revenue" className="space-y-6">
+            <h2 className="text-xl font-semibold">Revenue</h2>
+            <RevenuePanel />
+            <RewardSettlementsPanel scope="admin" />
           </TabsContent>
 
-          {/* Platform Settings */}
+          {/* Trust & Safety */}
+          <TabsContent value="trust" className="space-y-6">
+            <h2 className="text-xl font-semibold">Trust &amp; Safety</h2>
+            <TrustSafetyPanel />
+          </TabsContent>
+
+          {/* Map: geographic heatmap + territory coverage */}
+          <TabsContent value="map" className="space-y-6">
+            <h2 className="text-xl font-semibold">Map</h2>
+            <AdminGeoPanel />
+          </TabsContent>
+
+          {/* Customers: tap-to-earn flywheel health */}
+          <TabsContent value="customers" className="space-y-6">
+            <h2 className="text-xl font-semibold">Customer health</h2>
+            <CustomerHealthPanel />
+          </TabsContent>
+
+          {/* Territories: leaderboard + coordinator revenue share */}
+          <TabsContent value="coordinators" className="space-y-6">
+            <h2 className="text-xl font-semibold">Territories</h2>
+            <TerritoryManager />
+            <CoordinatorLeaderboard />
+            <CoordinatorSharePanel />
+          </TabsContent>
+
+          {/* Platform: integrations, add-on catalog, pricing (read-only) */}
           <TabsContent value="platform" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Settings className="h-5 w-5 mr-2" />
-                  Platform Configuration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Platform Status</Label>
-                    <div className="flex items-center space-x-2">
-                      <Switch defaultChecked />
-                      <span className="text-sm">Platform Active</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Maintenance Mode</Label>
-                    <div className="flex items-center space-x-2">
-                      <Switch />
-                      <span className="text-sm">Enable Maintenance</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Platform Announcement</Label>
-                  <Textarea placeholder="Global platform message for all users..." />
-                  <Button>Update Platform Message</Button>
-                </div>
-              </CardContent>
-            </Card>
+            <h2 className="text-xl font-semibold">Platform</h2>
+            <PlatformConfigPanel />
+            <PointsAdminPanel />
+            <CollectionsAdminPanel />
+            <EventsAdminPanel />
+          </TabsContent>
+
+          {/* Audit: privileged admin action log */}
+          <TabsContent value="audit" className="space-y-6">
+            <h2 className="text-xl font-semibold">Audit</h2>
+            <AuditPanel />
           </TabsContent>
         </Tabs>
+
+        <UserDetailDialog userId={detailUserId} onClose={() => setDetailUserId(null)} />
       </div>
+      <HelpAssistant role="admin" />
     </div>
   );
 }

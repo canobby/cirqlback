@@ -47,26 +47,6 @@ export default function NotificationCenter() {
         isRead: false,
         actionUrl: "/merchant",
         priority: "medium"
-      },
-      {
-        id: "3",
-        type: "social",
-        title: "👥 Team Challenge",
-        message: "Your team is #3 in the Downtown Trail challenge",
-        timestamp: "1 hour ago",
-        isRead: true,
-        actionUrl: "/ar-hub",
-        priority: "medium"
-      },
-      {
-        id: "4",
-        type: "ar_game",
-        title: "🏆 Achievement Unlocked",
-        message: "You collected all coffee collectibles!",
-        timestamp: "2 hours ago",
-        isRead: false,
-        actionUrl: "/ar-hub",
-        priority: "high"
       }
     ];
     

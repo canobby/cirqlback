@@ -495,12 +495,6 @@ export default function TestSystem() {
                           <div>Community</div>
                         </div>
                       </Button>
-                      <Button onClick={() => setLocation('/team-challenges')} variant="outline" className="h-20">
-                        <div className="text-center">
-                          <Play className="h-6 w-6 mx-auto mb-1" />
-                          <div>Team Challenges</div>
-                        </div>
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -624,10 +618,6 @@ export default function TestSystem() {
                       <CardDescription>Test AI assistance tools</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <Button onClick={() => setLocation('/ai-insights')} variant="outline" className="w-full justify-start">
-                        <Zap className="h-4 w-4 mr-2" />
-                        AI Customer Insights
-                      </Button>
                       <Button onClick={() => setLocation('/analytics?view=predictions')} variant="outline" className="w-full justify-start">
                         <Trophy className="h-4 w-4 mr-2" />
                         Predictive Analytics
@@ -663,18 +653,6 @@ export default function TestSystem() {
                       <div>Admin Dashboard</div>
                     </div>
                   </Button>
-                  <Button onClick={() => setLocation('/admin-invitations')} variant="outline" className="h-20">
-                    <div className="text-center">
-                      <Users className="h-6 w-6 mx-auto mb-1" />
-                      <div>Invitations</div>
-                    </div>
-                  </Button>
-                  <Button onClick={() => setLocation('/admin-training-center')} variant="outline" className="h-20">
-                    <div className="text-center">
-                      <Trophy className="h-6 w-6 mx-auto mb-1" />
-                      <div>Training Center</div>
-                    </div>
-                  </Button>
                   <Button onClick={() => setLocation('/platform-overview')} variant="outline" className="h-20">
                     <div className="text-center">
                       <Star className="h-6 w-6 mx-auto mb-1" />
@@ -698,7 +676,7 @@ export default function TestSystem() {
                   Close
                 </Button>
               </div>
-              <CommunicationHub />
+              <CommunicationHub context="testing" />
             </div>
           </div>
         )}

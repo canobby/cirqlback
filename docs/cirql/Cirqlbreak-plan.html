@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CirqlBreak — Build Plan</title>
+<style>
+  @page { size: Letter; margin: 16mm 15mm; }
+  :root{
+    --paper:#ffffff; --wash:#f7f5fc; --ink:#191426; --mut:#6b6480; --line:#e7e2f0;
+    --violet:#7c3aed; --pink:#ec4899; --cyan:#0e7490; --amber:#b45309; --green:#15803d;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  body{margin:0; font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:var(--paper)}
+  h1,h2,h3{margin:0; line-height:1.15; text-wrap:balance; font-weight:800; letter-spacing:-.02em}
+  .mono{font-variant-numeric:tabular-nums; font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+  a{color:var(--violet); text-decoration:none}
+  .wrap{max-width:760px; margin:0 auto; padding:0 4px}
+
+  /* Cover */
+  .cover{padding:26px 0 18px; border-bottom:3px solid var(--ink); margin-bottom:22px}
+  .eyebrow{font-size:11px; letter-spacing:.34em; text-transform:uppercase; color:var(--violet); font-weight:800}
+  .cover h1{font-size:46px; margin:6px 0 4px}
+  .cover .tag{color:var(--mut); font-size:15px; max-width:56ch}
+  .dots{display:inline-flex; gap:5px; vertical-align:middle; margin-left:10px}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .d1{background:var(--violet)} .d2{background:var(--pink)} .d3{background:var(--cyan)}
+
+  /* Stat row */
+  .stats{display:flex; gap:10px; margin:18px 0 4px; flex-wrap:wrap}
+  .stat{flex:1; min-width:120px; border:1px solid var(--line); border-radius:12px; padding:12px 14px; background:var(--wash)}
+  .stat b{display:block; font-size:26px; letter-spacing:-.03em}
+  .stat span{font-size:12px; color:var(--mut)}
+
+  .callout{border:1px solid var(--line); border-left:4px solid var(--green); background:#f2fbf5; border-radius:10px; padding:13px 16px; margin:20px 0}
+  .prog{border:1px solid var(--line); border-left:4px solid var(--violet); background:#f6f3fd; border-radius:10px; padding:13px 16px; margin:16px 0 4px}
+  .prog h3{font-size:13px; color:var(--violet); margin-bottom:6px}
+  .prog p{margin:0; font-size:13px; color:var(--ink)}
+  .prog .bars{display:flex; gap:6px; flex-wrap:wrap; margin-top:9px}
+  .pill{font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px}
+  .pill.done{background:#dcfce7; color:var(--green)} .pill.todo{background:#efeaf7; color:var(--mut)}
+  .callout h3{font-size:14px; color:var(--green); margin-bottom:4px}
+  .callout p{margin:0; font-size:13px; color:#25412e}
+
+  h2.section{font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--mut); margin:26px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line)}
+
+  .phase{margin:18px 0 6px; break-inside:avoid}
+  .phead{display:flex; align-items:baseline; gap:10px; margin-bottom:8px}
+  .chip{font-size:11px; font-weight:800; letter-spacing:.08em; color:#fff; padding:3px 9px; border-radius:999px}
+  .p0{background:var(--violet)} .p1{background:var(--pink)} .p2{background:var(--cyan)} .p3{background:#7e22ce} .p4{background:var(--amber)} .pq{background:#475569}
+  .phead h3{font-size:17px}
+  .phead .meta{margin-left:auto; font-size:12px; color:var(--mut); white-space:nowrap}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:4px}
+  th{text-align:left; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--mut); font-weight:700; padding:4px 8px; border-bottom:1px solid var(--line)}
+  td{padding:6px 8px; border-bottom:1px solid #f1eef7; vertical-align:top}
+  td.id{white-space:nowrap; font-weight:700; color:var(--violet); width:64px}
+  td.pt{text-align:right; width:42px; color:var(--mut)}
+  td.ef{width:52px; color:var(--mut); font-size:11px}
+  tr:last-child td{border-bottom:none}
+  .desc{color:var(--mut); font-size:11px; display:block; margin-top:1px}
+
+  .two{display:flex; gap:16px; break-inside:avoid}
+  .two>div{flex:1}
+  .box{border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin:8px 0; break-inside:avoid}
+  .box h3{font-size:13px; margin-bottom:8px}
+  ul{margin:6px 0; padding-left:18px} li{margin:3px 0; font-size:12.5px}
+  .time td{padding:7px 8px}
+  .time .lead{font-weight:700}
+  .foot{margin-top:26px; padding-top:12px; border-top:1px solid var(--line); font-size:11px; color:var(--mut); display:flex; justify-content:space-between}
+  .kpi{color:var(--ink); font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="cover">
+    <div class="eyebrow">Cirqlback · Build Plan</div>
+    <h1>CirqlBreak<span class="dots"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span></span></h1>
+    <p class="tag">Port the validated circular-Breakout roguelike prototype into the Cirqlback <span class="mono">/play</span> route, wire it to real taps, badges, and a cross-player daily leaderboard — then decide on a standalone app.</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b>20</b><span>issues (CHR-110 → CHR-129)</span></div>
+    <div class="stat"><b>92</b><span>estimate points</span></div>
+    <div class="stat"><b>5</b><span>phases + QA</span></div>
+    <div class="stat"><b>~33</b><span>points to MVP-live</span></div>
+  </div>
+
+  <div class="callout">
+    <h3>Why this port is cheap</h3>
+    <p>A repo audit confirms the <b>entire reward-bridge backend is already game-agnostic and wired</b>: <span class="mono">game_progress.state</span> is a jsonb blob (new fields need <b>zero schema change</b>), the <b>tap → in-game reward hook is live</b> inside <span class="mono">processTap</span>, and game achievements already mint real badges via <span class="mono">awarderRole:"game"</span>. So the work is mostly a <b>client-engine swap</b> (retire ~1,300 lines of ring game, drop in the CirqlBreak canvas engine) + <b>catalog reshape</b>. The only genuinely-new build is a cross-player daily-score leaderboard.</p>
+  </div>
+
+  <div class="prog">
+    <h3>Progress — updated 2026-07-04</h3>
+    <p><b>P0, P1, P2 and P3 are complete</b> — 16 of 20 issues shipped and auto-deployed live to <span class="mono">/play</span>. The core game, the tap→Supernova reward bridge, the cross-player Daily leaderboard, and the meta layer (cosmetic skins, achievements, galaxy map) are all live and validated in-app. Only the optional app-store track (P4) and QA remain. <b>Latest (playtest polish):</b> controls redesigned into an off-field <b>spin dial</b> — the play screen is now a column with a Pulse / dial / Supernova band below the circle, so your thumb never covers the field.</p>
+    <div class="bars">
+      <span class="pill done">P0 ✓ core</span>
+      <span class="pill done">P1 ✓ reward bridge</span>
+      <span class="pill done">P2 ✓ social / competitive</span>
+      <span class="pill done">P3 ✓ meta &amp; retention</span>
+      <span class="pill todo">P4 standalone (optional)</span>
+      <span class="pill todo">QA</span>
+    </div>
+  </div>
+
+  <h2 class="section">The work, by phase</h2>
+
+  <div class="phase">
+    <div class="phead"><span class="chip p0">P0</span><h3>Port the core — make /play <em>be</em> CirqlBreak</h3><span class="meta">5 issues · 23 pts · ✅ Done</span></div>
+    <table>
+      <tr><th>ID</th><th>Issue</th><th class="ef">Size</th><th class="pt">Pts</th></tr>
+      <tr><td class="id">CHR-110</td><td>Extract the prototype into a TypeScript engine module<span class="desc">Framework-agnostic engine: physics, boss, music, relics, Pulse, Supernova, 4 modes. Clean events-out / inputs-in API.</span></td><td class="ef">L</td><td class="pt mono">8</td></tr>
+      <tr><td class="id">CHR-111</td><td>Rehost /play on the engine (modes, HUD, menu)<span class="desc">React shell: mode picker, HUD, overlays, auth-aware save, CirqlBreak branding. Keeps lazy code-split.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
+      <tr><td class="id">CHR-112</td><td>Retire the ring-alignment game &amp; Light-Ball<span class="desc">Delete cirql-engine, pinball, worlds, world-map; strip ring vocabulary; remove /api/game/pinball.</span></td><td class="ef">S/M</td><td class="pt mono">3</td></tr>
+      <tr><td class="id">CHR-113</td><td>Persist state in game_progress (no schema change)<span class="desc">journeyBest, furthestWorld, streak, cosmetic, settings into the jsonb state blob.</span></td><td class="ef">S</td><td class="pt mono">2</td></tr>
+      <tr><td class="id">CHR-114</td><td>Mobile, touch &amp; performance pass<span class="desc">Two-thumb Party, DPR sizing, 60fps on mid-range, iOS graceful, reduced-motion.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
+    </table>
+  </div>
+
+  <div class="phase">
+    <div class="phead"><span class="chip p1">P1</span><h3>Reward bridge — real taps → real power</h3><span class="meta">4 issues · 15 pts · ✅ Done</span></div>
+    <table>
+      <tr><th>ID</th><th>Issue</th><th class="ef">Size</th><th class="pt">Pts</th></tr>
+      <tr><td class="id">CHR-115</td><td>Reshape the perk catalog into CirqlBreak energy/power-ups<span class="desc">perksForTap grants Supernova charge + power-up tokens on real partner taps. Anti-abuse inherited.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
+      <tr><td class="id">CHR-116</td><td>Wire real taps → Partner Power &amp; power-ups in-engine<span class="desc">The money shot: tap a shop → charge a Supernova. Server-authoritative spend. "Tap to power up" onboarding.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
+      <tr><td class="id">CHR-117</td><td>Reshape achievements → mint real Cirqlback badges<span class="desc">CirqlBreak metrics → existing awarderRole:"game" mint path → profile.</span></td><td class="ef">S/M</td><td class="pt mono">3</td></tr>
+      <tr><td class="id">CHR-118</td><td>Daily reward + play-streak reconcile &amp; surface<span class="desc">One coherent daily loop; idempotent per UTC day; streak shown in-game + on profile.</span></td><td class="ef">S</td><td class="pt mono">2</td></tr>
+    </table>
+  </div>
+
+  <div class="phase">
+    <div class="phead"><span class="chip p2">P2</span><h3>Social &amp; competitive — make it sticky</h3><span class="meta">4 issues · 18 pts · ✅ Done</span></div>
+    <table>
+      <tr><th>ID</th><th>Issue</th><th class="ef">Size</th><th class="pt">Pts</th></tr>
+      <tr><td class="id">CHR-122</td><td>Cross-player Daily leaderboard (new table + endpoints)<span class="desc">The one new build: daily_scores table + guarded apply-0020 + submit/leaderboard endpoints + rank.</span></td><td class="ef">L</td><td class="pt mono">8</td></tr>
+      <tr><td class="id">CHR-119</td><td>Score integrity / anti-cheat for ranked Daily<span class="desc">Server plausibility, rate limits, run-summary signature, one ranked run/day. Deterrence, not DRM.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
+      <tr><td class="id">CHR-120</td><td>Community feed + Great Ring for CirqlBreak<span class="desc">Reuse echoes + community counter for a live worlds-restored stat + recent-restorations feed.</span></td><td class="ef">S</td><td class="pt mono">3</td></tr>
+      <tr><td class="id">CHR-121</td><td>Shareable "CirqlBreak · Daily Circle" result card<span class="desc">Wordle-style share loop; navigator.share + clipboard fallback; rank line.</span></td><td class="ef">S</td><td class="pt mono">2</td></tr>
+    </table>
+  </div>
+
+  <div class="phase">
+    <div class="phead"><span class="chip p3">P3</span><h3>Meta &amp; retention</h3><span class="meta">3 issues · 13 pts · ✅ Done</span></div>
+    <table>
+      <tr><th>ID</th><th>Issue</th><th class="ef">Size</th><th class="pt">Pts</th></tr>
+      <tr><td class="id">CHR-123</td><td>Cosmetics: paddle/ball/trail/world skins + collection UI<span class="desc">Reshape cosmetics catalog; unlock by play + taps; equip via existing endpoint; reuse collection UI.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
+      <tr><td class="id">CHR-124</td><td>Galaxy map of restored worlds<span class="desc">Light narrative + collection: a constellation you illuminate. Repurpose the world-map shell.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
+      <tr><td class="id">CHR-125</td><td>Achievements &amp; mastery-challenge screen<span class="desc">No-ball-lost clears, 100-combo, deep-world goals with progress bars → badge mint.</span></td><td class="ef">S</td><td class="pt mono">3</td></tr>
+    </table>
+  </div>
+
+  <div class="phase">
+    <div class="phead"><span class="chip p4">P4</span><h3>Standalone / app store — optional track</h3><span class="meta">3 issues · 18 pts · ⬜ Optional</span></div>
+    <table>
+      <tr><th>ID</th><th>Issue</th><th class="ef">Size</th><th class="pt">Pts</th></tr>
+      <tr><td class="id">CHR-126</td><td>PWA installability + offline solo play<span class="desc">Manifest + service worker + "Add to Home Screen"; offline Journey/Freestyle.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
+      <tr><td class="id">CHR-127</td><td>Native app shell (Capacitor) for iOS/Android stores<span class="desc">Native haptics, store assets, review compliance. Only if pursuing stores.</span></td><td class="ef">L</td><td class="pt mono">8</td></tr>
+      <tr><td class="id">CHR-128</td><td>Accessibility &amp; settings<span class="desc">Colorblind palette, one-hand, aim-assist, audio/haptics/motion/difficulty — persisted.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
+    </table>
+  </div>
+
+  <div class="phase">
+    <div class="phead"><span class="chip pq">QA</span><h3>Cross-cutting</h3><span class="meta">1 issue · 5 pts · ⬜ Ongoing</span></div>
+    <table>
+      <tr><th>ID</th><th>Issue</th><th class="ef">Size</th><th class="pt">Pts</th></tr>
+      <tr><td class="id">CHR-129</td><td>Balance, cross-device matrix &amp; analytics<span class="desc">Tune relics/Supernova/Party/english; device matrix; instrument tap→power-up conversion + retention. Ongoing.</span></td><td class="ef">M</td><td class="pt mono">5</td></tr>
+    </table>
+  </div>
+
+  <h2 class="section">What it takes — effort &amp; sequencing</h2>
+  <table class="time">
+    <tr><th>Milestone</th><th>Scope</th><th class="pt">Pts</th><th class="ef">Rough time*</th></tr>
+    <tr><td class="lead">MVP — live &amp; differentiated</td><td>P0 + taps→Supernova (CHR-115/116)</td><td class="pt mono">33</td><td class="ef">2.5–3.5 wk</td></tr>
+    <tr><td class="lead">+ Full reward bridge</td><td>rest of P1</td><td class="pt mono">5</td><td class="ef">+0.5 wk</td></tr>
+    <tr><td class="lead">+ Competitive &amp; social</td><td>P2 (leaderboard, anti-cheat, feed, share)</td><td class="pt mono">18</td><td class="ef">+2–2.5 wk</td></tr>
+    <tr><td class="lead">+ Meta &amp; retention</td><td>P3 (cosmetics, galaxy, challenges)</td><td class="pt mono">13</td><td class="ef">+1.5 wk</td></tr>
+    <tr><td class="lead">+ App-store track</td><td>P4 (PWA / native / a11y) — optional</td><td class="pt mono">18</td><td class="ef">+2–3 wk</td></tr>
+  </table>
+  <p style="font-size:11px;color:var(--mut);margin:6px 2px 0">*Single developer, part-time-friendly; ~0.5–0.75 day/point. Ranges compress with focused full-time work. QA (5 pts) runs alongside every phase.</p>
+
+  <h2 class="section">Decisions locked · risks · dependencies</h2>
+  <div class="two">
+    <div>
+      <div class="box">
+        <h3>Locked decisions</h3>
+        <ul>
+          <li>Endless-unique levels via <b>procedural + modifiers, not AI</b> — determinism is required for a shared Daily. AI only later for flavor (names/lore), never geometry.</li>
+          <li>Ship <b>integrated in /play first</b> (fastest to real users + the reward bridge); evaluate standalone app after.</li>
+          <li>The reward bridge is the <b>moat</b> — nobody else does "tap a coffee shop → multiball."</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="box">
+        <h3>Risks &amp; watch-items</h3>
+        <ul>
+          <li><b>Daily leaderboard</b> is the only net-new backend + the one needing a <b>guarded DDL apply-script</b> (db:migrate is broken on the shared DB).</li>
+          <li><b>Client is untrusted</b> — anti-cheat is pragmatic deterrence, not DRM.</li>
+          <li><b>iOS Safari</b> has no web haptics — degrade gracefully; native shell (P4) restores it.</li>
+          <li><b>Party co-op</b> needs real two-human playtesting to tune.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>CirqlBreak — <span class="kpi">20 issues</span>, <span class="kpi">92 pts</span>, project <span class="mono">linear.app/cirqlback</span></span>
+    <span>Prototype: Artifact v10 · replaces the retired ring game</span>
+  </div>
+
+</div>
+</body>
+</html>

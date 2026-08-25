@@ -1,0 +1,88 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cirqlback — Financial Projection</title>
+<style>
+  @page { size:A4; margin:13mm; }
+  :root { --p:#7c3aed; --dark:#1b1e28; --ink:#2b2f3a; --mut:#6b7280; --line:#ece9fb; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif; color:var(--ink); margin:0; font-size:11.5px; line-height:1.45; }
+  .wrap { max-width:840px; margin:0 auto; }
+  .hero { border-bottom:3px solid var(--p); padding-bottom:12px; margin-bottom:14px; }
+  .brand { font-size:24px; font-weight:800; color:var(--p); letter-spacing:-.5px; }
+  .doctitle { font-size:20px; font-weight:800; color:var(--dark); margin-top:4px; }
+  .docsub { color:var(--mut); font-size:12px; }
+  h2 { color:#4c1d95; font-size:14px; margin:18px 0 6px; }
+  table { width:100%; border-collapse:collapse; margin:6px 0; }
+  th,td { border:1px solid #eef0f4; padding:6px 8px; text-align:right; }
+  th { background:#f6f4fc; color:#5b21b6; font-size:10px; text-transform:uppercase; letter-spacing:.3px; text-align:right; }
+  th:first-child, td:first-child { text-align:left; }
+  td.l { text-align:left; } .b td, tr.tot td { font-weight:800; color:var(--dark); background:#faf7ff; }
+  .assump { background:#faf8ff; border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin:6px 0; font-size:11px; }
+  .assump b { color:var(--p); }
+  .g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .note { color:var(--mut); font-size:10px; margin:5px 0; }
+  .disc { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:8px; padding:8px 12px; font-size:10px; margin-top:6px; }
+  strong { color:var(--dark); } .p { color:var(--p); font-weight:800; }
+  .foot { margin-top:18px; padding-top:10px; border-top:1px solid var(--line); color:var(--mut); font-size:9.5px; }
+</style></head><body><div class="wrap">
+  <div class="hero"><div class="brand">Cirqlback</div><div class="doctitle">Financial Projection — by account type</div><div class="docsub">Illustrative unit economics & a scalable territory model · monthly figures unless noted · USD</div></div>
+
+  <div class="assump">
+    <b>Model assumptions.</b> Core <b>$19.99</b>/mo, Pro <b>$49.99</b>/mo; customers free. Add‑on attach assumed <b>$8/mo</b> avg per Core and <b>$10/mo</b> avg per Pro (≈0.5–0.7 add‑ons). Territory business mix <b>70% Core / 30% Pro</b>. Community Coordinators keep <b>70%</b> of their territory's gross; the platform keeps <b>30%</b> (and 100% of any direct, non‑territory business). Figures ignore Stripe fees (~2.9%+30¢) and the yearly discount (2 months free); most businesses pay monthly.
+  </div>
+
+  <h2>1 · Unit economics by account type (per month)</h2>
+  <table>
+    <thead><tr><th>Account type</th><th>Pays Cirqlback</th><th>Coordinator earns*</th><th>Platform nets*</th><th>Value to the platform</th></tr></thead>
+    <tbody>
+      <tr><td>Customer</td><td>$0 (free)</td><td>—</td><td>$0</td><td class="l">Engagement + foot traffic that drives business retention</td></tr>
+      <tr><td>Business — Core (+add‑ons)</td><td class="p">$27.99</td><td>$19.59</td><td>$8.40</td><td class="l">Recurring SaaS + add‑on expansion</td></tr>
+      <tr><td>Business — Pro (+add‑ons)</td><td class="p">$59.99</td><td>$41.99</td><td>$18.00</td><td class="l">Higher ARPU, multi‑location, add‑ons</td></tr>
+      <tr><td>Coordinator (partner)</td><td>$0</td><td>keeps 70%</td><td>keeps 30%</td><td class="l">Distribution: onboards & retains local businesses</td></tr>
+    </tbody>
+  </table>
+  <p class="note">*In a coordinator territory. A direct (non‑territory) business contributes 100% of its payment to the platform.</p>
+
+  <h2>2 · A mature territory (50 businesses: 35 Core, 15 Pro)</h2>
+  <div class="g2">
+    <table>
+      <thead><tr><th>Line</th><th>Monthly</th><th>Annual</th></tr></thead>
+      <tbody>
+        <tr><td class="l">35 Core subscriptions</td><td>$699.65</td><td>$8,396</td></tr>
+        <tr><td class="l">15 Pro subscriptions</td><td>$749.85</td><td>$8,998</td></tr>
+        <tr><td class="l">Add‑ons (35×$8 + 15×$10)</td><td>$430.00</td><td>$5,160</td></tr>
+        <tr class="tot"><td class="l">Gross territory revenue</td><td>$1,879.50</td><td>$22,554</td></tr>
+        <tr><td class="l">→ Coordinator (70%)</td><td>$1,315.65</td><td>$15,788</td></tr>
+        <tr><td class="l">→ Platform (30%)</td><td>$563.85</td><td>$6,766</td></tr>
+      </tbody>
+    </table>
+    <div class="assump" style="margin-top:0">
+      <b>Read‑across.</b> One healthy 50‑shop territory is a <b>~$15.8k/yr</b> income stream for a coordinator and <b>~$6.8k/yr</b> to the platform — on top of the value customers get for free. The model scales by adding territories (coordinators), not by charging customers.
+    </div>
+  </div>
+
+  <h2>3 · Platform scale — illustrative 3‑year ramp</h2>
+  <table>
+    <thead><tr><th>Year</th><th>Territories</th><th>Avg maturity</th><th>Gross ARR</th><th>Coordinators earn</th><th>Platform net (30%)</th></tr></thead>
+    <tbody>
+      <tr><td class="l">Year 1</td><td>5</td><td>40%</td><td>$45,108</td><td>$31,576</td><td class="p">$13,532</td></tr>
+      <tr><td class="l">Year 2</td><td>15</td><td>65%</td><td>$219,902</td><td>$153,931</td><td class="p">$65,971</td></tr>
+      <tr><td class="l">Year 3</td><td>30</td><td>80%</td><td>$541,296</td><td>$378,907</td><td class="p">$162,389</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Gross ARR = territories × $22,554 × maturity. "Maturity" is the average % of a full 50‑shop territory reached, blending newer and older territories. Platform net excludes any direct (100%‑retained) businesses, which are upside.</p>
+
+  <h2>4 · What moves the numbers</h2>
+  <table>
+    <thead><tr><th>Lever</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td class="l">Pro mix ↑ (e.g. 40% Pro)</td><td class="l">+~18% territory ARPU — Pro is 2.5× Core.</td></tr>
+      <tr><td class="l">Add‑on attach ↑ (1 add‑on/biz)</td><td class="l">+~$3–5k/yr per mature territory.</td></tr>
+      <tr><td class="l">Retention ↑ (churn ↓)</td><td class="l">Compounds: SaaS value is in the renewal, not the sale.</td></tr>
+      <tr><td class="l">Direct (non‑territory) businesses</td><td class="l">Platform keeps 100% — pure upside vs. the 30% shown.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="disc"><strong>Illustrative model, not a forecast.</strong> These figures show how the economics compose per account type at stated assumptions. Actual results depend on onboarding pace, plan/add‑on mix, retention, and Stripe processing fees (~2.9% + 30¢/charge). Customers are always free; revenue is generated by businesses and shared with coordinators.</div>
+
+  <div class="foot">Cirqlback — tap‑to‑earn loyalty & local discovery. Pricing per the current price sheet (Core $19.99 / Pro $49.99; add‑ons $7.99–$14.99; coordinator 70/30 split).</div>
+</div></body></html>

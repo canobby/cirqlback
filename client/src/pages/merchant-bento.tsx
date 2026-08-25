@@ -1,29 +1,56 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Store, Users, Share2, TrendingUp, Coffee, Zap, Smartphone, 
-  BarChart3, Target, Gift, ArrowRight, Settings, Globe, 
-  MessageSquare, Calendar, DollarSign, Crown, Trophy
+import {
+  Store, Users, Share2, TrendingUp, Coffee, Zap, Smartphone,
+  BarChart3, Target, Gift, ArrowRight, Settings, Globe,
+  MessageSquare, Calendar, DollarSign, Crown, Trophy, FileText
 } from "lucide-react";
+import GroupCampaignsPanel from "@/components/merchant/group-campaigns-panel";
+import CampaignInvitesPanel from "@/components/merchant/campaign-invites-panel";
+import CampaignSettlementsPanel from "@/components/merchant/campaign-settlements-panel";
+import ConnectPayoutsPanel from "@/components/merchant/connect-payouts-panel";
+import BadgesPanel from "@/components/badges/badges-panel";
+import PointPerksPanel from "@/components/merchant/point-perks-panel";
+import AddonsPanel from "@/components/merchant/addons-panel";
+import TapBrandingEditor from "@/components/merchant/tap-branding-editor";
+import WebsiteEditor from "@/components/merchant/website-editor";
+import ScavengerBuilder from "@/components/merchant/scavenger-builder";
+import RemindersPanel from "@/components/merchant/reminders-panel";
+import MessageCenter from "@/components/messaging/message-center";
+import AnnouncementsPanel from "@/components/messaging/announcements-panel";
+import HelpAssistant from "@/components/assistant/help-assistant";
+import BillingGate from "@/components/billing/billing-gate";
 
 export default function MerchantBento() {
-  const [selectedBusiness] = useState("business-1");
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
 
-  // Mock stats data
+  // Real data: the owner's first business + its analytics (auto-scoped server-side).
+  const { data: businesses = [] } = useQuery<any[]>({ queryKey: ["/api/my/businesses"], retry: false });
+  const business = businesses[0];
+  const { data: analytics } = useQuery<any>({ queryKey: ["/api/analytics/dashboard"], retry: false });
+
+  const tier = (user?.subscriptionTier as string) || "starter";
+  const tierLabel = tier === "pro" ? "Pro" : tier === "core" ? "Core" : "Starter";
+
   const stats = {
-    totalTaps: 1247,
-    activeCustomers: 342,
-    referrals: 89,
-    conversionRate: 23.4,
-    monthlyRevenue: 15420,
-    growthRate: 18.5
+    totalTaps: analytics?.totalTaps ?? 0,
+    activeCustomers: analytics?.activeCustomers ?? 0,
+    rewardsIssued: analytics?.rewardsIssued ?? 0,
+    conversionRate: analytics?.conversionRate ?? 0,
+    monthlyRevenue: analytics?.totalRevenue ?? 0,
+    cirqlImpact: analytics?.cirqlDrivenRevenue ?? 0,
+    activeCampaigns: Array.isArray(analytics?.topCampaigns) ? analytics.topCampaigns.length : 0,
   };
+  const cirqlPct = stats.monthlyRevenue > 0 ? Math.round((stats.cirqlImpact / stats.monthlyRevenue) * 100) : 0;
+  const recentActivity: any[] = Array.isArray(analytics?.recentActivity) ? analytics.recentActivity : [];
 
   return (
+    <BillingGate>
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30 pb-8 pt-20">
       <div className="max-w-6xl mx-auto px-4">
         
@@ -35,7 +62,7 @@ export default function MerchantBento() {
                 Business Hub
               </h1>
               <p className="text-gray-600 text-lg">
-                Complete control center for Joe's Coffee Shop
+                Complete control center for {business?.name ?? "your business"}
               </p>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
@@ -45,11 +72,60 @@ export default function MerchantBento() {
               </Badge>
               <Badge className="bg-purple-100 text-purple-700 border-purple-200">
                 <Crown className="w-3 h-3 mr-1" />
-                Premium
+                {tierLabel}
               </Badge>
             </div>
           </div>
         </div>
+
+        {/* CHR-58: real multi-store group-campaign membership */}
+        <GroupCampaignsPanel />
+
+        {/* Campaign initiation/acceptance handshake (invites + requests) */}
+        <CampaignInvitesPanel />
+
+        {/* Shared-campaign cost split: what I owe hosts / am owed as host */}
+        <CampaignSettlementsPanel />
+
+        {/* Stripe Connect onboarding — receive automated payouts */}
+        <ConnectPayoutsPanel />
+
+        {/* Point perks: let customers spend points at your store */}
+        <PointPerksPanel />
+
+        {/* Badges: your business's badges + award a customer */}
+        <BadgesPanel mode="business" />
+
+        {/* CHR-35/66: add-on entitlement status */}
+        <AddonsPanel />
+
+        {/* Legal: your subscriber agreement */}
+        <Link href="/legal/merchant" className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 hover:border-purple-300 hover:bg-purple-50/50 transition" data-testid="link-merchant-agreement">
+          <FileText className="h-5 w-5 text-purple-600 shrink-0" />
+          <div className="flex-1">
+            <div className="text-sm font-semibold text-gray-900">Business Subscriber Agreement</div>
+            <div className="text-xs text-gray-500">Billing, auto-renewal, funded campaigns & payout terms. Draft — not legal advice.</div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-gray-400" />
+        </Link>
+
+        {/* CHR-68: custom tap-screen branding editor (add-on) */}
+        <TapBrandingEditor />
+
+        {/* Hosted business page editor (hosted_website add-on) */}
+        <WebsiteEditor />
+
+        {/* CHR-69: contest & scavenger-hunt builder (add-on) */}
+        <ScavengerBuilder />
+
+        {/* CHR-75: reminders to favoriters */}
+        <RemindersPanel />
+
+        {/* Admin announcements (Slice 2) */}
+        <AnnouncementsPanel />
+
+        {/* Cross-role messaging — coordinator threads + admin support */}
+        <MessageCenter role="business" />
 
         {/* Bento Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-6 auto-rows-min">
@@ -105,17 +181,16 @@ export default function MerchantBento() {
             <CardContent className="p-6 h-full flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <DollarSign className="h-8 w-8 text-green-100" />
-                <Badge className="bg-white/20 text-white border-white/30">+{stats.growthRate}%</Badge>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-medium text-green-100 mb-2">Monthly Revenue</h3>
+                <h3 className="text-lg font-medium text-green-100 mb-2">Revenue</h3>
                 <div className="text-3xl font-bold mb-1">${stats.monthlyRevenue.toLocaleString()}</div>
-                <p className="text-green-100 text-sm">Up 18.5% from last month</p>
+                <p className="text-green-100 text-sm">Tap-attributed revenue to date</p>
               </div>
               <div className="mt-6 pt-4 border-t border-white/20">
                 <div className="text-sm text-green-100 mb-1">Cirql Impact</div>
-                <div className="text-xl font-semibold">$4,280</div>
-                <div className="text-xs text-green-200">28% of total revenue</div>
+                <div className="text-xl font-semibold">${stats.cirqlImpact.toLocaleString()}</div>
+                <div className="text-xs text-green-200">{cirqlPct}% of total revenue</div>
               </div>
             </CardContent>
           </Card>
@@ -125,7 +200,7 @@ export default function MerchantBento() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <Gift className="h-6 w-6 text-orange-100" />
-                <span className="text-2xl font-bold">3</span>
+                <span className="text-2xl font-bold">{stats.activeCampaigns}</span>
               </div>
               <h3 className="font-semibold mb-1">Active Campaigns</h3>
               <p className="text-orange-100 text-sm mb-4">Running promotions</p>
@@ -145,7 +220,6 @@ export default function MerchantBento() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <Users className="h-6 w-6 text-blue-100" />
-                <Badge className="bg-white/20 text-white border-white/30">+23%</Badge>
               </div>
               <div className="text-2xl font-bold">{stats.activeCustomers}</div>
               <p className="text-blue-100 text-sm">Active Customers</p>
@@ -155,11 +229,10 @@ export default function MerchantBento() {
           <Card className="md:col-span-2 bg-gradient-to-br from-pink-500 to-purple-500 border-0 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <Share2 className="h-6 w-6 text-pink-100" />
-                <Badge className="bg-white/20 text-white border-white/30">+45%</Badge>
+                <Gift className="h-6 w-6 text-pink-100" />
               </div>
-              <div className="text-2xl font-bold">{stats.referrals}</div>
-              <p className="text-pink-100 text-sm">Referrals Generated</p>
+              <div className="text-2xl font-bold">{stats.rewardsIssued}</div>
+              <p className="text-pink-100 text-sm">Rewards Issued</p>
             </CardContent>
           </Card>
 
@@ -167,7 +240,6 @@ export default function MerchantBento() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <TrendingUp className="h-6 w-6 text-yellow-100" />
-                <Badge className="bg-white/20 text-white border-white/30">+5.2%</Badge>
               </div>
               <div className="text-2xl font-bold">{stats.conversionRate}%</div>
               <p className="text-yellow-100 text-sm">Conversion Rate</p>
@@ -255,29 +327,20 @@ export default function MerchantBento() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-900">Campaign "Summer Special" activated</span>
+                {recentActivity.length === 0 && (
+                  <p className="text-sm text-gray-500 py-2">No recent activity yet. Taps and redemptions will show here.</p>
+                )}
+                {recentActivity.slice(0, 6).map((a, i) => (
+                  <div key={i} className={`flex items-center justify-between p-3 rounded-lg ${a.kind === "redemption" ? "bg-purple-50" : "bg-green-50"}`}>
+                    <div className="flex items-center">
+                      <div className={`w-2 h-2 rounded-full mr-3 ${a.kind === "redemption" ? "bg-purple-500" : "bg-green-500"}`}></div>
+                      <span className="text-sm text-gray-900">{a.action}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {a.timestamp ? new Date(a.timestamp).toLocaleString() : ""}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500">2 hours ago</span>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-900">NFC tag programmed at front counter</span>
-                  </div>
-                  <span className="text-xs text-gray-500">4 hours ago</span>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-900">23 new customer taps today</span>
-                  </div>
-                  <span className="text-xs text-gray-500">6 hours ago</span>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -302,16 +365,16 @@ export default function MerchantBento() {
               
               <div className="grid grid-cols-3 gap-4 mt-4">
                 <div className="text-center">
-                  <div className="text-lg font-bold">1,247</div>
+                  <div className="text-lg font-bold">{stats.totalTaps.toLocaleString()}</div>
                   <div className="text-xs text-indigo-100">Total Taps</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-bold">342</div>
+                  <div className="text-lg font-bold">{stats.activeCustomers.toLocaleString()}</div>
                   <div className="text-xs text-indigo-100">Customers</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-bold">89</div>
-                  <div className="text-xs text-indigo-100">Referrals</div>
+                  <div className="text-lg font-bold">{stats.rewardsIssued.toLocaleString()}</div>
+                  <div className="text-xs text-indigo-100">Rewards</div>
                 </div>
               </div>
             </CardContent>
@@ -319,6 +382,8 @@ export default function MerchantBento() {
 
         </div>
       </div>
+      <HelpAssistant role="business" />
     </div>
+    </BillingGate>
   );
 }

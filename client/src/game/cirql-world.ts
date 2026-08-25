@@ -1,0 +1,215 @@
+// CIRQL — the world data model (CHR-217, CHR-218).
+//
+// CIRQL is the flagship: a persistent, magical, social world of concentric
+// island-rings. This file is the *data* — ring/biome definitions + the props on
+// each ring — kept declarative so new rings are added forever as config. The
+// renderer (cirql-world-engine.ts) is generic and draws whatever these describe.
+//
+// Ring 0 = "The Hearth" (home). Outer rings are stubbed here and shown only on
+// the minimap under fog until the community's sparks open them (Phase 2).
+
+export type PropType =
+  | "hearth"    // the home cottage (your Cirql lanterns ring it)
+  | "wonders"   // the in-world arcade building (doorway → the 50 Wonders)
+  | "npc"       // a quest-giver / townsperson
+  | "tree"
+  | "fern"      // a cluster of fronds — a couple glow (woodland understory; soft — walk through)
+  | "fairyring" // a ring of glowing toadstools with a soft ground glow (woodland; soft)
+  | "log"       // a fallen mossy log (solid — a natural maze wall you walk around)
+  | "stump"     // a tree stump, sometimes with a glowing cap (solid, small)
+  | "tallgrass" // a clump of tall grass / reeds (soft — walk through; density + texture)
+  | "bush"      // a leafy bush (solid) — scatter + maze/labyrinth walls (CHR-259)
+  | "lantern"   // a plain path lantern
+  | "crystal"
+  | "dock"      // sail outward to another ring
+  | "marker"    // a quest waypoint target
+  | "tablet"    // a Myst-style clue stone (inspect → grants the puzzle + shows the clue)
+  | "rune"      // a puzzle rune you toggle on/off
+  | "shrine"    // sealed until the runes match the clue → opens for the reward
+  | "gathering" // a social gathering spot (bonfire commons) — every ring has one
+  | "theater"   // the Cirql Drive-In: an outdoor screen cycling fake movie posters (ring 2)
+  | "rock"      // a solid boulder — walk around it
+  | "pond"      // a little water feature — walk around it
+  | "flower"    // a decorative flower cluster (soft — walk through)
+  | "wisp"      // a collectible drifting light — walk over to gather (Phase K3 "gather" quests)
+  | "fence"     // a short fence segment (solid — walk around)
+  | "path"      // a dirt/stone trail patch (ground decoration — walk over)
+  | "landmark"  // a focal set-piece (Great Tree, stone circle, lighthouse…) — quest home + meeting spot (Phase J4)
+  | "shop"      // a Town storefront — walk in to enter the shop interior (Milestone F)
+  | "home"      // your cottage on CIRQLSPACE — walk in to enter & decorate the interior (Milestone F)
+  | "storm"     // a swirling storm — brave it to be swept up (tornado) into the sky realm (F: weather entry)
+  | "tunnel"    // a burrow mouth — walk through the tunnel sub-map to emerge at its OTHER mouth (F)
+  | "portal"    // a cave/hollow-tree/cloud-stair — travel to a sub-map (CHR-265)
+  | "curio"     // a DISCOVERABLE object (relic / blight / star / cache) — inspect to trigger a hidden/emergent quest (Phase K7)
+  | "bounty"    // a bounty board — a rotating "pick your next task" hub (Phase K7 "chosen" delivery)
+  | "petshop"   // the Pet Stall — buy a companion for your CIRQLSPACE (Pets P1)
+  | "stylist"   // the Style Studio — restyle your CIRQLSPACE's biome/colour palette (home customization)
+  | "barber"    // the Barber — restyle your hair/look (opens the character editor on hair) (Town business)
+  | "ride"      // an ATTRACTION you actually ride — a scripted cutscene (ferris wheel first); one per ring
+  | "well"      // the ring's WELLSPRING of light (the village heart / watershed source) — world redesign
+  | "hut"       // a village dwelling (the biome hamlet around the wellspring) — world redesign
+  | "signpost"; // a road signpost that points you onward (guides you TMW-style) — world redesign
+
+export type LandmarkKind = "greattree" | "stonecircle" | "lighthouse" | "crystal" | "waterfall" | "ruin";
+export type CurioKind = "relic" | "blight" | "star" | "cache";
+
+export interface Prop {
+  t: PropType;
+  x: number;
+  y: number;
+  id?: string;          // stable id (interaction targets, quest refs)
+  label?: string;
+  accent?: string;      // glow/label colour override
+  to?: number;          // dock: destination ring index
+  big?: boolean;        // larger tree/crystal
+  r?: number;           // interaction/collision radius override (world units)
+  vert?: boolean;       // fence: draw the segment vertically (for corral sides)
+  sub?: "cave" | "tree" | "cloud" | "up";   // portal kind (CHR-265)
+  lm?: LandmarkKind;    // landmark set-piece kind (Phase J4)
+  shopId?: string;      // shop storefront/keeper this prop belongs to (Milestone F)
+  end?: "a" | "b";      // which mouth of a two-ended tunnel this is (Milestone F)
+  curio?: CurioKind;    // curio: which discoverable kind to draw (relic / blight / star / cache) — Phase K7
+  rideKind?: string;    // ride: which attraction cutscene to play ("ferris", …)
+}
+
+export interface RingPalette {
+  sky: [string, string];
+  sea: string;
+  land: string;
+  grass: string;
+  sand: string;
+  accent: string;       // biome signature (lanterns, UI)
+  mote: string;         // floating-light colour
+}
+
+export interface Ring {
+  index: number;
+  name: string;
+  sub: string;
+  radius: number;       // island radius in world units
+  explorable: boolean;
+  palette: RingPalette;
+  spawn: { x: number; y: number };
+  props: Prop[];
+  puzzleTarget?: string[];   // rune ids that must be lit (and no others) to open the shrine (CHR-258)
+  ambient?: "butterfly" | "firefly" | "ember" | "snow" | "gull" | "dust" | "bee" | "dragonfly" | "grasshopper";   // drifting critters/particles for the biome
+  biome?: string;   // biome key (e.g. "woodland") — drives the per-biome flora/geo/glow kit
+  // A sub-realm (cave/dungeon/canopy/cloud) is drawn as a TMW-style top-down MAZE instead of the
+  // circular island: a grid of cells, grid[r*cols+c] === true means a WALL. Presence flips the
+  // engine to maze render + wall collision.
+  maze?: { cols: number; rows: number; cell: number; grid: boolean[] };
+  // World redesign: a ring is a raised luminous PLATEAU with a WATERSHED — light wells up at the
+  // spring (village heart), runs a river across the land, and pours over the rim as a waterfall.
+  plateau?: boolean;
+  watershed?: { spring: { x: number; y: number }; river: { x: number; y: number }[]; fall: { x: number; y: number } };
+  road?: { x: number; y: number }[];   // the bold road that leads dock → village → dock
+}
+
+// ---- Ring 0: CIRQLSPACE — the player's blank, buildable home island ----------
+// Owner pivot (2026-07): CIRQLSPACE is YOUR space. It ships nearly empty — a guide NPC
+// + a dock to the Town — and everything on it is placed by the player (décor + terrain,
+// milestones B/C). The engine draws the player's saved build on top.
+const CIRQLSPACE: Ring = {
+  index: 0,
+  name: "CIRQLSPACE",
+  sub: "your space",
+  radius: 430,
+  explorable: true,
+  palette: {
+    sky: ["#241640", "#12163a"],
+    sea: "#0c2036",
+    land: "#243a2f",
+    grass: "#2f5340",
+    sand: "#c9ad74",
+    accent: "#ffc46b",
+    mote: "#ffd98a",
+  },
+  spawn: { x: 0, y: 150 },
+  props: [
+    // your guide — teaches building; then the how-to lives in your Inventory (CHR-269)
+    { t: "npc", x: -50, y: 96, id: "guide", label: "Cirqla", accent: "#7fffe6", r: 34 },
+    // your cottage — walk in to enter & decorate your Home interior (Milestone F)
+    { t: "home", x: 120, y: -40, to: 500000, id: "home", label: "Your Home", accent: "#ffc46b" },
+    // the Pet Stall — adopt a companion that lives here at your CIRQLSPACE (Pets P1)
+    { t: "petshop", x: -140, y: -30, id: "petshop", label: "Pet Stall", accent: "#ffd24a" },
+    // the Style Studio — restyle your CIRQLSPACE's biome/colour palette (home customization)
+    { t: "stylist", x: -100, y: 96, id: "stylist", label: "Style Studio", accent: "#c9a0ff" },
+    // the dock out to the Town (ring 1) — where all the game lives
+    { t: "dock", x: 0, y: 400, to: 1, label: "the Town", id: "dock-out" },
+  ],
+  ambient: "butterfly",
+};
+
+// ---- Ring 1: the Town — the authored community hub (all the game lives here) --
+// Everything that used to clutter the home island now lives here, so there's ONE shared
+// entrance/experience: CirqlCade (the arcade door), Ferra the quest-giver, the Commons,
+// the Sunken Runes puzzle, the onboarding targets. Shops (milestone F) land here too.
+const TOWN: Ring = {
+  index: 1,
+  name: "Town",
+  sub: "the community",
+  radius: 470,
+  explorable: true,
+  palette: { sky: ["#241640", "#12163a"], sea: "#0c2036", land: "#243a2f", grass: "#2f5340", sand: "#c9ad74", accent: "#ffc46b", mote: "#ffd98a" },
+  spawn: { x: 0, y: -300 },
+  props: [
+    // the Town Hall (the old home cottage, re-cast as a civic landmark)
+    { t: "hearth", x: 0, y: -70, id: "townhall", label: "Town Hall" },
+    // CirqlCade — the in-world arcade; ONE shared entrance for everyone
+    { t: "wonders", x: 250, y: 40, id: "wonders", label: "CirqlCade", accent: "#b26cff", r: 46 },
+    // Ferra — the quest-giver (the world tutorials give here now)
+    { t: "npc", x: -60, y: 120, id: "keeper", label: "Ferra", accent: "#7fffe6", r: 34 },
+    // the named Town cast (Phase K2) — each teaches one system with their own voice
+    { t: "npc", x: 150, y: -110, id: "cartographer", label: "Marin", accent: "#6fd8ff", r: 30 },
+    { t: "npc", x: 60, y: 210, id: "bard", label: "Lio", accent: "#ff9d5c", r: 30 },
+    // scenery — a leafy town green
+    { t: "tree", x: 190, y: -220, big: true }, { t: "tree", x: -230, y: -180 }, { t: "tree", x: 330, y: -120, big: true },
+    { t: "tree", x: -340, y: 120 }, { t: "tree", x: 120, y: 250 }, { t: "tree", x: -150, y: 280, big: true },
+    { t: "tree", x: 300, y: 220 }, { t: "tree", x: 255, y: -55 }, { t: "tree", x: -300, y: -55, big: true }, { t: "tree", x: 350, y: 60 },
+    { t: "bush", x: -110, y: 200 }, { t: "bush", x: 240, y: -140 }, { t: "bush", x: 315, y: 175 },
+    { t: "rock", x: 285, y: 130 }, { t: "rock", x: -285, y: 200, big: true }, { t: "rock", x: 175, y: -150 },
+    { t: "pond", x: -320, y: 55, r: 26, id: "town-pond" },
+    { t: "flower", x: 100, y: 110, accent: "#ff8fbf" }, { t: "flower", x: 114, y: 120, accent: "#ffd24a" }, { t: "flower", x: 90, y: 124, accent: "#e0a0ff" },
+    { t: "flower", x: -150, y: -60, accent: "#8fd0ff" }, { t: "flower", x: -138, y: -50, accent: "#ffd24a" }, { t: "flower", x: 185, y: -55, accent: "#ffd24a" },
+    // a dirt path up to the hall
+    { t: "path", x: 0, y: 112 }, { t: "path", x: 8, y: 74 }, { t: "path", x: -6, y: 34 }, { t: "path", x: 4, y: -6 },
+    // path lanterns to CirqlCade — quest targets for "The Lantern Path"
+    { t: "lantern", x: 95, y: 75, id: "ql1" }, { t: "lantern", x: 165, y: 55, id: "ql2" }, { t: "lantern", x: 215, y: 35, id: "ql3" },
+    // docks: inward → CIRQLSPACE (ring 0), onward → the wilds (ring 2)
+    { t: "dock", x: 0, y: -420, to: 0, label: "↩ CIRQLSPACE", id: "dock-in" },
+    { t: "dock", x: 0, y: 420, to: 2, label: "sail onward →", id: "dock-out" },
+    // Find Your Feet waypoint target
+    { t: "marker", x: -230, y: -20, id: "marker-shore", label: "" },
+    // The Sunken Runes — a hidden puzzle (moved here from the old home island)
+    { t: "tablet", x: -150, y: -186, id: "rune-tablet", label: "Runestone" },
+    { t: "rune", x: -138, y: -240, id: "rn0" }, { t: "rune", x: -108, y: -216, id: "rn1" },
+    { t: "rune", x: -72, y: -216, id: "rn2" }, { t: "rune", x: -42, y: -240, id: "rn3" },
+    { t: "shrine", x: -90, y: -278, id: "rune-shrine", label: "Sealed Shrine" },
+    // the Commons — the town's social gathering spot
+    { t: "gathering", x: 130, y: 185, id: "commons", label: "The Commons" },
+    // a cave mouth → The Undervault (sub-map of ring 1 = index 100001)
+    { t: "portal", x: -340, y: -40, to: 100001, sub: "cave", label: "cave" },
+    // ── Milestone F: the Town shops. Walk into a storefront → its interior (quick fade).
+    // `to` = SHOP_BASE(400000) + slot; ids/order live in cirql-shops.ts (SHOP_ORDER).
+    { t: "shop", x: -250, y: 10,  to: 400001, shopId: "general",  id: "shop-general",  label: "General Store",   accent: "#ffd98a" },
+    { t: "shop", x: -340, y: 250, to: 400002, shopId: "boutique", id: "shop-boutique", label: "The Looking Glass", accent: "#ff9dd6" },
+    { t: "shop", x: 330,  y: -40, to: 400003, shopId: "garden",   id: "shop-garden",   label: "Garden & Grove",  accent: "#8fe6a0" },
+    { t: "shop", x: 360,  y: 250, to: 400004, shopId: "curios",   id: "shop-curios",   label: "Curios & Wonders", accent: "#c79dff" },
+    { t: "shop", x: -160, y: 330, to: 400005, shopId: "building", id: "shop-building", label: "Timber & Stone",  accent: "#ffb877" },
+    // the Barber — a Town business that restyles your hair/look (opens the character editor on hair)
+    { t: "barber", x: 210, y: 300, id: "barber", label: "The Snip & Sparq", accent: "#ff7ea8" },
+    // an early DISCOVERY: a tide-buried cache on the north shore → "What the Tide Kept" (rings 0-1 rework)
+    { t: "curio", x: -300, y: -300, id: "curio-town", curio: "cache", label: "Tide-worn Cache", accent: "#ffd24a" },
+    // an ATTRACTION you actually ride — the Town's ferris wheel (the reusable ride pattern)
+    { t: "ride", x: 0, y: 300, id: "ferris", rideKind: "ferris", label: "The Wheel", accent: "#7fd8ff", r: 34 },
+  ],
+  puzzleTarget: ["rn0", "rn2", "rn3"],
+  ambient: "butterfly",
+};
+
+export const RINGS: Ring[] = [CIRQLSPACE, TOWN];
+
+// How many concentric rings the minimap draws (sells "the world never ends").
+export const MINIMAP_RINGS = 8;
+// How many are currently "known" (bright); the rest are fog. Grows as you explore.
+export const KNOWN_RINGS = 2;

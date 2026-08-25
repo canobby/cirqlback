@@ -11,6 +11,7 @@ import {
   decimal,
   uuid,
   primaryKey,
+  unique,
   real,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -32,18 +33,36 @@ export const sessions = pgTable(
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
+  passwordHash: varchar("password_hash"), // scrypt salt:hash for local auth; null for OAuth-only accounts
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").default("customer"), // customer, merchant, admin
+  role: varchar("role").default("customer"), // customer, merchant, admin, coordinator
   subscriptionTier: varchar("subscription_tier").default("starter"), // starter, professional, business, enterprise
   subscriptionStatus: varchar("subscription_status").default("active"), // active, cancelled, expired
+  // Admin account suspension (blocks login + active sessions; separate from
+  // subscription status). Set via the admin Support 360 view.
+  suspended: boolean("suspended").default(false),
+  suspendedAt: timestamp("suspended_at"),
+  suspendedReason: varchar("suspended_reason"),
   starterExpiresAt: timestamp("starter_expires_at"), // 6 months from signup for starter tier
   trialDiscountTier: varchar("trial_discount_tier"), // Selected tier during trial for 50% discount
   trialDiscountEndsAt: timestamp("trial_discount_ends_at"), // When 50% discount expires
   trialDiscountActive: boolean("trial_discount_active").default(false),
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
+  // Billing enforcement (Phase 1). `paidThroughDate` = end of the last paid
+  // service period; `pastDueSince` = when the current delinquency began (null
+  // when current). Together they drive the grace/locked/suspended states — see
+  // server/billing-state.ts. In Phase 3 these are set from Stripe invoice
+  // webhooks; until then they can be set by the admin billing control / scheduler.
+  paidThroughDate: timestamp("paid_through_date"),
+  pastDueSince: timestamp("past_due_since"),
+  // Dunning-email idempotency (Phase 2): stamped when the lock / suspension
+  // notice is sent for the current delinquency; both reset to null when the
+  // account becomes current again, so a future delinquency re-notifies.
+  billingLockNotifiedAt: timestamp("billing_lock_notified_at"),
+  billingSuspendNotifiedAt: timestamp("billing_suspend_notified_at"),
   apiKey: varchar("api_key").unique(), // for API access to both Cirql and InSpektAI
   apiKeyCreatedAt: timestamp("api_key_created_at"),
   totalPoints: integer("total_points").default(0),
@@ -73,6 +92,8 @@ export const users = pgTable("users", {
   badges: text("badges").array().default(sql`'{}'`),
   currentStreak: integer("current_streak").default(0),
   longestStreak: integer("longest_streak").default(0),
+  streakLastDate: varchar("streak_last_date"), // YYYY-MM-DD of the last tap that counted toward the streak
+  lastSpinDate: varchar("last_spin_date"),     // YYYY-MM-DD of the last daily spin
   teamId: varchar("team_id"),
   teamRole: varchar("team_role"), // leader, member, scout
   createdAt: timestamp("created_at").defaultNow(),
@@ -85,11 +106,27 @@ export const businesses = pgTable("businesses", {
   name: varchar("name").notNull(),
   description: text("description"),
   address: varchar("address"),
+  latitude: real("latitude"),   // for the discovery map
+  longitude: real("longitude"),
   phone: varchar("phone"),
   email: varchar("email"),
   website: varchar("website"),
   logo: varchar("logo"),
   ownerId: varchar("owner_id").references(() => users.id),
+  territoryId: varchar("territory_id").references(() => territories.id), // CHR-31: coordinator territory scoping
+  // Stripe Connect (Express) — so a business can RECEIVE automated payouts (e.g.
+  // its share owed as a shared-campaign host). Onboarding is Stripe-hosted.
+  stripeConnectAccountId: varchar("stripe_connect_account_id"),
+  connectPayoutsEnabled: boolean("connect_payouts_enabled").default(false),
+  connectDetailsSubmitted: boolean("connect_details_submitted").default(false),
+  connectOnboardedAt: timestamp("connect_onboarded_at"),
+  verificationStatus: varchar("verification_status").default("unverified"), // CHR-31: unverified, verified, rejected (coordinator-verified)
+  isFeatured: boolean("is_featured").default(false), // CHR-54: coordinator-controlled map promotion (territory-scoped)
+  // CHR-34/70: 501(c)(3) nonprofit participation. A nonprofit is a business row
+  // flagged isNonprofit (free plan — no subscription charge).
+  isNonprofit: boolean("is_nonprofit").default(false),
+  ein: varchar("ein"), // 501(c)(3) tax id
+  nonprofitMission: text("nonprofit_mission"),
   isActive: boolean("is_active").default(true),
   totalTaps: integer("total_taps").default(0),
   totalRewardsGiven: integer("total_rewards_given").default(0),
@@ -140,6 +177,255 @@ export const businesses = pgTable("businesses", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ── Community Coordinator / territory system (CHR-31) ──
+// A coordinator is a `users` row (role='coordinator') PLUS a `coordinators`
+// record — mirroring how an admin is a `users` row plus an `admin_users` record.
+// The coordinators record is the real gate; it holds coordinator-specific state.
+export const coordinators = pgTable("coordinators", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  displayName: varchar("display_name"),
+  planStatus: varchar("plan_status").default("trial"), // trial, active, past_due, cancelled
+  planRenewsAt: timestamp("plan_renews_at"),
+  sharePct: integer("share_pct").default(70), // CHR-32/61: coordinator revenue-share % on gross (owner decision: 70/30 split)
+  // Invitation (mirrors the admin invite flow)
+  invitedBy: varchar("invited_by").references(() => users.id),
+  inviteToken: varchar("invite_token").unique(),
+  inviteExpiresAt: timestamp("invite_expires_at"),
+  inviteAcceptedAt: timestamp("invite_accepted_at"),
+  invitationEmail: varchar("invitation_email"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// A licensed region managed by one coordinator. Region starts simple (city/state
+// + an optional circular area); polygon bounds can come later.
+export const territories = pgTable("territories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coordinatorId: varchar("coordinator_id").references(() => coordinators.id).notNull(),
+  name: varchar("name").notNull(),
+  city: varchar("city"),
+  state: varchar("state"),
+  country: varchar("country").default("US"),
+  centerLat: real("center_lat"),      // for map scoping / "is this business in my territory"
+  centerLng: real("center_lng"),
+  radiusMeters: integer("radius_meters"),
+  welcomeMessage: text("welcome_message"), // CHR-55: regional default shown to new businesses
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// CHR-55: regional discount codes & trial offers a coordinator issues within
+// their territory.
+export const regionalOffers = pgTable("regional_offers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coordinatorId: varchar("coordinator_id").references(() => coordinators.id).notNull(),
+  territoryId: varchar("territory_id").references(() => territories.id),
+  code: varchar("code").unique().notNull(),
+  description: varchar("description"),
+  offerType: varchar("offer_type").notNull().default("percent"), // percent, fixed, trial
+  value: varchar("value"), // e.g. "15" (percent), "5.00" (fixed), "30" (trial days)
+  isActive: boolean("is_active").default(true),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ── CHR-32 / CHR-61: coordinator revenue-share ledger ──
+// One row per verified charge attributed to a territory's coordinator. Written
+// from the Stripe webhook (payment_intent.succeeded). Idempotent on the payment
+// intent id so webhook retries never double-record.
+export const coordinatorEarnings = pgTable("coordinator_earnings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coordinatorId: varchar("coordinator_id").references(() => coordinators.id).notNull(),
+  territoryId: varchar("territory_id").references(() => territories.id),
+  businessId: varchar("business_id").references(() => businesses.id), // payer's business
+  userId: varchar("user_id").references(() => users.id), // the payer
+  source: varchar("source").default("subscription"), // subscription | addon
+  planId: varchar("plan_id"),
+  description: varchar("description"),
+  grossAmountCents: integer("gross_amount_cents").notNull(),
+  sharePct: integer("share_pct").notNull(), // snapshot of coordinator rate at time of charge
+  shareAmountCents: integer("share_amount_cents").notNull(),
+  currency: varchar("currency").default("usd"),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id").unique(), // idempotency key
+  periodMonth: varchar("period_month"), // YYYY-MM for monthly aggregation
+  payoutId: varchar("payout_id"), // CHR-64: set once this earning is rolled into a payout
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ── CHR-32 / CHR-64: coordinator payouts (reporting-only ledger) ──
+// A payout rolls up a coordinator's unpaid earnings for a period. Reporting-only
+// for now (status/mark-paid tracked by an admin); Stripe Connect transfers are a
+// documented follow-up (method='stripe_connect').
+export const coordinatorPayouts = pgTable("coordinator_payouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coordinatorId: varchar("coordinator_id").references(() => coordinators.id).notNull(),
+  periodMonth: varchar("period_month"), // YYYY-MM (or null for ad-hoc)
+  totalShareCents: integer("total_share_cents").notNull(),
+  currency: varchar("currency").default("usd"),
+  status: varchar("status").default("pending"), // pending | paid | void
+  method: varchar("method").default("manual"), // manual | stripe_connect
+  reference: varchar("reference"), // external payout/transfer reference
+  notes: text("notes"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ── CHR-35 / CHR-65: per-business add-on entitlements ──
+// A business unlocks a paid add-on (map priority, advanced analytics, custom
+// branding, scavenger builder) by purchasing it. Activation-based for now;
+// recurring/renewal billing is a documented follow-up.
+export const businessAddons = pgTable("business_addons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  addonKey: varchar("addon_key").notNull(), // map_priority | advanced_analytics | custom_branding | scavenger_builder
+  status: varchar("status").default("active"), // active | cancelled
+  source: varchar("source").default("stripe"), // stripe | manual
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"), // idempotency for the activating charge
+  activatedAt: timestamp("activated_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // null = no expiry (activation-based)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueEntitlement: unique("business_addons_unique").on(table.businessId, table.addonKey),
+}));
+
+// ── CHR-35 / CHR-68: custom tap-screen branding (add-on) ──
+// Per-business branding for the customer tap page. Applied only while the
+// business holds the custom_branding entitlement (enforced in the routes).
+export const businessTapBranding = pgTable("business_tap_branding", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull().unique(),
+  brandColor: varchar("brand_color"), // primary hex
+  accentColor: varchar("accent_color"),
+  slogan: varchar("slogan"),
+  logoUrl: varchar("logo_url"),
+  links: jsonb("links").default(sql`'[]'`), // [{ label, url }]
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ── CHR-36 / CHR-75: customer favorites + business reminders ──
+// Anonymous-friendly: a customer is identified by email and/or the CHR-48 device
+// fingerprint (no account needed).
+export const customerFavorites = pgTable("customer_favorites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  customerEmail: varchar("customer_email"),
+  deviceFingerprint: varchar("device_fingerprint"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// A stored prompt a business posts to its favoriters. Delivery (email/push) is a
+// documented future follow-up; this is the feed source.
+export const businessReminders = pgTable("business_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  message: text("message").notNull(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ── CHR-34 / CHR-71: donation-per-tap campaigns ──
+// A nonprofit runs "tap at these shops to support us — each store donates $X per
+// tap." Donations accrue per tap and are attributed to the nonprofit.
+export const donationCampaigns = pgTable("donation_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  nonprofitId: varchar("nonprofit_id").references(() => businesses.id).notNull(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  donationPerTapCents: integer("donation_per_tap_cents").notNull().default(0),
+  isActive: boolean("is_active").default(true),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const donationCampaignMembers = pgTable("donation_campaign_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  donationCampaignId: varchar("donation_campaign_id").references(() => donationCampaigns.id).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueMember: unique("donation_campaign_members_unique").on(table.donationCampaignId, table.businessId),
+}));
+
+// One row per accrued donation. Unique (campaign, tap) makes accrual idempotent.
+export const donations = pgTable("donations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  donationCampaignId: varchar("donation_campaign_id").references(() => donationCampaigns.id).notNull(),
+  nonprofitId: varchar("nonprofit_id").references(() => businesses.id),
+  businessId: varchar("business_id").references(() => businesses.id), // store that donated
+  tapId: varchar("tap_id").references(() => taps.id),
+  customerEmail: varchar("customer_email"),
+  amountCents: integer("amount_cents").notNull(),
+  periodMonth: varchar("period_month"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniquePerTap: unique("donations_campaign_tap_unique").on(table.donationCampaignId, table.tapId),
+}));
+
+// ── CHR-33: first-class multi-store group campaigns ──
+// Supersedes the older (all-mock, unused) business_partnerships / reward_pool_*
+// tables — those are slated for retirement in CHR-58.
+export const groupCampaigns = pgTable("group_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  ruleType: varchar("rule_type").notNull().default("any_n"), // any_n = tap N of M | all
+  requiredStores: integer("required_stores").default(1), // N for any_n
+  rewardType: varchar("reward_type").default("discount"), // discount, free_item, points
+  rewardTitle: varchar("reward_title"),
+  rewardValue: decimal("reward_value", { precision: 10, scale: 2 }),
+  rewardPoints: integer("reward_points").default(0),
+  // The host that FUNDS and redeems a tangible reward (discount/free_item).
+  // Null for points (platform-funded). Fixes the old "arbitrary completing store
+  // pays" attribution — a funded reward is always attributed to this host.
+  fundingBusinessId: varchar("funding_business_id").references(() => businesses.id),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  creatorType: varchar("creator_type").default("business"), // business | coordinator
+  territoryId: varchar("territory_id").references(() => territories.id), // set for coordinator city-wide
+  isOpen: boolean("is_open").default(false), // businesses may self-join
+  isFeatured: boolean("is_featured").default(false), // CHR-54: coordinator promotes this campaign on the discovery map
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const groupCampaignMembers = pgTable("group_campaign_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupCampaignId: varchar("group_campaign_id").references(() => groupCampaigns.id).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+  status: varchar("status").default("joined"), // invited | joined
+  joinedAt: timestamp("joined_at").defaultNow(),
+}, (table) => ({
+  uniqueMember: unique("group_campaign_members_unique").on(table.groupCampaignId, table.businessId),
+}));
+
+// One row per (campaign, customer). Customer is identified WITHOUT an account —
+// by email and/or the CHR-48 device fingerprint. Tracks which member stores
+// have been visited and, once complete, the unlocked reward.
+export const groupCampaignProgress = pgTable("group_campaign_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupCampaignId: varchar("group_campaign_id").references(() => groupCampaigns.id).notNull(),
+  customerEmail: varchar("customer_email"),
+  deviceFingerprint: varchar("device_fingerprint"),
+  visitedBusinessIds: jsonb("visited_business_ids").default(sql`'[]'`), // array of member business ids
+  visitCount: integer("visit_count").default(0),
+  completedAt: timestamp("completed_at"),
+  rewardId: varchar("reward_id").references(() => rewards.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Campaigns table
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -149,8 +435,11 @@ export const campaigns = pgTable("campaigns", {
   type: varchar("type").notNull(), // discount, loyalty, referral, trail
   value: decimal("value", { precision: 10, scale: 2 }),
   pointsAwarded: integer("points_awarded").default(0),
+  tapGoal: integer("tap_goal").default(1), // CHR-73: taps needed per reward (>1 = punch-card)
   maxRedemptions: integer("max_redemptions"),
   currentRedemptions: integer("current_redemptions").default(0),
+  gpsRequired: boolean("gps_required").default(false), // CHR-48: gate reward on proximity
+  gpsRadius: integer("gps_radius"), // CHR-48: allowed distance from business in metres (default applied in code)
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   isActive: boolean("is_active").default(true),
@@ -185,6 +474,7 @@ export const taps = pgTable("taps", {
   customerName: varchar("customer_name"),
   pointsEarned: integer("points_earned").default(0),
   rewardValue: decimal("reward_value", { precision: 10, scale: 2 }),
+  deviceFingerprint: varchar("device_fingerprint"), // CHR-48: client device id for anti-abuse (no-account customers)
   metadata: jsonb("metadata"), // additional data like device info, location
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -374,12 +664,77 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true 
 });
 
-export const insertBusinessSchema = createInsertSchema(businesses).omit({ 
-  id: true, 
-  createdAt: true, 
+export const insertBusinessSchema = createInsertSchema(businesses).omit({
+  id: true,
+  createdAt: true,
   updatedAt: true,
   totalTaps: true,
   totalRewardsGiven: true,
+});
+
+// CHR-31 coordinator/territory model
+export const insertCoordinatorSchema = createInsertSchema(coordinators).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTerritorySchema = createInsertSchema(territories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRegionalOfferSchema = createInsertSchema(regionalOffers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCoordinatorEarningSchema = createInsertSchema(coordinatorEarnings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCoordinatorPayoutSchema = createInsertSchema(coordinatorPayouts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBusinessAddonSchema = createInsertSchema(businessAddons).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBusinessTapBrandingSchema = createInsertSchema(businessTapBranding).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDonationCampaignSchema = createInsertSchema(donationCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertGroupCampaignSchema = createInsertSchema(groupCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertGroupCampaignMemberSchema = createInsertSchema(groupCampaignMembers).omit({
+  id: true,
+  joinedAt: true,
+});
+
+export const insertGroupCampaignProgressSchema = createInsertSchema(groupCampaignProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const insertCampaignSchema = createInsertSchema(campaigns).omit({ 
@@ -443,93 +798,6 @@ export const insertApiUsageSchema = createInsertSchema(apiUsage).omit({
 // Types
 export type User = typeof users.$inferSelect;
 
-// Avatar system tables
-export const userAvatars = pgTable("user_avatars", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
-  name: varchar("name").default("My Avatar"),
-  hair: varchar("hair").default("default_hair"),
-  eyes: varchar("eyes").default("default_eyes"),
-  skin: varchar("skin").default("default_skin"),
-  outfit: varchar("outfit").default("default_outfit"),
-  accessories: jsonb("accessories").default([]),
-  pet: varchar("pet"),
-  effects: jsonb("effects").default([]),
-  level: integer("level").default(1),
-  experience: integer("experience").default(0),
-  coins: integer("coins").default(500),
-  badges: jsonb("badges").default([]),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const avatarAssets = pgTable("avatar_assets", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  type: varchar("type").notNull(), // 'hair', 'eyes', 'skin', 'outfit', 'accessory', 'pet', 'effect'
-  name: varchar("name").notNull(),
-  rarity: varchar("rarity").notNull().default("common"), // 'common', 'rare', 'epic', 'legendary'
-  cost: integer("cost").default(0),
-  unlockCondition: varchar("unlock_condition"),
-  businessId: varchar("business_id").references(() => businesses.id),
-  previewUrl: varchar("preview_url"),
-  animationUrl: varchar("animation_url"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const userAvatarAssets = pgTable("user_avatar_assets", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
-  assetId: varchar("asset_id").references(() => avatarAssets.id),
-  purchasedAt: timestamp("purchased_at").defaultNow(),
-});
-
-
-
-
-
-export const avatarAchievements = pgTable("avatar_achievements", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: varchar("title").notNull(),
-  description: varchar("description"),
-  type: varchar("type").notNull(), // 'taps', 'visits', 'referrals', 'spending'
-  target: integer("target").notNull(),
-  reward: varchar("reward"), // description of reward
-  rewardType: varchar("reward_type"), // 'coins', 'asset', 'badge'
-  rewardValue: varchar("reward_value"),
-  rarity: varchar("rarity").default("common"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const userAvatarAchievements = pgTable("user_avatar_achievements", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
-  achievementId: varchar("achievement_id").references(() => avatarAchievements.id),
-  progress: integer("progress").default(0),
-  completed: boolean("completed").default(false),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Avatar interaction logs
-export const avatarInteractions = pgTable("avatar_interactions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
-  businessId: varchar("business_id").references(() => businesses.id),
-  interactionType: varchar("interaction_type").notNull(), // 'ar_photo', 'tap_animation', 'social_share'
-  metadata: jsonb("metadata").default({}),
-  experienceGained: integer("experience_gained").default(0),
-  coinsEarned: integer("coins_earned").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export type UserAvatar = typeof userAvatars.$inferSelect;
-export type InsertUserAvatar = typeof userAvatars.$inferInsert;
-export type AvatarAsset = typeof avatarAssets.$inferSelect;
-export type InsertAvatarAsset = typeof avatarAssets.$inferInsert;
-export type AvatarAchievement = typeof avatarAchievements.$inferSelect;
-export type AvatarInteraction = typeof avatarInteractions.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
 
 // Campaign Templates and Collaboration System
@@ -548,29 +816,20 @@ export const campaignTemplates = pgTable("campaign_templates", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const campaignPartners = pgTable("campaign_partners", {
+// Admin Management Tables
+// Admin action audit log — who did what, when. Written on privileged admin
+// mutations (verify/reject, unpublish, revoke nonprofit, suspend, impersonate).
+export const adminAudit = pgTable("admin_audit", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: varchar("campaign_id").references(() => campaigns.id).notNull(),
-  businessId: varchar("business_id").notNull(),
-  businessName: varchar("business_name").notNull(),
-  businessCategory: varchar("business_category").notNull(),
-  joinedAt: timestamp("joined_at").defaultNow(),
-  status: varchar("status").default("active"), // 'active', 'pending', 'declined'
-  contribution: jsonb("contribution"), // What this partner contributes
-});
-
-export const campaignParticipations = pgTable("campaign_participations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: varchar("campaign_id").references(() => campaigns.id).notNull(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  businessId: varchar("business_id"), // Which partner business they interacted with
-  progress: jsonb("progress").notNull(), // Track completion status
-  rewardsEarned: jsonb("rewards_earned").default(sql`'[]'::jsonb`),
-  completedAt: timestamp("completed_at"),
+  adminUserId: varchar("admin_user_id").references(() => users.id),
+  adminEmail: varchar("admin_email"),
+  action: varchar("action").notNull(),
+  targetType: varchar("target_type"),
+  targetId: varchar("target_id"),
+  detail: text("detail"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Admin Management Tables
 export const adminUsers = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
@@ -700,8 +959,6 @@ export const auditLogs = pgTable("audit_logs", {
 });
 
 export type CampaignTemplate = typeof campaignTemplates.$inferSelect;
-export type CampaignPartner = typeof campaignPartners.$inferSelect;
-export type CampaignParticipation = typeof campaignParticipations.$inferSelect;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type PlatformSetting = typeof platformSettings.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
@@ -709,6 +966,29 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Business = typeof businesses.$inferSelect;
 export type InsertBusiness = z.infer<typeof insertBusinessSchema>;
+export type Coordinator = typeof coordinators.$inferSelect;
+export type InsertCoordinator = z.infer<typeof insertCoordinatorSchema>;
+export type Territory = typeof territories.$inferSelect;
+export type InsertTerritory = z.infer<typeof insertTerritorySchema>;
+export type RegionalOffer = typeof regionalOffers.$inferSelect;
+export type InsertRegionalOffer = z.infer<typeof insertRegionalOfferSchema>;
+export type CoordinatorEarning = typeof coordinatorEarnings.$inferSelect;
+export type InsertCoordinatorEarning = z.infer<typeof insertCoordinatorEarningSchema>;
+export type CoordinatorPayout = typeof coordinatorPayouts.$inferSelect;
+export type InsertCoordinatorPayout = z.infer<typeof insertCoordinatorPayoutSchema>;
+export type BusinessAddon = typeof businessAddons.$inferSelect;
+export type InsertBusinessAddon = z.infer<typeof insertBusinessAddonSchema>;
+export type BusinessTapBranding = typeof businessTapBranding.$inferSelect;
+export type InsertBusinessTapBranding = z.infer<typeof insertBusinessTapBrandingSchema>;
+export type DonationCampaign = typeof donationCampaigns.$inferSelect;
+export type InsertDonationCampaign = z.infer<typeof insertDonationCampaignSchema>;
+export type Donation = typeof donations.$inferSelect;
+export type GroupCampaign = typeof groupCampaigns.$inferSelect;
+export type InsertGroupCampaign = z.infer<typeof insertGroupCampaignSchema>;
+export type GroupCampaignMember = typeof groupCampaignMembers.$inferSelect;
+export type InsertGroupCampaignMember = z.infer<typeof insertGroupCampaignMemberSchema>;
+export type GroupCampaignProgress = typeof groupCampaignProgress.$inferSelect;
+export type InsertGroupCampaignProgress = z.infer<typeof insertGroupCampaignProgressSchema>;
 
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
@@ -775,130 +1055,6 @@ export const winBackCampaigns = pgTable("winback_campaigns", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// CROSS-BUSINESS PARTNERSHIPS
-
-// Business Partnerships
-export const businessPartnerships = pgTable("business_partnerships", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  businessAId: varchar("business_a_id").references(() => businesses.id).notNull(),
-  businessBId: varchar("business_b_id").references(() => businesses.id).notNull(),
-  partnershipType: varchar("partnership_type").notNull(), // referral, joint_campaign, cross_promotion, shared_rewards
-  status: varchar("status").default("pending"), // pending, active, paused, ended
-  commissionRate: real("commission_rate"), // percentage for referrals
-  sharedBudget: decimal("shared_budget", { precision: 10, scale: 2 }),
-  totalReferrals: integer("total_referrals").default(0),
-  totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).default(sql`0`),
-  terms: text("terms"), // partnership agreement details
-  startDate: timestamp("start_date"),
-  endDate: timestamp("end_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Cross-Business Rewards
-export const crossBusinessRewards = pgTable("cross_business_rewards", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  partnershipId: varchar("partnership_id").references(() => businessPartnerships.id).notNull(),
-  triggerBusinessId: varchar("trigger_business_id").references(() => businesses.id).notNull(),
-  rewardBusinessId: varchar("reward_business_id").references(() => businesses.id).notNull(),
-  rewardType: varchar("reward_type").notNull(), // discount, free_item, points, cashback
-  rewardValue: decimal("reward_value", { precision: 10, scale: 2 }),
-  description: text("description"),
-  conditions: text("conditions"), // e.g., "spend $50+ at partner business"
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Multi-Merchant Reward Cost-Sharing System
-export const rewardPoolCampaigns = pgTable("reward_pool_campaigns", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(),
-  description: text("description"),
-  totalPoolValue: decimal("total_pool_value", { precision: 10, scale: 2 }),
-  status: varchar("status").default("active"), // active, completed, cancelled
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
-  settlementMethod: varchar("settlement_method").notNull(), // financial_compensation, product_exchange, service_credits, mixed
-  autoSettlement: boolean("auto_settlement").default(true),
-  settlementSchedule: varchar("settlement_schedule").default("monthly"), // weekly, monthly, campaign_end
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  createdBy: varchar("created_by").references(() => businesses.id),
-});
-
-export const merchantPoolParticipants = pgTable("merchant_pool_participants", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: varchar("campaign_id").references(() => rewardPoolCampaigns.id),
-  businessId: varchar("business_id").references(() => businesses.id),
-  agreedContribution: decimal("agreed_contribution", { precision: 10, scale: 2 }).notNull(),
-  contributionType: varchar("contribution_type").notNull(), // cash, products, services, discount_value
-  contributionDescription: text("contribution_description"),
-  currentBalance: decimal("current_balance", { precision: 10, scale: 2 }).default("0"),
-  totalRewardsGiven: decimal("total_rewards_given", { precision: 10, scale: 2 }).default("0"),
-  settlementPreference: varchar("settlement_preference").notNull(), // receive_cash, provide_products, service_credits
-  joinedAt: timestamp("joined_at").defaultNow(),
-  status: varchar("status").default("active"), // active, pending, withdrawn
-  autoApproveRewards: boolean("auto_approve_rewards").default(false),
-  maxDailyRewardValue: decimal("max_daily_reward_value", { precision: 10, scale: 2 }),
-});
-
-export const poolRewardTransactions = pgTable("pool_reward_transactions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: varchar("campaign_id").references(() => rewardPoolCampaigns.id),
-  rewardingBusinessId: varchar("rewarding_business_id").references(() => businesses.id), // business giving the reward
-  rewardValue: decimal("reward_value", { precision: 10, scale: 2 }).notNull(),
-  rewardType: varchar("reward_type").notNull(), // discount, free_item, service, points
-  rewardDescription: text("reward_description"),
-  customerId: varchar("customer_id").references(() => users.id),
-  tapId: varchar("tap_id").references(() => taps.id),
-  timestamp: timestamp("timestamp").defaultNow(),
-  status: varchar("status").default("pending"), // pending, approved, settled
-  settlementAmount: decimal("settlement_amount", { precision: 10, scale: 2 }),
-  settlementMethod: varchar("settlement_method"), // cash_payment, product_credit, service_exchange
-  settlementDate: timestamp("settlement_date"),
-  notes: text("notes"),
-});
-
-export const poolSettlements = pgTable("pool_settlements", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: varchar("campaign_id").references(() => rewardPoolCampaigns.id),
-  settlementPeriod: varchar("settlement_period").notNull(), // 2024-01, week-1-2024, etc
-  totalPoolRewards: decimal("total_pool_rewards", { precision: 10, scale: 2 }).notNull(),
-  averageRewardPerMerchant: decimal("average_reward_per_merchant", { precision: 10, scale: 2 }).notNull(),
-  status: varchar("status").default("pending"), // pending, processing, completed, failed
-  createdAt: timestamp("created_at").defaultNow(),
-  processedAt: timestamp("processed_at"),
-  processingNotes: text("processing_notes"),
-});
-
-export const merchantSettlementDetails = pgTable("merchant_settlement_details", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  settlementId: varchar("settlement_id").references(() => poolSettlements.id),
-  businessId: varchar("business_id").references(() => businesses.id),
-  rewardsGiven: decimal("rewards_given", { precision: 10, scale: 2 }).notNull(),
-  rewardsReceived: decimal("rewards_received", { precision: 10, scale: 2 }).notNull(),
-  netBalance: decimal("net_balance", { precision: 10, scale: 2 }).notNull(), // positive = owed money, negative = owes money
-  settlementType: varchar("settlement_type").notNull(), // payment_due, credit_due, balanced
-  paymentMethod: varchar("payment_method"), // stripe_transfer, bank_transfer, platform_credit, product_exchange
-  paymentReference: varchar("payment_reference"),
-  status: varchar("status").default("pending"), // pending, processing, completed, failed
-  processedAt: timestamp("processed_at"),
-  failureReason: text("failure_reason"),
-});
-
-export const rewardPoolInvoices = pgTable("reward_pool_invoices", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  settlementDetailId: varchar("settlement_detail_id").references(() => merchantSettlementDetails.id),
-  invoiceNumber: varchar("invoice_number").unique().notNull(),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  dueDate: timestamp("due_date").notNull(),
-  status: varchar("status").default("pending"), // pending, sent, paid, overdue, cancelled
-  sentAt: timestamp("sent_at"),
-  paidAt: timestamp("paid_at"),
-  paymentMethod: varchar("payment_method"),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 // COMMUNITY & SOCIAL FEATURES
 
 // Teams
@@ -929,7 +1085,7 @@ export const teamMemberships = pgTable("team_memberships", {
   pointsContributed: integer("points_contributed").default(0),
   isActive: boolean("is_active").default(true),
 }, (table) => ({
-  uniqueTeamUser: primaryKey({ columns: [table.teamId, table.userId] })
+  uniqueTeamUser: unique("team_memberships_team_user_unique").on(table.teamId, table.userId)
 }));
 
 // Community Challenges
@@ -968,63 +1124,9 @@ export const userChallengeProgress = pgTable("user_challenge_progress", {
   badgesEarned: text("badges_earned").array().default(sql`'{}'`),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
-  uniqueUserChallenge: primaryKey({ columns: [table.userId, table.challengeId] })
+  uniqueUserChallenge: unique("user_challenge_progress_user_challenge_unique").on(table.userId, table.challengeId)
 }));
 
-// ADVANCED AR & GAMING
-
-// AR Experiences
-export const arExperiences = pgTable("ar_experiences", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  businessId: varchar("business_id").references(() => businesses.id).notNull(),
-  title: varchar("title").notNull(),
-  description: text("description"),
-  experienceType: varchar("experience_type").notNull(), // treasure_hunt, virtual_menu, game, showcase
-  triggerType: varchar("trigger_type").default("nfc_tap"), // nfc_tap, location, qr_code, manual
-  arAssetUrl: varchar("ar_asset_url"), // 3D model or experience URL
-  rewardPoints: integer("reward_points").default(0),
-  rewardItems: jsonb("reward_items"), // virtual items or real rewards
-  playCount: integer("play_count").default(0),
-  averageRating: real("average_rating"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Discovery Challenges
-export const arTreasureHunts = pgTable("ar_treasure_hunts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: varchar("title").notNull(),
-  description: text("description"),
-  huntType: varchar("hunt_type").default("city_wide"), // business_specific, neighborhood, city_wide
-  clues: jsonb("clues"), // array of clue objects with locations and hints
-  requiredBusinesses: jsonb("required_businesses"), // businesses that must be visited
-  treasureLocations: jsonb("treasure_locations"), // GPS coordinates or business IDs
-  finalReward: jsonb("final_reward"), // ultimate prize
-  participantCount: integer("participant_count").default(0),
-  completionCount: integer("completion_count").default(0),
-  difficulty: varchar("difficulty").default("medium"),
-  estimatedDuration: integer("estimated_duration"), // minutes
-  startDate: timestamp("start_date"),
-  endDate: timestamp("end_date"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// AR Hunt Progress
-export const arHuntProgress = pgTable("ar_hunt_progress", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  huntId: varchar("hunt_id").references(() => arTreasureHunts.id).notNull(),
-  currentClue: integer("current_clue").default(0),
-  cluesCompleted: jsonb("clues_completed"), // array of completed clue IDs
-  treasuresFound: integer("treasures_found").default(0),
-  isCompleted: boolean("is_completed").default(false),
-  completedAt: timestamp("completed_at"),
-  totalTime: integer("total_time"), // minutes taken to complete
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => ({
-  uniqueUserHunt: primaryKey({ columns: [table.userId, table.huntId] })
-}));
 
 // HYPERLOCAL AI ANALYTICS
 
@@ -1089,7 +1191,7 @@ export const friendConnections = pgTable("friend_connections", {
   mutualRewards: integer("mutual_rewards").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
-  uniqueFriendship: primaryKey({ columns: [table.userAId, table.userBId] })
+  uniqueFriendship: unique("friend_connections_user_pair_unique").on(table.userAId, table.userBId)
 }));
 
 // Viral Campaigns
@@ -1165,15 +1267,10 @@ export const eventBusinessCampaigns = pgTable("event_business_campaigns", {
 // New Advanced Feature Types
 export type CustomerHealthScore = typeof customerHealthScores.$inferSelect;
 export type WinBackCampaign = typeof winBackCampaigns.$inferSelect;
-export type BusinessPartnership = typeof businessPartnerships.$inferSelect;
-export type CrossBusinessReward = typeof crossBusinessRewards.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type TeamMembership = typeof teamMemberships.$inferSelect;
 export type CommunityChallenge = typeof communityChallenges.$inferSelect;
 export type UserChallengeProgress = typeof userChallengeProgress.$inferSelect;
-export type ArExperience = typeof arExperiences.$inferSelect;
-export type ArTreasureHunt = typeof arTreasureHunts.$inferSelect;
-export type ArHuntProgress = typeof arHuntProgress.$inferSelect;
 export type LocalMarketData = typeof localMarketData.$inferSelect;
 export type PredictivePricing = typeof predictivePricing.$inferSelect;
 export type SocialProofEvent = typeof socialProofEvents.$inferSelect;
@@ -1182,28 +1279,6 @@ export type ViralCampaign = typeof viralCampaigns.$inferSelect;
 export type WeatherTrigger = typeof weatherTriggers.$inferSelect;
 export type LocalEvent = typeof localEvents.$inferSelect;
 export type EventBusinessCampaign = typeof eventBusinessCampaigns.$inferSelect;
-
-// Multi-Merchant Pool System Types
-export const insertRewardPoolCampaignSchema = createInsertSchema(rewardPoolCampaigns);
-export const insertMerchantPoolParticipantSchema = createInsertSchema(merchantPoolParticipants);
-export const insertPoolRewardTransactionSchema = createInsertSchema(poolRewardTransactions);
-export const insertPoolSettlementSchema = createInsertSchema(poolSettlements);
-export const insertMerchantSettlementDetailSchema = createInsertSchema(merchantSettlementDetails);
-export const insertRewardPoolInvoiceSchema = createInsertSchema(rewardPoolInvoices);
-
-export type RewardPoolCampaign = typeof rewardPoolCampaigns.$inferSelect;
-export type MerchantPoolParticipant = typeof merchantPoolParticipants.$inferSelect;
-export type PoolRewardTransaction = typeof poolRewardTransactions.$inferSelect;
-export type PoolSettlement = typeof poolSettlements.$inferSelect;
-export type MerchantSettlementDetail = typeof merchantSettlementDetails.$inferSelect;
-export type RewardPoolInvoice = typeof rewardPoolInvoices.$inferSelect;
-
-export type InsertRewardPoolCampaign = z.infer<typeof insertRewardPoolCampaignSchema>;
-export type InsertMerchantPoolParticipant = z.infer<typeof insertMerchantPoolParticipantSchema>;
-export type InsertPoolRewardTransaction = z.infer<typeof insertPoolRewardTransactionSchema>;
-export type InsertPoolSettlement = z.infer<typeof insertPoolSettlementSchema>;
-export type InsertMerchantSettlementDetail = z.infer<typeof insertMerchantSettlementDetailSchema>;
-export type InsertRewardPoolInvoice = z.infer<typeof insertRewardPoolInvoiceSchema>;
 
 // Business Pairing & Recommendation System
 export const businessPairingScores = pgTable("business_pairing_scores", {
@@ -1381,3 +1456,315 @@ export type BusinessGoals = typeof businessGoals.$inferSelect;
 export type InsertSalesData = z.infer<typeof insertSalesDataSchema>;
 export type InsertMonthlySalesSummary = z.infer<typeof insertMonthlySalesSummarySchema>;
 export type InsertBusinessGoals = z.infer<typeof insertBusinessGoalsSchema>;
+// ── Cross-role messaging (Slice 1: Coordinator ↔ Business) ──
+// A generic two-party thread engine shared by every role pairing. `contextType`
+// is the seam that lets later slices (admin support, opted-in customer reply)
+// reuse these same two tables without a schema change. Slice 1 only wires the
+// coordinator↔business direction in the UI. In-app only for now — no email/push
+// delivery yet (mirrors businessReminders). Delivery is a documented follow-up.
+export const messageThreads = pgTable("message_threads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subject: varchar("subject").notNull(),
+  // coordinator_business | admin_support | customer_business
+  contextType: varchar("context_type").notNull().default("coordinator_business"),
+  coordinatorId: varchar("coordinator_id").references(() => coordinators.id),
+  businessId: varchar("business_id").references(() => businesses.id),
+  // The customer party for context_type='customer_business' (Slice 4). Null
+  // otherwise. The customer always initiates; the business replies.
+  customerUserId: varchar("customer_user_id").references(() => users.id),
+  status: varchar("status").notNull().default("open"), // open | closed
+  lastMessageAt: timestamp("last_message_at").defaultNow(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const messages = pgTable("messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  threadId: varchar("thread_id").references(() => messageThreads.id).notNull(),
+  senderId: varchar("sender_id").references(() => users.id),
+  senderRole: varchar("sender_role").notNull(), // coordinator | business | admin | customer
+  body: text("body").notNull(),
+  readAt: timestamp("read_at"), // null until the counterpart opens the thread
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMessageThreadSchema = createInsertSchema(messageThreads).omit({
+  id: true,
+  lastMessageAt: true,
+  createdAt: true,
+});
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  readAt: true,
+  createdAt: true,
+});
+
+export type MessageThread = typeof messageThreads.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+export type InsertMessageThread = z.infer<typeof insertMessageThreadSchema>;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+// ── Admin broadcasts (Slice 2) ──
+// One-way platform announcements from an admin down to a role audience. No
+// per-recipient row: the recipient's feed is a query over `audience`. Read
+// state is a single per-user watermark (userBroadcastState) rather than a
+// row-per-broadcast, which is cheap at platform scale.
+export const broadcasts = pgTable("broadcasts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  senderUserId: varchar("sender_user_id").references(() => users.id),
+  audience: varchar("audience").notNull(), // all | coordinators | businesses | customers
+  subject: varchar("subject").notNull(),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// A per-user watermark: broadcasts newer than lastSeenAt are "unread" for them.
+export const userBroadcastState = pgTable("user_broadcast_state", {
+  userId: varchar("user_id").primaryKey().references(() => users.id),
+  lastSeenAt: timestamp("last_seen_at").defaultNow(),
+});
+
+export const insertBroadcastSchema = createInsertSchema(broadcasts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type Broadcast = typeof broadcasts.$inferSelect;
+export type InsertBroadcast = z.infer<typeof insertBroadcastSchema>;
+export type UserBroadcastState = typeof userBroadcastState.$inferSelect;
+
+// ── Manual reward/balance adjustments (admin + coordinator ops tool) ──
+// Every manual change to a customer's loyalty points or rewards is recorded here
+// so "if something goes wrong" fixes are fully auditable. actorRole records
+// whether an admin or a (territory-scoped) coordinator made the change.
+export const rewardAdjustments = pgTable("reward_adjustments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  actorUserId: varchar("actor_user_id").references(() => users.id),
+  actorRole: varchar("actor_role").notNull(), // admin | coordinator
+  targetUserId: varchar("target_user_id").references(() => users.id),
+  targetEmail: varchar("target_email"),
+  businessId: varchar("business_id").references(() => businesses.id), // for reward grant/redeem
+  kind: varchar("kind").notNull(), // points | grant | redeem | unredeem
+  pointsDelta: integer("points_delta"), // for kind='points'
+  rewardId: varchar("reward_id").references(() => rewards.id), // for grant/redeem/unredeem
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type RewardAdjustment = typeof rewardAdjustments.$inferSelect;
+
+// ── Shared-campaign reward cost-splitting (fairness for multi-store rewards) ──
+// When a FUNDED group-campaign reward is unlocked, its cost is split across the
+// participating stores (tap-weighted): the host fronted the item, the other
+// stores reimburse their share. `reward_contributions` is the accrual ledger
+// (one row per driver store per unlocked reward, mirroring the `donations`
+// pattern); `reward_settlements` rolls a host's owed contributions into a
+// monthly statement with a mark-settled action (mirroring `coordinator_payouts`;
+// automated Stripe Connect transfer is the same deferred follow-up).
+export const rewardSettlements = pgTable("reward_settlements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  hostBusinessId: varchar("host_business_id").references(() => businesses.id).notNull(), // payee
+  periodMonth: varchar("period_month").notNull(), // YYYY-MM
+  totalCents: integer("total_cents").notNull().default(0),
+  contributionCount: integer("contribution_count").notNull().default(0),
+  status: varchar("status").notNull().default("pending"), // pending | paid | void
+  method: varchar("method").default("manual"), // manual | stripe_connect
+  reference: varchar("reference"),
+  stripeTransferId: varchar("stripe_transfer_id"), // set when settled via Connect payout
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  paidAt: timestamp("paid_at"),
+});
+
+export const rewardContributions = pgTable("reward_contributions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupCampaignId: varchar("group_campaign_id").references(() => groupCampaigns.id).notNull(),
+  rewardId: varchar("reward_id").references(() => rewards.id).notNull(),
+  hostBusinessId: varchar("host_business_id").references(() => businesses.id).notNull(), // payee
+  businessId: varchar("business_id").references(() => businesses.id).notNull(), // payer (driver store)
+  customerEmail: varchar("customer_email"),
+  weightTaps: integer("weight_taps").default(0), // taps by this customer at this store (weight)
+  totalRewardCents: integer("total_reward_cents").notNull().default(0), // snapshot of reward value
+  shareCents: integer("share_cents").notNull().default(0), // this store's owed share
+  basis: varchar("basis").notNull().default("weighted"), // weighted | equal
+  periodMonth: varchar("period_month").notNull(), // YYYY-MM
+  settlementId: varchar("settlement_id").references(() => rewardSettlements.id), // set once rolled up
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniquePerReward: unique("reward_contributions_reward_business_unique").on(table.rewardId, table.businessId),
+}));
+
+export type RewardContribution = typeof rewardContributions.$inferSelect;
+export type RewardSettlement = typeof rewardSettlements.$inferSelect;
+
+// ── Badges (recognition/gamification) ──
+// A badge catalog (prepopulated + user-created custom) and an award ledger.
+// Phase 1 is MANUAL awarding across four directions; automatic achievement
+// badges (tap/visit/campaign thresholds) come later. Uploaded art is stored as
+// a capped base64 data-URI (no blob store yet) — otherwise an emoji medallion.
+export const badgeDefinitions = pgTable("badge_definitions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key").notNull().unique(), // stable slug ('great_service', or custom_<uuid>)
+  name: varchar("name").notNull(),
+  description: text("description"),
+  emoji: varchar("emoji"),               // quick visual / fallback when no image
+  imageDataUri: text("image_data_uri"),  // uploaded PNG/JPG/WebP as data URI (capped)
+  color: varchar("color").default("#7c3aed"), // medallion ring color
+  // Who the badge is FOR (drives recipient type): business = a business,
+  // customer/coordinator/any = a user.
+  audience: varchar("audience").notNull().default("any"),
+  // Who may grant it: system | business | customer | coordinator | admin.
+  awardableBy: varchar("awardable_by").notNull().default("admin"),
+  tier: varchar("tier"),                 // bronze|silver|gold|platinum
+  // Auto-award rule for achievement badges (awardableBy='system'):
+  // { metric: 'taps'|'distinct_businesses'|'streak'|'biz_taps'|'biz_customers', threshold: N }
+  criteria: jsonb("criteria"),
+  isCustom: boolean("is_custom").default(false),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const badgeAwards = pgTable("badge_awards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  badgeDefinitionId: varchar("badge_definition_id").references(() => badgeDefinitions.id).notNull(),
+  // Exactly one recipient is set.
+  recipientUserId: varchar("recipient_user_id").references(() => users.id),
+  recipientBusinessId: varchar("recipient_business_id").references(() => businesses.id),
+  note: text("note"),
+  awarderRole: varchar("awarder_role").notNull(), // system|business|customer|coordinator|admin
+  awarderUserId: varchar("awarder_user_id").references(() => users.id),
+  awarderBusinessId: varchar("awarder_business_id").references(() => businesses.id),
+  awardedAt: timestamp("awarded_at").defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+});
+
+export type BadgeDefinition = typeof badgeDefinitions.$inferSelect;
+export type BadgeAward = typeof badgeAwards.$inferSelect;
+
+// ── Points economy (redemption) ──
+// Gives loyalty points a real sink: customers spend availablePoints on perks a
+// business funds (redeemable in-store), platform perks, or prize-draw entries.
+export const pointRewards = pgTable("point_rewards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  emoji: varchar("emoji"),
+  pointsCost: integer("points_cost").notNull(),
+  type: varchar("type").notNull().default("business_perk"), // business_perk | platform_perk | prize_draw
+  businessId: varchar("business_id").references(() => businesses.id), // funded/redeemed at this business
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdByRole: varchar("created_by_role").notNull().default("business"), // business | coordinator | admin
+  quantity: integer("quantity"), // null = unlimited
+  redeemedCount: integer("redeemed_count").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  endsAt: timestamp("ends_at"),      // optional expiry
+  drawAt: timestamp("draw_at"),      // for prize_draw
+  winnerRedemptionId: varchar("winner_redemption_id"), // set when a draw is run
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const pointRedemptions = pgTable("point_redemptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  pointRewardId: varchar("point_reward_id").references(() => pointRewards.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  pointsSpent: integer("points_spent").notNull(),
+  rewardId: varchar("reward_id").references(() => rewards.id), // for perks → an in-store reward
+  code: varchar("code"),             // redemption code (platform perks)
+  status: varchar("status").notNull().default("active"), // active | redeemed | entered | won | lost
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type PointReward = typeof pointRewards.$inferSelect;
+export type PointRedemption = typeof pointRedemptions.$inferSelect;
+
+// ── Collections / passports ──
+// A curated set of businesses ("visit all N coffee shops → Coffee Passport").
+// Completing it (visiting every member) grants bonus points. Admin/coordinator
+// curated. Advances on tap, like group campaigns but discovery-themed.
+export const collections = pgTable("collections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  emoji: varchar("emoji"),
+  color: varchar("color").default("#7c3aed"),
+  rewardPoints: integer("reward_points").notNull().default(100),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdByRole: varchar("created_by_role").notNull().default("admin"), // admin | coordinator
+  territoryId: varchar("territory_id").references(() => territories.id),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const collectionItems = pgTable("collection_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  collectionId: varchar("collection_id").references(() => collections.id).notNull(),
+  businessId: varchar("business_id").references(() => businesses.id).notNull(),
+}, (table) => ({
+  uniqueItem: unique("collection_items_unique").on(table.collectionId, table.businessId),
+}));
+
+export const collectionProgress = pgTable("collection_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  collectionId: varchar("collection_id").references(() => collections.id).notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  customerEmail: varchar("customer_email"),
+  deviceFingerprint: varchar("device_fingerprint"),
+  visitedBusinessIds: jsonb("visited_business_ids").default(sql`'[]'`),
+  completedAt: timestamp("completed_at"),
+  rewardGranted: boolean("reward_granted").notNull().default(false),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Collection = typeof collections.$inferSelect;
+export type CollectionProgress = typeof collectionProgress.$inferSelect;
+
+// ── Seasonal events ──
+// A time-boxed event (e.g. "First Fridays") that multiplies tap points while
+// active. Admin-created; surfaced to customers as a limited-time banner.
+export const events = pgTable("events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  emoji: varchar("emoji"),
+  pointMultiplier: integer("point_multiplier").notNull().default(2),
+  startsAt: timestamp("starts_at").notNull(),
+  endsAt: timestamp("ends_at").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type Event = typeof events.$inferSelect;
+
+// CIRQL game progress (CHR-94) — one row per (user, game); guests don't persist.
+// `gameId` (CirqlArcade) defaults to 'cirqlbreak' so the flagship's existing rows and
+// endpoints are unchanged; each new arcade game gets its own isolated progress row.
+export const gameProgress = pgTable("game_progress", {
+  userId: varchar("user_id").notNull().references(() => users.id),
+  gameId: varchar("game_id").notNull().default("cirqlbreak"), // CirqlArcade game key
+  worldIndex: integer("world_index").notNull().default(0), // resume point (absolute world index)
+  worldsRestored: integer("worlds_restored").notNull().default(0),
+  playerSeed: integer("player_seed").notNull().default(0), // seeds the infinite procedural stream (unique per player)
+  state: jsonb("state"), // extensible blob (per-world stars, cosmetics, XP, …) — per game
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [primaryKey({ columns: [t.userId, t.gameId] })]);
+
+export type GameProgress = typeof gameProgress.$inferSelect;
+
+// Cirqlbreak — cross-player Daily leaderboard (CHR-122). One best row per user per
+// UTC day, ranked by score. Composite PK (user_id, day) enforces one ranked run
+// per day; the row keeps the player's best score for that day.
+export const dailyScores = pgTable("daily_scores", {
+  userId: varchar("user_id").notNull().references(() => users.id),
+  gameId: varchar("game_id").notNull().default("cirqlbreak"), // CirqlArcade game key (per-game daily board)
+  day: varchar("day").notNull(), // UTC yyyy-mm-dd
+  dailyNum: integer("daily_num").notNull().default(0),
+  score: integer("score").notNull().default(0),
+  bestCombo: integer("best_combo").notNull().default(0),
+  restored: boolean("restored").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [primaryKey({ columns: [t.userId, t.day, t.gameId] })]);
+
+export type DailyScore = typeof dailyScores.$inferSelect;

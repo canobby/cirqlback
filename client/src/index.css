@@ -727,3 +727,21 @@
     @apply px-2 sm:px-4 lg:px-6 max-w-full;
   }
 }
+
+/* ---- Arcade gameplay: kill mobile long-press callouts / text-selection ---- */
+/* Holding a control and dragging a finger was popping the iOS/Android copy/search */
+/* callout. Suppress selection + callouts on every game canvas and control button. */
+canvas[data-testid$="-canvas"],
+[data-testid^="btn-"],
+[data-testid^="cat-"],
+[data-testid^="era-"],
+[data-testid^="sidekick-"],
+[data-testid^="swatch-"],
+.arcade-nograb {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
